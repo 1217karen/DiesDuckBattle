@@ -90,6 +90,6 @@ test("ポイント単価は信頼済み設定から取得し、不正設定は�
   rules.resources.dicePointsPerTriple = -1;
   assert.throws(() => calculateBuildResources(build(), rules), TypeError);
   assert.equal(createBuildRules().resources.aUpgradeDicePointCost, 2);
-  rules.resources.cModules.testOnly = { statusPointCost: 3 };
+  rules.resources.cModules.testOnly = { statPointCost: 3 };
   assert.deepEqual(createBuildRules().resources.cModules, {});
 });

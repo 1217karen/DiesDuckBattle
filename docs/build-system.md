@@ -91,7 +91,7 @@ legacyAdapterは旧版の対応効果を保持し、ユーザー公開カタロ�
 スキルルールは引き続き未確定なので、validでもreadyとは限らない。
 
 単価はbuildRulesのresourcesに集約。`aUpgradeDicePointCost: 2` は基本案の設定のみ。
-`cModules` は運営側の `モジュールID -> { statusPointCost }` 価格表の拡張口で、現在は空。
+`cModules` は運営側の `モジュールID -> { statPointCost }` 価格表の拡張口で、現在は空。
 将来のC構築処理はここから個別価格を取得し、未登録IDを拒否し、stats.remaining内で消費を検証する。
 ユーザーからのcost申告は受け付けない。今回Cモジュール選択DTO・価格計算処理・具体的価格は実装しない。
 

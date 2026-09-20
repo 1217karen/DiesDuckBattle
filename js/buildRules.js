@@ -19,7 +19,7 @@ export function createBuildRules() {
       dicePointsPerTriple: 1,
       // 基本案。強化内容・最大段階・DTOへの導入は未確定。
       aUpgradeDicePointCost: 2,
-      // TODO: CモジュールID -> { statusPointCost: 非負の整数 }。
+      // TODO: CモジュールID -> { statPointCost: 非負の整数 }。
       // 運営専用価格表。公開効果一覧ではない。将来のcompilerがIDから参照し、
       // 未登録IDは拒否する。ユーザー申告costや一律の段階換算は使用しない。
       cModules: {},
