@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta name="robots" content="noindex, nofollow">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ルールブック</title>
+
+    <style>
+      :root {
+        --column-max: 1000px;
+        --gutter: 16px;
+
+        --text: #111;
+        --muted: rgba(0, 0, 0, 0.55);
+
+        --card-bg: rgba(255, 255, 255, 0.92);
+        --card-border: rgba(0, 0, 0, 0.12);
+
+        --accent: rgba(240, 138, 36, 0.85); /* アヒルっぽいオレンジ */
+        --accent-soft: rgba(240, 138, 36, 0.15);
+
+        --status: rgba(180, 130, 255, 0.55); /* 状態見出し（薄紫） */
+        --status-soft: rgba(180, 130, 255, 0.14);
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        background-image: url("https://duckbattlebeta.web.fc2.com/img/result_BG.webp");
+        background-repeat: repeat;
+        background-attachment: fixed;
+        background-position: top left;
+        color: var(--text);
+      }
+/* =========================
+   控えめハンバーガーメニュー
+========================= */
+.nav{
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 60; /* tray(50)より上 */
+}
+
+.nav__btn{
+  list-style: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.25);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+/* summaryの三角を消す */
+.nav__btn::-webkit-details-marker{ display:none; }
+
+/* ハンバーガーの三本線 */
+.nav__btn span{
+  display:block;
+  width: 16px;
+  height: 2px;
+  background: rgba(255,255,255,.75);
+  border-radius: 999px;
+  margin: 2px 0;
+}
+
+.nav__panel{
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(10px);
+  min-width: 140px;
+  display: grid;
+  gap: 6px;
+}
+
+.nav__link{
+  display:block;
+  text-decoration: none;
+  color: rgba(255,255,255,.9);
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+.nav__link:hover{
+  background: rgba(255,255,255,.10);
+}
+
+      /* 中央白帯 */
+      .whiteStripe {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(var(--column-max), calc(100vw - (var(--gutter) * 2)));
+        background: rgba(255, 255, 255, 0.92);
+        z-index: 0;
+      }
+
+      /* レイアウト */
+      .wrap {
+        position: relative;
+        z-index: 1;
+        width: min(var(--column-max), calc(100vw - (var(--gutter) * 2)));
+        margin: 0 auto;
+        padding: 24px 0 60px;
+        box-sizing: border-box;
+      }
+
+      header {
+        padding: 16px 0 10px;
+        text-align: center;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 1000;
+        letter-spacing: 0.04em;
+      }
+
+      .subTitle {
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .toc {
+        margin-top: 14px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border: 1px solid var(--card-border);
+        background: rgba(0, 0, 0, 0.04);
+        border-radius: 999px;
+        text-decoration: none;
+        color: var(--text);
+        font-weight: 800;
+        font-size: 12px;
+      }
+
+      .chip:hover {
+        background: rgba(0, 0, 0, 0.06);
+      }
+
+      #goal .box + .box{
+        margin-top: 10px;
+      }
+
+      /* セクションカード */
+      section {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        margin: 16px 0;
+        padding: 14px 14px;
+        box-sizing: border-box;
+      }
+
+      h2 {
+        margin: 0 0 10px;
+        font-size: 16px;
+        font-weight: 1000;
+        padding-left: 10px;
+        border-left: 6px solid var(--accent);
+        background: var(--accent-soft);
+        padding-top: 6px;
+        padding-bottom: 6px;
+      }
+
+      p {
+        margin: 8px 0;
+        line-height: 1.55;
+      }
+
+      ul {
+        margin: 8px 0;
+        padding-left: 18px;
+        line-height: 1.55;
+      }
+
+      .small {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--card-border);
+        background: rgba(0, 0, 0, 0.03);
+        padding: 10px;
+      }
+
+      .boxTitle {
+        font-weight: 1000;
+        margin-bottom: 6px;
+      }
+
+      /* 状態一覧だけ紫っぽく */
+      .statusCard h2 {
+        border-left: 6px solid var(--status);
+        background: var(--status-soft);
+      }
+
+      .tagRow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 6px;
+      }
+
+      .tag {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+        padding: 4px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--card-border);
+        background: rgba(0, 0, 0, 0.04);
+        font-weight: 900;
+        font-size: 12px;
+      }
+
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        font-size: 12px;
+        background: rgba(0, 0, 0, 0.04);
+        padding: 2px 6px;
+        border: 1px solid var(--card-border);
+      }
+
+      footer {
+        margin-top: 18px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      /* スマホ */
+      @media (max-width: 700px) {
+        .wrap {
+          padding: 18px 0 48px;
+        }
+        .grid2 {
+          grid-template-columns: 1fr;
+        }
+        body{
+          font-size: 0.8rem;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="whiteStripe" aria-hidden="true"></div>
+
+    <!-- 控えめメニュー（ハンバーガー） -->
+  <details class="nav">
+    <summary class="nav__btn" aria-label="メニューを開く">
+      <span></span><span></span><span></span>
+    </summary>
+
+    <nav class="nav__panel" aria-label="メインメニュー">
+      <a class="nav__link" href="index.html">トップページ</a>
+      <a class="nav__link" href="select.html">ゲーム画面</a>
+      <a class="nav__link" href="storage.html">バトル履歴</a>
+    </nav>
+  </details>
+
+    <div class="wrap">
+      <header>
+        <h1>🎲ダイスで対戦！アヒルバトラー🐤 ルールブック</h1>
+        <div class="subTitle">最終更新：2026.02.21</div>
+
+        <nav class="toc">
+          <a class="chip" href="#rule">基本ルール</a>
+          <a class="chip" href="#goal">あそびかた</a>
+          <a class="chip" href="#flow">戦闘の流れ</a>
+          <a class="chip" href="#stats">ステータス</a>
+          <a class="chip" href="#dice">ダイス</a>
+          <a class="chip" href="#skills">スキル</a>
+          <a class="chip" href="#attack">ダメージの種類</a>
+          <a class="chip" href="#status">状態変化</a>
+        </nav>
+      </header>
+
+      <!--  基本ルール -->
+      <section id="rule">
+        <h2>📖基本ルール📖</h2>
+        <p>
+          好きなバトラーとアヒルを選んで <b>アヒルバトル</b> をしよう！<br />
+          ターン終了時に <b>相手のHPを0</b> にした方の勝利だ！<br />
+          両方のHPが0になった場合は引き分けになるぞ！
+        </p>
+        <p class="small">
+          ※50ターンを超えた場合も引き分けになります。
+        </p>
+      </section>
+
+
+<!--  あそびかた -->
+<section id="goal">
+  <h2>🎮あそびかた🎮</h2>
+
+  <div class="box">
+    <div class="boxTitle">①</div>
+    <ul>
+      <li>ゲーム画面で <b>シルエットをタップ（クリック）</b>すると一覧が開くぞ！</li>
+      <li><b>バトラー</b> と <b>アヒル</b> をそれぞれ1組ずつ選ぼう！</li>
+    </ul>
+  </div>
+
+  <div class="box">
+    <div class="boxTitle">②</div>
+    <ul>
+      <li>選んだキャラクターの <b>ステータス</b> や <b>スキル説明</b> が下の情報欄に表示される！</li>
+      <li>自分だけのお気に入りの組み合わせを見つけよう！</li>
+    </ul>
+  </div>
+
+  <div class="box">
+    <div class="boxTitle">③</div>
+    <ul>
+      <li>両方のプレイヤーの「バトラー」と「アヒル」がそろうと、中央の <b>VSマーク</b> が動き出す！</li>
+      <li><b>VSマークを押せばバトル開始！</b></li>
+      <li>バトル結果は <b>バトル履歴</b> で何度でも振り返れるぞ！</li>
+    </ul>
+  </div>
+
+  <p class="small">
+    ※戦闘結果はローカルストレージに保存されます。<br>
+    　リンクを共有しても他ブラウザで結果を見ることはできません。
+  </p>
+</section>
+
+
+      <!--  戦闘の流れ -->
+      <section id="flow">
+        <h2>🌊戦闘の流れ🌊</h2>
+
+        <p>
+          バトルはターン制！<br />
+          <b>SPが高いほうが先攻</b>だ！同じならランダムで決まるぞ！
+        </p>
+
+        <ul>
+          <li><b>バトル開始</b></li>
+          <li><b>行動順決定</b></li>
+          <li><b>Ｄスキル発動</b></li>
+          <li><b>ターン開始</b>：両者AP +1</li>
+          <li><b>攻撃フェイズ</b>：SPの数だけ交互に行動</li>
+          <li><b>ターン終了</b>：勝敗判定</li>
+          <li>（ターン開始に戻る）</li>
+        </ul>
+
+        <div class="box">
+          <div class="boxTitle">攻撃フェイズの流れ</div>
+          <ul>
+            <li>フェイズ開始</li>
+            <li>Ｃスキル発動</li>
+            <li>ダイスロール</li>
+            <li>Ａスキル発動</li>
+            <li>通常攻撃</li>
+            <li>出目による追加効果</li>
+            <li>フェイズ終了</li>
+          </ul>
+        </div>
+      </section>
+
+      <!--  ステータス -->
+      <section id="stats">
+        <h2>🐤ステータス🐤</h2>
+        <p>アヒルにはそれぞれステータスが存在する！<br></p>
+        <div class="grid2">
+          <div class="box">
+            <div class="boxTitle">HP</div>
+            <p>
+              アヒルの <b>体力</b> だ！<br />
+              ターン終了時に0以下だと負けてしまうぞ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">AP</div>
+            <p>
+              Ｃスキルを発動するのに必要な <b>アヒルパワー</b> だ！<br />
+              ターン開始時に両方に+1されるぞ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">AT / DF</div>
+            <p>
+              アヒルの <b>攻撃力</b> と <b>防御力</b> だ！<br />
+              通常攻撃のダメージ計算に使用するぞ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">SP</div>
+            <p>
+              アヒルの <b>スピード力</b> だ！<br />
+              SPの数だけ１ターンの間に攻撃フェイズがくるぞ！
+            </p>
+          </div>
+           <p>連続行動は攻撃が当たりにくくなる！<br>
+           手堅い一撃を狙うか、手数で攻めるかは君次第！</p> </div>
+      </section>
+
+      <!--  ダイス -->
+      <section id="dice">
+        <h2>🎲ダイス🎲</h2>
+        <p>ダイスは出目によって異なる追加効果が発動！<br>
+        アヒルによってダイスの数字は異なるぞ！<br></p>
+
+        <ul>
+          <li><b>０</b>：追加効果なし（ハズレ）</li>
+          <li><b>１</b>：自分のAP +1</li>
+          <li><b>２</b>：通常攻撃2回</li>
+          <li><b>３</b>：自分のHPを3回復</li>
+          <li><b>４</b>：自分に反撃 +1</li>
+          <li><b>５</b>：相手のAP -1</li>
+          <li><b>６</b>：DF無視攻撃 ＋ 反動固定3ダメージ</li>
+        </ul>
+      </section>
+
+      <!--  スキル -->
+      <section id="skills">
+        <h2>💥スキル💥</h2>
+
+        <p>スキルは全部で４種類！使いこなせ！</p>
+
+        <h3 class="skillGroupTitle">🐥アヒルが使用するスキル</h3>
+        <div class="grid2">
+          <div class="box">
+            <div class="boxTitle">Ａスキル</div>
+            <p>
+              アヒルスキルだ！<br />
+              ダイスの出目に応じて発動！<br />
+              アヒルごとの特性を見極めよう！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">Ｃスキル</div>
+            <p>
+              チャージスキルだ！<br />
+              必要なAPが溜まるとフェイズ開始時に発動！<br />
+              必殺技でバトルを一気に進めよう！<br>
+            </p>
+
+            <p class="small">
+              ※一部のスキルはターン終了時に発動します。
+            </p>
+          </div>
+        </div>
+
+        <h3 class="skillGroupTitle">👤バトラーが使用するスキル</h3>
+        <div class="grid2">
+          <div class="box">
+            <div class="boxTitle">Ｂスキル</div>
+            <p>
+              バトラースキルだ！<br />
+              様々な条件で発動！<br />
+              アヒルとの相性が勝利へのカギだ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">Ｄスキル</div>
+            <p>
+              ダイススキルだ！<br />
+              バトル開始時に発動！<br />
+              自分や相手のアヒルに出目を追加するぞ！
+            </p>
+          </div>
+        </div>
+      </section>
+
+
+      <!--  攻撃の種類 -->
+      <section id="attack">
+        <h2>🔥ダメージの種類🔥</h2>
+
+        <p>
+          「ダメージ」には２つの種類がある！
+        </p>
+
+        <div class="grid2">
+          <div class="box">
+            <div class="boxTitle">通常ダメージ</div>
+            <p>
+              ダイス由来の基本のダメージだ！<br />
+              計算式：<b>出目＋（AT − DF）</b><br />
+              AT−DFは<b>0未満にならない</b>！<br>
+              また、<b>ターンの最初の通常攻撃は出目に×２の補正</b>が入るぞ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">固定ダメージ</div>
+            <p>
+              スキルや状態異常などで発生するダメージだ！<br />
+              <b>DFを無視</b>して相手に直接ダメージを与えるぞ！<br />
+              「通常攻撃」や「通常ダメージ」が発動条件のスキルは、<b>固定ダメージでは発動しない</b>！気を付けよう！
+            </p>
+          </div>
+      </section>
+
+      <!--  状態変化 -->
+      <section id="status">
+        <h2>🌀状態変化🌀</h2>
+        <p>
+          アヒルに様々な効果を与える特殊効果だ！<br />
+          それぞれ３スタックまで付与できるぞ！<br>
+        </p>
+
+        <div class="grid2">
+          <div class="box">
+            <div class="boxTitle">⚡ 亀裂</div>
+            <p>
+              フェイズ開始時にスタック分の<b>固定ダメージ</b>を受けてしまう！<br />
+              フェイズ終了時に１ずつ解除されるぞ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">🌊 荒波</div>
+            <p>
+              フェイズ開始時に全スタックを消費して発動！<br />
+              確率で<b>ダイスロール</b>をキャンセルされてしまう！<br />
+              スタックが多いほど確率アップだ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">🌪️ 逆風</div>
+            <p>
+              ダイスロール後に全スタックを消費して発動！<br />
+              確率で<b>Ａスキル</b>をキャンセルされてしまう！<br />
+              スタックが多いほど確率アップだ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">🌫 湯気</div>
+            <p>
+              通常攻撃前に全スタックを消費して発動！<br />
+              確率で<b>通常攻撃</b>をキャンセルされてしまう！<br />
+              スタックが多いほど確率アップだ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">💨 追風</div>
+            <p>
+              １スタックにつき１度、<b>通常攻撃</b>を回避できる！<br />
+              固定ダメージは回避できないので気を付けよう！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">🎯 集中</div>
+            <p>
+              通常攻撃前に全スタックを消費して発動！<br />
+              <b>通常攻撃</b>のダメージ倍率をあげる！<br />
+              スタックが多いほど倍率アップだ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">🛡️ 反撃</div>
+            <p>
+              <b>通常ダメージ</b>を受けたとき、受けたダメージの半分を相手に返す！<br />
+              反撃は<b>固定ダメージ</b>だ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">🧼 清潔</div>
+            <p>
+              １スタックにつき１つ、<b>状態異常</b>を防ぐ！<br />
+              異常を撒いてくる相手への対抗手段にしよう！
+            </p>
+          </div>
+        </div>
+
+        <p class="small">
+          ※効果は予告なく変更される可能性があります。
+        </p>
+        突然バトルフィールドに変わった効果が発生することも！？<br>
+        真実は君とアヒルの目で確かめろ！
+      </section>
+
+
+
+<footer>
+  <div class="small">
+    本作は、WoodenRabbitWorks(うでらび)様制作のオリジナルキャラクター登録型ゲーム<br>
+    シマナガサレV3内の企画「アヒル島」を元にした非公式二次創作作品です。<br>
+    <br>
+    画像・UIデザイン・テキスト：1217karen<br>
+    プログラム：ChatGPT（OpenAI）を利用して作成<br>
+    キャラクター原案・デザイン：「アヒル島」企画参加者の皆様<br>
+    （各キャラクターの権利は各創作者に帰属します）<br>
+    <br>
+    <br>
+  </div>
+</footer>
+
