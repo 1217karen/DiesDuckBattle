@@ -1,0 +1,270 @@
+/* 画面全体の土台 */
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;   /* スクロール禁止 */
+}
+
+body {
+  overflow-x: hidden;
+  color: #fff;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif;
+  background-color: #000;
+}
+
+
+/* 背景：固定の1枚絵 */
+.bg {
+  position: fixed;
+  inset: 0;
+  background-image: url("../img/index_BG.webp"); /* 背景画像 */
+  background-size: auto 100vh;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: -3;
+}
+
+/* 読みやすさ用の暗めオーバーレイ */
+.bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.55),
+    rgba(0,0,0,0.35)
+  );
+  z-index: -2;
+}
+
+/* 中央のロゴ＋ボタンエリア */
+.center {
+  position: relative;
+  z-index: 20;
+  transform: translateY(5vh);
+
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  gap: clamp(6px, 2vh, 18px);
+  padding: 24px 16px;
+  text-align: center;
+}
+
+/* ロゴ画像 */
+.logo {
+  position: relative;
+  z-index: 10;
+
+  width: min(520px, 86vw, 60vh);
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  filter: drop-shadow(0 10px 20px rgba(0,0,0,0.6));
+
+  opacity: 0;
+  transition: opacity 2s ease;
+}
+
+.logo.is-visible {
+  opacity: 1;
+}
+
+/* ボタン */
+.menu {
+  position: relative;
+  z-index: 10;
+
+  display: grid;
+  gap: clamp(2px, 1.2vh, 12px);
+  justify-items: center;
+}
+
+.btn {
+  width: min(320px, 84vw);
+  padding: clamp(5px, 1.6vh, 14px) 16px;
+
+  border-radius: 10px;
+  text-decoration: none;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+
+  background: rgba(20, 30, 45, 0.75);
+  border: 1px solid rgba(255,255,255,0.22);
+  box-shadow:
+    0 10px 25px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.10);
+
+  backdrop-filter: blur(4px);
+
+  transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.05s ease;
+}
+
+/* マウスオンで少し光る（黄色） */
+.btn:hover {
+  box-shadow:
+    0 12px 28px rgba(0,0,0,0.38),
+    0 0 20px rgba(255, 210, 60, 0.45),
+    inset 0 1px 0 rgba(255,255,255,0.18);
+  border-color: rgba(255, 220, 120, 0.65);
+}
+
+/* キーボード操作でも見える */
+.btn:focus-visible {
+  outline: 2px solid rgba(160, 220, 255, 0.70);
+  outline-offset: 3px;
+}
+
+/* 押した瞬間 */
+.btn:active {
+  transform: translateY(1px);
+  box-shadow:
+    0 8px 18px rgba(0,0,0,0.32),
+    0 0 16px rgba(255, 210, 60, 0.40),
+    inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
+/* 左右の立ち絵エリア（PC：縦3枚を重ねて、画面内に収める） */
+.side {
+  position: fixed;
+  top: 0vh;
+  bottom: 2vh;
+  width: min(30vw, 450px);
+  pointer-events: none;
+  z-index: 0;
+
+  padding: 0 10px;
+}
+
+.side-left { left: 0; }
+.side-right { right: 0; }
+
+/* 立ち絵：アス比を崩さず、枠内で重ねる */
+.side__chara {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  width: calc(100% - 20px);
+  height: auto;
+
+  object-fit: contain;      /* アス比維持 */
+  object-position: bottom;  /* 足元基準 */
+
+  max-height: 70vh;
+
+  filter: drop-shadow(0 16px 18px rgba(0,0,0,0.55));
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.side__chara.is-visible {
+  opacity: 1;
+}
+
+/* 左：A(left-1) < B(left-2) < C(left-3) の順で手前 */
+#left-1  { z-index: 1; }
+#left-2  { z-index: 2; }
+#left-3  { z-index: 3; }
+
+/* 右：D(right-1) < F(right-2) < G(right-3) の順で手前 */
+#right-1 { z-index: 1; }
+#right-2 { z-index: 2; }
+#right-3 { z-index: 3; }
+
+/* 縦の重なり位置：上ほど中央寄りの“上段”に見える */
+#left-1  { bottom: 36%; }
+#left-2  { bottom: 18%; }
+#left-3  { bottom: 0%; }
+
+#right-1 { bottom: 36%; }
+#right-2 { bottom: 18%; }
+#right-3 { bottom: 0%; }
+
+
+/* ======================
+   ピラミッド配置（横オフセット）
+   上ほど中央寄り
+====================== */
+
+/* 左側（中央寄り → 外側） */
+#left-1 { transform: translateX(85%); }  /* A */
+#left-2 { transform: translateX(35%); }  /* B */
+#left-3 { transform: translateX(-15%); }   /* C */
+
+/* 右側（左右逆方向にずらす） */
+#right-1 { transform: translateX(-85%); } /* D */
+#right-2 { transform: translateX(-35%); } /* E */
+#right-3 { transform: translateX(15%); }   /* F */
+
+/* ========================== スマホ(1100px以下) ========================== */
+
+@media (max-width: 1100px) {
+
+  :root{
+    --mob-step-x: 15vw;      /* 6人の間隔。小さいほど密集、大きいほど広がる */
+    --mob-chara-maxh: 35vh;  /* 立ち絵の最大高さ（必要なら調整） */
+    --mob-zigzag-y: 6vh;   /* ギザギザの上下幅。大きいほど段差が強い */
+    --mob-y-offset: 20vh;   /* 立ち絵全体の上下の位置 */
+    --mob-top-space: 0vh;   /* ロゴ＋ボタンを下に押す量 */
+  }
+
+  /* 中央（ロゴ＋ボタン） */
+  .center{
+    padding-top: var(--mob-top-space);
+    padding-bottom: 24px;
+    transform: translateY(0vh);
+  }
+
+  .side{
+    position: fixed !important;
+    inset: 0 !important;                 /* 画面全体を覆う */
+    pointer-events: none;
+    z-index: 5;
+  }
+
+
+
+  /* ▼スマホ：6人を中央基準で横並び（等間隔） */
+  .side__chara{
+    position: fixed !important;
+    top: var(--mob-y-offset) !important;
+    left: 50vw !important;
+    right: auto !important;
+    bottom: auto !important;
+
+    width: auto !important;
+    height: auto !important;
+    max-height: var(--mob-chara-maxh) !important;
+
+    object-fit: contain;
+    object-position: center;
+
+    z-index: 5;
+  }
+
+/* 6人の位置 */
+#left-3  { transform: translate(calc(-50% - 2.5 * var(--mob-step-x)), calc(-50% - var(--mob-zigzag-y))) !important; z-index: 1 !important; }
+#left-2  { transform: translate(calc(-50% - 1.5 * var(--mob-step-x)), calc(-50% + var(--mob-zigzag-y))) !important; z-index: 4 !important; }
+#left-1  { transform: translate(calc(-50% - 0.5 * var(--mob-step-x)), calc(-50% - var(--mob-zigzag-y))) !important; z-index: 2 !important; }
+
+#right-1 { transform: translate(calc(-50% + 0.5 * var(--mob-step-x)), calc(-50% + var(--mob-zigzag-y))) !important; z-index: 5 !important; }
+#right-2 { transform: translate(calc(-50% + 1.5 * var(--mob-step-x)), calc(-50% - var(--mob-zigzag-y))) !important; z-index: 3 !important; }
+#right-3 { transform: translate(calc(-50% + 2.5 * var(--mob-step-x)), calc(-50% + var(--mob-zigzag-y))) !important; z-index: 6 !important; }
+
+
+  /* ===== ボタンを横1列に（スマホだけ） ===== */
+  .menu {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: nowrap;
+  }
+
+  .btn {
+    width: auto;
+    flex: 1;
+    font-size: 14px;
+    padding: 12px 6px;
+  }
+}
