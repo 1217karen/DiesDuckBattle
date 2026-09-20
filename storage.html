@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>バトル履歴</title>
+  <link rel="stylesheet" href="css/storage.css?v=20260223" />
+</head>
+<body>
+      <!-- 控えめメニュー（ハンバーガー） -->
+  <details class="nav">
+    <summary class="nav__btn" aria-label="メニューを開く">
+      <span></span><span></span><span></span>
+    </summary>
+
+    <nav class="nav__panel" aria-label="メインメニュー">
+      <a class="nav__link" href="index.html">トップページ</a>
+      <a class="nav__link" href="rulebook.html">ルールブック</a>
+      <a class="nav__link" href="select.html">ゲーム画面</a>
+    </nav>
+  </details>
+
+  <main class="wrap">
+<header class="head">
+  <h1 class="title">💥バトル履歴💥</h1>
+  <p class="hint">最大20件まで保存されます。<br>
+    ローカルストレージの上限を超えると古い順に削除されます。<br>
+    VSを押すと結果を確認できます。</p>
+
+  <div class="tools">
+  </div>
+</header>
+
+
+    <div id="list" class="list" aria-live="polite"></div>
+
+    <div id="empty" class="empty" hidden>履歴がありません。</div>
+  </main>
+
+  <script type="module" src="js/storagePage.js?v=20260209"></script>
+</body>
+</html>
