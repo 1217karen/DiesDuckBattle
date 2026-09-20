@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ダイスで対戦！アヒルバトラー</title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/index.css?v=20260220_3" />
+</head>
+<body>
+  <!-- 背景 + サイドキャラはCSS/JSで制御 -->
+  <div class="bg" aria-hidden="true"></div>
+
+  <!-- 左右の立ち絵（JSがランダムに差し替え） -->
+  <div class="side side-left" aria-hidden="true">
+    <img class="side__chara" id="left-1" alt="" />
+    <img class="side__chara" id="left-2" alt="" />
+    <img class="side__chara" id="left-3" alt="" />
+  </div>
+
+  <div class="side side-right" aria-hidden="true">
+    <img class="side__chara" id="right-1" alt="" />
+    <img class="side__chara" id="right-2" alt="" />
+    <img class="side__chara" id="right-3" alt="" />
+  </div>
+
+  <!-- 中央コンテンツ -->
+  <main class="center">
+    <!-- ロゴ画像 -->
+    <img class="logo" src="img/logo.webp" alt="ゲームロゴ" />
+
+    <!-- リンク3つ -->
+    <nav class="menu" aria-label="メニュー">
+      <a class="btn" href="select.html">ゲーム画面</a>
+      <a class="btn" href="rulebook.html">ルールブック</a>
+      <a class="btn" href="storage.html">バトル履歴</a>
+    </nav>
+  </main>
+
+  <!-- JS -->
+  <script src="js/index.js?v=20260220_2"></script>
+</body>
+</html>
