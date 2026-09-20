@@ -1,0 +1,808 @@
+  /* select.css */
+
+:root{
+  --p1: #d33;
+  --p2: #39f;
+  --duck: #f4b400;
+
+  --text: #eee;
+  --muted: #bbb;
+  --border: rgba(255,255,255,.15);
+
+  /* バトラー立ち絵 */
+  --battlerW: 500px;   /* 400～500で調整 */
+  --battlerPad: 10px;
+
+  --midW: clamp(80px, 20vw, 200px);  /* 中央カラム幅 */
+  --duckSize: clamp(84px, 12vw, 120px); /* アヒル枠サイズ */
+
+    /* Typography tokens（文字サイズを一括管理） */
+  --fs-info: clamp(10px, 1.05vw, 16px);  /* 情報枠 */
+  --fs-tray: clamp(10px, 1.00vw, 15px);  /* トレイ項目名 */
+  --fs-ui:   clamp(11px, 0.95vw, 14px);  /* 小さめUI（ボタン/メニュー等） */
+  --fs-ui-xs: clamp(10px, 0.85vw, 12px); /* かなり小さい表示用 */
+
+}
+
+/* =========================
+   ベース
+========================= */
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+
+body{
+  margin:0;
+  color:var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", sans-serif;
+
+  overflow-x: hidden;  /* ← 横スクロールは常に禁止 */
+  overflow-y: hidden;  /* ← 画面全体は縦も禁止（情報枠だけ許可） */
+
+  background:#222;
+}
+
+/* 背景（最終的に1枚絵に差し替え） */
+#bg{
+  position:fixed;
+  inset:0;
+  background:
+    linear-gradient(90deg,
+      rgba(255,0,0,.20),
+      transparent 38%,
+      transparent 62%,
+      rgba(0,120,255,.20)
+    ),
+    radial-gradient(circle at 50% 20%, rgba(255,255,255,.08), transparent 45%),
+    linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.55));
+  z-index:-1;
+}
+
+/* =========================
+   3列×2段（上75% / 下25%）
+========================= */
+
+.screen{
+  position: relative;
+  height: 100vh;   /* フォールバック */
+  height: 100dvh;  /* 実機の“見えてる高さ”に追従（対応ブラウザ） */
+  padding: 0 15px 15px;
+  overflow-x: hidden;
+}
+
+
+/* グリッド本体 */
+.selectGrid{
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+
+  height: 100%;
+  display: grid;
+
+  grid-template-columns: 1fr var(--midW) 1fr;
+    /* 上段高さはJSで --topH を入れて決める（仮初期値つき） */
+  grid-template-rows: var(--topH, 75%) 1fr;
+
+
+  grid-template-areas:
+    "p1Top  midTop  p2Top"
+    "p1Info midInfo p2Info";
+
+ row-gap: 5px;
+ column-gap: 5px;
+
+  align-items: stretch;
+}
+
+/* 各セルは中身がはみ出してもOK（立ち絵を見せたい） */
+.cell{
+  position: relative;
+  overflow: visible;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* グリッドエリア割り当て（強制配置） */
+.cell--p1Top  { grid-area: p1Top; }
+.cell--midTop { grid-area: midTop; }
+.cell--p2Top  { grid-area: p2Top; }
+
+.cell--p1Info { grid-area: p1Info; }
+.cell--midInfo{ grid-area: midInfo; }
+.cell--p2Info { grid-area: p2Info; }
+
+/* 上段：立ち絵エリアは縦に収める（縮小はするが拡大はしない想定） */
+.cell--p1Top,
+.cell--p2Top{
+  height: 100%;
+  display: grid;
+  place-items: end center;
+}
+
+/* 立ち絵ボタン */
+.silhouette{
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: none;
+  margin: 0 auto;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  overflow: visible; /* はみ出しOK */
+}
+
+/* 立ち絵画像：高さ上限を上段に合わせる */
+.silhouette__img{
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%) scale(var(--battlerScale, 1));
+  transform-origin: bottom center;
+
+  z-index: 1;
+  width: auto;
+  height: auto;
+
+  /* 上限：画面高×75% */
+  max-height: calc((100vh - 36px) * 0.75);
+  min-height: 200px;
+
+  object-fit: contain;
+  object-position: bottom center;
+  display: block;
+}
+
+/* 中央上：CHARACTER SELECT */
+.selectTitle{
+  position: absolute;
+  top: 8px;
+
+  left: 0;
+  width: 100%;
+
+  text-align: center;
+  font-weight: 900;
+  font-size: clamp(20px, 10vw, 70px);
+  line-height: 1.0;
+  letter-spacing: 0.08em;
+
+  color: rgba(255,255,255,0.9);
+  pointer-events: none;
+
+  font-family: "Iceberg", sans-serif;
+}
+
+/* 中央上：縦に積む（アヒル→VS→アヒル） */
+.cell--midTop{
+  display: grid;
+  justify-items: center; /* 横中央 */
+  align-items: end;      /* ← 下揃え */
+}
+
+
+.midStack{
+  display: grid;
+  grid-template-rows: auto auto auto;
+  gap: 14px;
+  justify-items: center;
+  align-items: center;
+}
+
+/* アヒル枠（従来の見た目は流用） */
+.duckPick{
+  width: var(--duckSize);
+  height: var(--duckSize);
+  position: relative;
+  z-index: 2;
+  border-radius:14px;
+  border: 3px solid rgba(255,165,0,.85);
+  background: rgba(0,0,0,.35);
+  cursor:pointer;
+  padding: clamp(6px, 1.2vw, 10px);
+}
+
+#p1-duck-slot{
+  background:
+    linear-gradient(
+      rgba(211, 51, 51, 0.25),
+      rgba(211, 51, 51, 0.60)
+    ),
+    rgba(0,0,0,.35);
+}
+
+#p2-duck-slot{
+  background:
+    linear-gradient(
+      rgba(51, 153, 255, 0.15),
+      rgba(51, 153, 255, 0.50)
+    ),
+    rgba(0,0,0,.35);
+}
+
+.duckPick:hover{
+  background: rgba(0,0,0,.50);
+}
+
+.duckPick__img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+}
+
+/* =========================
+   VS（爆発ボタン＋READY演出）
+========================= */
+
+/* VS：外側コンテナ（疑似要素＝光/波紋の土台） */
+.vs{
+  position: relative;
+  overflow: visible;
+
+  border: none;
+  background: transparent;
+
+  width: calc(var(--midW) * 1.0);
+  height: calc(var(--midW) * 0.5);
+
+  display: grid;
+  place-items: center;
+
+  z-index: 2;
+  cursor: pointer;
+
+  isolation: isolate; /* 疑似要素の重なりを安定させる */
+}
+
+/* 押せない状態 */
+.vs--disabled{
+  filter: grayscale(1);
+  opacity: .65;
+  cursor: not-allowed;
+}
+
+/* READY：ボタン本体を上下に軽くバウンス（押せる感） */
+.vs--ready{
+  animation: vsBounce 2.2s ease-in-out infinite;
+}
+
+/* READY：光（コア発光） */
+.vs--ready::after{
+  content:"";
+  position:absolute;
+  inset:-24px;
+  border-radius: 20px;
+  pointer-events:none;
+  z-index:-1;
+
+  background:
+    radial-gradient(circle at 50% 50%,
+      rgba(255,255,255,0.45),
+      rgba(255,255,255,0.20) 40%,
+      rgba(255,255,255,0.00) 70%
+    );
+
+  filter: blur(14px);
+  opacity: 0.7;
+
+  animation: vsGlow 2.2s ease-in-out infinite;
+}
+
+/* READY：波紋（リング） */
+.vs--ready::before{
+  content:"";
+  position:absolute;
+
+  width: calc(var(--midW) * 1.35);
+  height: calc(var(--midW) * 1.35);
+
+  left: 50%;
+  top: 50%;
+
+  border-radius: 50%;
+  pointer-events:none;
+  z-index:-2;
+
+  background:
+    radial-gradient(circle,
+      rgba(255,255,255,0.0) 55%,
+      rgba(255,255,255,0.45) 60%,
+      rgba(255,255,255,0.25) 63%,
+      rgba(255,255,255,0.0) 70%
+    );
+
+  opacity: 0;
+
+  animation: vsRipple 2.2s ease-out infinite;
+}
+
+/* 爆発形の本体（ここだけクリップ） */
+.vs__inner{
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+
+  background: linear-gradient(180deg,
+    rgba(255,210,60,0.95),
+    rgba(255,120,0,0.92)
+  );
+
+  box-shadow:
+    0 0 0 4px rgba(0,0,0,0.85),
+    inset 0 0 0 2px rgba(255,255,255,0.22),
+    0 10px 24px rgba(0,0,0,0.35);
+
+  clip-path: polygon(
+    25% 0%,
+    50% 15%,
+    75% 0%,
+
+    65% 17%,
+    90% 5%,
+
+    78% 35%,
+    100% 50%,
+
+    78% 65%,
+    90% 95%,
+
+    65% 83%,
+
+    75% 100%,
+    50% 85%,
+    25% 100%,
+
+    35% 83%,
+    10% 95%,
+
+    22% 65%,
+    0% 50%,
+
+    22% 35%,
+    10% 5%,
+
+    35% 17%
+  );
+
+  position: relative;
+  z-index: 1;
+}
+
+/* VS文字（シンプル寄り） */
+.vs__text{
+  font-family: "Black Ops One", system-ui, sans-serif;
+  font-size: clamp(22px, 6vw, 56px);
+  color: #111;
+  letter-spacing: -0.03em;
+
+  filter:
+    drop-shadow(0 -1px 0 rgba(255,255,255,0.35))
+    drop-shadow(0  1px 0 rgba(150,60,0,0.6));
+}
+
+/* ===== animations ===== */
+
+@keyframes vsBounce{
+  0%,100%{ transform: translateY(0); }
+  50%{ transform: translateY(-6px); }
+}
+
+@keyframes vsGlow{
+  0%{ opacity:0.45; transform:scale(0.96); }
+  22%{ opacity:1;    transform:scale(1.10); }
+  35%{ opacity:0.92; transform:scale(1.06); }
+  100%{ opacity:0.45; transform:scale(0.96); }
+}
+
+@keyframes vsRipple{
+  0%{
+    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 0;
+  }
+  10%{ opacity: 0.8; }
+  100%{
+    transform: translate(-50%, -50%) scale(2.4);
+    opacity: 0;
+  }
+}
+
+
+/* 中央下：ランダムボタン */
+.cell--midInfo{
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* 縦：中央 */
+  align-items: center;     /* 横：中央 */
+  gap: 8px;                /* ボタン間の間隔 */
+}
+
+
+.midAction{
+  width: auto;
+  padding: 6px 10px;        /* 小さめに */
+  font-size: var(--fs-ui-xs);
+  border-radius: 10px;
+
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.08);
+  color: var(--text);
+  font-weight: 600;         /* 少し軽く */
+  cursor: pointer;
+}
+
+
+.midAction:hover{
+  background: rgba(255,255,255,.12);
+}
+
+/* 下段：情報枠（スクロール） */
+.cell--p1Info,
+.cell--p2Info{
+  overflow: hidden; /* 枠の外にスクロールバー出さない */
+}
+
+.infoPanel{
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  height: 100%;
+  min-height: 0;
+
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,.40);
+  border-color: rgba(255,255,255,.10);
+
+  display: flex;
+  flex-direction: column;
+}
+
+.infoPanel__head{
+  display: none;
+}
+
+.infoPanel__body{
+  margin: 0;
+  padding: 5px 5px 5px;
+  white-space: pre-wrap;
+  overflow: visible;
+
+  color: var(--text);
+  font-size: var(--fs-info);
+  line-height: 1.25;
+
+  font-variant-numeric: tabular-nums;
+}
+
+.infoPanel__body--sub{
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255,255,255,.12);
+  color: var(--text);
+}
+
+/* =========================
+   情報枠：1P/2Pで薄く色分け
+========================= */
+
+/* 1P（赤） */
+.cell--p1Info .infoPanel{
+  background:
+    linear-gradient(rgba(211, 51, 51, 0.12), rgba(211, 51, 51, 0.12)),
+    rgba(0,0,0,.40);
+  border-color: rgba(211, 51, 51, 0.18);
+}
+
+/* 2P（青） */
+.cell--p2Info .infoPanel{
+  background:
+    linear-gradient(rgba(51, 153, 255, 0.12), rgba(51, 153, 255, 0.12)),
+    rgba(0,0,0,.40);
+  border-color: rgba(51, 153, 255, 0.25);
+}
+
+/* =========================
+   トレイ
+========================= */
+.tray{
+  position:fixed;
+  left:16px;
+  right:16px;
+  bottom:16px;
+  height:34%;
+  min-height:220px;
+  max-height:420px;
+  border-radius:16px;
+  border:1px solid var(--border);
+  background: rgba(0,0,0,.78);
+  backdrop-filter: blur(6px);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  transform: translateY(0);
+  transition: transform .18s ease, opacity .18s ease;
+  z-index:50;
+}
+
+.tray--hidden{
+  transform: translateY(120%);
+  opacity:0;
+  pointer-events:none;
+}
+
+.tray__header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 12px;
+  border-bottom:1px solid var(--border);
+}
+
+.tray__title{
+  font-weight:800;
+}
+
+.tray__close{
+  border:1px solid var(--border);
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+  padding:6px 10px;
+  border-radius:10px;
+  cursor:pointer;
+}
+
+.tray__grid{
+  padding:12px;
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap:10px;
+  overflow:auto;
+}
+
+.trayItem{
+  border:1px solid var(--border);
+  background: rgba(255,255,255,.06);
+  border-radius:12px;
+  padding:8px;
+  cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  align-items:center;
+  text-align:center;
+}
+
+.trayItem:hover{
+  background: rgba(255,255,255,.10);
+}
+
+.trayItem__img{
+  width:60px;
+  height:60px;
+  object-fit:cover;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,.04);
+}
+
+.trayItem__name{
+  font-size: var(--fs-tray);
+  line-height:1.2;
+  color:var(--text);
+  word-break:break-word;
+}
+
+/* 使用中（相手が選択済み）のトレイ項目 */
+.trayItem--disabled{
+  opacity: 0.35;
+  filter: grayscale(1);
+  cursor: not-allowed;
+}
+
+/* トレイタイトル色分け */
+.tray--p1 .tray__header{
+  background: rgba(211, 51, 51, 0.18);
+  border-bottom-color: rgba(211, 51, 51, 0.35);
+}
+
+.tray--p2 .tray__header{
+  background: rgba(51, 153, 255, 0.18);
+  border-bottom-color: rgba(51, 153, 255, 0.35);
+}
+
+/* アヒル選択時だけ内部を黄色寄りに */
+.tray--duck .tray__grid{
+  background: rgba(255, 215, 0, 0.08); /* 薄い黄色 */
+}
+
+/* =========================
+   控えめハンバーガーメニュー
+========================= */
+.nav{
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 60; /* tray(50)より上 */
+}
+
+.nav__btn{
+  list-style: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.25);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+/* summaryの三角を消す */
+.nav__btn::-webkit-details-marker{ display:none; }
+
+/* ハンバーガーの三本線 */
+.nav__btn span{
+  display:block;
+  width: 16px;
+  height: 2px;
+  background: rgba(255,255,255,.75);
+  border-radius: 999px;
+  margin: 2px 0;
+}
+
+.nav__panel{
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(10px);
+  min-width: 140px;
+  display: grid;
+  gap: 6px;
+}
+
+.nav__link{
+  display:block;
+  text-decoration: none;
+  color: rgba(255,255,255,.9);
+  font-size: var(--fs-ui);
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+.nav__link:hover{
+  background: rgba(255,255,255,.10);
+}
+
+/* トレイ内のスクロール末尾に余白を作って、広告に隠れないようにする */
+.tray__grid{
+  padding-bottom: calc(12px + 160px + env(safe-area-inset-bottom));
+}
+
+/* =========================
+   操作ガイド（オーバーレイ）
+========================= */
+.howtoOverlay{
+  position: fixed;
+  inset: 0;
+  z-index: 999; /* tray(50)より上に出す */
+  background: rgba(0,0,0,0.62);
+  backdrop-filter: blur(2px);
+}
+
+/* 非表示 */
+.howtoOverlay--hidden{
+  display: none;
+}
+
+/* 吹き出し */
+.howtoTip{
+  position: absolute;
+  max-width: min(260px, 80vw);
+  padding: 10px 12px;
+  border-radius: 12px;
+  text-align: center;
+
+  background: rgba(0,0,0,0.80);
+  border: 1px solid rgba(255,255,255,0.22);
+  color: rgba(255,255,255,0.95);
+
+  font-size: var(--fs-ui);
+  line-height: 1.25;
+
+  box-shadow: 0 10px 22px rgba(0,0,0,0.35);
+
+  /* クリックは全部「オーバーレイで閉じる」に統一したいので、吹き出し自体はクリック不可 */
+  pointer-events: none;
+
+  white-space: nowrap;
+}
+
+/* 画面下のヒント */
+.howtoHint{
+  position: absolute;
+  left: 50%;
+  top: 5vh;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.16);
+  color: rgba(255,255,255,0.85);
+  font-size: var(--fs-ui-xs);
+  pointer-events: none;
+}
+
+/* =========================
+       スマホ用
+========================= */
+@media (hover: none) and (pointer: coarse){
+/* 情報枠の中身が広告に隠れないように、末尾に余白を足す */
+.infoPanel{
+  padding-bottom: calc(12px + 160px + env(safe-area-inset-bottom));
+}
+
+.screen{
+  padding-bottom: calc(18px + env(safe-area-inset-bottom));
+}
+
+/* 長押しで文字選択やメニューが出るのを防ぐ */
+.tray, .tray *{
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  user-drag: none;
+  touch-action: manipulation;
+}
+.trayItem__name{
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+
+/* iOSで長押しハイライトを消す（保険） */
+.trayItem{
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+}
+/* =========================
+     ブラウザ幅狭いとき
+========================= */
+
+@media (max-width: 720px){
+  body{
+    overflow: hidden;
+  }
+
+  /* バトラー立ち絵 */
+  .silhouette{
+    z-index: 1;
+  }
+
+  /* トレイ内のアイコン */
+  .trayItem__img{
+    width: 48px;
+    height: 48px;
+  }
+
+  .trayItem__name{
+    font-size: var(--fs-tray);
+  }
+
+
+  /* トレイ */
+  .tray{
+    left: 10px;
+    right: 10px;
+    height: 46vh;
+  }
+}
