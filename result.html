@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta name="robots" content="noindex, nofollow">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Battle Result</title>
+
+    <link rel="stylesheet" href="css/result.css?v=20260221">
+    <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab&display=swap" rel="stylesheet">
+  </head>
+
+  <body>
+<div class="whiteStripe"></div>
+    <header class="header">
+      <div class="headerInner">
+        <!-- P1 -->
+        <div class="side left">
+<img
+  class="battlerIcon"
+  id="p1BattlerIcon"
+  src="assets/icons/battlers/B01/neutral.png"
+  alt="P1 battler"
+/>
+
+<div class="nameBlock">
+  <div class="nameLine" id="p1Name">-</div>
+</div>
+
+<img
+  class="duckIcon underName"
+  id="p1DuckIcon"
+  src="assets/icons/ducks/D01/icon.png"
+  alt="P1 duck"
+/>
+        </div>
+
+        <!-- 中央 -->
+<div class="centerInfo">
+  <div class="turn" id="centerTurn">ターン -</div>
+
+  <div class="centerTable" aria-label="HPとAP">
+    <div class="cell left" id="centerHP_P1">1P -/-</div>
+    <div class="cell mid">HP</div>
+    <div class="cell right" id="centerHP_P2">2P -/-</div>
+
+    <div class="cell left" id="centerAP_P1">1P -</div>
+    <div class="cell mid">AP</div>
+    <div class="cell right" id="centerAP_P2">2P -</div>
+  </div>
+
+  <div class="hpLine" id="centerPhase">フェイズ -</div>
+</div>
+
+
+        <!-- P2 -->
+        <div class="side right">
+<img
+  class="battlerIcon"
+  id="p2BattlerIcon"
+  src="assets/icons/battlers/B02/neutral.png"
+  alt="P2 battler"
+/>
+
+<div class="nameBlock">
+  <div class="nameLine" id="p2Name">-</div>
+</div>
+
+<img
+  class="duckIcon underName"
+  id="p2DuckIcon"
+  src="assets/icons/ducks/D02/icon.png"
+  alt="P2 duck"
+/>
+      </div>
+    </header>
+
+    <!-- ログ -->
+    <main class="main">
+      <div class="logArea" id="logArea"></div>
+    </main>
+
+    <!-- フッター -->
+<footer class="footer">
+  <!-- 左端（条件付き戻るボタン） -->
+  <div>
+    <button class="btn" id="btnBack" type="button" hidden>前の画面に戻る</button>
+  </div>
+
+  <!-- 右側（進める/全表示） -->
+  <div style="display: flex; gap: 10px; align-items: center">
+    <button class="btn primary" id="btnNext" type="button">バトルを進める</button>
+    <button class="btn primary" id="btnAll" type="button">全表示</button>
+  </div>
+</footer>
+
+
+    <script type="module" src="js/result.js?v=20260219_1"></script>
+  </body>
+</html>
