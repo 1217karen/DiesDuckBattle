@@ -1,0 +1,121 @@
+<!-- select.html -->
+
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Character Select</title>
+  <link rel="stylesheet" href="css/select.css?v=20260222" />
+  <link href="https://fonts.googleapis.com/css2?family=Iceberg&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="bg" aria-hidden="true"></div>
+
+    <!-- 控えめメニュー（ハンバーガー） -->
+  <details class="nav">
+    <summary class="nav__btn" aria-label="メニューを開く">
+      <span></span><span></span><span></span>
+    </summary>
+
+    <nav class="nav__panel" aria-label="メインメニュー">
+      <a class="nav__link" href="index.html">トップページ</a>
+      <a class="nav__link" href="rulebook.html">ルールブック</a>
+      <a class="nav__link" href="storage.html">バトル履歴</a>
+    </nav>
+  </details>
+
+<main class="screen">
+  <!-- 3列（左1P / 中央 / 右2P） × 2段（上75% / 下25%） -->
+  <section class="selectGrid" aria-label="キャラクター選択レイアウト">
+    <!-- 左上：1P 立ち絵 -->
+    <div class="cell cell--p1Top">
+      <button class="silhouette" id="p1-battler-slot" data-open="p1:battler" type="button" aria-label="1Pバトラーを選択">
+        <img class="silhouette__img" id="p1-battler-img" alt="" />
+      </button>
+    </div>
+
+    <!-- 中央上：キャラセレクト　＆　アヒル / VS / アヒル（縦並び） -->
+    <div class="selectTitle">
+  CHARACTER<br>SELECT
+</div>
+
+    <div class="cell cell--midTop">
+      <div class="midStack" aria-label="中央操作UI">
+        <button class="duckPick" id="p1-duck-slot" data-open="p1:duck" type="button" aria-label="1Pアヒルを選択">
+          <img class="duckPick__img" id="p1-duck-img" alt="" />
+        </button>
+
+        <button id="vsButton" class="vs vs--disabled" type="button" disabled aria-label="戦闘開始">
+          <div class="vs__inner">
+            <div class="vs__text">VS</div>
+          </div>
+        </button>
+
+        <button class="duckPick" id="p2-duck-slot" data-open="p2:duck" type="button" aria-label="2Pアヒルを選択">
+          <img class="duckPick__img" id="p2-duck-img" alt="" />
+        </button>
+      </div>
+    </div>
+
+    <!-- 右上：2P 立ち絵 -->
+    <div class="cell cell--p2Top">
+      <button class="silhouette" id="p2-battler-slot" data-open="p2:battler" type="button" aria-label="2Pバトラーを選択">
+        <img class="silhouette__img" id="p2-battler-img" alt="" />
+      </button>
+    </div>
+
+    <!-- 左下：1P 情報（スクロール） -->
+    <div class="cell cell--p1Info">
+      <section class="infoPanel" aria-label="1P情報">
+        <div class="infoPanel__head">1P</div>
+        <pre class="infoPanel__body" id="p1-battler-info"></pre>
+        <pre class="infoPanel__body infoPanel__body--sub" id="p1-duck-info"></pre>
+      </section>
+    </div>
+
+    <!-- 中央下：全ランダム -->
+    <div class="cell cell--midInfo">
+      <button id="btnRandomAll" class="midAction" type="button">全ランダム</button>
+      <button id="btnHowTo" class="midAction midAction--howto" type="button">操作方法</button>
+    </div>
+
+
+
+    <!-- 右下：2P 情報（スクロール） -->
+    <div class="cell cell--p2Info">
+      <section class="infoPanel" aria-label="2P情報">
+        <div class="infoPanel__head">2P</div>
+        <pre class="infoPanel__body" id="p2-battler-info"></pre>
+        <pre class="infoPanel__body infoPanel__body--sub" id="p2-duck-info"></pre>
+      </section>
+    </div>
+  </section>
+
+  <!-- TRAY（ここはそのまま） -->
+  <section id="tray" class="tray tray--hidden" aria-label="選択トレイ">
+    <div class="tray__header">
+      <div class="tray__title" id="trayTitle">選択</div>
+      <button id="trayClose" class="tray__close" type="button">閉じる</button>
+    </div>
+    <div id="trayGrid" class="tray__grid"></div>
+  </section>
+</main>
+
+<!-- 操作ガイド（オーバーレイ） -->
+<div id="howtoOverlay" class="howtoOverlay howtoOverlay--hidden" aria-hidden="true">
+  <div id="howtoTipP1Battler" class="howtoTip">ここを押して<br>「1Pバトラー」を選ぶ</div>
+  <div id="howtoTipP2Battler" class="howtoTip">ここを押して<br>「2Pバトラー」を選ぶ</div>
+    <div id="howtoTipP1Duck" class="howtoTip">ここを押して<br>「1Pアヒル」を選ぶ</div>
+  <div id="howtoTipVS" class="howtoTip">そろったらここを押してバトル開始</div>
+  <div id="howtoTipP2Duck" class="howtoTip">ここを押して<br>「2Pアヒル」を選ぶ</div>
+  <div id="howtoTipRandom" class="howtoTip">ここを押すとランダム</div>
+
+  <div class="howtoHint">※どこでも画面を押すと閉じます</div>
+</div>
+
+  <script type="module" src="js/select.js?v=20260224"></script>
+</body>
+</html>
