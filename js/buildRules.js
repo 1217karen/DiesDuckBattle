@@ -6,14 +6,14 @@ export function createBuildRules() {
     stats: {
       AT: { min: null, max: null },
       DF: { min: null, max: null },
-      SP: { min: null, max: null },
-      totalMax: null,
+      // AT/DFの最低値および個別上限（4または5）は未確定。
+      // 合計にはdiceFrames.jsから導出するSPも含む。
+      totalMax: 9,
     },
     dice: {
       slots: 6,
-      // TODO: SP -> 使用可能な出目の配列。未定のSPはキーを登録しない。
-      allowedBySP: null,
-      maxSameFace: null,
+      maxSameFace: 2,
+      maxSameFaceWithEmpty: 3,
     },
     skills: Object.fromEntries(["A", "B", "C", "D"].map(category => [category, {
       maxCount: null,

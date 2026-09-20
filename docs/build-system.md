@@ -9,8 +9,9 @@
 ```js
 const build = {
   schemaVersion: 1,
-  stats: { AT: 1, DF: 1, SP: 1 },
-  dice: [1, 2, 3, 4, 5, 6],
+  diceFrame: "light",
+  stats: { AT: 1, DF: 1 },
+  dice: [0, 0, 0, 0, 0, 0],
   skills: [],
 };
 const result = validateBuild(build); // import from js/buildValidator.js
@@ -24,7 +25,13 @@ const result = validateBuild(build); // import from js/buildValidator.js
 任意パラメータなどは受け付けない。選択IDと内部effect.typeは別の名前空間。
 数値入力を公開するときは、パラメータ専用schemaと検証を追加する。
 
-確定しているダイス6枠のみ設定済み。上下限・合計上限・SP別出目・重複数・
+`diceFrames.js` の信頼済み定義からSPと使用可能な非0出目を参照する。
+lightはSP3・1～4、basicはSP2・2～5、heavyはSP1・3～6。
+ユーザーDTOのstats.SPは受け付けない。
+ダイスは6枠。0は全素体で利用できる未装着の空き枠で、個数制限はない。
+非0の同一出目は通常2個まで、0が1個以上あれば3個まで。
+AT + DF + 導出SPの合計上限は9。
+AT/DFの最低値・個別上限（4または5）、
 A/B/C/Dの個数/予算/価格算定/作成条件はTODO（null）。nullは無制限ではない。
 整数型はDTOの形式要件であり、具体的なゲーム上の範囲はルール確定後に設定する。
 カタログの公開リストも未確定なので空。未登録IDは拒否するがエンジン機能は削除しない。
@@ -52,6 +59,9 @@ A/B/C/Dの個数/予算/価格算定/作成条件はTODO（null）。nullは無�
 runBattleの `rng / maxTurns / field` は実行オプションとして呼び出し側が別に渡す。
 
 buildCompilerは検証後に、登録IDを信頼済みの変換定義へ解決し、新しい内部データを生成する。
+SPも `getDiceFrame(build.diceFrame).SP` から生成する。ユーザーDTOには書き戻さない。
+0の空き枠を戦闘用データへどう変換するかは将来のcompilerの責務であり、
+今回の変更では既存エンジンの出目0の挙動を変更しない。
 カタログ登録だけではコンパイル実装済みを意味しない。変換未対応IDはコンパイラが拒否する。
 ユーザー入力をspreadして内部effectへ渡すことは禁止。triggerIdも任意文字列として転送しない。
 Aの出目条件、Bのイベント/常時バフ、Cの独立処理、DのbattleStartの違いを変換側で扱う。
@@ -64,5 +74,5 @@ legacyAdapterは旧版の対応効果を保持し、ユーザー公開カタロ�
 
 ## 検証
 
-Node.js 22以降で `node --test tests/buildValidator.test.mjs`。
+Node.js 22以降で `node --test tests/*.test.mjs`。
 テスト内の数値・公開IDは検査用fixtureであり、ゲーム仕様の決定ではない。

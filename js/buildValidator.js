@@ -1,14 +1,15 @@
 import { createBuildRules } from "./buildRules.js";
+import { getDiceFrame } from "./diceFrames.js";
 import { createSkillCatalog, getCatalogChoice } from "./skillCatalog.js";
 
 const CATEGORIES = ["A", "B", "C", "D"];
-const STATS = ["AT", "DF", "SP"];
+const STATS = ["AT", "DF"];
 const isRecord = value => value !== null && typeof value === "object"
   && [Object.prototype, null].includes(Object.getPrototypeOf(value));
 
 /**
  * ユーザー作成DTO v1（戦闘用データではない）:
- * { schemaVersion: 1, stats: { AT, DF, SP }, dice: number[6],
+ * { schemaVersion: 1, diceFrame: "light"|"basic"|"heavy", stats: { AT, DF }, dice: number[6],
  *   skills: [{ category: "A"|"B"|"C"|"D", triggerId: string, effectIds: string[] }] }
  * 未知キー・生effect・コスト申告は拒否。入力の補正/変更/コンパイルは行わない。
  * rules/catalogは運営側の信頼済み設定であり、ユーザーから受け取らない。
@@ -47,11 +48,13 @@ export function validateBuild(build, {
     issue("INVALID_BUILD", "build", "作成データはオブジェクトが必要です。");
     return result();
   }
-  keys(build, ["schemaVersion", "stats", "dice", "skills"], "build");
+  keys(build, ["schemaVersion", "diceFrame", "stats", "dice", "skills"], "build");
   if (build.schemaVersion !== 1) issue("INVALID_VERSION", "schemaVersion", "未対応の形式です。");
+  const frame = getDiceFrame(build.diceFrame);
+  if (!frame) issue("INVALID_DICE_FRAME", "diceFrame", "定義済みのダイス素体を指定してください。");
 
   if (!isRecord(build.stats)) {
-    issue("INVALID_STATS", "stats", "AT/DF/SPが必要です。");
+    issue("INVALID_STATS", "stats", "AT/DFが必要です。");
   } else {
     keys(build.stats, STATS, "stats");
     for (const stat of STATS) {
@@ -60,8 +63,8 @@ export function validateBuild(build, {
       bound(value, rules.stats[stat].min, `stats.${stat}.min`, false);
       bound(value, rules.stats[stat].max, `stats.${stat}.max`);
     }
-    const total = STATS.every(stat => Number.isSafeInteger(build.stats[stat]))
-      ? STATS.reduce((sum, stat) => sum + build.stats[stat], 0) : NaN;
+    const total = frame && STATS.every(stat => Number.isSafeInteger(build.stats[stat]))
+      ? STATS.reduce((sum, stat) => sum + build.stats[stat], 0) + frame.SP : NaN;
     bound(total, rules.stats.totalMax, "stats.totalMax");
   }
 
@@ -69,12 +72,8 @@ export function validateBuild(build, {
     issue("INVALID_DICE", "dice", "ダイス配列が必要です。");
   } else {
     if (build.dice.length !== rules.dice.slots) issue("DICE_SLOTS", "dice", `${rules.dice.slots}枠が必要です。`);
-    const sp = build.stats?.SP;
-    const allowed = Number.isSafeInteger(sp) && rules.dice.allowedBySP
-      && Object.hasOwn(rules.dice.allowedBySP, sp) ? rules.dice.allowedBySP[sp] : null;
-    if (allowed == null) unresolved("dice.allowedBySP");
-    else if (!Array.isArray(allowed)) throw new TypeError("Invalid allowedBySP rule");
-    if (rules.dice.maxSameFace == null) unresolved("dice.maxSameFace");
+    const maxSameFace = build.dice.includes(0)
+      ? rules.dice.maxSameFaceWithEmpty : rules.dice.maxSameFace;
     const counts = new Map();
     // entries()で疎配列の穴も検査する。
     for (const [index, face] of build.dice.entries()) {
@@ -82,10 +81,12 @@ export function validateBuild(build, {
         issue("INVALID_FACE", `dice.${index}`, "安全な整数が必要です。");
         continue;
       }
-      if (allowed && !allowed.includes(face)) issue("FACE_NOT_ALLOWED", `dice.${index}`, "このSPでは選択できません。");
+      // 空き枠は全素体で使用でき、同一出目数にも数えない。
+      if (face === 0) continue;
+      if (frame && !frame.faces.includes(face)) issue("FACE_NOT_ALLOWED", `dice.${index}`, "この素体では選択できません。");
       counts.set(face, (counts.get(face) ?? 0) + 1);
     }
-    for (const [face, count] of counts) bound(count, rules.dice.maxSameFace, `dice.count.${face}`);
+    for (const [face, count] of counts) bound(count, maxSameFace, `dice.count.${face}`);
   }
 
   const counts = Object.fromEntries(CATEGORIES.map(category => [category, 0]));
