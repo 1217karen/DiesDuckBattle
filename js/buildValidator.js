@@ -1,5 +1,6 @@
 import { createBuildRules } from "./buildRules.js";
 import { getDiceFrame } from "./diceFrames.js";
+import { calculateBuildResources } from "./buildResources.js";
 import { createSkillCatalog, getCatalogChoice } from "./skillCatalog.js";
 
 const CATEGORIES = ["A", "B", "C", "D"];
@@ -21,6 +22,7 @@ export function validateBuild(build, {
 } = {}) {
   const errors = [];
   const pending = [];
+  const resources = calculateBuildResources(build, rules);
   const issue = (code, path, message) => errors.push({ code, path, message });
   const unresolved = path => {
     if (!pending.some(item => item.path === path)) {
@@ -29,7 +31,7 @@ export function validateBuild(build, {
   };
   const result = () => ({
     valid: errors.length === 0, complete: pending.length === 0,
-    ready: errors.length === 0 && pending.length === 0, errors, pending,
+    ready: errors.length === 0 && pending.length === 0, errors, pending, resources,
   });
   const keys = (value, allowed, path) => {
     for (const key of Object.keys(value)) {
@@ -63,9 +65,7 @@ export function validateBuild(build, {
       bound(value, rules.stats[stat].min, `stats.${stat}.min`, false);
       bound(value, rules.stats[stat].max, `stats.${stat}.max`);
     }
-    const total = frame && STATS.every(stat => Number.isSafeInteger(build.stats[stat]))
-      ? STATS.reduce((sum, stat) => sum + build.stats[stat], 0) + frame.SP : NaN;
-    bound(total, rules.stats.totalMax, "stats.totalMax");
+    bound(resources.stats?.used, rules.stats.totalMax, "stats.totalMax");
   }
 
   if (!Array.isArray(build.dice)) {
@@ -87,6 +87,11 @@ export function validateBuild(build, {
       counts.set(face, (counts.get(face) ?? 0) + 1);
     }
     for (const [face, count] of counts) bound(count, maxSameFace, `dice.count.${face}`);
+    if (resources.dice === null) {
+      issue("INVALID_DICE_RESOURCES", "dice", "ダイス資源を安全に計算できません。");
+    } else if (resources.dice.remaining < 0) {
+      issue("INSUFFICIENT_DICE_POINTS", "dice", "3個積みに必要なダイス由来ポイントが不足しています。");
+    }
   }
 
   const counts = Object.fromEntries(CATEGORIES.map(category => [category, 0]));

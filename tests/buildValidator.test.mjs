@@ -38,7 +38,7 @@ test("未確定ルールは違反なしでも登録可能にしない", () => {
   const { build } = fixture(); build.skills = [];
   const result = validateBuild(build);
   assert.equal(result.valid, true); assert.equal(result.complete, false); assert.equal(result.ready, false);
-  assert.ok(result.pending.some(item => item.path === "stats.AT.max"));
+  assert.ok(result.pending.some(item => item.path === "skills.C.budget"));
 });
 test("上下限・合計・枠数・素体別出目・重複数", () => {
   check(f => { f.build.stats.AT = 4; }, "LIMIT_EXCEEDED");

@@ -4,9 +4,8 @@
 export function createBuildRules() {
   return {
     stats: {
-      AT: { min: null, max: null },
-      DF: { min: null, max: null },
-      // AT/DFの最低値および個別上限（4または5）は未確定。
+      AT: { min: 1, max: 5 },
+      DF: { min: 1, max: 5 },
       // 合計にはdiceFrames.jsから導出するSPも含む。
       totalMax: 9,
     },
@@ -14,6 +13,16 @@ export function createBuildRules() {
       slots: 6,
       maxSameFace: 2,
       maxSameFaceWithEmpty: 3,
+    },
+    resources: {
+      dicePointsPerEmpty: 1,
+      dicePointsPerTriple: 1,
+      // 基本案。強化内容・最大段階・DTOへの導入は未確定。
+      aUpgradeDicePointCost: 2,
+      // TODO: CモジュールID -> { statusPointCost: 非負の整数 }。
+      // 運営専用価格表。公開効果一覧ではない。将来のcompilerがIDから参照し、
+      // 未登録IDは拒否する。ユーザー申告costや一律の段階換算は使用しない。
+      cModules: {},
     },
     skills: Object.fromEntries(["A", "B", "C", "D"].map(category => [category, {
       maxCount: null,

@@ -7,7 +7,7 @@ import { getDiceFrame } from "../js/diceFrames.js";
 const build = (diceFrame, dice, stats = { AT: 3, DF: 3 }) => ({
   schemaVersion: 1, diceFrame, stats, dice, skills: [],
 });
-// 未確定のAT/DF上下限・スキル制限はpendingのまま。確定済みルールのvalidを検査。
+// 未確定のスキル制限はpendingのまま。確定済みルールのvalidを検査。
 for (const [frame, dice] of [
   ["light", [1, 2, 3, 4, 1, 2]],
   ["basic", [2, 3, 4, 5, 2, 3]],
@@ -52,11 +52,11 @@ test("全素体で導出SPを含む合計9を許可、10を拒否", () => {
     assert.ok(result.errors.some(error => error.path === "stats.totalMax"));
   }
 });
-test("AT/DFの上下限は未確定、上限4/5を設定だけで変更可能", () => {
+test("AT/DFは1～5、上限は設定だけで変更可能", () => {
   const rules = createBuildRules();
-  assert.deepEqual(rules.stats.AT, { min: null, max: null });
-  assert.deepEqual(rules.stats.DF, { min: null, max: null });
-  assert.equal(validateBuild(build("heavy", [0, 0, 0, 0, 0, 0], { AT: -1, DF: 3 })).valid, true);
+  assert.deepEqual(rules.stats.AT, { min: 1, max: 5 });
+  assert.deepEqual(rules.stats.DF, { min: 1, max: 5 });
+  assert.equal(validateBuild(build("heavy", [0, 0, 0, 0, 0, 0], { AT: -1, DF: 3 })).valid, false);
   for (const stat of ["AT", "DF"]) {
     const input = build("heavy", [0, 0, 0, 0, 0, 0], { AT: 3, DF: 3, [stat]: 5 });
     rules.stats[stat].max = 4;
