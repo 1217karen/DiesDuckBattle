@@ -1,0 +1,334 @@
+:root{
+  --icon: 60px;
+  --gap: 12px;
+  --rowPad: 10px;
+  --border: rgba(0,0,0,0.12);
+
+  /* フォントサイズ */
+  --fs-title: 20px;
+  --fs-small: 12px;
+}
+
+body{
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans JP", sans-serif;
+  background: #f6f6f7;
+  color: #111;
+}
+
+.wrap{
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 16px 12px 40px;
+}
+
+.head{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.title{
+  order: 2;
+  width: 100%;
+  text-align: center;
+  margin: 6px 0 0 0;
+  font-size: var(--fs-title);
+  font-weight: 900;
+}
+
+.hint{
+  width:100%;
+  text-align:center;
+  font-size:var(--fs-small);
+  opacity:0.7;
+  margin:4px 0 8px 0;
+  order: 3;
+}
+
+.tools{
+  order: 1;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.btn{
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: var(--fs-small);
+}
+
+.btn.danger{
+  background: #fff5f5;
+}
+
+.list{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.row{
+  width: 100%;
+  max-width: 800px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: var(--rowPad);
+  box-sizing: border-box;
+
+  display: grid;
+  grid-template-columns: auto auto auto auto auto;
+  align-items: center;
+  gap: var(--gap);
+}
+
+.date{
+  justify-self: end;
+  font-size: var(--fs-small);
+  opacity: 0.7;
+  white-space: pre-line;
+}
+
+.cell{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.id{
+  font-weight: 900;
+  min-width: 0;
+  text-align: left;
+  opacity: 0.85;
+  font-size: var(--fs-small);
+}
+
+.icon{
+  width: var(--icon);
+  height: var(--icon);
+  display: block;
+  object-fit: contain;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.04);
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.badge{
+  font-weight: 900;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fafafa;
+  min-width: 70px;
+  text-align: center;
+  font-size: var(--fs-small);
+}
+
+.badge.win{ background: #ffe78a; }
+.badge.lose{ background: #d4c2d8; }
+.badge.draw{ background: #e2e2e2; }
+
+.badgeP1{ border-color: rgba(200,60,60,.75); }
+.badgeP2{ border-color: rgba(60,90,200,.75); }
+
+.mid{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  gap: var(--gap);
+  min-width: 0;
+}
+
+.vs{
+  font-weight: 1000;
+  text-decoration: none;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #f7f7ff;
+  color: #111;
+  font-size: var(--fs-small);
+  text-decoration: underline;
+}
+
+.vs:hover{ filter: brightness(0.97); }
+
+.del{
+  margin-left: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.del:hover{ background:#fff5f5; }
+
+.empty{
+  margin-top: 24px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.sel{
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  gap:6px;
+  min-width:0;
+  justify-content:flex-start;
+  flex:0 0 auto;
+}
+
+.chk{
+  width:18px;
+  height:18px;
+}
+
+.lock{
+  font-size:16px;
+  line-height:1;
+  opacity:.8;
+}
+
+.lock.hidden{
+  visibility:hidden;
+}
+/* =========================
+   控えめハンバーガーメニュー
+========================= */
+.nav{
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 60;
+}
+
+.nav__btn{
+  list-style: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.25);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.nav__btn::-webkit-details-marker{
+  display:none;
+}
+
+.nav__btn span{
+  display:block;
+  width:16px;
+  height:2px;
+  background:rgba(255,255,255,.75);
+  border-radius:999px;
+  margin:2px 0;
+}
+
+.nav__panel{
+  margin-top:8px;
+  padding:8px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.55);
+  backdrop-filter:blur(10px);
+  min-width:140px;
+  display:grid;
+  gap:6px;
+}
+
+.nav__link{
+  display:block;
+  text-decoration:none;
+  color:rgba(255,255,255,.9);
+  font-size:12px;
+  padding:8px 10px;
+  border-radius:10px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.10);
+}
+
+.nav__link:hover{
+  background:rgba(255,255,255,.10);
+}
+
+/* レイアウト調整のみ（フォントサイズ変更なし） */
+@media (max-width:760px){
+  :root{
+    --gap:8px;
+    --rowPad:8px;
+  }
+
+  .sel{
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+  }
+
+  .chk{
+    width:16px;
+    height:16px;
+  }
+
+  .lock{
+    font-size:14px;
+  }
+
+  .cell{ gap:6px; }
+
+  .mid{
+    display:grid;
+    grid-template-rows:auto auto auto;
+    justify-items:center;
+    gap:6px;
+  }
+
+  .date{
+    text-align:center;
+    line-height:1.2;
+  }
+}
+
+@media (max-width:420px){
+  :root{
+    --icon:56px;
+    --gap:6px;
+  }
+
+  .badge{
+    min-width:48px;
+  }
+
+  .vs{
+    padding:7px 9px;
+  }
+
+  .date{
+    text-align:center;
+    line-height:1.2;
+  }
+
+  .wrap{
+    padding-bottom: 80px;
+  }
+}
