@@ -1,0 +1,912 @@
+/* result.css */
+:root {
+  --header-h: 160px;
+  --footer-h: 46px;
+
+  --column-max: 1000px;
+  --gutter: 16px;
+
+  --battler-size: 120px;
+  --duck-size: 60px;
+  --ad-h: 0px;
+
+  /* 色ルール */
+  --p1: #e35b5b; /* 1P 赤 */
+  --p2: #4a86e8; /* 2P 青 */
+
+  --damage: #8b3fe6; /* ダメージ（紫） */
+  --heal: #2e9b4f; /* 回復（緑） */
+  --buff: #f08a24; /* ステ上昇（橙） */
+  --debuff: #7a7a7a; /* ステ減少（灰） */
+
+  --text: #111;
+
+  /* =========================
+     Typography tokens
+     ・サイズはここに集約
+     ・本文の体感は従来の14px相当を基準
+  ========================= */
+  --ff-base: system-ui, -apple-system, "Kosugi Maru", sans-serif;
+  --ff-display: "Roboto Slab", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --fs-scale: 1;
+  /* Fluid scale（PC〜狭PCで自然に少し動く程度） */
+
+  --fs-10: calc(clamp(10px, 0.9vw, 12px) * var(--fs-scale));  /* meta/注釈 */
+  --fs-12: calc(clamp(12px, 1.0vw, 13px) * var(--fs-scale));  /* sub/小 */
+  --fs-14: calc(clamp(13px, 1.1vw, 14px) * var(--fs-scale));  /* base（本文） */
+  --fs-16: calc(clamp(15px, 1.25vw, 16px) * var(--fs-scale)); /* 強調 */
+  --fs-18: calc(clamp(16px, 1.4vw, 18px) * var(--fs-scale));  /* ターン/見出し */
+  --fs-20: calc(clamp(20px, 1.7vw, 25px) * var(--fs-scale));  /* 勝利など */
+
+  --lh-tight: 1.15;
+  --lh-base: 1.35;
+  --lh-loose: 1.5;
+
+  --fw-regular: 400;
+  --fw-bold: 700;
+  --fw-black: 900;
+
+  /* スキル塊だけインデント */
+  --skill-indent: 28px; /* ←ここを好みで（28〜36くらい） */
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+/* 背景 */
+body {
+  font-family: var(--ff-base);
+  font-size: var(--fs-14);
+  line-height: var(--lh-base);
+  font-weight: var(--fw-regular);
+
+  background-image: url("https://duckbattlebeta.web.fc2.com/img/result_BG.webp");
+  background-repeat: repeat;
+  background-position: top left;
+  color: var(--text);
+}
+
+/*  中央の白帯 */
+.whiteStripe {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(var(--column-max), calc(100vw - (var(--gutter) * 2)));
+  height: 100vh;
+  background: rgba(255, 255, 255, 0.92);
+  z-index: 0;
+}
+
+/*ヘッダー固定（外枠） */
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-h);
+  padding: 12px var(--gutter);
+  box-sizing: border-box;
+  z-index: 10;
+  background: #fff;
+}
+
+/* ヘッダー中身を「白帯と同じ幅」に制限 */
+.headerInner {
+  width: min(var(--column-max), calc(100vw - (var(--gutter) * 2)));
+  margin: 0 auto;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+}
+
+.side {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.battlerIcon {
+  width: var(--battler-size);
+  height: var(--battler-size);
+  border-radius: 10px;
+  background:#f0f0f0;
+  border: 2px solid #cfcfcf;
+  object-fit: cover;
+  display: block;
+}
+
+.duckIcon {
+  width: var(--duck-size);
+  height: var(--duck-size);
+  border-radius: 10px;
+  background:#f0f0f0;
+  border: 2px solid #cfcfcf;
+  object-fit: cover;
+}
+
+.nameBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nameLine {
+  font-weight: var(--fw-black);
+  white-space: normal; /* 折り返す */
+  overflow: visible; /* 隠さない */
+  text-overflow: clip; /* … を使わない */
+  overflow-wrap: anywhere; /* 長い単語でも折り返す */
+  word-break: break-word;
+  line-height: var(--lh-tight);
+}
+
+.subLine {
+  font-size: var(--fs-12);
+  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.centerInfo {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+/* ヘッダー中央：HP/AP を「左・ラベル・右」の表レイアウトに */
+.centerTable {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 4px 10px; /* 行間, 列間 */
+  align-items: baseline;
+}
+
+.centerTable .cell {
+  font-size: var(--fs-14);
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+.centerTable .cell.left {
+  text-align: right;
+}
+
+.centerTable .cell.mid {
+  font-weight: var(--fw-black);
+  opacity: 0.85;
+  letter-spacing: 0.06em;
+}
+
+.centerTable .cell.right {
+  text-align: left;
+}
+
+.turn {
+  font-size: var(--fs-18);
+  font-weight: var(--fw-black);
+}
+
+.hpLine {
+  font-size: var(--fs-12);
+  opacity: 0.9;
+}
+
+/* =========================
+   勝利帯（専用LINE）
+========================= */
+.line.victoryLine {
+  padding: 14px 12px;
+  text-align: center;
+  font-weight: var(--fw-black);
+  border-radius: 12px;
+
+  /* 金っぽいグラデ（薄めで上品に） */
+  background: linear-gradient(
+    90deg,
+    rgba(255, 214, 102, 0.55),
+    rgba(255, 255, 255, 0.75),
+    rgba(255, 214, 102, 0.55)
+  );
+
+  border: 2px solid rgba(160, 120, 0, 0.28);
+}
+
+.victoryWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.victoryTop {
+  font-size: var(--fs-12);
+  font-family: var(--ff-display);
+  letter-spacing: 0.18em;
+  opacity: 0.85;
+}
+
+.victoryMain {
+  font-size: var(--fs-20);
+  letter-spacing: 0.04em;
+}
+
+/*  ログ  */
+.main {
+  position: relative;
+  margin-top: var(--header-h);
+  padding: 0 var(--gutter);
+  padding-bottom: calc(var(--footer-h) + var(--ad-h) + 80px);
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+}
+
+.logArea {
+  width: min(var(--column-max), calc(100vw - (var(--gutter) * 2)));
+  height: auto;
+  overflow: visible;
+  padding: 18px 0;
+  box-sizing: border-box;
+  scroll-behavior: smooth;
+
+  /* 左右分割 */
+  display: flex;
+  flex-direction: column;
+  gap: 60px;
+}
+
+/* 1フェイズ = 1ブロック（中央で左右を分ける） */
+.phaseBlock {
+  width: calc(50% - 10px);
+  max-width: calc(50% - 10px);
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.phaseBlock.p1 {
+  align-self: flex-start;
+}
+
+.phaseBlock.p2 {
+  align-self: flex-end;
+}
+
+.phaseBlock.system {
+  align-self: center;
+  width: 90%;
+  max-width: 90%;
+  text-align: center;
+}
+
+/* 見出し帯（ブロック幅いっぱい） */
+.phaseHeader {
+  padding: 8px 10px;
+  font-weight: var(--fw-bold);
+  color: #111;
+  font-size: var(--fs-18);
+  border-radius: 0;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.phaseHeader.p1 {
+  background: linear-gradient(
+    90deg,
+    rgba(227, 91, 91, 0.6),
+    rgba(227, 91, 91, 0.08)
+  );
+  border-left: 6px solid var(--p1);
+}
+
+.phaseHeader.p2 {
+  background: linear-gradient(
+    90deg,
+    rgba(74, 134, 232, 0.6),
+    rgba(74, 134, 232, 0.08)
+  );
+  border-left: 6px solid var(--p2);
+}
+
+.phaseHeader.system {
+  font-weight: var(--fw-regular);
+  font-size: var(--fs-20);
+  background: rgba(0, 0, 0, 0.06);
+  border-left: 6px solid rgba(0, 0, 0, 0.25);
+  border-right: 6px solid rgba(0, 0, 0, 0.25);
+  font-family: var(--ff-display);
+}
+
+/* 本文 */
+.lines {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.line {
+  font-size: var(--fs-14);
+  line-height: var(--lh-base);
+  padding: 2px 6px;
+  border-radius: 0;
+  white-space: pre-wrap;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 行の種類（ベース） */
+.line.note {
+  background: rgba(255, 236, 140, 0.35);
+  font-weight: var(--fw-black);
+
+  border-left: 6px solid rgba(240, 138, 36, 0.75);
+  padding-left: 10px;
+}
+
+.line.soft {
+  background: rgba(0, 0, 0, 0.035);
+}
+
+/* 追加：補足ログ（小さく・薄く） */
+.line.meta {
+  font-size: var(--fs-10);
+  line-height: var(--lh-tight);
+  opacity: 0.58;
+  padding: 0 6px;
+  background: transparent;
+}
+
+/* スキル前後の空行 */
+.line.spacer {
+  padding: 0;
+  height: 10px;
+  background: transparent;
+}
+
+/* スキル塊だけインデント */
+.phaseBlock.p1 .line.skill,
+.phaseBlock.p2 .line.skill {
+  margin-left: var(--skill-indent);
+  width: calc(100% - var(--skill-indent));
+  box-sizing: border-box;
+}
+
+/* 状態数値変化用 */
+.miniHint {
+  font-size: 0.85em;
+  opacity: 0.65;
+}
+
+/* ---- note の派生（上書き） ---- */
+
+/* 状態効果の見出しだけ（note status）を薄い紫にする */
+.line.note.status {
+  background: rgba(180, 130, 255, 0.18);
+  border-left: 6px solid rgba(180, 130, 255, 0.55);
+  padding-left: 10px;
+}
+
+/* B/Dスキル（バトラー系）だけ色分け（statusより優先したいなら、ここを下に置く） */
+.line.note.p1 {
+  background: rgba(227, 91, 91, 0.18); /* 薄赤 */
+  border-left: 6px solid rgba(227, 91, 91, 0.55);
+  padding-left: 10px;
+}
+
+.line.note.p2 {
+  background: rgba(74, 134, 232, 0.18); /* 薄青 */
+  border-left: 6px solid rgba(74, 134, 232, 0.55);
+  padding-left: 10px;
+}
+
+.line.center {
+  text-align: center;
+}
+
+/* 数値の色 */
+.num.damage {
+  color: var(--damage);
+  font-weight: var(--fw-black);
+}
+
+.num.heal {
+  color: var(--heal);
+  font-weight: var(--fw-black);
+}
+
+.num.buff {
+  color: var(--buff);
+  font-weight: var(--fw-black);
+}
+
+.num.debuff {
+  color: var(--debuff);
+  font-weight: var(--fw-black);
+}
+
+/* 動く数値だけ少し大きくする */
+.num {
+  font-size: 1.5em;
+}
+
+/* ダイス結果：アイコン付き＋2行表示 */
+.line.rollLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rollMain {
+  font-size: var(--fs-16);
+  font-weight: var(--fw-black);
+}
+
+.rollTexts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rollSub {
+  font-size: var(--fs-12);
+  opacity: 0.55;
+  line-height: var(--lh-tight);
+}
+
+/* ダイス結果の左アイコン指定 */
+.logDuckIcon {
+  width: 60px;
+  height: 60px;
+  flex: 0 0 60px;
+  display: block;
+  object-fit: contain;
+}
+
+/* =========================
+   セリフ行（開始/ターン/終了）
+========================= */
+.line.quoteLine {
+  padding: 0;
+  background: transparent;
+}
+
+.quoteRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+
+.quoteCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.quoteCell.p1 {
+  justify-self: start;
+}
+
+.quoteCell.p2 {
+  justify-self: end;
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.quoteIcon {
+  width: 120px;
+  height: 120px;
+  flex: 0 0 120px;
+  display: block;
+  object-fit: cover;
+  border-radius: 10px;
+  background:#f0f0f0;
+  border: 2px solid #cfcfcf;
+}
+
+.quoteBubble {
+  padding: 8px 5px;
+  background: rgba(0, 0, 0, 0.035);
+  border-radius: 10px;
+  box-sizing: border-box;
+
+  /* 改行が暴れないようにする */
+  overflow-wrap: break-word;
+  word-break: normal;
+  line-break: strict;
+
+  flex: 1;
+  min-width: 0;
+}
+
+
+.quoteBubble.p1 {
+  border-left: 6px solid rgba(227, 91, 91, 0.55);
+}
+
+.quoteBubble.p2 {
+  border-right: 6px solid rgba(74, 134, 232, 0.55);
+}
+
+/* フッター：左右ボタン固定 */
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--footer-h);
+  padding: 6px var(--gutter);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  z-index: 10;
+  background: #fff;
+}
+
+.btn {
+  appearance: none;
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: var(--fw-black);
+  cursor: pointer;
+  background: #f0f0f0;
+  color: #111;
+  min-width: 96px;
+  touch-action: manipulation;
+
+  font-family: inherit;
+  font-size: var(--fs-14);
+  line-height: var(--lh-tight);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn.primary {
+  background: #f0f0f0;
+}
+
+/* TURNブロック */
+.turnTitle {
+  font-size: var(--fs-18);
+  font-weight: var(--fw-black);
+  letter-spacing: 0.08em;
+}
+
+.turnRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px 14px;                /* 行間, 列間 */
+  margin-top: 6px;
+  font-size: var(--fs-12);
+  opacity: 0.95;
+  align-items: center;
+}
+
+.statusLine {
+  margin-top: 4px;
+  font-size: var(--fs-10);
+  opacity: 0.85;
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 10px;
+}
+
+.miniPanel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.035);
+
+  flex: 1 1 0;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.miniWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.miniTag {
+  font-weight: var(--fw-black);
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.08);
+  font-size: var(--fs-12);
+  line-height: var(--lh-tight);
+}
+
+.miniTag.p1 {
+  border-left: 4px solid var(--p1);
+}
+
+.miniTag.p2 {
+  border-left: 4px solid var(--p2);
+}
+
+.hpBar {
+  flex: 1 1 auto;
+  min-width: 80px;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.hpFill {
+  height: 100%;
+  width: 0%;
+  background: rgba(46, 155, 79, 0.85);
+}
+
+.hpFill.p1 {
+  background: rgba(227, 91, 91, 0.7);
+}
+
+.hpFill.p2 {
+  background: rgba(74, 134, 232, 0.7);
+}
+
+/* =========================
+   ヘッダー：バトラー＋アヒルの配置（PC=名前の下 / スマホ=横並び）
+   ※HTMLで duckIcon を nameBlock の外に出した前提
+========================= */
+
+/* ヘッダー内の side は grid で組む（他の場所には影響させない） */
+.header .side {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+/* バトラーは2段ぶち抜き（名前＋アヒルの左に固定） */
+.header .side .battlerIcon {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+
+/* 名前ブロックは右側上段 */
+.header .side .nameBlock {
+  grid-column: 2;
+  grid-row: 1;
+  align-items: flex-start;
+}
+
+/* アヒルは右側下段（＝名前の下） */
+.header .side .duckIcon.underName {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: start;
+
+  position: static;
+  width: var(--duck-size);
+  height: var(--duck-size);
+
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.12);
+  border: 2px solid rgba(0, 0, 0, 0.12);
+
+  object-fit: cover;
+  display: block;
+  margin-top: 6px;
+}
+
+/* 右側（P2）は左右反転レイアウト */
+.header .side.right {
+  grid-template-columns: 1fr auto;
+}
+
+.header .side.right .battlerIcon {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.header .side.right .nameBlock {
+  grid-column: 1;
+  grid-row: 1;
+  text-align: right;
+  align-items: flex-end;
+}
+
+.header .side.right .duckIcon.underName {
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: end;
+}
+
+/* =========================
+   スマホ（まとめ）
+========================= */
+@media (max-width: 700px) {
+  :root {
+    --header-h: 150px;
+    --footer-h: 46px;
+
+    --battler-size: 72px;
+    --duck-size: 36px;
+
+    /* スマホはrootスケールを締める*/
+    --fs-scale: 0.8;
+
+  }
+
+  /* =========================
+     レイアウト
+  ========================= */
+  .footer {
+    transform: translateY(calc(-1 * var(--ad-h)));
+  }
+
+  :root {
+    --ad-h: 95px;
+  }
+  /* =========================
+     ログ：左右分割を解除
+  ========================= */
+  .phaseBlock {
+    width: 92%;
+    max-width: 92%;
+  }
+
+  /* =========================
+     TURNブロック（スマホ）：縦積み＋順番入れ替え
+     [1P panel]
+     [1P status]
+     [2P panel]
+     [2P status]
+  ========================= */
+  .turnRow {
+    display: flex;
+    flex-direction: column;  /* 縦積み */
+    gap: 1px;
+    align-items: stretch;
+  }
+
+  /* 子要素の表示順を入れ替える（JSの生成順は panel1, panel2, status1, status2 のまま） */
+  .turnRow > .miniPanel:nth-child(1) { order: 1; }  /* 1P panel */
+  .turnRow > .statusLine:nth-child(3) { order: 2; } /* 1P status */
+  .turnRow > .miniPanel:nth-child(2) { order: 3; }  /* 2P panel */
+  .turnRow > .statusLine:nth-child(4) { order: 4; } /* 2P status */
+
+  /* はみ出し対策（スマホ）：1行のまま、HPバーだけ伸縮させる */
+  .turnRow .miniPanel {
+    flex-wrap: nowrap;     /* ← 1行固定に戻す */
+    gap: 8px;
+  }
+
+  /* テキストが原因で押し出されないようにする */
+  .turnRow .miniPanel > span {
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  /* HP表記は長いときだけ省略（基本は起きないけど保険） */
+  .turnRow .miniPanel > span:nth-child(2) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* HPバーを可変に：ここが伸び縮み担当 */
+  .turnRow .hpBar {
+    flex: 1 1 auto;        /* ← 100% をやめる */
+    min-width: 50px;       /* ← 狭すぎると見づらいので最低幅 */
+  }
+
+
+  /* =========================
+     ボタン
+  ========================= */
+  .btn {
+    min-width: 92px;
+    padding: 8px 10px;
+  }
+
+  /* =========================
+     ヘッダー：配置（バトラー横にアヒル、その下に名前）
+  ========================= */
+  .header .nameBlock {
+    align-items: center;
+  }
+
+  .header .side {
+    grid-template-columns: auto auto;
+    grid-template-rows: auto auto;
+    justify-content: center;
+  }
+
+  .header .side .battlerIcon {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: end; /* 左列の右端へ */
+  }
+
+  .header .side .duckIcon.underName {
+    grid-column: 2;
+    grid-row: 1;
+    margin-top: 0; /* 横並びなので不要 */
+    justify-self: start; /* 右列の左端へ */
+  }
+
+  .header .side .nameBlock {
+    grid-column: 1 / span 2;
+    grid-row: 2;
+    align-items: center;
+    text-align: center;
+  }
+
+  /* P2側もP1と同じ配置に揃える（PC用 right 反転指定を打ち消す） */
+  .header .side.right {
+    grid-template-columns: auto auto;
+  }
+
+  .header .side.right .battlerIcon {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .header .side.right .duckIcon.underName {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: start;
+  }
+
+  .header .side.right .nameBlock {
+    grid-column: 1 / span 2;
+    grid-row: 2;
+    align-items: center;
+    text-align: center;
+  }
+
+  /* 1P側は左寄せ */
+  .quoteCell.p1 {
+    justify-self: start;
+    text-align: left;
+  }
+
+  /* スマホのセリフアイコンサイズ */
+  .quoteIcon {
+    width: 60px;
+    height: 60px;
+    flex: 0 0 60px;
+  }
+}
+
+@media (max-width: 420px) {
+  :root {
+    --battler-size: 66px;
+    --duck-size: 34px;
+  }
+
+  .btn {
+    min-width: 96px;
+    padding: 13px 12px;
+  }
+}
