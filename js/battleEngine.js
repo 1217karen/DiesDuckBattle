@@ -244,13 +244,23 @@ const push = (type, actor = "system", extra = {}) => {
       const diceValue = rollFromPool(atk.dicePool, rng);
       push("roll", atk.side, { diceValue });
 
-      // afterRoll トリガー（ダイス回した後：攻撃確定前）
+      // afterRollは出目確定イベント。出目解決開始とは意味を分ける。
       const rollCtx = makeCtx(state, rng, push, atk, def, getRules);
       rollCtx.diceValue = diceValue;
       runTrigger(Triggers.afterRoll, atk, def, rollCtx, getRules);
 
+      // 出目解決全体の直前。独立ctxに確定出目を渡す（Aもここで発動）。
+      const beforeResolveCtx = makeCtx(state, rng, push, atk, def, getRules);
+      beforeResolveCtx.diceValue = diceValue;
+      runTrigger(Triggers.beforeDiceResolve, atk, def, beforeResolveCtx, getRules);
+
       /* ===== 出目効果 + 通常攻撃 ===== */
       resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules);
+
+      // miss/回避を含め、通常攻撃・追加効果・反動がすべて終了した後。
+      const afterResolveCtx = makeCtx(state, rng, push, atk, def, getRules);
+      afterResolveCtx.diceValue = diceValue;
+      runTrigger(Triggers.afterDiceResolve, atk, def, afterResolveCtx, getRules);
 
       /* ===== 行動終了：自然減衰 ===== */
       // phaseEnd トリガー（フェイズ終了時）
@@ -293,6 +303,16 @@ const push = (type, actor = "system", extra = {}) => {
     // 持続バフの残りターンを減らす
     tickTurnEndBuffs(state.P1, push);
     tickTurnEndBuffs(state.P2, push);
+
+    // triggerのturnEndは勝敗判定前。下の既存turnEndログは判定結果を記録する。
+    runTrigger(
+      Triggers.turnEnd, state.P1, state.P2,
+      makeCtx(state, rng, push, state.P1, state.P2, getRules), getRules
+    );
+    runTrigger(
+      Triggers.turnEnd, state.P2, state.P1,
+      makeCtx(state, rng, push, state.P2, state.P1, getRules), getRules
+    );
 
     result = judge(state.P1, state.P2);
     push("turnEnd", "system", { result });

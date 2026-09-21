@@ -25,7 +25,9 @@ export const Triggers = {
 
   // === 行動者（能動）側 ===
   beforeRoll: "beforeRoll",       // ダイス前
-  afterRoll: "afterRoll",         // ダイス後
+  afterRoll: "afterRoll",         // 出目が確定した直後
+  beforeDiceResolve: "beforeDiceResolve", // 出目解決全体の直前（Aスキル）
+  afterDiceResolve: "afterDiceResolve",   // 出目解決全体の直後
   beforeAttack: "beforeAttack",   // 攻撃前（ヒット判定前）
   afterHit: "afterHit",           // ヒット確認後
   afterDamage: "afterDamage",     // ダメージ確定後（与ダメ確定）
@@ -37,6 +39,7 @@ export const Triggers = {
 
   // === ターン終端 ===
   beforeTurnEnd: "beforeTurnEnd", // ターン終了前（勝敗判定前）
+  turnEnd: "turnEnd",             // 持続バフ残り時間処理後、勝敗判定前
 };
 
 /*
@@ -87,7 +90,7 @@ export function runTrigger(triggerName, self, enemy, ctx, getRules) {
 /* =========================
    data → rules 変換（最小）
    - D：battler.dSkill を battleStart で発動する rule にcompileする
-   - A：duck.aSkill を afterRoll（ダイス条件 + Headwind判定）で発動する rule にcompileする
+   - A：duck.aSkill を beforeDiceResolve（ダイス条件 + Headwind判定）で発動する rule にcompileする
    - B：battler.bSkill / battler.bSkills を rule にcompileする
    - C：ここではcompileしない（別エンジン側が直接扱う前提）
 ========================= */
@@ -113,7 +116,7 @@ export function compileAllRulesForFighter(f) {
     });
   }
 
-  /* ----- A：duck.aSkill(afterRoll) ----- */
+  /* ----- A：duck.aSkill(beforeDiceResolve) ----- */
   const aSkill = f.duck?.aSkill;
 
   if (aSkill?.effect) {
@@ -123,7 +126,7 @@ export function compileAllRulesForFighter(f) {
       id: aSkill.id,
       name: aSkill.name,
       description: aSkill.description,
-      trigger: Triggers.afterRoll,
+      trigger: Triggers.beforeDiceResolve,
 
       when: (ctx) => {
         const matched = matchDiceTrigger(aSkill.trigger, ctx.diceValue);
@@ -248,7 +251,7 @@ function compileWhen(spec) {
 
 // =========================
 // 逆風（Headwind）：Aスキル発動を確率でキャンセル（スタックは全消費）
-// - Aスキルの発動判定（afterRollのwhen）の直前にチェック
+// - Aスキルの発動判定（beforeDiceResolveのwhen）の直前にチェック
 // - 成否に関わらずスタックを全消費する
 // - スタックが多いほどキャンセル確率UP（20%×n、上限95%）
 // 戻り値：true なら「Aスキルをキャンセル」
