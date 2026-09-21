@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aスキル仕様確認用・開発ページ</title>
+  <link rel="stylesheet" href="css/a-skill-test.css">
+</head>
+<body>
+  <!-- 本番キャラ作成画面ではない。保存・登録・戦闘適用は行わない。 -->
+  <header>
+    <p class="eyebrow">DIES DUCK BATTLE / DEVELOPMENT</p>
+    <h1>Aスキル仕様確認用・開発ページ</h1>
+    <p>条件・効果を組み合わせて、選択肢とポイント計算を確認します。本番のキャラ登録画面ではありません。</p>
+    <label class="fixture"><input id="fixture" type="checkbox"> 開発用の仮効果量・仮価格を使う</label>
+    <p id="mode-note">本番カタログ：効果量・価格は未設定です。</p>
+    <p class="muted">仮値は開発確認用・ゲーム仕様ではありません。このページの操作は保存されません。</p>
+  </header>
+  <main>
+    <div class="editor">
+      <section aria-labelledby="dice-heading">
+        <h2 id="dice-heading">1. ダイス設定</h2>
+        <label>ダイス素体 <select id="frame"></select></label>
+        <p id="frame-info" class="muted"></p>
+        <div id="dice" class="dice-slots"></div>
+        <p id="dice-resource"></p>
+        <p class="muted">0は空き枠です。AT / DFは開発確認用に各1で固定。ここではビルドの合法性・保存可否は判定しません。</p>
+        <p id="frame-reset" role="status"></p>
+      </section>
+      <section aria-labelledby="trigger-heading">
+        <h2 id="trigger-heading">2. 発動条件</h2>
+        <label>条件 <select id="trigger"></select></label>
+        <p id="trigger-cost"></p>
+      </section>
+      <section aria-labelledby="effects-heading">
+        <div class="section-title"><h2 id="effects-heading">3. 効果一覧</h2><button id="add-effect" type="button">＋効果を追加</button></div>
+        <p class="muted">同じ効果を複数追加できます。条件変更で使用不可になった選択は残し、理由を表示します。</p>
+        <div id="effects"></div>
+      </section>
+    </div>
+    <aside>
+      <section aria-labelledby="points-heading">
+        <h2 id="points-heading">Aスキルポイント</h2>
+        <dl id="points" aria-live="polite"></dl>
+        <p class="muted">completeは計算完了を表します。残りが負数でも表示し、保存可否は判断しません。</p>
+      </section>
+      <section aria-labelledby="issues-heading">
+        <h2 id="issues-heading">エラー／未確定情報</h2>
+        <h3>errors</h3><ul id="errors"></ul>
+        <h3>unresolved</h3><ul id="unresolved"></ul>
+      </section>
+      <details><summary>現在の入力・計算結果（確認用）</summary><pre id="debug"></pre></details>
+    </aside>
+  </main>
+  <noscript>この確認ページにはJavaScriptが必要です。</noscript>
+  <p id="startup" role="alert">読み込み中です。表示が変わらない場合はHTTPサーバー経由で開いてください。</p>
+  <script type="module" src="js/aSkillTestPage.js"></script>
+</body>
+</html>

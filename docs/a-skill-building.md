@@ -1,9 +1,11 @@
 # Aスキル作成カタログと見積
 
+ブラウザでの開発確認は [開発ページの起動・操作手順](a-skill-test-page.md) を参照。
+
 既存のbuildValidatorのskills DTOとは独立した作成用API。
 buildRulesは全体の作成制限、buildResourcesは素体とダイスから資源を計算し、
 skillCatalogは従来の汎用選択基盤を維持する。A専用定義はaSkillCatalogへ分離する。
-戦闘適用・compiler・HTML UI・保存可否判定は実装しない。
+戦闘適用・compiler・本番HTML UI・保存可否判定は実装しない。
 
 ## API
 
