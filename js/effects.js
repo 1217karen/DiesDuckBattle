@@ -1,4 +1,5 @@
 import { evaluateCondition } from "./conditionEvaluator.js";
+import { STATUS_GROUPS } from "./statusGroups.js";
 
 /// effects.js
 // 方針：effect.type を最小化し、実行はここに集約する
@@ -131,12 +132,6 @@ export function applyEffect(effect, ctx) {
       return;
   }
 }
-
-const STATUS_GROUPS = {
-  all: ["crack", "Headwind", "roughWave", "tailwind", "focus", "counter", "clean", "steam"],
-  debuff: ["crack", "Headwind", "roughWave", "steam"],
-  buff: ["tailwind", "focus", "counter", "clean"],
-};
 
 /* =========================
    addDice
@@ -310,8 +305,7 @@ function effChangeStatus(eff, ctx, emit) {
     const isAdd = op === "add";
     const isPositive = Number.isFinite(value) && value > 0;
 
-    const debuffs = new Set(["crack", "Headwind", "roughWave", "steam"]);
-    const isDebuff = debuffs.has(status);
+    const isDebuff = STATUS_GROUPS.debuff.includes(status);
 
     const cleanNow = Number(tgt.status?.clean ?? 0);
     const hasClean = Number.isFinite(cleanNow) && cleanNow > 0;
@@ -324,6 +318,7 @@ function effChangeStatus(eff, ctx, emit) {
         const beforeClean = Math.trunc(cleanNow);
         const afterClean = Math.max(0, beforeClean - blocked);
         tgt.status.clean = afterClean;
+        ctx.helpers?.refreshPassives?.();
 
         emit("statusChange", ctx.actor?.side ?? "system", {
           code: "STATUS_CLEAN_CONSUMED",
@@ -368,6 +363,7 @@ function effChangeStatus(eff, ctx, emit) {
 
   after = clampInt(after, 0, cap);
   tgt.status[status] = after;
+  ctx.helpers?.refreshPassives?.();
 
   emit("statusChange", ctx.actor?.side ?? "system", {
     target: tgt.side,

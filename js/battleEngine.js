@@ -4,6 +4,7 @@
 import { Triggers, runTrigger, compileAllRulesForFighter } from "./ruleEngine.js";
 import { applyEffect } from "./effects.js";
 import { calcMaxHPFromStats } from "./statsUtil.js";
+import { refreshPassiveBonuses } from "./bPassiveModifiers.js";
 
 /* =========================
    公開API
@@ -228,7 +229,7 @@ const push = (type, actor = "system", extra = {}) => {
       if (canceled) {
         expirePhaseBuffs(atk, push);
         expirePhaseBuffs(def, push);
-        tickActionEndDecay(atk, push);
+        tickActionEndDecay(atk, push, preCtx);
         continue;
       }
 
@@ -267,7 +268,7 @@ const push = (type, actor = "system", extra = {}) => {
       // 付与対象によらず現在phaseの終了で消去。phaseEndで付いた分も含む。
       expirePhaseBuffs(atk, push);
       expirePhaseBuffs(def, push);
-      tickActionEndDecay(atk, push);
+      tickActionEndDecay(atk, push, preCtx);
     }
 
     // ===== Cスキル（ターン終了時：敗北復活系）=====
@@ -473,7 +474,7 @@ function makeFighter(side, battler, duck) {
       passive: {
         AT: 0,
         DF: 0,
-        activeBySkillId: {},
+        modifiers: [],
       },
     },
   };
@@ -665,6 +666,7 @@ function tickPreActionStatuses(atk, ctx) {
   if (rw > 0) {
     const before = rw;
     atk.status.roughWave = 0;
+    ctx.helpers.refreshPassives();
 
     ctx.push("statusChange", "system", {
       code: "STATUS_CONSUMED_ON_TRIGGER",
@@ -700,8 +702,9 @@ function tickPreActionStatuses(atk, ctx) {
   return false;
 }
 
-function tickActionEndDecay(atk, push) {
+function tickActionEndDecay(atk, push, ctx) {
   decayOne(atk, "crack", push, "actionEnd");
+  ctx.helpers.refreshPassives();
 }
 
 function decayOne(f, key, push, decayKind) {
@@ -735,6 +738,7 @@ function applyFocusIfAny(atk, ctx, push) {
   // 集中は全消費
   const before = stacks;
   atk.status.focus = 0;
+  ctx.helpers.refreshPassives();
 
   push("attackChanged", atk.side, {
     code: "ATTACK_DAMAGE_MUL_FOCUS",
@@ -868,6 +872,7 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
       if (isNormal && !isCounter && stacks > 0) {
         const before = stacks;
         atk.status.steam = 0; // 全消費
+        afterHitCtx.helpers.refreshPassives();
 
         // 消費ログ（statusChange）
         push("statusChange", "system", {
@@ -966,6 +971,7 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
       if (tw > 0) {
         const beforeTw = tw;
         def.status.tailwind = Math.max(0, tw - 1);
+        afterHitCtx.helpers.refreshPassives();
 
         afterHitCtx.attack.avoided = true;
         afterHitCtx.attack.hit = false;
@@ -1061,6 +1067,7 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
 
         // 反撃スタック消費（発動したら1減る）
         def.status.counter = Math.max(0, counterStacks - 1);
+        afterHitCtx.helpers.refreshPassives();
 
         push("counterTriggered", def.side, {
           code: "COUNTER_TRIGGERED",
@@ -1127,6 +1134,7 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
     const cap = MAX_STACK; // 既存の最大3に合わせる
     const after = Math.max(0, Math.min(cap, before + 1));
     atk.status.counter = after;
+    makeCtx(state, rng, push, atk, def, getRules).helpers.refreshPassives();
 
     push("statusChange", atk.side, {
       code: "STATUS_COUNTER_PLUS_DICE4",
@@ -1310,6 +1318,7 @@ function maybeUseCSkillBeforeTurnEnd(atk, def, ctx) {
   if ((atk.ap ?? 0) < cost) return;
 
   atk.ap -= cost;
+  ctx.helpers.refreshPassives();
 
   ctx.actor = atk;
   ctx.enemy = def;
@@ -1361,9 +1370,7 @@ function canActivateCSkill(atk, cs) {
 }
 
 /* =========================
-   Bスキル：条件付き常時バフ（HP%）
-   - HPが動くたびに ON/OFF 再判定
-   - 変化した時だけログ
+   実効AT/DF：duration buffとB常時modifierは別系統で加算
 ========================= */
 
 function getEffectiveAT(f) {
@@ -1378,141 +1385,4 @@ function getEffectiveDF(f) {
   const p = f.runtime?.passive?.DF ?? 0;
   const v = base + p;
   return Math.max(0, v);
-}
-
-function refreshPassiveBonuses(ctx, f) {
-  if (!ctx || !f) return;
-
-  f.runtime = f.runtime ?? {};
-  f.runtime.passive = f.runtime.passive ?? { AT: 0, DF: 0, activeBySkillId: {} };
-  f.runtime.passive.activeBySkillId = f.runtime.passive.activeBySkillId ?? {};
-
-  const prevAT = Math.trunc(Number(f.runtime.passive.AT ?? 0));
-  const prevDF = Math.trunc(Number(f.runtime.passive.DF ?? 0));
-
-  let totalAT = 0;
-  let totalDF = 0;
-
-  const bSkillSingle = f.battler?.bSkill ?? null;
-  const bSkillList = Array.isArray(f.battler?.bSkills) ? f.battler.bSkills : null;
-  const bSkills = bSkillList ?? (bSkillSingle ? [bSkillSingle] : []);
-
-for (const bs of bSkills) {
-  if (!bs) continue;
-
-  const trig = String(bs.trigger ?? "");
-
-  // ===== HP% 常時バフ（passiveHp） =====
-  if (trig === "passiveHp") {
-    const cond = bs.hpCond ?? null;   // { op: ">=" | "<=", value: 0.5 }
-    const bonus = bs.bonus ?? null;   // { AT: 2, DF: 1 }
-    if (!cond || !bonus) continue;
-
-    const ok = evalHpCond(f, cond);
-    const sid = String(bs.id ?? bs.name ?? "passiveHp");
-
-    const was = Boolean(f.runtime.passive.activeBySkillId[sid]);
-    f.runtime.passive.activeBySkillId[sid] = ok;
-
-    if (ok !== was) {
-      const skillInfo = {
-        owner: f.side,
-        category: "B",
-        skillId: bs.id ?? null,
-        skillName: bs.name ?? "(B-skill passive)",
-      };
-      const groupId = typeof ctx.newGroupId === "function" ? ctx.newGroupId() : null;
-
-      ctx.withOrigin({ originSkill: skillInfo, groupId }, () => {
-        ctx.push("passiveSkillStateChanged", f.side, {
-          code: ok ? "PASSIVE_SKILL_ON" : "PASSIVE_SKILL_OFF",
-          target: f.side,
-          skill: {
-            category: "B",
-            skillId: bs.id ?? null,
-            skillName: bs.name ?? "(B-skill passive)",
-          },
-          active: ok,
-          hpPct: safeHpPct(f),
-          bonus: {
-            AT: Math.trunc(Number(bonus.AT ?? 0)),
-            DF: Math.trunc(Number(bonus.DF ?? 0)),
-          },
-          groupId,
-        });
-      });
-    }
-
-    if (ok) {
-      totalAT += Math.trunc(Number(bonus.AT ?? 0));
-      totalDF += Math.trunc(Number(bonus.DF ?? 0));
-    }
-
-    continue;
-  }
-
-  // ===== AP 常時バフ（passiveAp） =====
-  // 仕様例：DF補正 = clamp(ap + bias, min, max)
-  if (trig === "passiveAp") {
-    const apNow = Math.trunc(Number(f.ap ?? 0));
-
-    const spec = bs.apBonus ?? null; // { stat:"DF", bias:-2, min:-2, max:3 } など
-    if (!spec) continue;
-
-    const stat = String(spec.stat ?? "DF");
-    const bias = Math.trunc(Number(spec.bias ?? 0));
-    const minV = Math.trunc(Number(spec.min ?? -999));
-    const maxV = Math.trunc(Number(spec.max ?? 999));
-
-    if (stat !== "AT" && stat !== "DF") continue;
-
-    const raw = apNow + bias;
-    const v = clamp(raw, minV, maxV);
-
-    if (stat === "AT") totalAT += v;
-    if (stat === "DF") totalDF += v;
-
-    continue;
-  }
-
-  // passiveHp / passiveAp 以外は何もしない
-  continue;
-}
-
-// ← ここから下は「for の外」になります
-
-f.runtime.passive.AT = totalAT;
-f.runtime.passive.DF = totalDF;
-
-// 合計値変化ログ（うるさければ消してOK）
-if (totalAT !== prevAT || totalDF !== prevDF) {
-  ctx.push("passiveBonusTotalChanged", f.side, {
-    code: "PASSIVE_BONUS_TOTAL_CHANGED",
-    target: f.side,
-    before: { AT: prevAT, DF: prevDF },
-    after: { AT: totalAT, DF: totalDF },
-  });
-}
-}
-
-function safeHpPct(f) {
-  const hp = Number(f?.hp);
-  const max = Number(f?.maxHP);
-  if (!Number.isFinite(hp) || !Number.isFinite(max) || max <= 0) return null;
-  return hp / max;
-}
-
-function evalHpCond(f, cond) {
-  const hpPct = safeHpPct(f);
-  if (hpPct == null) return false;
-
-  const op = String(cond.op ?? ">=");
-  const v = Number(cond.value);
-  if (!Number.isFinite(v)) return false;
-
-  if (op === ">=") return hpPct >= v;
-  if (op === "<=") return hpPct <= v;
-
-  // 許可opはこれだけ（例外処理を増やさない）
-  return false;
 }

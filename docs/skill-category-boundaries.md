@@ -107,9 +107,11 @@ Bではtriggerごとに許可effectを限定する。たとえば`beforeAttack +
 許可する一方、`beforeAttack + 3ターンAT+2`のように時系列上不自然な組み合わせは、
 エンジンが実行できてもcatalog / validator / compilerで生成させない。
 
-### B2：条件付き常時補正
+### B2：常時modifier（conditional / scaled）
 
-B専用機能として、conditionがtrueの間だけAT/DF補正を有効にする仕組みを将来設ける。
+B専用機能として、`passive + modifier`の共通形式を用いる。
+conditionalはconditionがtrueの間だけ固定AT/DF補正、scaledは現在値から補正量を算出する。
+canonical形式・再評価・旧互換は[b-passive-modifiers.md](b-passive-modifiers.md)を参照。
 
 ```text
 condition == true  → 補正有効
@@ -118,8 +120,8 @@ condition == false → 補正無効
 
 これは「条件成立時にNターンbuffを付与する」処理ではない。
 自分HP50%以下、自分または相手のAP、相手の状態など、共通conditionで参照できる値が
-変化したときに再評価する方式を想定する。現行`passiveHp` / `passiveAp`は、将来
-共通conditionを使う`whileCondition`相当へ整理する予定だが、方式はこの文書では確定しない。
+変化したときに両者を再評価する。旧`passiveHp`はconditional、旧`passiveAp`はscaledへ
+互換変換する。builderの公開条件・数値・価格をここで確定するものではない。
 
 新版のユーザー作成Bには`duration: turns`のbuffを公開しない。
 
@@ -225,7 +227,7 @@ validatorがIDと関係を検査し、compilerが許可済み定義だけを内�
 - B compileは既知triggerであればeffectとの組み合わせを限定しない。
 - Cは現在battleEngineが既存データを直接読み、カテゴリ別catalog / compilerを通らない。
 - 現在のA作成catalogには共有effect候補と出目専用候補があるが、phase AT/DF補正はまだ登録されていない。
-- 条件付き常時補正は現在`passiveHp` / `passiveAp`の個別処理であり、共通`whileCondition`ではない。
+- 常時補正は`passive + modifier`のconditional/scaledへ共通化済み。旧passiveHp/passiveApは互換入口。
 - 現行エンジンはDによる追加値・重複数を新版D catalog相当のルールでは検査していない。
 
 これらはこの文書と矛盾してコードを誤って動かしているというより、将来catalog / validator /
@@ -241,7 +243,7 @@ trigger別catalogを設計するときは、この時系列依存を明示的に
 - A/B/C/Dのポイント価格、effectごとの最終コスト
 - 固定ダメージ量、回復量、statusの価格
 - CのAPコストと詳細な発動条件
-- Bの`whileCondition`実装・再評価方法
+- B常時modifierのbuilder公開候補・価格（engine評価・再評価は別紙に実装仕様を記載）
 - cooldownの再設計
 - buildCompiler、validator、catalog、UIの具体的実装
 - 各カテゴリの最大effect数

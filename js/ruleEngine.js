@@ -148,7 +148,7 @@ export function compileAllRulesForFighter(f) {
 - trigger は Triggers に含まれる文字列のみ有効
   - Triggers に無い trigger（タイポ/未知）は黙ってスキップされる
 - trigger === "passiveHp" のような常時バフ系は、ここでは扱わない想定
-  （battleEngine 側の refreshPassiveBonuses() 等で別処理される）
+（passive / passiveHp / passiveApは常時modifierとして別処理。Triggersへ登録しない）
 */
 
 
@@ -267,6 +267,7 @@ function rollCancelASkillByHeadwind(ctx) {
 
   // 全消費
   actor.status.Headwind = 0;
+  ctx.helpers?.refreshPassives?.();
 
   // 消費ログ
   ctx.push("statusChange", "system", {
