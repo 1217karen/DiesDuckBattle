@@ -1,5 +1,8 @@
 # 作成設定と戦闘処理の境界
 
+A専用の独立カタログと見積APIは [a-skill-building.md](a-skill-building.md) を参照。
+ここで説明する既存skills DTOは変更せず、A新形式は別データとして扱う。
+
 `buildRules.js` はゲームの作成制限、`skillCatalog.js` は現在公開する選択肢、
 `buildValidator.js` はユーザー作成DTOの検査を担当する。戦闘側からはimportしない。
 既存4ファイルは変更しない。戦闘中のAP消費、Cスキル、状態変化も従来どおり。
