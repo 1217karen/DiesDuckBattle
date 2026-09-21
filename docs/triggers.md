@@ -18,7 +18,7 @@ battleStart trigger（P1 → P2）
   AP増加 → passive再計算 → turnStartログ
   turn cooldown減少（P1 → P2）
   turnStart trigger（P1 → P2）
-  SPから行動順作成、両者のtemp.dfPlus=0
+  SPから行動順作成
 
   各phase（行動者のみ。死亡による即時打ち切りはしない）:
     phase加算・行動回数加算・行動者のphase cooldown減少
@@ -29,7 +29,7 @@ battleStart trigger（P1 → P2）
     beforeStatus trigger
     状態処理（亀裂ダメージ → 荒波判定）
     afterStatus trigger
-    荒波でキャンセルなら亀裂自然減衰のみ行い次phaseへ
+    荒波でキャンセルなら両者のphase buff消去・亀裂自然減衰を行い次phaseへ
       ※beforeRoll/C/roll/resolve/phaseEndはいずれも通らない
     beforeRoll trigger
     現行の通常C自動発動（AP判定・消費は従来どおり）
@@ -39,6 +39,7 @@ battleStart trigger（P1 → P2）
     resolveDiceAndAttack全体
     afterDiceResolve trigger
     phaseEnd trigger
+    両者のphase buff消去（phaseEndで付与された分も含む）
     亀裂自然減衰
 
   現行C復活系処理（P1 → P2）
@@ -68,7 +69,7 @@ turnEndのctxはdiceValue/attackともnullで、turn/phaseや最新HP等が読�
 
 turnEndの効果によるHP変化は同ターンの判定に反映する。
 turnEndで新たに付いたturnバフは、このターンのtickが既に完了しているため同ターンにはtickしない。
-tick関数・バフの持続仕様そのものは変更しない。
+持続時間の詳細は[buff-durations.md](buff-durations.md)を参照。
 ログのturnEndは従来どおり判定後で、形式も変更しない。
 
 ## 出目解決内部（既存処理を保持）
@@ -104,12 +105,11 @@ BがHP/AP/Headwind等を変更する組合せや乱数を消費する組合せ�
 
 ## 範囲外として残した事項
 
-duration、passiveHp/passiveAp、tempDfPlus、turnバフ処理、C発動/AP、
+passiveHp/passiveApの統合、C発動/AP、
 A作成カタログ/価格、compiler、D新版、beforeDiceEffect/afterDiceEffectは変更・追加しない。
 
-既存のbattleStart/turnStart/beforeTurnEnd等にはmakeCtxへgetRulesを渡していない呼び出しがある。
-その経路で回復効果がafterHealを呼ぶとgetRules未定義による例外になり得る。
-新triggerのctxは正しくgetRulesを渡すが、既存経路全体の修正は今回の範囲に含めない。
+後続のbuff整理で、battleStart/turnStart/beforeTurnEnd等を含めgetRules定義後の
+全makeCtxへgetRulesを渡すよう修正済み。既存triggerのheal→afterHealも利用可能。
 
 ## テスト
 

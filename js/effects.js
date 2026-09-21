@@ -12,7 +12,7 @@ import { evaluateCondition } from "./conditionEvaluator.js";
 //     対象キー：
 //       hp（※基本は heal / fixedDamage を使う）
 //       ap
-//       tempDfPlus
+//       tempDfPlus（旧入力互換。内部ではphase DF buff）
 //       nextAttackATPlus
 //       attackTimesOverride（null可）
 //       attackTimesAdd
@@ -38,7 +38,7 @@ import { evaluateCondition } from "./conditionEvaluator.js";
 //       ※ HP<=0 の場合は 0 ダメージ
 //
 // - addBuff
-//     nターン持続する AT / DF の増減バフ（once/flagKey による戦闘中1回制御も可）
+//     phase / turns:N の AT / DF バフ（旧turns形式、once/flagKeyも対応）
 //
 // - heal
 //     HP回復（maxHP まで）
@@ -242,8 +242,8 @@ function effChangeValue(eff, ctx, emit) {
 
   setValueByKey(tgt, key, after);
 
-// APが動いたら常時バフを再判定（passiveAp 等）
-if (key === "ap") {
+  // HP/APの直接変更でも既存の常時バフを再判定する。
+  if (key === "hp" || key === "ap") {
   const refresh = ctx.helpers?.refreshPassives;
   if (typeof refresh === "function") refresh();
 }
@@ -253,7 +253,7 @@ if (key === "ap") {
       : key === "ap"
         ? "AP"
         : key === "tempDfPlus"
-          ? "DF(turn)"
+          ? "DF(phase)"
           : key === "nextAttackATPlus"
             ? "AT(next)"
             : key === "attackTimesOverride"
@@ -666,11 +666,13 @@ function effAddBuff(eff, ctx, emit) {
   }
 
   const amount = Math.trunc(Number(eff.amount ?? 0));
-  const turns = Math.trunc(Number(eff.turns ?? 1));
-
-  if (!Number.isFinite(amount) || !Number.isFinite(turns)) return;
+  // durationがcanonical。省略時だけ旧turns（既定1）を解釈する。
+  const spec = eff.duration ?? { kind: "turns", count: eff.turns ?? 1 };
+  if (spec.kind !== "phase" && spec.kind !== "turns") return;
+  const turns = spec.kind === "turns" ? Math.trunc(Number(spec.count)) : undefined;
+  if (!Number.isFinite(amount)) return;
+  if (spec.kind === "turns" && (!Number.isFinite(turns) || turns <= 0)) return;
   if (amount === 0) return;
-  if (turns <= 0) return;
 
   // once 対応（この戦闘で1回だけ）
   const once = Boolean(eff.once ?? false);
@@ -694,7 +696,7 @@ function effAddBuff(eff, ctx, emit) {
   const buff = {
     stat,
     amount,
-    turns,
+    duration: spec.kind === "phase" ? { kind: "phase" } : { kind: "turns", remainingTurns: turns },
     id: eff.id ?? null,
     source: eff.source ?? null,
   };
@@ -706,6 +708,7 @@ function effAddBuff(eff, ctx, emit) {
     stat,
     amount,
     turns,
+    duration: { ...buff.duration },
     id: buff.id,
     source: buff.source,
     once: once || undefined,
@@ -1022,7 +1025,8 @@ function getValueByKey(f, key) {
     case "ap":
       return Number(f.ap);
     case "tempDfPlus":
-      return Number(f.temp?.dfPlus ?? 0);
+      return (f.buffs ?? []).filter(b => b.legacyKey === "tempDfPlus")
+        .reduce((total, b) => total + b.amount, 0);
     case "nextAttackATPlus":
       return Number(f.nextAttackATPlus ?? 0);
     case "recoilMinus":
@@ -1052,8 +1056,12 @@ function setValueByKey(f, key, value) {
       return;
 
     case "tempDfPlus":
-      f.temp = f.temp ?? {};
-      f.temp.dfPlus = value;
+      // 旧changeValueのset/min/maxも、互換分の合計との差分として保持する。
+      // 通常のDF buffには干渉せず、個々の補正を統合・上書きしない。
+      f.buffs = f.buffs ?? [];
+      const delta = value - getValueByKey(f, key);
+      if (delta !== 0) f.buffs.push({ stat: "DF", amount: delta,
+        duration: { kind: "phase" }, legacyKey: "tempDfPlus", id: null, source: null });
       return;
 
     case "nextAttackATPlus":

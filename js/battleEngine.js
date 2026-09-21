@@ -89,14 +89,14 @@ const push = (type, actor = "system", extra = {}) => {
     Triggers.battleStart,
     state.P1,
     state.P2,
-    makeCtx(state, rng, push, state.P1, state.P2),
+    makeCtx(state, rng, push, state.P1, state.P2, getRules),
     getRules
   );
   runTrigger(
     Triggers.battleStart,
     state.P2,
     state.P1,
-    makeCtx(state, rng, push, state.P2, state.P1),
+    makeCtx(state, rng, push, state.P2, state.P1, getRules),
     getRules
   );
 
@@ -119,7 +119,7 @@ const push = (type, actor = "system", extra = {}) => {
   state.P2.ap += apPlus;
 
     {
-  const ctxTS = makeCtx(state, rng, push, state.P1, state.P2);
+  const ctxTS = makeCtx(state, rng, push, state.P1, state.P2, getRules);
   refreshPassiveBonuses(ctxTS, state.P1);
   refreshPassiveBonuses(ctxTS, state.P2);
 }
@@ -138,23 +138,19 @@ const push = (type, actor = "system", extra = {}) => {
       Triggers.turnStart,
       state.P1,
       state.P2,
-      makeCtx(state, rng, push, state.P1, state.P2),
+      makeCtx(state, rng, push, state.P1, state.P2, getRules),
       getRules
     );
     runTrigger(
       Triggers.turnStart,
       state.P2,
       state.P1,
-      makeCtx(state, rng, push, state.P2, state.P1),
+      makeCtx(state, rng, push, state.P2, state.P1, getRules),
       getRules
     );
 
     // SP分の行動順
     const phaseOrder = buildPhaseOrder(state.P1.sp, state.P2.sp, first);
-
-    // １ターン限りの値をリセット
-    state.P1.temp.dfPlus = 0;
-    state.P2.temp.dfPlus = 0;
 
     for (const actorSide of phaseOrder) {
       state.phase += 1;
@@ -230,6 +226,8 @@ const push = (type, actor = "system", extra = {}) => {
 
       // 荒波でキャンセル
       if (canceled) {
+        expirePhaseBuffs(atk, push);
+        expirePhaseBuffs(def, push);
         tickActionEndDecay(atk, push);
         continue;
       }
@@ -266,6 +264,9 @@ const push = (type, actor = "system", extra = {}) => {
       // phaseEnd トリガー（フェイズ終了時）
       runTrigger(Triggers.phaseEnd, atk, def, makeCtx(state, rng, push, atk, def, getRules), getRules);
 
+      // 付与対象によらず現在phaseの終了で消去。phaseEndで付いた分も含む。
+      expirePhaseBuffs(atk, push);
+      expirePhaseBuffs(def, push);
       tickActionEndDecay(atk, push);
     }
 
@@ -287,14 +288,14 @@ const push = (type, actor = "system", extra = {}) => {
       Triggers.beforeTurnEnd,
       state.P1,
       state.P2,
-      makeCtx(state, rng, push, state.P1, state.P2),
+      makeCtx(state, rng, push, state.P1, state.P2, getRules),
       getRules
     );
     runTrigger(
       Triggers.beforeTurnEnd,
       state.P2,
       state.P1,
-      makeCtx(state, rng, push, state.P2, state.P1),
+      makeCtx(state, rng, push, state.P2, state.P1, getRules),
       getRules
     );
 
@@ -448,7 +449,6 @@ function makeFighter(side, battler, duck) {
 
     // ターン限りなど
     temp: {
-      dfPlus: 0,
       attackTimesOverride: null,
       attackTimesAdd: 0,
       recoilMinus: 0,
@@ -832,7 +832,7 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
     // 出目6：DF無視攻撃（defPowerを引かない）
     const ignoresDF = diceValue === 6;
 
-    const defPower = ignoresDF ? 0 : baseDF + (def.temp?.dfPlus || 0);
+    const defPower = ignoresDF ? 0 : baseDF;
 
     // 通常攻撃計算式
     const atPart = statusAT + bonusAT;
@@ -1085,7 +1085,7 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
           damage: ret,
         };
 
-        const counterCtx = makeCtx(state, rng, push, def, atk);
+        const counterCtx = makeCtx(state, rng, push, def, atk, getRules);
         counterCtx.diceValue = diceValue;
         counterCtx.attack = counterAttack;
 
@@ -1111,7 +1111,7 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
   if (diceValue === 1) {
     applyEffect(
       { type: "changeValue", target: "self", key: "ap", op: "add", value: 1, source: "dice1" },
-      makeCtx(state, rng, push, atk, def),
+      makeCtx(state, rng, push, atk, def, getRules),
     );
   }
 
@@ -1142,7 +1142,7 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
   if (diceValue === 5) {
     applyEffect(
       { type: "changeValue", target: "enemy", key: "ap", op: "add", value: -1, source: "dice5" },
-      makeCtx(state, rng, push, atk, def),
+      makeCtx(state, rng, push, atk, def, getRules),
     );
   }
 
@@ -1196,6 +1196,15 @@ function heal(self, amount, push, actorSide, extra = {}) {
    ターン終了・勝敗
 ========================= */
 
+function expirePhaseBuffs(f, push) {
+  f.buffs = (f.buffs ?? []).filter(b => {
+    if (b.duration?.kind !== "phase") return true;
+    push("buffExpired", "system", { code: "BUFF_EXPIRED", target: f.side,
+      stat: b.stat, amount: b.amount, id: b.id ?? null, duration: { kind: "phase" } });
+    return false;
+  });
+}
+
 function tickTurnEndBuffs(f, push) {
   const list = Array.isArray(f?.buffs) ? f.buffs : [];
   if (list.length === 0) return;
@@ -1204,8 +1213,9 @@ function tickTurnEndBuffs(f, push) {
 
   for (const b of list) {
     if (!b) continue;
+    if (b.duration?.kind === "phase") { next.push(b); continue; }
 
-    const before = Math.trunc(Number(b.turns ?? 0));
+    const before = Math.trunc(Number(b.duration?.remainingTurns ?? b.turns ?? 0));
     const after = before - 1;
 
     push("buffTick", "system", {
@@ -1218,7 +1228,7 @@ function tickTurnEndBuffs(f, push) {
     });
 
     if (after > 0) {
-      next.push({ ...b, turns: after });
+      next.push({ ...b, duration: { kind: "turns", remainingTurns: after } });
     } else {
       push("buffExpired", "system", {
         code: "BUFF_EXPIRED",
