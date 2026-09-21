@@ -1,5 +1,6 @@
 import { evaluateCondition } from "./conditionEvaluator.js";
 import { STATUS_GROUPS } from "./statusGroups.js";
+import { addTimedHitRule } from "./timedHitRules.js";
 
 /// effects.js
 // 方針：effect.type を最小化し、実行はここに集約する
@@ -45,7 +46,11 @@ import { STATUS_GROUPS } from "./statusGroups.js";
 //     HP回復（maxHP まで）
 //
 // - revive
-//     戦闘中の復活処理
+//     旧hp/once復活、およびmaxHpPctによる最大HP割合復活
+// - clearStatus
+//     指定statusまたはgroupの全stackを決定的に解除
+// - addTimedHitRule
+//     turns期間、通常攻撃命中処理後にchangeStatusを実行する内部ruleを付与
 //
 // - changeCooldown
 //    クールダウン処理
@@ -121,6 +126,10 @@ export function applyEffect(effect, ctx) {
       return effHeal(effect, ctx, emit);
     case "revive":
       return effRevive(effect, ctx, emit);
+    case "clearStatus":
+      return effClearStatus(effect, ctx, emit);
+    case "addTimedHitRule":
+      return addTimedHitRule(effect, ctx, emit);
     case "changeCooldown":
       return effChangeCooldown(effect, ctx, emit);
 
@@ -777,14 +786,53 @@ if (amount == null || amount <= 0) return;
 }
 
 /* =========================
-   revive
-   hp: number（復活後HP）
-   once: boolean（trueなら「この戦闘で1回だけ」）
-   flagKey: string（戦闘内フラグ名）
+   clearStatus：単一statusまたはgroupの全stack解除
 ========================= */
+function effClearStatus(eff, ctx, emit) {
+  const tgt = pickTarget(eff.target ?? "self", ctx);
+  if (!tgt) return;
+  // @groupのランダム選択とは別。指定groupの全種類を決定的に処理する。
+  const keys = eff.group === "debuff" || eff.group === "buff" ? STATUS_GROUPS[eff.group]
+    : STATUS_GROUPS.all.includes(eff.status) ? [eff.status] : [];
+  for (const status of keys) {
+    const before = tgt.status?.[status] ?? 0;
+    if (before === 0) continue;
+    tgt.status[status] = 0;
+    emit("statusChange", ctx.actor?.side ?? "system", { code: "STATUS_CLEARED", target: tgt.side, status, before, after: 0, delta: -before });
+  }
+  ctx.helpers?.refreshPassives?.();
+}
+
+/*
+ * revive: 旧hp/once/flagKey形式、または新版maxHpPct形式。
+ * 新版の反復確率はctx.specialCActivationのtrusted設定から取得する。
+ */
 function effRevive(eff, ctx, emit) {
   const tgt = pickTarget(eff.target ?? "self", ctx);
   if (!tgt) return;
+
+  // 新canonical variant。固定HP/onceの旧分岐は以下にそのまま残す。
+  if (Object.hasOwn(eff, "maxHpPct")) {
+    const pct = eff.maxHpPct;
+    if (!Number.isFinite(pct) || pct < 0 || pct > 1 || !Number.isFinite(tgt.maxHP)) return;
+    const activation = ctx.specialCActivation;
+    if (activation?.count > 1) {
+      const probability = activation.repeatReviveChance;
+      if (!Number.isFinite(probability) || probability < 0 || probability > 1)
+        throw new TypeError("Repeated percentage revive requires trusted repeatReviveChance in [0, 1]");
+      const success = ctx.rng() < probability;
+      emit("reviveRoll", ctx.actor?.side ?? "system", { target: tgt.side, maxHpPct: pct,
+        activationCount: activation.count, probability, success });
+      if (!success) return;
+    }
+    const before = tgt.hp;
+    const targetHP = Math.floor(tgt.maxHP * pct);
+    tgt.hp = Math.max(before, targetHP);
+    emit("revived", ctx.actor?.side ?? "system", { target: tgt.side, hpBefore: before, hpAfter: tgt.hp,
+      maxHpPct: pct, targetHP, activationCount: activation?.count ?? null });
+    ctx.helpers?.refreshPassives?.();
+    return;
+  }
 
   const hp = Number(eff.hp ?? 10);
   const once = Boolean(eff.once ?? true);

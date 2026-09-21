@@ -5,6 +5,7 @@ import { Triggers, runTrigger, compileAllRulesForFighter } from "./ruleEngine.js
 import { applyEffect } from "./effects.js";
 import { calcMaxHPFromStats } from "./statsUtil.js";
 import { refreshPassiveBonuses } from "./bPassiveModifiers.js";
+import { resolveTimedHitRules, tickTimedHitRules } from "./timedHitRules.js";
 
 /* =========================
    公開API
@@ -305,6 +306,8 @@ const push = (type, actor = "system", extra = {}) => {
     // 持続バフの残りターンを減らす
     tickTurnEndBuffs(state.P1, push);
     tickTurnEndBuffs(state.P2, push);
+    tickTimedHitRules(state.P1, push);
+    tickTimedHitRules(state.P2, push);
 
     // triggerのturnEndは勝敗判定前。下の既存turnEndログは判定結果を記録する。
     runTrigger(
@@ -1051,6 +1054,8 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
   attack: { ...afterHitCtx.attack },
 });
 
+    // 後続Bのheal等がctx.attackを置き換えても、この一撃の命中結果を保持する。
+    const resolvedAttack = { ...afterHitCtx.attack };
     // afterTakeDamageトリガー（受動側：ダメージ適用後）
     runTrigger(Triggers.afterTakeDamage, def, atk, afterHitCtx, getRules);
 
@@ -1111,6 +1116,10 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
 
     // afterDamageトリガー（与ダメ確定後）
     runTrigger(Triggers.afterDamage, atk, def, afterHitCtx, getRules);
+    const resolvedCtx = makeCtx(state, rng, push, atk, def, getRules);
+    resolvedCtx.diceValue = diceValue;
+    resolvedCtx.attack = resolvedAttack;
+    resolveTimedHitRules(atk, resolvedCtx, applyEffect);
   }
 
   // 出目の追加効果
@@ -1268,7 +1277,7 @@ function maybeUseCSkill(atk, def, ctx) {
   const cs = atk.duck?.cSkill;
   if (!cs || !cs.effect) return;
 
-  if (String(cs.trigger ?? "") === "beforeTurnEnd") return;
+  if (cs.mode != null ? cs.mode !== "normal" : String(cs.trigger ?? "") === "beforeTurnEnd") return;
 
   const cost = cs.costAP ?? 0;
   if ((atk.ap ?? 0) < cost) return;
@@ -1307,18 +1316,24 @@ function maybeUseCSkillBeforeTurnEnd(atk, def, ctx) {
   const cs = atk.duck?.cSkill;
   if (!cs || !cs.effect) return;
 
-  // このタイプのCスキルだけターン終了時に見る
-  if (String(cs.trigger ?? "") !== "beforeTurnEnd") return;
+  // modeありは新版。modeなしの旧trigger形式は従来のonce抑止を維持。
+  const canonical = cs.mode != null;
+  if (canonical ? cs.mode !== "special" : String(cs.trigger ?? "") !== "beforeTurnEnd") return;
   if ((atk.hp ?? 0) > 0) return;
 
   // もう今回なにも起きないCスキルなら、AP消費もログも出さない
-  if (!canActivateCSkill(atk, cs)) return;
+  if (!canonical && !canActivateCSkill(atk, cs)) return;
 
   const cost = cs.costAP ?? 0;
   if ((atk.ap ?? 0) < cost) return;
 
   atk.ap -= cost;
   ctx.helpers.refreshPassives();
+
+  if (canonical) {
+    atk.runtime.specialCActivationCount = (atk.runtime.specialCActivationCount ?? 0) + 1;
+    ctx.specialCActivation = { count: atk.runtime.specialCActivationCount, repeatReviveChance: cs.repeatReviveChance };
+  }
 
   ctx.actor = atk;
   ctx.enemy = def;
@@ -1338,6 +1353,8 @@ function maybeUseCSkillBeforeTurnEnd(atk, def, ctx) {
       code: "C_SKILL_ACTIVATED",
       skill: { category: "C", skillId: cs.id, skillName: cs.name },
       trigger: "beforeTurnEnd",
+      ...(canonical ? { mode: "special", activationCount: ctx.specialCActivation.count,
+        costAP: cost, apBefore: atk.ap + cost, apAfter: atk.ap } : {}),
       groupId,
     });
 

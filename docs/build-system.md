@@ -87,16 +87,17 @@ legacyAdapterは旧版の対応効果を保持し、ユーザー公開カタロ�
 }
 ```
 
-ステータス未使用分は `totalMax - (AT + DF + SP)`。将来のC用資源であり、
+ステータス未使用分は `totalMax - (AT + DF + SP)`。旧案ではC用資源だったが、
+新版Cは別の作成ポイントを使わない（[c-skill-building.md](c-skill-building.md)）。既存の算出は維持し、
 ダイス由来資源とは合算しない。ダイスは0一枠につき1pt、非0出目の3個積み一種類につき1pt消費。
 4個以上も計算上は一種類と数えるが、validatorは個数違反として拒否する。
 計算不能な欄はnull、負の残高は補正せず返す。計算結果だけで合法とは判断せずvalidを確認する。
 スキルルールは引き続き未確定なので、validでもreadyとは限らない。
 
 単価はbuildRulesのresourcesに集約。`aUpgradeDicePointCost: 2` は基本案の設定のみ。
-`cModules` は運営側の `モジュールID -> { statPointCost }` 価格表の拡張口で、現在は空。
-将来のC構築処理はここから個別価格を取得し、未登録IDを拒否し、stats.remaining内で消費を検証する。
-ユーザーからのcost申告は受け付けない。今回Cモジュール選択DTO・価格計算処理・具体的価格は実装しない。
+`cModules` は旧案の `モジュールID -> { statPointCost }` 拡張口として空のまま残す。
+新版Cは独立したcSkillRules/catalog/resourcesのoptionベースAP計算を使い、この旧設定を消費しない。
+generic DTO/validateBuildへの最終統合は未実装。ユーザーからのcost申告は受け付けない。
 
 ## テスト実行
 

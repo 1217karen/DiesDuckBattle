@@ -42,9 +42,10 @@ battleStart trigger（P1 → P2）
     両者のphase buff消去（phaseEndで付与された分も含む）
     亀裂自然減衰
 
-  現行C復活系処理（P1 → P2）
+  特殊C処理（P1 → P2、新版mode:special / 旧beforeTurnEnd。復活は必須ではない）
   beforeTurnEnd trigger（P1 → P2）
   tickTurnEndBuffs（P1 → P2、buffTick / buffExpiredログ）
+  tickTimedHitRules（P1 → P2、残りturn数減算・0で消滅）
   turnEnd trigger（P1 → P2）
   judge（勝敗判定）
   turnEndログ（判定結果）
@@ -84,6 +85,7 @@ turnEndで新たに付いたturnバフは、このターンのtickが既に完�
    → 次回AT補正消費 → ダメージ適用 → afterTakeDamage（受動側）。
 8. 反撃があれば消費・反撃ダメージ → afterTakeDamage（元の行動者）
    → afterDamage（反撃者）。その後、通常攻撃のafterDamage（行動者）。
+   通常命中した一撃は続いてtemporary ruleを独立実行する（詳細は[c-skill-building.md](c-skill-building.md)）。
 9. 全攻撃後に出目1の自分AP+1、3の回復、4の反撃付与、5の敵AP-1、6の反動を処理。
    出目6の反動は既存のhadNonMissAttack判定に従う。湯気等のmissのみなら反動なし、
    追風回避や連続行動missでは反動があり得る。今回この判定は変えない。
@@ -105,8 +107,8 @@ BがHP/AP/Headwind等を変更する組合せや乱数を消費する組合せ�
 
 ## 範囲外として残した事項
 
-passiveHp/passiveApの統合、C発動/AP、
-A作成カタログ/価格、compiler、D新版、beforeDiceEffect/afterDiceEffectは変更・追加しない。
+A作成価格、最終compiler、D新版、beforeDiceEffect/afterDiceEffectは変更・追加していない。
+B常時modifierとC専用基盤の後続実装はそれぞれの仕様書を参照。
 
 後続のbuff整理で、battleStart/turnStart/beforeTurnEnd等を含めgetRules定義後の
 全makeCtxへgetRulesを渡すよう修正済み。既存triggerのheal→afterHealも利用可能。

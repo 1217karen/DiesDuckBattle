@@ -19,9 +19,9 @@ export function createBuildRules() {
       dicePointsPerTriple: 1,
       // 基本案。強化内容・最大段階・DTOへの導入は未確定。
       aUpgradeDicePointCost: 2,
-      // TODO: CモジュールID -> { statPointCost: 非負の整数 }。
-      // 運営専用価格表。公開効果一覧ではない。将来のcompilerがIDから参照し、
-      // 未登録IDは拒否する。ユーザー申告costや一律の段階換算は使用しない。
+      // 旧案の互換用拡張口。新版Cは別スキルポイントを使わず、
+      // cSkillRules / cSkillResourcesのoptionベースAP計算を使用する。
+      // generic DTOへは未統合。この空設定を新版Cの価格表として利用しない。
       cModules: {},
     },
     skills: Object.fromEntries(["A", "B", "C", "D"].map(category => [category, {

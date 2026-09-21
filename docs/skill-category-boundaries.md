@@ -128,7 +128,8 @@ condition == false → 補正無効
 ## C：AP消費型の能動効果
 
 CはAPを消費して発動する、Aより大きな固定ダメージ、回復、複合効果等を担う。
-Cには現在2つの発動窓がある。
+Cには現在2つの発動窓がある。新版は作成開始時にnormal/specialを選ぶ。
+専用catalog・AP計算・追加engine capabilityは[c-skill-building.md](c-skill-building.md)を参照。
 
 ### 通常C：ダイス直前
 
@@ -160,16 +161,19 @@ phase開始
 ```
 
 これは漠然とした「戦闘終了前」ではなく、そのターンの全行動終了後かつ勝敗判定前の窓である。
-復活等を勝敗決定より前に適用できる。現行実装では`trigger: "beforeTurnEnd"`のCを
-この特殊経路として識別しているが、発動判定自体は`beforeTurnEnd` triggerの前に行われる。
+復活等を勝敗決定より前に適用できる。新版は`mode: "special"`、旧互換はmodeなしの
+`trigger: "beforeTurnEnd"`で識別し、発動判定は`beforeTurnEnd` triggerの前に行われる。
+特殊Cは復活必須ではなく、HP<=0かつAP十分なら固定ダメージだけでも発動できる。
 
 C専用のユーザー作成機能として、`duration: { kind: "turns", count: N }`のAT/DF buffを扱う。
 付与時にremainingTurns=Nとなり、保持した状態でターン末の減算処理を通るたび1減り、
 0で消える。付与時刻自体は考慮しない。`turnEnd` triggerで付与された場合はそのターンの
 減算が済んでいるため、次のturnEndまで残る。新版のA/B/Dにはturns buffを公開しない。
 
-Cの共有effect候補は固定ダメージ、HP回復、AP操作、状態異常付与、状態強化付与、
-複合effect、状態数等によるスケーリングである。具体的な値、価格、APコストは未確定とする。
+Cの共有effect候補は固定ダメージ、現在HP割合固定ダメージ、固定HP回復、状態付与・全解除、
+turns AT/DF補正、期限付き通常命中status付与。特殊Cだけに最大HP割合reviveを追加する。
+AP操作・割合healは公開しない。基本/最低5AP、1～5effect、追加benefit枠+1APは確定し、
+具体的な数値option価格と復活再抽選率は未確定とする。
 
 ## D：戦闘開始時のダイス構成変更
 
@@ -192,7 +196,7 @@ effect typeそのものをカテゴリごとに重複実装する必要はない
 | --- | --- |
 | `fixedDamage` | A/C等で共有可能。カテゴリごとに値と価格を定義 |
 | `heal` | A/C等で共有可能。カテゴリごとに値と価格を定義 |
-| AP操作 | 複数カテゴリで共有可能。許可方向・対象・値を個別定義 |
+| AP操作 | Cには公開しない。他カテゴリは許可方向・対象・値を個別定義 |
 | 状態異常・状態強化付与 | 複数カテゴリで共有可能。status・対象・値を個別定義 |
 | 次回通常攻撃AT補正 | Aで公開可能。triggerとの整合も検査 |
 | 出目固有効果操作・通常攻撃キャンセル | A専用またはA限定 |
@@ -225,7 +229,7 @@ validatorがIDと関係を検査し、compilerが許可済み定義だけを内�
 - `effects.js`はカテゴリを知らず、対応effectを汎用的に実行する。
 - `ruleEngine.js`のD compileは`battleStart`へ既存Dのeffectをそのまま渡し、`addDice`だけには制限しない。
 - B compileは既知triggerであればeffectとの組み合わせを限定しない。
-- Cは現在battleEngineが既存データを直接読み、カテゴリ別catalog / compilerを通らない。
+- C専用catalog/AP計算は実装済み。battleEngineはtrusted内部データを読み、selection用compilerへの接続は未実装。
 - 現在のA作成catalogには共有effect候補と出目専用候補があるが、phase AT/DF補正はまだ登録されていない。
 - 常時補正は`passive + modifier`のconditional/scaledへ共通化済み。旧passiveHp/passiveApは互換入口。
 - 現行エンジンはDによる追加値・重複数を新版D catalog相当のルールでは検査していない。
@@ -242,7 +246,7 @@ trigger別catalogを設計するときは、この時系列依存を明示的に
 
 - A/B/C/Dのポイント価格、effectごとの最終コスト
 - 固定ダメージ量、回復量、statusの価格
-- CのAPコストと詳細な発動条件
+- Cの数値option別AP価格と割合revive再抽選率（基本AP・発動窓等はC別紙で確定済み）
 - B常時modifierのbuilder公開候補・価格（engine評価・再評価は別紙に実装仕様を記載）
 - cooldownの再設計
 - buildCompiler、validator、catalog、UIの具体的実装
