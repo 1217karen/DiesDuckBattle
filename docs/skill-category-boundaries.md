@@ -229,7 +229,7 @@ validatorがIDと関係を検査し、compilerが許可済み定義だけを内�
 - `effects.js`はカテゴリを知らず、対応effectを汎用的に実行する。
 - `ruleEngine.js`のD compileは`battleStart`へ既存Dのeffectをそのまま渡し、`addDice`だけには制限しない。
 - B compileは既知triggerであればeffectとの組み合わせを限定しない。
-- C専用catalog/AP計算は実装済み。battleEngineはtrusted内部データを読み、selection用compilerへの接続は未実装。
+- C専用catalog/AP計算・selection用compiler・開発戦闘ページは実装済み。battleEngineはtrusted内部データを読み、generic buildCompilerと本番作成UIへの統合は未実装。[C作成基盤](c-skill-building.md)を参照。
 - 現在のA作成catalogには共有effect候補と出目専用候補があるが、phase AT/DF補正はまだ登録されていない。
 - 常時補正は`passive + modifier`のconditional/scaledへ共通化済み。旧passiveHp/passiveApは互換入口。
 - 現行エンジンはDによる追加値・重複数を新版D catalog相当のルールでは検査していない。

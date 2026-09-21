@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cスキル仕様確認用・開発ページ</title>
+  <link rel="stylesheet" href="css/c-skill-test.css">
+</head>
+<body>
+  <!-- 開発確認用。キャラ登録・保存・本番battle UIではない。 -->
+  <header>
+    <p>DIES DUCK BATTLE / DEVELOPMENT</p>
+    <h1>Cスキル仕様確認用・開発ページ</h1>
+    <p>catalog選択 → compiler → 実戦闘の接続を確認します。本番画面ではありません。操作・結果は保存しません。</p>
+    <fieldset><legend>C mode</legend>
+      <label><input type="radio" name="mode" value="normal" checked> 通常C</label>
+      <label><input type="radio" name="mode" value="special"> 特殊C</label>
+    </fieldset>
+    <label><input type="checkbox" id="fixture"> 開発用fixtureを使用する</label>
+    <p id="catalog-note" class="notice"></p>
+    <a href="a-skill-test.html">Aスキル確認ページ</a>
+  </header>
+  <main>
+    <section aria-labelledby="effects-heading">
+      <h2 id="effects-heading">1. C効果を組む</h2>
+      <p>同じ効果を複数追加できます。特殊Cは復活なしでも構成できます。</p>
+      <div id="effects"></div>
+      <button id="add-effect" type="button">＋効果を追加</button>
+    </section>
+    <aside>
+      <h2>AP計算・compile結果</h2>
+      <dl id="resources" aria-live="polite"></dl>
+      <h3>errors / unresolved</h3><ul id="issues" role="status"></ul>
+      <p class="notice">effect数値ごとのAP価格は未確定。fixtureのoption価格は開発用0です。追加メリット枠のAPは計算されます。</p>
+    </aside>
+    <section class="wide">
+      <h2>2. 戦闘テスト</h2>
+      <p>AT/DF各3・SP1・最大HP1000・フィールドなしの開発dummy。P1のみ現在のCを装備し、P2にはCを装備しません。開始HP/APはDのbattleStart処理で設定します。ターン開始時のAP増加は通常どおり発生します。</p>
+      <form id="battle-form">
+        <div id="settings" class="settings"></div>
+        <label>特殊C 再復活抽選率（開発テスト用）
+          <select id="repeat-chance"><option value="0">0%</option><option value="0.5" selected>50%</option><option value="1">100%</option></select>
+        </label>
+        <p class="notice">この抽選率は開発確認用であり、最終ゲーム仕様ではありません。selection DTOには入りません。</p>
+        <label><input id="force-death" type="checkbox"> P1の各phaseEndでHPを-1へ戻す（開発用B・反復特殊C確認）</label>
+        <p>特殊CはP1開始HPを0以下に設定してください。複数回発動には十分な開始APとmaxTurnsを指定します。</p>
+        <button id="battle" type="submit" disabled>戦闘する</button>
+        <p id="battle-blocker" role="status"></p>
+      </form>
+      <p id="battle-message" role="status">まだ戦闘していません。</p>
+      <h3>result / 主要fighter最終状態</h3><pre id="final-state">未実行</pre>
+      <label><input id="important-only" type="checkbox" checked> C・攻撃・状態・buffなど主要イベントのみ表示</label>
+      <div class="table-wrap"><table><thead><tr><th>turn</th><th>phase</th><th>actor</th><th>type</th><th>主要内容</th></tr></thead><tbody id="events"></tbody></table></div>
+      <details><summary>戦闘raw JSON（実行時の入力・compiled skillを含む）</summary><pre id="battle-json">未実行</pre></details>
+    </section>
+    <section class="wide debug">
+      <h2>3. 現在の入力と出力（読取専用）</h2>
+      <div class="debug-grid">
+        <div><h3>selection DTO</h3><pre id="selection"></pre></div>
+        <div><h3>compiled cSkill</h3><pre id="compiled"></pre></div>
+        <div><h3>resource result</h3><pre id="resource-json"></pre></div>
+      </div>
+    </section>
+  </main>
+  <p id="startup" role="alert">読み込み中です。表示が変わらない場合はHTTPサーバー経由で開いてください。</p>
+  <noscript>JavaScriptが必要です。</noscript>
+  <script type="module" src="js/cSkillTestPage.js"></script>
+</body>
+</html>
