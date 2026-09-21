@@ -1,3 +1,5 @@
+import { evaluateCondition } from "./conditionEvaluator.js";
+
 /// effects.js
 // 方針：effect.type を最小化し、実行はここに集約する
 //
@@ -60,7 +62,7 @@ export function applyEffect(effect, ctx) {
 
   // when 条件（満たさないなら何もしない）
   if (effect.when !== undefined) {
-    const ok = evalWhenSpec(effect.when, ctx);
+    const ok = evaluateCondition(effect.when, ctx);
     if (!ok) return;
   }
 
@@ -877,89 +879,6 @@ function effChangeCooldown(eff, ctx, emit) {
     delta: after - before,
     source: eff.source ?? null,
   });
-}
-
-/* =========================
-   when 条件
-   - ruleEngine の when と同じ構造（all/any/原子）を effects でも使えるようにする
-   - 現時点で読める left は最小限：
-       "turn" / "phase"
-       "self.hp" / "self.ap"
-       "enemy.hp" / "enemy.ap"
-========================= */
-function evalWhenSpec(spec, ctx) {
-  if (spec == null) return true;
-
-  // all / any
-  if (spec && typeof spec === "object") {
-    if (Array.isArray(spec.all)) {
-      return spec.all.every((s) => evalWhenSpec(s, ctx));
-    }
-    if (Array.isArray(spec.any)) {
-      return spec.any.some((s) => evalWhenSpec(s, ctx));
-    }
-  }
-
-  // 原子条件：{ left, op, right }
-  if (!spec || typeof spec !== "object") return false;
-
-  const leftPath = String(spec.left ?? "");
-  const op = String(spec.op ?? "==");
-  const right = spec.right;
-
-  const left = readWhenLeft(leftPath, ctx);
-
-  switch (op) {
-    case "==":
-      return left === right;
-    case "!=":
-      return left !== right;
-    case ">=":
-      return Number(left) >= Number(right);
-    case "<=":
-      return Number(left) <= Number(right);
-    case ">":
-      return Number(left) > Number(right);
-    case "<":
-      return Number(left) < Number(right);
-    default:
-      return false;
-  }
-}
-
-function readWhenLeft(path, ctx) {
-  switch (path) {
-    case "turn":
-      return ctx?.turn;
-    case "phase":
-      return ctx?.phase;
-
-    case "self.hp":
-      return ctx?.actor?.hp;
-    case "self.ap":
-      return ctx?.actor?.ap;
-
-    case "self.hpPct": {
-      const hp = ctx?.actor?.hp;
-      const max = ctx?.actor?.maxHP;
-      if (!Number.isFinite(hp) || !Number.isFinite(max) || max <= 0) return undefined;
-      return hp / max;
-    }
-
-    case "enemy.hpPct": {
-      const hp = ctx?.enemy?.hp;
-      const max = ctx?.enemy?.maxHP;
-      if (!Number.isFinite(hp) || !Number.isFinite(max) || max <= 0) return undefined;
-      return hp / max;
-    }
-    case "enemy.hp":
-      return ctx?.enemy?.hp;
-    case "enemy.ap":
-      return ctx?.enemy?.ap;
-
-    default:
-      return undefined;
-  }
 }
 
 /* =========================

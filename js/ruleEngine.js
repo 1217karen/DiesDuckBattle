@@ -10,6 +10,7 @@
 
 
 import { applyEffect } from "./effects.js";
+import { evaluateCondition } from "./conditionEvaluator.js";
 
 export const Triggers = {
   // === システム進行 ===
@@ -240,164 +241,9 @@ function matchDiceTrigger(trigger, diceValue) {
   return false;
 }
 
-/* =========================
-   B用：when 条件（簡易DSL）
-
-   trigger 発火後、when(ctx) が true の場合のみ発動。
-
-   ■ 形式
-     - 未指定 → 常に true
-     - 原子条件:
-         { left, op, right }
-     - AND:
-         { all:[ ... ] }
-     - OR:
-         { any:[ ... ] }
-
-   ■ op
-     "==" "!=" ">=" "<=" ">" "<"
-
-   ■ 主な left
-     self.hp / enemy.hp
-     self.hpPct / enemy.hpPct
-     dice
-     attack.*
-     self.status:<key>
-     enemy.status:<key>
-     self.cdTurn:<key>
-     self.cdPhase:<key>
-
-   ■ メモ
-     - status / cooldown は未存在なら 0 扱い
-     - 未知パスは undefined
-========================= */
-
+// Bのwhenを共通DSLへ委譲。triggerやpassiveHp/passiveApの扱いは変更しない。
 function compileWhen(spec) {
-  // 未指定は常にtrue
-  if (spec == null) return () => true;
-
-  // { all:[...]} / { any:[...]} / 原子条件 の3系統だけ対応する（最小基盤）
-  return (ctx) => evalWhenSpec(spec, ctx);
-}
-
-function evalWhenSpec(spec, ctx) {
-  if (spec == null) return true;
-
-  // all / any
-  if (spec && typeof spec === "object") {
-    if (Array.isArray(spec.all)) {
-      return spec.all.every((s) => evalWhenSpec(s, ctx));
-    }
-    if (Array.isArray(spec.any)) {
-      return spec.any.some((s) => evalWhenSpec(s, ctx));
-    }
-  }
-
-  // 原子条件：{ left, op, right }
-  if (!spec || typeof spec !== "object") return false;
-
-  const leftPath = String(spec.left ?? "");
-  const op = String(spec.op ?? "==");
-  const right = spec.right;
-
-  const left = readPath(leftPath, ctx);
-
-  switch (op) {
-    case "==":
-      return left === right;
-    case "!=":
-      return left !== right;
-    case ">=":
-      return Number(left) >= Number(right);
-    case "<=":
-      return Number(left) <= Number(right);
-    case ">":
-      return Number(left) > Number(right);
-    case "<":
-      return Number(left) < Number(right);
-    default:
-      return false;
-  }
-}
-
-// 読める範囲を限定して安全にする（必要最低限）
-function readPath(path, ctx) {
-
-  if (typeof path === "string") {
-    if (path.startsWith("self.cdTurn:")) {
-      const k = path.slice("self.cdTurn:".length).trim();
-      return Number(ctx.actor?.cooldowns?.turn?.[k] ?? 0);
-    }
-    if (path.startsWith("self.cdPhase:")) {
-      const k = path.slice("self.cdPhase:".length).trim();
-      return Number(ctx.actor?.cooldowns?.phase?.[k] ?? 0);
-    }
-    if (path.startsWith("self.status:")) {
-      const k = path.slice("self.status:".length).trim();
-      return Number(ctx.actor?.status?.[k] ?? 0);
-    }
-    if (path.startsWith("enemy.status:")) {
-      const k = path.slice("enemy.status:".length).trim();
-      return Number(ctx.enemy?.status?.[k] ?? 0);
-    }
-  }
-
-  switch (path) {
-    case "self.hp":
-      return ctx.actor?.hp;
-    case "self.ap":
-      return ctx.actor?.ap;
-    case "enemy.hp":
-      return ctx.enemy?.hp;
-
-    case "attack.kind":
-      return ctx.attack?.kind;
-    case "attack.dice":
-      return ctx.attack?.dice;
-    case "attack.damage":
-      return ctx.attack?.damage;
-    case "attack.hit":
-      return ctx.attack?.hit;
-    case "attack.avoided":
-      return ctx.attack?.avoided;
-    case "attack.isCounter":
-      return ctx.attack?.isCounter;
-
-    case "self.nextAttackATPlus":
-      return ctx.actor?.nextAttackATPlus ?? 0;
-
-    case "self.hpPct": {
-      const hp = ctx.actor?.hp;
-      const max = ctx.actor?.maxHP;
-      if (
-        typeof hp !== "number" ||
-        typeof max !== "number" ||
-        max <= 0
-      )
-        return undefined;
-      return hp / max;
-    }
-
-    case "enemy.hpPct": {
-      const hp = ctx.enemy?.hp;
-      const max = ctx.enemy?.maxHP;
-      if (
-        typeof hp !== "number" ||
-        typeof max !== "number" ||
-        max <= 0
-      )
-        return undefined;
-      return hp / max;
-    }
-    case "turn":
-      return ctx.turn;
-
-    case "dice":
-      return ctx.diceValue;
-
-    default:
-      return undefined;
-  }
+  return (ctx) => evaluateCondition(spec, ctx);
 }
 
 // =========================
