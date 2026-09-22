@@ -44,6 +44,43 @@ test("1〜4件、0/5件拒否、重複benefitの枠コスト", () => {
     if(count===0||count===5) assert.ok(r.errors.some(e=>e.code==="EFFECT_COUNT"));
   }
 });
+test("diceOnly同一effectだけ重複不可", () => {
+  for (const effect of catalog.effects.filter(item => item.categoryId === "diceOnly")) {
+    assert.equal(effect.allowDuplicate, false, effect.id);
+    const frame = effect.exactFace <= 4 ? "light" : "heavy";
+    const item = chosen(effect.id, effect.requiresAmount ? 1 : undefined);
+    const result = calc(selection([item, item], `exact:${effect.exactFace}`), build(undefined, frame));
+    assert.equal(result.complete, false, effect.id);
+    assert.equal(result.ready, false, effect.id);
+    assert.deepEqual(result.errors.filter(error => error.code === "DUPLICATE_EFFECT").map(error => error.path),
+      ["effects.1.effectId"], effect.id);
+    assert.equal(compile(selection([item, item], `exact:${effect.exactFace}`), build(undefined, frame)).ok, false, effect.id);
+  }
+});
+test("異なるdiceOnly effectはtrusted条件が両方成立すれば併用可能", () => {
+  const trustedCatalog = createADevCatalog();
+  trustedCatalog.effects.find(item => item.id === "cancel-dice3-heal").exactFace = 1;
+  const result = compileASkill(build(), selection([
+    chosen("cancel-dice1-ap"), chosen("cancel-dice3-heal"),
+  ], "exact:1"), { catalog: trustedCatalog });
+  assert.equal(result.ok, true);
+  assert.equal(result.resources.errors.some(error => error.code === "DUPLICATE_EFFECT"), false);
+  assert.deepEqual(result.skill.effect.map(effect => effect.key), ["skipDice1", "skipDice3"]);
+});
+test("diceOnly以外は同一effectを引き続き重複可能", () => {
+  const repeatable = [
+    ["damage-enemy", 5], ["heal-self", 5], ["ap-self-increase", 1],
+    ["grant-focus-self", 1], ["remove-crack-self", undefined],
+    ["next-at-self-increase", 1], ["phase-at-self-increase", 1],
+    ["increase-attacks", 1], ["additional-recoil", 2],
+  ];
+  for (const [effectId, amount] of repeatable) {
+    const item = chosen(effectId, amount);
+    const result = calc(selection([item, item]));
+    assert.equal(result.errors.some(error => error.code === "DUPLICATE_EFFECT"), false, effectId);
+    assert.equal(result.complete, true, effectId);
+  }
+});
 test("benefit +2/+1 drawback -1ではslot=1、数量別還元と重複drawback", () => {
   const r=calc(selection([chosen("damage-enemy",10),chosen("heal-self",5),chosen("damage-self",5)]));
   assert.equal(r.benefitCount,2); assert.equal(r.drawbackCount,1); assert.equal(r.benefitSlotCost,1);

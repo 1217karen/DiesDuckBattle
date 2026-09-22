@@ -13,7 +13,7 @@ export function createASkillCatalog() {
   const effects = [];
   const add = (id, categoryId, label, target, drawback, semantics, extra = {}) => effects.push({
     id, categoryId, label, targetId: target, polarity: drawback ? "drawback" : "benefit",
-    requiresAmount: true, amountOptions: [], pointCost: null,
+    requiresAmount: true, allowDuplicate: true, amountOptions: [], pointCost: null,
     drawbackPoints: drawback ? null : 0, semantics: { ...semantics, target }, ...extra,
   });
   const change = (key, sign = 1) => ({ type: "changeValue", key, op: "add", sign });
@@ -56,10 +56,13 @@ export function createASkillCatalog() {
     [1, "cancel-dice1-ap", "AP+1キャンセル"], [3, "cancel-dice3-heal", "HP回復キャンセル"],
     [4, "cancel-dice4-counter", "反撃+1キャンセル"], [5, "cancel-dice5-ap", "相手AP-1キャンセル"],
   ]) add(id, "diceOnly", `[出目${face}] ${label}`, "self", true,
-    { type: "changeValue", key: `skipDice${face}`, op: "set", value: 1 }, { exactFace: face, requiresAmount: false });
+    { type: "changeValue", key: `skipDice${face}`, op: "set", value: 1 },
+    { exactFace: face, requiresAmount: false, allowDuplicate: false });
   add("reduce-dice2-attacks", "diceOnly", "[出目2] 通常攻撃2回→1回", "self", true,
-    { ...change("attackTimesAdd"), value: -1 }, { exactFace: 2, requiresAmount: false });
-  add("reduce-dice6-recoil", "diceOnly", "[出目6] 反動軽減", "self", false, change("recoilMinus"), { exactFace: 6 });
+    { ...change("attackTimesAdd"), value: -1 },
+    { exactFace: 2, requiresAmount: false, allowDuplicate: false });
+  add("reduce-dice6-recoil", "diceOnly", "[出目6] 反動軽減", "self", false, change("recoilMinus"),
+    { exactFace: 6, allowDuplicate: false });
   return {
     categories, effects, statuses, basePoints: 3, maxEffects: 4,
     targets: [{ id: "self", label: "自分" }, { id: "enemy", label: "相手" }],

@@ -61,12 +61,19 @@ export function calculateASkillResources(build, selection, {
     if (!Array.isArray(selection.effects)) error("INVALID_EFFECTS", "effects", "効果配列が必要です。");
     else {
       if (effectCount < 1 || effectCount > catalog.maxEffects) error("EFFECT_COUNT", "effects", `1～${catalog.maxEffects}effectが必要です。`);
+      const selectedEffectCounts = new Map();
       for (const [index, chosen] of selection.effects.entries()) {
         const path = `effects.${index}`;
         if (!record(chosen)) { error("INVALID_EFFECT", path, "効果IDが必要です。"); continue; }
         keys(chosen, ["effectId", "amountOptionId", "chanceOptionId"], path);
         const definition = catalog.effects.find(item => item.id === chosen.effectId);
         if (!definition) { error("UNKNOWN_EFFECT", path, "未公開のA効果です。"); continue; }
+        if (typeof definition.allowDuplicate !== "boolean") throw new TypeError("Invalid A duplicate rule");
+        const selectedCount = (selectedEffectCounts.get(definition.id) ?? 0) + 1;
+        selectedEffectCounts.set(definition.id, selectedCount);
+        if (!definition.allowDuplicate && selectedCount > 1) {
+          error("DUPLICATE_EFFECT", `${path}.effectId`, "このA効果は同一スキル内で複数回選択できません。");
+        }
         const benefit = definition.polarity === "benefit";
         if (!benefit && definition.polarity !== "drawback") throw new TypeError("Invalid A polarity");
         if (benefit) benefitCount++; else drawbackCount++;

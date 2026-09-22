@@ -5,7 +5,8 @@
 
 1. 素体と初期6枠を選ぶ。基礎3ptと共通dice資源を表示する。
 2. triggerを選ぶ。rangeは0を含まない。専用effectはexact一致のみ選択可能。
-3. 1～4effectを上から実行順に選ぶ。重複・相殺可能。↑↓で順序を変える。
+3. 1～4effectを上から実行順に選ぶ。原則として重複・相殺可能だが、同一の出目固有effectは
+   catalogのtrusted設定により重複不可。↑↓で順序を変える。
 4. 「開発用の仮効果量・仮価格を使う」をONにすると独立fixtureの数量候補が使える。
    benefitは100/50/25/10%を選べる。drawbackは100%固定。
 5. ポイント内訳、frequencyCount/rank、effect/benefit/drawback数、benefitSlotCost、
