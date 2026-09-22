@@ -1,0 +1,11 @@
+/* A/C開発ページと同じ基礎スタイルを再利用。 */
+@import url("./c-skill-test.css");
+#choices label { display: flex; flex-direction: column; align-items: stretch; margin: 0 0 16px; }
+#choices select { width: 100%; }
+.status-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.status-grid fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.status-grid label { display: flex; justify-content: space-between; }
+#summary { grid-template-columns: 90px minmax(0, 1fr); }
+#summary dd { text-align: left; }
+td pre { max-height: 260px; }
+@media (max-width: 650px) { .status-grid { grid-template-columns: 1fr; } }

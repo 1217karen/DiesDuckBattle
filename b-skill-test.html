@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bスキル実戦確認・開発ページ</title>
+  <link rel="stylesheet" href="css/b-skill-test.css">
+</head>
+<body>
+  <header>
+    <p>DIES DUCK BATTLE / DEVELOPMENT</p><h1>Bスキル実戦確認</h1>
+    <nav aria-label="開発ページ"><a href="a-skill-test.html">A確認ページ</a> / <a href="b-skill-test.html" aria-current="page">B確認ページ</a> / <a href="c-skill-test.html">C確認ページ</a></nav>
+    <p>catalog → selection DTO → validate / compile → P1へ装備 → battleEngine → 戦闘ログ</p>
+    <p class="notice">開発専用です。本番登録画面ではありません。操作・結果は保存しません。fixtureの値は開発確認用でありゲームバランス仕様ではありません。</p>
+    <fieldset><legend>Bタイプ</legend>
+      <label><input type="radio" name="b-type" value="event" checked> トリガー型</label>
+      <label><input type="radio" name="b-type" value="trait"> 特性型</label>
+    </fieldset>
+    <label><input id="fixture" type="checkbox"> 開発用fixtureを使用する</label>
+    <p id="catalog-note" role="status"></p>
+  </header>
+  <main>
+    <section><h2>1. Bを選択</h2><div id="choices"></div></section>
+    <aside><h2>選択内容・現在の値</h2><dl id="summary"></dl><h3>数値設定</h3><dl id="tuning"></dl><p id="selection-note"></p></aside>
+    <section class="wide"><h2>2. 現在の入力とcompile結果（読取専用）</h2>
+      <p id="compile-status" role="status"></p>
+      <div class="debug-grid">
+        <div><h3>selection DTO</h3><pre id="selection"></pre></div>
+        <div><h3>validation / errors / unresolved</h3><pre id="validation"></pre></div>
+        <div><h3>compiled bSkills</h3><pre id="compiled"></pre></div>
+      </div>
+    </section>
+    <section class="wide"><h2>3. 開発battle設定</h2>
+      <p>最大HP1000・フィールドなし。P1のみ選択Bを装備、P2はBなしdummyです。開始値は両者それぞれのDで設定し、ターン開始時のAP増加・status処理は通常どおり進みます。以下の値はB selectionに入りません。</p>
+      <form id="battle-form">
+        <div id="settings" class="settings"></div>
+        <div id="status-settings" class="status-grid"></div>
+        <fieldset><legend>回復時Bの確認</legend>
+          <label><input id="dev-heal" type="checkbox"> P1の最初のフェイズ開始時に開発用回復を発生（ターン1・1回のみ）</label>
+          <label>回復対象 <select id="heal-target"><option value="self">P1</option><option value="enemy">P2</option></select></label>
+          <label>回復量 <input id="heal-amount" type="number" min="0" max="1000" step="1" value="30" required></label>
+          <p>両者の初期化後に実行します。相手を回復してもP1の「回復時」Bが発動します。満タンで実回復量が0なら新版Bは発動しません。</p>
+        </fieldset>
+        <button id="battle" type="submit" disabled>戦闘する</button><p id="battle-blocker" role="status"></p>
+      </form>
+    </section>
+    <section class="wide"><h2>4. 実行結果・戦闘ログ</h2>
+      <p id="battle-message" role="status">未実行</p><h3>result / P1・P2最終状態</h3><pre id="final-state">未実行</pre>
+      <label><input id="important-only" type="checkbox" checked> 主要イベントのみ表示</label>
+      <div class="table-wrap"><table><thead><tr><th>turn</th><th>phase</th><th>actor</th><th>type</th><th>主な内容 / raw JSON</th></tr></thead><tbody id="events"></tbody></table></div>
+      <details><summary>戦闘全体のraw JSON（実行時のselection・設定・compile結果・ログ）</summary><pre id="battle-json">未実行</pre></details>
+    </section>
+  </main>
+  <p id="startup" role="alert">読み込み中。表示が変わらない場合はローカルHTTPサーバー経由で開いてください。</p>
+  <noscript>JavaScriptが必要です。</noscript><script type="module" src="js/bSkillTestPage.js"></script>
+</body>
+</html>

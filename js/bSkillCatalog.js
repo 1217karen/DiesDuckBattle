@@ -27,7 +27,8 @@ export function createBSkillCatalog() {
       Object.values(value).forEach(scan);
     };
     scan(rules);
-    return { ...identity, optionAxes, tuning, tuningKinds, semantics: { rules } };
+    return { ...identity, optionAxes, tuning, tuningKinds,
+      tuningLabels: Object.fromEntries(Object.keys(tuning).map(key => [key, B_TUNING_LABELS[key]])), semantics: { rules } };
   }
   const add = (triggerId, conditionId, effectId, when, effect) => events.push(definition({
     id: `${triggerId}/${conditionId}/${effectId}`, triggerId, conditionId, effectId,
@@ -108,6 +109,73 @@ export function createBSkillCatalog() {
   for (const direction of ["up", "down"]) trait(`damage-both-${direction}`, [
     multiplier("beforeAttack", n("outgoing", "nonnegative")), multiplier("beforeTakeDamage", n("incoming", "nonnegative")),
   ]);
+  for (const event of events) {
+    event.triggerLabel = triggers.find(t => t.id === event.triggerId).label;
+    event.conditionLabel = conditionLabel(event);
+    event.effectLabel = effectLabel(event);
+  }
+  for (const item of traits) item.label = traitLabel(item.id);
   return { triggers, events, traits, optionSets: Object.fromEntries(["buff", "debuff"].map(group =>
-    [group, STATUS_GROUPS[group].map(id => ({ id, value: id }))])) };
+    [group, STATUS_GROUPS[group].map(id => ({ id, value: id, label: B_STATUS_LABELS[id] ?? id }))])) };
+}
+
+// 表示metadataのみ。合法な組み合わせ・semantics・数値は上の完成optionがSSOT。
+const B_STATUS_LABELS = { crack: "亀裂", Headwind: "向かい風", roughWave: "荒波", tailwind: "追風",
+  focus: "集中", counter: "反撃", clean: "清潔", steam: "湯気" };
+const B_TUNING_LABELS = { stacks: "付与stack数", repeat: "ランダム1stack解除の回数", amount: "効果量",
+  chance: "発動確率（0～1）", threshold: "条件の閾値", hpThreshold: "HP割合の閾値（0～1）",
+  hpCostPct: "最大HP消費率（0～1）", apCost: "消費AP", healCap: "回復上限", perStack: "1stackあたり回復量",
+  AT: "AT補正", DF: "DF補正", scale: "APへの係数", min: "補正下限", max: "補正上限",
+  low: "倍率下限", high: "倍率上限", outgoing: "与通常ダメージ倍率", incoming: "被通常ダメージ倍率" };
+function conditionLabel({ conditionId: id, triggerId }) {
+  if (id === "damage-medium" || id === "damage-high")
+    return `${triggerId === "after-hit" ? "与えた" : "受けた"}ダメージが${id === "damage-medium" ? "中" : "高"}閾値以上`;
+  return { always: "常に", "first-action": "そのターン最初の自分のフェイズ", counter: "反撃由来なら",
+    "self-has-debuff": "自分に異常が1stack以上ある", "enemy-has-debuff": "相手に異常が1stack以上ある",
+    "self-debuff-total": "自分の異常総stackが閾値以上", "hp-medium": "回復後も対象HPが中割合以下",
+    "hp-low": "回復後も対象HPが低割合以下", "hp-high": "自分のHPが一定割合以上" }[id];
+}
+function effectLabel({ effectId: id, triggerId, conditionId }) {
+  if (triggerId === "phase-start") return {
+    "both-buff": "自分と相手にランダム強化", "both-debuff": "相手と自分にランダム異常",
+    "self-buff-debuff": "自分にランダム強化と異常", "chance-enemy-debuff": "一定確率で相手にランダム異常",
+    "chance-self-buff": "一定確率で自分にランダム強化", "self-buff": "自分にランダム強化",
+    "enemy-debuff": "相手にランダム異常", "chance-strong-self-buff": "一定確率で自分に強めのランダム強化",
+    "chance-strong-enemy-debuff": "一定確率で相手に強めのランダム異常",
+  }[id];
+  const text = { "attack-at-up": "今回の通常攻撃ATを増加", "attack-at-by-debuff": "自分の異常総stack数ぶん今回の通常攻撃ATを増加",
+    "enemy-debuff": "相手に指定異常を付与", "self-buff": "自分に指定強化を付与",
+    "enemy-buff-remove": "相手の付与中強化をランダムに1stackずつ解除", "enemy-next-at-down": "相手の次回通常攻撃ATを減少",
+    "self-next-at-up": "自分の次回通常攻撃ATを増加", "heal-by-ap": "自分の現在APぶんHP回復",
+    "ap-cost-heal": "必要APを所持していれば、AP消費後にHP回復", "damage-by-enemy-ap": "相手の現在APぶん固定ダメージ",
+    "target-buff": "回復対象に指定強化を付与", "target-debuff-remove": "回復対象の付与中異常をランダムに1stackずつ解除",
+    "target-next-at-up": "回復対象の次回通常攻撃ATを増加", "target-heal": "回復対象を追加で固定値回復（再発火なし）",
+    "target-ap-up": "回復対象のAPを増加", emergency: "緊急回復：対象のランダム異常解除＋指定強化付与",
+    "heal-by-buff": "自分の強化総stack数に応じてHP回復", "ap-up": "自分のAPを増加",
+    "self-debuff-remove": "自分の付与中異常をランダムに1stackずつ解除" }[id];
+  return triggerId === "phase-end" && conditionId === "hp-high" ? `最大HP割合コストを払い、${text}`
+    : triggerId === "after-take-hit" && conditionId === "always" ? `${text}（+1stack）` : text;
+}
+function traitLabel(id) {
+  for (const [level, label] of [["high", "HP一定以上"], ["low", "HP一定以下"]]) {
+    for (const [suffix, effect] of [["at", "AT補正"], ["df", "DF補正"], ["at-df", "AT・DF補正"], ["extra-attack", "通常攻撃回数+1"]])
+      if (id === `hp-${level}-${suffix}`) return `${label}なら${effect}`;
+  }
+  return { "ap-at": "現在APに比例したAT補正", "ap-df": "現在APに比例したDF補正",
+    "outgoing-random": "与通常ダメージがランダム倍率", "incoming-random": "被通常ダメージがランダム倍率",
+    "damage-both-up": "与通常ダメージ増加＋被通常ダメージ増加", "damage-both-down": "与通常ダメージ減少＋被通常ダメージ減少" }[id];
+}
+
+export function getBTriggerOptions(catalog = createBSkillCatalog()) { return catalog.triggers; }
+export function getBConditionOptions(triggerId, catalog = createBSkillCatalog()) {
+  return [...new Map(catalog.events.filter(e => e.triggerId === triggerId)
+    .map(e => [e.conditionId, { id: e.conditionId, label: e.conditionLabel }])).values()];
+}
+export function getBEffectOptions(triggerId, conditionId, catalog = createBSkillCatalog()) {
+  return catalog.events.filter(e => e.triggerId === triggerId && e.conditionId === conditionId);
+}
+export function getBTraitOptions(catalog = createBSkillCatalog()) { return catalog.traits; }
+export function getBSelectionDefinition(selection, catalog = createBSkillCatalog()) {
+  return selection?.type === "trait" ? catalog.traits.find(t => t.id === selection.traitId)
+    : selection?.type === "event" ? getBEffectOptions(selection.triggerId, selection.conditionId, catalog).find(e => e.effectId === selection.effectId) : undefined;
 }
