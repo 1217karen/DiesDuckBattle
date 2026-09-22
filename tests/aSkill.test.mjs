@@ -177,13 +177,14 @@ test("raw effect/value/target/status/cost/chanceなど未知field拒否", () => 
 test("不正初期diceはcompile不可（Dの追加とは別）", () => {
   for(const dice of [[0], [0,0,0,0,0,0,0], [0,0,1,2,3,5], [0,0,1,1,1,1], [1,1,1,2,3,4], [0,0,0,0,0,NaN]]) assert.equal(compile(selection(),build(dice)).ok,false);
 });
-test("production未確定はnull、fixtureは本番を汚染しない", () => {
+test("production balance v0をfixtureは汚染しない、trusted未確定価格の扱いも維持", () => {
   const prod=createASkillCatalog(), before=structuredClone(prod); createADevCatalog();
   assert.deepEqual(createASkillCatalog(),before);
-  assert.ok(prod.effects.every(e=>e.amountOptions.length===0 && e.pointCost===null));
+  assert.ok(prod.effects.every(e=>e.pointCost!==null && e.drawbackPoints!==null));
+  // dev-* IDはproductionで受け付けない。
   assert.equal(compile(selection(),build(),prod).ok,false);
   const r=calc(selection([chosen("cancel-self-attack")]),build(),prod);
-  assert.equal(r.drawbackPoints,null); assert.ok(r.unresolved.length);
+  assert.equal(r.drawbackPoints,1); assert.equal(r.complete,true); assert.deepEqual(r.unresolved,[]);
   const c=createADevCatalog(); c.chanceOptions.find(x=>x.id==="50").discount=null;
   const pending=calc(selection([chosen("damage-enemy",5,"50"),chosen("heal-self",5)]),build(),c);
   assert.equal(pending.effectCost,null); assert.equal(pending.knownEffectCost,1); assert.equal(pending.remaining,null);

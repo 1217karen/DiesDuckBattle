@@ -7,7 +7,8 @@
 2. triggerを選ぶ。rangeは0を含まない。専用effectはexact一致のみ選択可能。
 3. 1～4effectを上から実行順に選ぶ。原則として重複・相殺可能だが、同一の出目固有effectと
    通常攻撃キャンセルはcatalogのtrusted設定により重複不可。↑↓で順序を変える。
-4. 「開発用の仮効果量・仮価格を使う」をONにすると独立fixtureの数量候補が使える。
+4. 初期状態はproductionのbalance v0。数量を選べば価格未確定なしで見積・compileできる。
+   「開発用の仮効果量・仮価格を使う」をONにすると独立fixtureの数量候補が使える。
    benefitは100/50/25/10%を選べる。drawbackは100%固定。
 5. ポイント内訳、frequencyCount/rank、effect/benefit/drawback数、benefitSlotCost、
    本体価格・適用chance割引・還元・net/remaining、errors/unresolvedを確認する。
@@ -19,7 +20,7 @@
    ログはbattle.eventsのJSON。A発動・chance・status・通常攻撃・出目固有・反動を確認できる。
    選択を変更すると旧ログ表示を消す。乱数は毎回独立で、選んだ条件が出ない場合もある。
 
-productionの数量・価格・還元・100%以外のchance価格補正は未確定。
+productionの数量・価格・還元・chance割引はbalance v0で確定済み。fixtureには依存しない。
 fixtureのfixedDamage/heal 5/10/20、AP/status/AT/DF 1/2/3、攻撃回数+1/+2、
 追加反動2/3/4/5、chance割引0/1/2/3等は開発専用でゲームバランス仕様ではない。
 production catalogを書き換えたり保存したりしない。

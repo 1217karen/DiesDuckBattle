@@ -23,13 +23,13 @@ build全体の合法性は判定しない。ダイス資源はcalculateBuildReso
 const selection = {
   triggerId: "gte:3",
   effects: [
-    { effectId: "heal-self", amountOptionId: "dev-5", chanceOptionId: "50" },
-    { effectId: "grant-clean-enemy", amountOptionId: "dev-1" },
+    { effectId: "heal-self", amountOptionId: "amount-5", chanceOptionId: "50" },
+    { effectId: "grant-clean-enemy", amountOptionId: "amount-1" },
   ],
 };
 ```
 
-`dev-*`は開発fixture専用ID。本番の数量候補はまだ空。
+`amount-*`はproduction catalogが定義する数量ID。`dev-*`は開発fixture専用ID。
 DTOはtriggerIdとeffectsの配列のみ。各行はeffectId、amountOptionId、chanceOptionIdのみ。
 未知field、raw effect、target/status/direction/value/amount/cost/chance数値/duration/type/key/opを拒否する。
 compilerはID文字列を解釈してeffectを生成せず、catalogのsemanticsから生成する。
@@ -105,12 +105,12 @@ compilerは未完了・errors・数量未選択・未確定価格・予算不足
 | 指定status 1stack解除 | 自分debuff、相手buff | 自分buff、相手debuff |
 | 次回通常攻撃AT | 自分+、相手− | 自分−、相手+ |
 | 現在phase補正 | 自分AT+、相手DF− | 自分AT−、相手DF+ |
-| 通常攻撃回数 | 全triggerで+N | キャンセル、exact:2で−1 |
+| 通常攻撃回数 | 全triggerで+1 | キャンセル、exact:2で−1 |
 | 反動 | exact:6の既存反動軽減 | 全triggerで追加反動 |
 | 出目固有キャンセル | — | exact:1/3/4/5でAP+1/回復/反撃+1/相手AP−1をskip |
 
 指定解除はchangeStatus op:add value:-1を使用し、既存の0 clampに従う。
-randomは@buff/@debuffで1種類付与。指定付与と同じ仮価格で、ランダム割引はない。
+randomは@buff/@debuffで1種類付与。指定付与と同じ価格で、ランダム割引はない。
 phase補正はaddBuff duration:{kind:"phase"}。次phaseへ持ち越さない。
 attackTimesOverride/attackTimesAddは既存engineの上書き値＋加算値の合成に従う。
 キャンセルと回数加算の相殺も許可する。
@@ -129,12 +129,29 @@ status全stack/group/ランダム解除・任意の生effectは公開しない�
   旧出目6は連続行動命中率判定前にhadNonMissAttackを立てるため、その従来挙動を保持し、
   新追加反動だけ別フラグで連続行動MISSも除外する。recoilMinusは追加反動には効かない。
 
-## 未確定と検証
+## balance v0と検証
 
-productionの数量option・effect価格・drawback還元・chance価格補正は未確定。
-100%の割引0だけは補正なしとして定義。還元上限maxDrawbackPointsはnullの拡張口で未適用。
-frequencyの価格への利用、0/6のrankは今後決定する。
+production自身に以下を定義する。同系統のbenefit消費とdrawback還元は同じpt絶対値。
+
+| 効果 | 数量 → pt |
+| --- | --- |
+| 固定ダメージ | 3 → 2、5 → 3 |
+| 固定回復 | 5 → 2、10 → 4 |
+| AP | 1 → 2、2 → 4 |
+| 指定/ランダムstatus付与（全status共通） | 1 → 1、2 → 2、3 → 3 |
+| 指定status 1stack解除 | 数量選択なし、1pt |
+| 次回通常攻撃AT / 現在phase AT・DF | 2 → 1、3 → 2、5 → 3 |
+| 通常攻撃回数追加（benefitのみ） | +1 → 4 |
+| 追加反動（drawbackのみ） | 2 → 1、4 → 2 |
+| 通常攻撃キャンセル（drawback） | 数量選択なし、1pt還元 |
+| 出目1～5専用drawback | 数量選択なし、各2pt還元 |
+| 出目6反動軽減（benefit） | 3 → 2 |
+
+成功率100/50/25/10%の割引は0/1/2/3pt。本体価格の下限は0で、追加枠コストは別計算。
+drawbackは100%固定。還元は全件合計し、総上限を設けない（maxDrawbackPointsはnull・未使用）。
+初期dice以外をA作成へ参照せず、Dによる候補・頻度・pt・合法性の変更はない。
+初期0/6のfrequencyRankは従来どおりnullで、価格未確定を意味しない。
 `createADevCatalog()`の数値は開発確認用でゲームバランス仕様ではない。
 
-対象テスト：`node --test tests/aSkill.test.mjs tests/aSkillEngine.test.mjs`。
+対象テスト：`node --test tests/aSkillBalance.test.mjs tests/aSkill.test.mjs tests/aSkillEngine.test.mjs`。
 engine近傍の互換確認：`tests/triggers.test.mjs`、`tests/buffDuration.test.mjs`。

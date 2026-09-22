@@ -1,7 +1,7 @@
 import { getDiceFrame } from "./diceFrames.js";
 import { STATUS_GROUPS } from "./statusGroups.js";
 
-// 信頼済み運営定義。数量/価格nullは未確定。各呼出しは独立した設定を返す。
+// 信頼済み運営定義（balance v0）。各呼出しは独立した設定を返す。
 export function createASkillCatalog() {
   const categories = [
     ["damage", "固定ダメージ"], ["healing", "固定HP回復"], ["ap", "AP操作"],
@@ -64,12 +64,38 @@ export function createASkillCatalog() {
     { exactFace: 2, requiresAmount: false, allowDuplicate: false });
   add("reduce-dice6-recoil", "diceOnly", "[出目6] 反動軽減", "self", false, change("recoilMinus"),
     { exactFace: 6, allowDuplicate: false });
+  // [効果量, pt絶対値]。反転効果・指定/ランダムstatusで同じ表を使用する。
+  // option IDはこのtrusted定義から作り、ユーザーのIDを数値として解釈しない。
+  const amounts = {
+    damage: [[3, 2], [5, 3]],
+    healing: [[5, 2], [10, 4]],
+    ap: [[1, 2], [2, 4]],
+    ailment: [[1, 1], [2, 2], [3, 3]],
+    enhancement: [[1, 1], [2, 2], [3, 3]],
+    nextAttack: [[2, 1], [3, 2], [5, 3]],
+    phase: [[2, 1], [3, 2], [5, 3]],
+    cancelAttack: [[1, 4]], // increase-attacksだけが数量を持つ。
+    recoil: [[2, 1], [4, 2]],
+    diceOnly: [[3, 2]], // reduce-dice6-recoilだけが数量を持つ。
+  };
+  const fixedPoints = { removeStatus: 1, cancelAttack: 1, diceOnly: 2 };
+  for (const effect of effects) {
+    const drawback = effect.polarity === "drawback";
+    const points = effect.requiresAmount ? 0 : fixedPoints[effect.categoryId];
+    effect.pointCost = drawback ? 0 : points;
+    effect.drawbackPoints = drawback ? points : 0;
+    if (effect.requiresAmount) effect.amountOptions = amounts[effect.categoryId].map(([value, points]) => ({
+      id: `amount-${value}`, label: String(value), value,
+      pointCost: drawback ? 0 : points,
+      drawbackPoints: drawback ? points : 0,
+    }));
+  }
   return {
     categories, effects, statuses, basePoints: 3, maxEffects: 4,
     targets: [{ id: "self", label: "自分" }, { id: "enemy", label: "相手" }],
     triggerCosts: { exact: 0, rangeByCount: { 1: 0, 2: 1, 3: 2 }, all: 2 },
-    chanceOptions: [100, 50, 25, 10].map(percent => ({ id: String(percent), label: `${percent}%`,
-      value: percent / 100, discount: percent === 100 ? 0 : null })),
+    chanceOptions: [[100, 0], [50, 1], [25, 2], [10, 3]].map(([percent, discount]) => ({ id: String(percent), label: `${percent}%`,
+      value: percent / 100, discount })),
     maxDrawbackPoints: null,
   };
 }

@@ -32,7 +32,7 @@ function option(id, label, disabled = false) {
 function labelled(text, control) { const label = element("label", text); label.append(control); return label; }
 function points(value, sign = "") { return value == null ? "未確定" : `${sign}${value}pt`; }
 function effectLabel(effect) {
-  return `${effect.label}（${effect.polarity === "drawback" ? `drawback 還元：${points(effect.drawbackPoints)}（数量別は計算内訳）` : "benefit"}）`;
+  return `${effect.label}（${effect.polarity === "drawback" ? (effect.requiresAmount ? "drawback 還元：数量別に表示" : `drawback 還元：${points(effect.drawbackPoints)}`) : "benefit"}）`;
 }
 function normalizeAmount(row) {
   const effect = catalog.effects.find(item => item.id === row.effectId);
@@ -194,7 +194,7 @@ $("fixture").addEventListener("change", () => {
   catalog = createPageCatalog($("fixture").checked);
   $("mode-note").textContent = $("fixture").checked
     ? "仮値モード ON：数量・価格・chance割引・還元は開発確認用で、ゲームバランス仕様ではありません。"
-    : "本番カタログ：効果量・価格は未設定です。";
+    : "本番カタログ：balance v0（効果量・価格・成功率割引は確定済み）。";
   renderInputs();
 });
 $("add-effect").addEventListener("click", () => {
