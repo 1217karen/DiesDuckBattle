@@ -230,6 +230,7 @@ const push = (type, actor = "system", extra = {}) => {
 
       // 荒波でキャンセル
       if (canceled) {
+        runTrigger(Triggers.phaseEnd, atk, def, makeCtx(state, rng, push, atk, def, getRules), getRules);
         expirePhaseBuffs(atk, push);
         expirePhaseBuffs(def, push);
         tickActionEndDecay(atk, push, preCtx);
@@ -606,15 +607,25 @@ function makeCtx(state, rng, pushRaw, actor = null, enemy = null, getRules) {
       heal: (selfF, amount, actorSide, extra = {}) => {
       extra = (extra && typeof extra === "object") ? extra : {};
 
+      const hpBefore = selfF.hp;
       heal(selfF, amount, ctx.push, actorSide, extra);
+      const healEvent = { target: selfF, requested: amount, actual: selfF.hp - hpBefore,
+        hpBefore, hpAfter: selfF.hp, hpPctAfter: selfF.maxHP > 0 ? selfF.hp / selfF.maxHP : undefined };
       refreshPassiveBonuses(ctx, ctx.actor);
       refreshPassiveBonuses(ctx, ctx.enemy);
 
       // 回復後トリガー（Bスキル用）
       const healAmt = Math.trunc(Number(amount ?? 0));
       if (healAmt > 0 && extra.source !== "afterHealBonus") {
+        const previousHeal = ctx.heal, previousAttack = ctx.attack;
+        ctx.heal = healEvent;
         ctx.attack = { kind: "heal", amount: healAmt, hit: true, avoided: false, isCounter: false, dice: null, damage: null };
-        runTrigger(Triggers.afterHeal, ctx.actor, ctx.enemy, ctx, getRules);
+        try {
+          runTrigger(Triggers.afterHeal, ctx.actor, ctx.enemy, ctx, getRules);
+        } finally {
+          ctx.heal = previousHeal;
+          ctx.attack = previousAttack;
+        }
       }
     },
       refreshPassives: () => {

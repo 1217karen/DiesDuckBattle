@@ -1,5 +1,4 @@
 import { evaluateCondition, readConditionValue } from "./conditionEvaluator.js";
-import { STATUS_GROUPS } from "./statusGroups.js";
 
 // 旧入力の解釈だけを分離。canonical評価に用途別のtrigger分岐を持ち込まない。
 export function normalizeBPassive(skill) {
@@ -25,8 +24,7 @@ export function readModifierSource(path, ctx) {
   if (typeof path !== "string") return undefined;
   const total = /^(self|enemy)\.statusTotal:(debuff|buff)$/.exec(path);
   if (total) {
-    const fighter = total[1] === "self" ? ctx.actor : ctx.enemy;
-    return STATUS_GROUPS[total[2]].reduce((sum, key) => sum + Number(fighter?.status?.[key] ?? 0), 0);
+    return readConditionValue(path, ctx);
   }
   if (/^(self|enemy)\.(ap|status:.+)$/.test(path)) return readConditionValue(path, ctx);
   return undefined;

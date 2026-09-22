@@ -29,8 +29,8 @@ battleStart trigger（P1 → P2）
     beforeStatus trigger
     状態処理（亀裂ダメージ → 荒波判定）
     afterStatus trigger
-    荒波でキャンセルなら両者のphase buff消去・亀裂自然減衰を行い次phaseへ
-      ※beforeRoll/C/roll/resolve/phaseEndはいずれも通らない
+    荒波でキャンセルならphaseEnd triggerを1回実行し、両者のphase buff消去・亀裂自然減衰を行い次phaseへ
+      ※beforeRoll/C/roll/resolveは通らない
     beforeRoll trigger
     現行の通常C自動発動（AP判定・消費は従来どおり）
     ダイス確定 → rollログ
@@ -92,6 +92,8 @@ turnEndで新たに付いたturnバフは、このターンのtickが既に完�
 
 afterHealはhelpers.healから呼ばれ、出目3やスキル回復等の途中で発火する。
 既存どおり要求回復量が正数かつsourceがafterHealBonusでない場合に発火し、実回復0でも発火し得る。
+新版Bはcompilerがheal.actual > 0を追加する。回復対象と回復量のsnapshotはctx.healに保持し、
+healTarget effectは実際に回復された対象へ作用する。詳細は[b-skill-building.md](b-skill-building.md)を参照。
 
 ## A移行とafterRoll互換性
 

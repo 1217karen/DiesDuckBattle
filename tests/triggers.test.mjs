@@ -70,7 +70,7 @@ for (const mode of ["miss", "avoid", "zero-attacks"]) {
     if (mode === "avoid") ordered(phase, [e => e.type === "attackAvoided", e => e.type === "recoil", isSkill("after")]);
   });
 }
-test("荒波キャンセル時はafterStatusまで、roll/resolve/phaseEndは発火しない", () => {
+test("荒波キャンセル時もafterStatus→phaseEndを通り、roll/resolveは発火しない", () => {
   const { events } = battle({ rng: () => 0, dEffect: status("roughWave"),
     bSkills: [skill("status", "afterStatus"), skill("roll", "afterRoll"),
       skill("before", "beforeDiceResolve"), skill("after", "afterDiceResolve"), skill("end", "phaseEnd")] });
@@ -78,7 +78,9 @@ test("荒波キャンセル時はafterStatusまで、roll/resolve/phaseEndは発
   assert.ok(phase.some(e => e.type === "actionCanceled" && e.reason === "roughWave"));
   assert.ok(phase.some(isSkill("status")));
   assert.equal(phase.some(e => e.type === "roll"), false);
-  for (const id of ["roll", "before", "after", "end"]) assert.equal(phase.some(isSkill(id)), false);
+  for (const id of ["roll", "before", "after"]) assert.equal(phase.some(isSkill(id)), false);
+  assert.equal(phase.filter(isSkill("end")).length, 1);
+  ordered(phase, [isSkill("status"), isSkill("end")]);
 });
 test("beforeTurnEnd→両者のbuff tick/expire→turnEnd→判定ログ、HP変化で勝敗決定", () => {
   const buff = { type: "addBuff", stat: "AT", amount: 1, turns: 1 };

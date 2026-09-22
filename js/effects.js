@@ -1,4 +1,4 @@
-import { evaluateCondition } from "./conditionEvaluator.js";
+import { evaluateCondition, readConditionValue } from "./conditionEvaluator.js";
 import { STATUS_GROUPS } from "./statusGroups.js";
 import { addTimedHitRule } from "./timedHitRules.js";
 
@@ -39,6 +39,7 @@ import { addTimedHitRule } from "./timedHitRules.js";
 //     ・byStatusCount: 状態数×n の固定ダメージ
 //     ・amountPct: 現在HPを基準にした割合ダメージ（切り捨て）
 //       ※ HP<=0 の場合は 0 ダメージ
+//     ・amountMaxHpPct: 最大HP基準の割合ダメージ（HPコスト用、切り捨て）
 //
 // - addBuff
 //     phase / turns:N の AT / DF バフ（旧turns形式、once/flagKeyも対応）
@@ -613,15 +614,18 @@ function effFixedDamage(eff, ctx, emit) {
       keys,
     };
   } else {
-    // amountPct（割合）
-    const pct = Number(eff.amountPct);
+    // amountPctは現在HP、amountMaxHpPctは最大HPを基準とする。
+    const isMaxHp = eff.amountMaxHpPct !== undefined;
+    const pct = Number(isMaxHp ? eff.amountMaxHpPct : eff.amountPct);
     if (!Number.isFinite(pct)) return;
 
-    const baseHp = Math.max(0, Math.trunc(Number(tgt.hp ?? 0))); // HP<=0なら0
+    const baseHp = isMaxHp ? Math.max(0, Number(tgt.maxHP ?? 0))
+      : Math.max(0, Math.trunc(Number(tgt.hp ?? 0)));
+    if (!Number.isFinite(baseHp)) return;
     const p = Math.max(0, pct); // マイナス割合は0扱い（＝ダメージ0）
 
     amount = Math.max(0, Math.floor(baseHp * p));
-    calc = { kind: "amountPct", base: "currentHp", baseHp, pct: p, round: "floor" };
+    calc = { kind: isMaxHp ? "amountMaxHpPct" : "amountPct", base: isMaxHp ? "maxHp" : "currentHp", baseHp, pct: p, round: "floor" };
   }
 
   // ターンに応じて固定ダメージを増やす（例：5ターン毎に+10）
@@ -967,6 +971,7 @@ function effChangeCooldown(eff, ctx, emit) {
    util
 ========================= */
 function pickTarget(target, ctx) {
+  if (target === "healTarget") return ctx.heal?.target;
   if (target === "self") return ctx.actor;
   if (target === "enemy") return ctx.enemy;
   return ctx.actor; // 省略や未知は selfでいい
@@ -1000,6 +1005,7 @@ function readValueNumber(value, ctx) {
 // - "self.hp" / "self.ap" / "enemy.hp" / "enemy.ap"
 // - "self.status:xxx" / "enemy.status:xxx"
 function readValuePath(path, ctx) {
+  if (/^(self|enemy)\.statusTotal:(buff|debuff)$/.test(path)) return readConditionValue(path, ctx);
   if (path.startsWith("self.status:")) {
     const k = path.slice("self.status:".length).trim();
     return Number(ctx?.actor?.status?.[k] ?? 0);

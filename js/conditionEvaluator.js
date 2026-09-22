@@ -1,3 +1,4 @@
+import { STATUS_GROUPS } from "./statusGroups.js";
 // Bのwhenと個別effect.whenが共有する条件DSL。状態を変更せず、発動やAP消費は行わない。
 // 既存仕様: null/undefinedはtrue、all優先、空all=true/空any=false。
 // == / != は厳密比較、大小比較はNumber変換。未知pathはundefinedのまま比較する。
@@ -25,6 +26,10 @@ export function evaluateCondition(spec, ctx) {
 export function readConditionValue(path, ctx) {
   if (typeof path !== "string") return undefined;
   for (const [side, fighter] of [["self", ctx?.actor], ["enemy", ctx?.enemy]]) {
+    for (const group of ["buff", "debuff"]) {
+      if (path === `${side}.statusTotal:${group}`)
+        return STATUS_GROUPS[group].reduce((sum, key) => sum + Number(fighter?.status?.[key] ?? 0), 0);
+    }
     for (const [prefix, values] of [
       ["status:", fighter?.status],
       ["cdTurn:", fighter?.cooldowns?.turn],
@@ -48,6 +53,11 @@ export function readConditionValue(path, ctx) {
     }
   }
   switch (path) {
+    case "heal.actual": return ctx?.heal?.actual;
+    case "heal.requested": return ctx?.heal?.requested;
+    case "heal.hpBefore": return ctx?.heal?.hpBefore;
+    case "heal.hpAfter": return ctx?.heal?.hpAfter;
+    case "heal.hpPctAfter": return ctx?.heal?.hpPctAfter;
     case "turn": return ctx?.turn;
     case "phase": return ctx?.phase;
     case "dice": return ctx?.diceValue;
