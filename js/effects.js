@@ -50,6 +50,8 @@ import { addTimedHitRule } from "./timedHitRules.js";
 //     旧hp/once復活、およびmaxHpPctによる最大HP割合復活
 // - clearStatus
 //     指定statusまたはgroupの全stackを決定的に解除
+// - removeRandomStatusStack
+//     指定groupの付与中statusからランダムに1種類選び、1stackだけ解除
 // - addTimedHitRule
 //     turns期間、通常攻撃命中処理後にchangeStatusを実行する内部ruleを付与
 //
@@ -129,6 +131,8 @@ export function applyEffect(effect, ctx) {
       return effRevive(effect, ctx, emit);
     case "clearStatus":
       return effClearStatus(effect, ctx, emit);
+    case "removeRandomStatusStack":
+      return effRemoveRandomStatusStack(effect, ctx, emit);
     case "addTimedHitRule":
       return addTimedHitRule(effect, ctx, emit);
     case "changeCooldown":
@@ -802,6 +806,36 @@ function effClearStatus(eff, ctx, emit) {
     emit("statusChange", ctx.actor?.side ?? "system", { code: "STATUS_CLEARED", target: tgt.side, status, before, after: 0, delta: -before });
   }
   ctx.helpers?.refreshPassives?.();
+}
+
+/* =========================
+   removeRandomStatusStack
+   target: "self" | "enemy"（省略 self）
+   group : "buff" | "debuff"
+   stack数では重み付けせず、付与中の種類から等確率で選ぶ。
+========================= */
+function effRemoveRandomStatusStack(eff, ctx, emit) {
+  const tgt = pickTarget(eff.target ?? "self", ctx);
+  if (!tgt) return;
+  if (eff.group !== "buff" && eff.group !== "debuff") return;
+
+  const candidates = STATUS_GROUPS[eff.group].filter(status => {
+    const stacks = Number(tgt.status?.[status] ?? 0);
+    return Number.isFinite(stacks) && stacks >= 1;
+  });
+  if (candidates.length === 0) return;
+
+  const rng = typeof ctx?.rng === "function" ? ctx.rng : Math.random;
+  const status = candidates[Math.floor(rng() * candidates.length)];
+  const before = Number(tgt.status[status]);
+  const after = Math.max(0, before - 1);
+  tgt.status[status] = after;
+  ctx.helpers?.refreshPassives?.();
+
+  emit("statusChange", ctx.actor?.side ?? "system", {
+    code: "RANDOM_STATUS_STACK_REMOVED", target: tgt.side, group: eff.group,
+    status, before, after, delta: after - before,
+  });
 }
 
 /*
