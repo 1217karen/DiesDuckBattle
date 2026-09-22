@@ -18,6 +18,7 @@ import { addTimedHitRule } from "./timedHitRules.js";
 //       nextAttackATPlus
 //       attackTimesOverride（null可）
 //       attackTimesAdd
+//       additionalRecoil / skipDice1,3,4,5（phase一時値）
 //       recoilMinus
 //
 // - changeStatus
@@ -1073,6 +1074,9 @@ function getValueByKey(f, key) {
         .reduce((total, b) => total + b.amount, 0);
     case "nextAttackATPlus":
       return Number(f.nextAttackATPlus ?? 0);
+    case "additionalRecoil":
+    case "skipDice1": case "skipDice3": case "skipDice4": case "skipDice5":
+      return Number(f.temp?.[key] ?? 0);
     case "recoilMinus":
       return Number(f.temp?.recoilMinus ?? 0);
 
@@ -1121,6 +1125,12 @@ function setValueByKey(f, key, value) {
     case "attackTimesAdd":
       f.temp = f.temp ?? {};
       f.temp.attackTimesAdd = value;
+      return;
+
+    case "additionalRecoil":
+    case "skipDice1": case "skipDice3": case "skipDice4": case "skipDice5":
+      f.temp = f.temp ?? {};
+      f.temp[key] = Math.max(0, Math.trunc(value));
       return;
 
     case "recoilMinus":

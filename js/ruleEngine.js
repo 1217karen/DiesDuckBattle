@@ -1,3 +1,4 @@
+import { matchesATrigger } from "./aSkillCatalog.js";
 // ruleEngine.js
 // スキル処理の責務（このファイルの範囲）
 // - Triggers 定義（文字列の列挙）
@@ -194,6 +195,7 @@ export function compileAllRulesForFighter(f) {
 ========================= */
 
 function matchDiceTrigger(trigger, diceValue) {
+  if (trigger && typeof trigger === "object") return matchesATrigger(trigger, diceValue);
   const t = String(trigger ?? "").trim();
   if (!t) return false;
   if (diceValue == null) return false;

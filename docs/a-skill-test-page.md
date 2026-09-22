@@ -1,53 +1,32 @@
-# Aスキル仕様確認用・開発ページ
+# A開発ページ
 
-本番のキャラ登録画面ではありません。保存、登録、戦闘適用、ビルド合法性判定は行いません。
+`node scripts/serve-a-skill-test.mjs` で起動し、http://127.0.0.1:4173/a-skill-test.html を開く。
+追加依存は不要。本番保存・キャラ登録は行わない。
 
-## 開き方
+1. 素体と初期6枠を選ぶ。基礎3ptと共通dice資源を表示する。
+2. triggerを選ぶ。rangeは0を含まない。専用effectはexact一致のみ選択可能。
+3. 1～4effectを上から実行順に選ぶ。重複・相殺可能。↑↓で順序を変える。
+4. 「開発用の仮効果量・仮価格を使う」をONにすると独立fixtureの数量候補が使える。
+   benefitは100/50/25/10%を選べる。drawbackは100%固定。
+5. ポイント内訳、frequencyCount/rank、effect/benefit/drawback数、benefitSlotCost、
+   本体価格・適用chance割引・還元・net/remaining、errors/unresolvedを確認する。
+   入力JSONにはselection DTOとeffect別明細を表示する。
+6. compiled trusted A欄でcanonical trigger/effectとcompile拒否理由を確認する。
+   不正・未確定・予算超過では戦闘ボタンを有効にしない。
+7. 戦闘を実行すると選択AをP1のduck.aSkillへ設定し、実際のrunBattleを3ターン実行する。
+   初期6枠を使用。P1/P2とも確認用AT3/DF3/SP1/HP1000、P2は出目1。
+   ログはbattle.eventsのJSON。A発動・chance・status・通常攻撃・出目固有・反動を確認できる。
+   選択を変更すると旧ログ表示を消す。乱数は毎回独立で、選んだ条件が出ない場合もある。
 
-ローカルリポジトリのルートで実行します（Node.jsのみ、追加依存なし）。
+productionの数量・価格・還元・100%以外のchance価格補正は未確定。
+fixtureのfixedDamage/heal 5/10/20、AP/status/AT/DF 1/2/3、攻撃回数+1/+2、
+追加反動2/3/4/5、chance割引0/1/2/3等は開発専用でゲームバランス仕様ではない。
+production catalogを書き換えたり保存したりしない。
 
-```powershell
-node scripts/serve-a-skill-test.mjs
-```
+0/6のfrequencyRankは未定義(null)。頻度による価格変更はない。
+A用の初期diceは検査するが、statsや他カテゴリを含むキャラ全体の合法性は判定しない。
+D追加出目・MISS・legacy互換などの決定的な確認はA対象テストで行う。
 
-[開発ページを開く](http://127.0.0.1:4173/a-skill-test.html)。停止は実行ターミナルでCtrl+C。
-サーバーは127.0.0.1だけで待ち受けます。4173番が使用中なら既存サーバーを確認してください。
-既存の静的HTTPサーバーでも利用可能です。ES Modulesを使うためHTMLの直接ダブルクリックではなくHTTP経由で開きます。
-
-## 操作
-
-1. 素体とダイス6枠を選びます。素体で使用不可になった出目は0に戻ります。
-2. 発動条件を選びます。候補とコストはAカタログAPIから取得します。
-3. 効果を追加し、カテゴリ・内容・数量を選びます。同一効果を複数追加できます。
-4. ポイント内訳、errors、unresolvedを確認します。
-
-通常は本番カタログのままなので、数量候補なし／価格未確定が表示されます。
-「開発用の仮効果量・仮価格を使う」をONにすると、ページ専用の独立カタログへ
-仮：小／中／大（検査値1／2／3、検査価格1／2／3pt）、数量不要効果の価格0ptを設定します。
-これは開発確認用・ゲーム仕様ではありません。ON時の数量は最初の候補を選びます。
-OFFへ戻すと仮数量IDを除き、本番カタログへ戻します。ファイルやブラウザストレージへ保存しません。
-
-専用効果は条件不一致でも候補から消えません。disabledで表示し、理由を行の下に表示します。
-既に選んだ効果が条件変更で使用不可になっても保持し、APIのエラーが確認できるようにしています。
-全候補が使用不可のカテゴリでは「効果を選択してください」を表示します。
-completeは計算完了であり保存可否ではありません。負の残りもそのまま表示します。
-未確定の合計は「未確定」、判明済み小計は別欄で確認できます。
-
-## 実装
-
-- a-skill-test.html：開発用ページの構造。
-- css/a-skill-test.css：このページのみの見た目。
-- js/aSkillTestPage.js：DOM操作と開発用fixture。ゲームの条件・価格算出を再実装しません。
-- scripts/serve-a-skill-test.mjs：ローカル専用の静的サーバー。
-
-素体出目はdiceFrames、枠数はbuildRulesから取得します。
-createASkillCatalog/getATriggerOptions/getAEffectOptions/getAEffectAvailabilityと
-calculateBuildResources/calculateASkillResourcesの返り値を表示します。
-AT/DFは開発確認用に各1、A選択は現行build.skillsとは別に保持します。
-
-## 確認済み操作
-
-ブラウザで初期未確定表示、fixture切替、ダイス3個積み、発動条件変更、
-同じ効果の追加、数量変更、カテゴリ変更、還元、負のremaining、
-専用効果のdisabled、条件不一致errors、素体変更の0復帰、効果削除を確認。
-既存テストは `node --test tests/*.test.mjs` で実行できます。
+主な実装：aSkillTestPage.js（UI）、aSkillDevFixtures.js（仮値）、
+aSkillTestHarness.js（compiler→battle）、aSkillCompiler.js（trusted変換）。
+仕様詳細は [A作成・compile](a-skill-building.md) を参照。

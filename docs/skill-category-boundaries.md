@@ -69,14 +69,14 @@ Aは、確定した出目に反応し、そのphaseの戦闘内容を変化さ�
 ```
 
 Aは出目の確定後、その出目による処理全体へ入る前に発動する。
-新版でA専用またはA中心として扱う候補は次のとおり。
+新版A catalog/compilerで公開する出目解決への介入は次のとおり。
 
 - 自分の通常攻撃キャンセル
 - 出目固有効果の抑制・変更
-- 出目2の攻撃回数変更
-- 出目6の反動変更
-- その他の出目解決へ直接干渉する効果
-- `duration: { kind: "phase" }`のAT/DF補正
+- 全triggerで通常攻撃回数+N、exact:2で攻撃回数−1
+- exact:6の反動軽減と、全triggerで攻撃成立phaseにつき1回の追加反動
+- exact:1/3/4/5の固有効果skip（逆effectでの相殺ではない）
+- `duration: { kind: "phase" }`の自分AT±・相手DF±補正
 
 phase補正は付与対象の次のphaseではなく、付与時点で進行中のphase終了まで有効である。
 旧AS15の「出目4の時、この攻撃フェイズ中相手DF-2」はこの用途に当たる。
@@ -86,6 +86,14 @@ Aでも共有候補として、小規模な固定ダメージ、HP回復、AP増
 状態強化付与、次回通常攻撃AT補正を利用できる。ただし公開する効果、値、対象、
 価格、drawbackはA catalogが決める。同じeffect typeをCでも使う場合に、
 AとCのamount optionや価格を共通にする必要はない。
+
+Aは1～4effect、基礎3pt＋共通dice資源、benefitだけ追加枠コスト+1pt。
+重複・相殺を許可し選択順を維持する。指定/ランダムstatus付与を公開するが、
+解除は指定statusの1stackだけ。Cの全stack/group解除は生成しない。
+benefitに個別chance 100/50/25/10%を選べ、drawbackの100%以外を拒否する。
+range triggerは0を除外し、allは0を含む。D追加出目にも条件の意味で一致する。
+初期6枠のfrequencyCount/rankを保持するが価格には使わない。
+production数量・価格・還元・chance補正は未確定、仮値は開発fixtureへ分離する。
 
 ## B：イベント反応と条件付き常時補正
 
@@ -230,7 +238,7 @@ validatorがIDと関係を検査し、compilerが許可済み定義だけを内�
 - `ruleEngine.js`のD compileは`battleStart`へ既存Dのeffectをそのまま渡し、`addDice`だけには制限しない。
 - B compileは既知triggerであればeffectとの組み合わせを限定しない。
 - C専用catalog/AP計算・selection用compiler・開発戦闘ページは実装済み。battleEngineはtrusted内部データを読み、generic buildCompilerと本番作成UIへの統合は未実装。[C作成基盤](c-skill-building.md)を参照。
-- 現在のA作成catalogには共有effect候補と出目専用候補があるが、phase AT/DF補正はまだ登録されていない。
+- A専用catalog/resource/compilerと開発戦闘ページは実装済み。phase自分AT±/相手DF±、指定1stack解除、random付与、出目skip、追加反動を含む。新版DTOの制約はlegacy Aへ適用しない。
 - 常時補正は`passive + modifier`のconditional/scaledへ共通化済み。旧passiveHp/passiveApは互換入口。
 - 現行エンジンはDによる追加値・重複数を新版D catalog相当のルールでは検査していない。
 
@@ -249,7 +257,7 @@ trigger別catalogを設計するときは、この時系列依存を明示的に
 - Cの数値option別AP価格と割合revive再抽選率（基本AP・発動窓等はC別紙で確定済み）
 - B常時modifierのbuilder公開候補・価格（engine評価・再評価は別紙に実装仕様を記載）
 - cooldownの再設計
-- buildCompiler、validator、catalog、UIの具体的実装
-- 各カテゴリの最大effect数
+- generic buildCompiler・本番登録UIとの統合（A/C専用の選択・compile・開発UIは実装済み）
+- B/Dの最大effect数（Aは1～4、Cは1～5で確定済み）
 
 これらの値や方式を未確定のまま保ち、今後それぞれの信頼済み設定と仕様で決定する。

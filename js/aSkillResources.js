@@ -1,27 +1,19 @@
 import { createBuildRules } from "./buildRules.js";
 import { calculateBuildResources } from "./buildResources.js";
-import { createASkillCatalog, getATriggerOptions, getAEffectAvailability } from "./aSkillCatalog.js";
+import { getDiceFrame } from "./diceFrames.js";
+import { createASkillCatalog, getATriggerOptions, getAEffectAvailability, matchesATrigger } from "./aSkillCatalog.js";
 
 const record = value => value !== null && typeof value === "object"
   && [Object.prototype, null].includes(Object.getPrototypeOf(value));
 
-/**
- * A専用選択DTO: { triggerId, effects: [{ effectId, amountOptionId? }] }
- * 既存validateBuildのskillsとは別。生effect/value/pointCostは受け付けない。
- * catalog/rulesは運営専用。amountOptionsは { id, label, value, pointCost }[]。
- * 数量不要の効果はeffect.pointCostを参照。未設定はnull、明示的0は無料。
- * completeは計算完了のみを表す。負残高でもcomplete:trueであり保存可否ではない。
- * 不正選択はerrors、未選択数量/未確定価格はunresolved。
- * 合計不明の欄はnull、判明済み小計はknownEffectCost/knownDrawbackPointsに残す。
- */
+// selectionはIDのみ。catalog/rulesは信頼済み運営設定。completeは見積完了、readyは予算内。
 export function calculateASkillResources(build, selection, {
   rules = createBuildRules(), catalog = createASkillCatalog(),
 } = {}) {
-  const errors = [];
-  const unresolved = [];
+  const errors = [], unresolved = [], effectBreakdown = [];
   const error = (code, path, message) => errors.push({ code, path, message });
   const pending = (code, path) => unresolved.push({ code, path });
-  const checkKeys = (value, allowed, path) => {
+  const keys = (value, allowed, path) => {
     for (const key of Object.keys(value)) if (!allowed.includes(key)) error("UNKNOWN_FIELD", `${path}.${key}`, "未対応の入力です。");
   };
   const price = (value, path) => {
@@ -29,78 +21,97 @@ export function calculateASkillResources(build, selection, {
     if (typeof value !== "number" || !Number.isFinite(value) || value < 0) throw new TypeError(`Invalid A price: ${path}`);
     return value;
   };
-  const sum = (...values) => {
+  const sum = values => {
     if (values.includes(null)) return null;
-    const total = values.reduce((a, b) => a + b, 0);
-    if (!Number.isFinite(total)) throw new TypeError("A resource arithmetic overflow");
-    return total;
+    const result = values.reduce((a, b) => a + b, 0);
+    if (!Number.isFinite(result)) throw new TypeError("A resource arithmetic overflow");
+    return result;
   };
-  const availableDicePoints = calculateBuildResources(build, rules).dice?.remaining ?? null;
-  if (availableDicePoints === null) error("INVALID_DICE_RESOURCES", "build.dice", "ダイス資源を計算できません。");
-  let triggerCost = null;
-  let effectsComplete = true;
-  let drawbacksComplete = true;
-  let knownEffectCost = 0;
-  let knownDrawbackPoints = 0;
-  const triggers = getATriggerOptions(build?.diceFrame, catalog);
-  if (!record(selection)) {
-    error("INVALID_SELECTION", "aSkill", "A選択データが必要です。");
-    effectsComplete = drawbacksComplete = false;
-  } else {
-    checkKeys(selection, ["triggerId", "effects"], "aSkill");
-    const trigger = triggers.find(item => item.id === selection.triggerId);
+  const basePoints = price(catalog.basePoints, "basePoints");
+  const dicePoints = calculateBuildResources(build, rules).dice?.remaining ?? null;
+  const frame = getDiceFrame(build?.diceFrame);
+  let validDice = !!frame && Array.isArray(build?.dice) && build.dice.length === rules.dice.slots && dicePoints !== null;
+  if (validDice) {
+    const counts = new Map();
+    for (const face of build.dice) {
+      if (!Number.isSafeInteger(face) || (face !== 0 && !frame.faces.includes(face))) validDice = false;
+      if (face !== 0) counts.set(face, (counts.get(face) ?? 0) + 1);
+    }
+    const max = build.dice.includes(0) ? rules.dice.maxSameFaceWithEmpty : rules.dice.maxSameFace;
+    if ([...counts.values()].some(count => count > max) || dicePoints < 0) validDice = false;
+  }
+  if (!validDice) error("INVALID_DICE_RESOURCES", "build.dice", "初期6枠・素体出目・重複数・ダイス資源を確認してください。");
+  const availablePoints = sum([basePoints, dicePoints]);
+  let triggerCost = null, frequencyCount = null, frequencyRank = null;
+  let benefitCount = 0, drawbackCount = 0;
+  const effectCount = Array.isArray(selection?.effects) ? selection.effects.length : 0;
+  if (!record(selection)) error("INVALID_SELECTION", "aSkill", "A選択データが必要です。");
+  else {
+    keys(selection, ["triggerId", "effects"], "aSkill");
+    const trigger = getATriggerOptions(build?.diceFrame, catalog).find(item => item.id === selection.triggerId);
     if (!trigger) error("INVALID_TRIGGER", "triggerId", "この素体では選べない発動条件です。");
-    else triggerCost = price(trigger.pointCost, "triggerCost");
-    if (!Array.isArray(selection.effects)) {
-      error("INVALID_EFFECTS", "effects", "効果の配列が必要です。");
-      effectsComplete = drawbacksComplete = false;
-    } else for (const [index, chosen] of selection.effects.entries()) {
-      const path = `effects.${index}`;
-      if (!record(chosen)) {
-        error("INVALID_EFFECT", path, "効果IDの選択が必要です。");
-        effectsComplete = drawbacksComplete = false; continue;
+    else {
+      triggerCost = price(trigger.pointCost, "triggerCost");
+      if (validDice) {
+        frequencyCount = build.dice.filter(face => matchesATrigger(trigger, face)).length;
+        // 初期0/6の条件も選択可（D追加後に成立し得る）。未定義のランクはnull。
+        frequencyRank = frequencyCount === 0 ? null : Math.ceil(frequencyCount / 2);
       }
-      checkKeys(chosen, ["effectId", "amountOptionId"], path);
-      const effect = typeof chosen.effectId === "string" && catalog.effects.find(item => item.id === chosen.effectId);
-      if (!effect) {
-        error("UNKNOWN_EFFECT", path, "未公開のA効果です。");
-        effectsComplete = drawbacksComplete = false; continue;
-      }
-      const availability = getAEffectAvailability(chosen.effectId, build?.diceFrame, selection.triggerId, catalog);
-      if (!availability.selectable) error(availability.reason.code, path, availability.reason.message);
-      const refund = price(effect.drawbackPoints, `${path}.drawbackPoints`);
-      if (refund === null) drawbacksComplete = false;
-      else knownDrawbackPoints = sum(knownDrawbackPoints, refund);
-      let cost = null;
-      if (effect.requiresAmount) {
-        if (!Object.hasOwn(chosen, "amountOptionId")) pending("AMOUNT_UNSELECTED", `${path}.amountOptionId`);
-        else {
-          const option = typeof chosen.amountOptionId === "string"
-            && effect.amountOptions.find(item => item.id === chosen.amountOptionId);
-          if (!option) error("UNKNOWN_AMOUNT_OPTION", `${path}.amountOptionId`, "この効果で選べない数量IDです。");
+    }
+    if (!Array.isArray(selection.effects)) error("INVALID_EFFECTS", "effects", "効果配列が必要です。");
+    else {
+      if (effectCount < 1 || effectCount > catalog.maxEffects) error("EFFECT_COUNT", "effects", `1～${catalog.maxEffects}effectが必要です。`);
+      for (const [index, chosen] of selection.effects.entries()) {
+        const path = `effects.${index}`;
+        if (!record(chosen)) { error("INVALID_EFFECT", path, "効果IDが必要です。"); continue; }
+        keys(chosen, ["effectId", "amountOptionId", "chanceOptionId"], path);
+        const definition = catalog.effects.find(item => item.id === chosen.effectId);
+        if (!definition) { error("UNKNOWN_EFFECT", path, "未公開のA効果です。"); continue; }
+        const benefit = definition.polarity === "benefit";
+        if (!benefit && definition.polarity !== "drawback") throw new TypeError("Invalid A polarity");
+        if (benefit) benefitCount++; else drawbackCount++;
+        const availability = getAEffectAvailability(definition.id, build?.diceFrame, selection.triggerId, catalog);
+        if (!availability.selectable) error(availability.reason.code, path, availability.reason.message);
+        const chanceId = Object.hasOwn(chosen, "chanceOptionId") ? chosen.chanceOptionId : "100";
+        const chance = catalog.chanceOptions.find(option => option.id === chanceId);
+        if (!chance) error("UNKNOWN_CHANCE_OPTION", `${path}.chanceOptionId`, "未登録の成功率IDです。");
+        if (!benefit && chanceId !== "100") error("DRAWBACK_CHANCE", `${path}.chanceOptionId`, "drawbackの成功率は変更できません。");
+        if (chance && (![1, .5, .25, .1].includes(chance.value) || (chanceId === "100" && chance.value !== 1))) throw new TypeError("Invalid A chance definition");
+        let option = null, selected = !definition.requiresAmount;
+        if (definition.requiresAmount) {
+          if (!Object.hasOwn(chosen, "amountOptionId")) pending("AMOUNT_UNSELECTED", `${path}.amountOptionId`);
           else {
-            if (typeof option.value !== "number" || !Number.isFinite(option.value)) throw new TypeError("Invalid A amount definition");
-            cost = price(option.pointCost, `${path}.pointCost`);
+            option = definition.amountOptions.find(item => item.id === chosen.amountOptionId);
+            if (!option) error("UNKNOWN_AMOUNT_OPTION", `${path}.amountOptionId`, "この効果で選べない数量IDです。");
+            else {
+              if (!Number.isSafeInteger(option.value) || option.value <= 0) throw new TypeError("Invalid A amount definition");
+              selected = true;
+            }
           }
-        }
-      } else {
-        if (Object.hasOwn(chosen, "amountOptionId")) error("UNEXPECTED_AMOUNT", path, "この効果は数量を指定できません。");
-        cost = price(effect.pointCost, `${path}.pointCost`);
+        } else if (Object.hasOwn(chosen, "amountOptionId")) error("UNEXPECTED_AMOUNT", path, "数量指定不可です。");
+        const baseEffectCost = benefit ? (selected ? price(option ? option.pointCost : definition.pointCost, `${path}.pointCost`) : null) : 0;
+        const chanceDiscount = benefit ? (chance ? price(chance.discount, `${path}.chanceDiscount`) : null) : 0;
+        const effectCost = baseEffectCost === null || chanceDiscount === null ? null : Math.max(0, baseEffectCost - chanceDiscount);
+        const appliedChanceDiscount = effectCost === null ? null : baseEffectCost - effectCost;
+        const drawbackPoints = benefit ? 0 : (selected ? price(option && Object.hasOwn(option, "drawbackPoints") ? option.drawbackPoints : definition.drawbackPoints, `${path}.drawbackPoints`) : null);
+        effectBreakdown.push({ index, effectId: definition.id, polarity: definition.polarity,
+          baseEffectCost, chanceDiscount, appliedChanceDiscount, effectCost, drawbackPoints });
       }
-      if (cost === null) effectsComplete = false;
-      else knownEffectCost = sum(knownEffectCost, cost);
     }
   }
-  const effectCost = effectsComplete ? knownEffectCost : null;
-  const drawbackPoints = drawbacksComplete ? knownDrawbackPoints : null;
-  // 不正入力時には最終見積を返さない。判明済みの各内訳は調査・UI表示用に残す。
-  const grossCost = errors.length ? null : sum(triggerCost, effectCost);
-  const netCost = sum(grossCost, drawbackPoints === null ? null : -drawbackPoints);
-  const remaining = sum(availableDicePoints, netCost === null ? null : -netCost);
-  return {
-    availableDicePoints, triggerCost, effectCost, drawbackPoints, grossCost, netCost, remaining,
-    knownEffectCost, knownDrawbackPoints,
-    complete: errors.length === 0 && unresolved.length === 0 && remaining !== null,
-    errors, unresolved,
-  };
+  const benefitSlotCost = Math.max(0, benefitCount - 1);
+  const total = key => effectBreakdown.length === effectCount && record(selection) && Array.isArray(selection.effects)
+    ? sum(effectBreakdown.map(row => row[key])) : null;
+  const known = key => sum(effectBreakdown.map(row => row[key] ?? 0));
+  const effectCost = total("effectCost"), drawbackPoints = total("drawbackPoints");
+  const baseEffectCost = total("baseEffectCost"), chanceDiscount = total("appliedChanceDiscount");
+  const grossCost = errors.length ? null : sum([triggerCost, benefitSlotCost, effectCost]);
+  const netCost = sum([grossCost, drawbackPoints === null ? null : -drawbackPoints]);
+  const remaining = sum([availablePoints, netCost === null ? null : -netCost]);
+  const complete = errors.length === 0 && unresolved.length === 0 && remaining !== null;
+  return { basePoints, dicePoints, availableDicePoints: dicePoints, availablePoints, triggerCost,
+    frequencyCount, frequencyRank, effectCount, benefitCount, drawbackCount, benefitSlotCost,
+    baseEffectCost, chanceDiscount, effectCost, drawbackPoints, grossCost, netCost, remaining,
+    knownEffectCost: known("effectCost"), knownDrawbackPoints: known("drawbackPoints"), effectBreakdown,
+    complete, ready: complete && remaining >= 0, errors, unresolved };
 }

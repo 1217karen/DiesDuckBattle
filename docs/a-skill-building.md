@@ -1,97 +1,137 @@
-# Aスキル作成カタログと見積
+# Aスキル作成・compile
 
-ブラウザでの開発確認は [開発ページの起動・操作手順](a-skill-test-page.md) を参照。
+開発UIは [A開発ページ](a-skill-test-page.md)。新版の選択DTOから
+`calculateASkillResources → compileASkill → duck.aSkill → battleEngine` まで実装済み。
+本番キャラ登録・保存とgeneric buildCompilerへの統合は対象外。
+旧Aのtrusted内部データは変更しない。engine capabilityと新版の公開範囲は別である。
 
-既存のbuildValidatorのskills DTOとは独立した作成用API。
-buildRulesは全体の作成制限、buildResourcesは素体とダイスから資源を計算し、
-skillCatalogは従来の汎用選択基盤を維持する。A専用定義はaSkillCatalogへ分離する。
-戦闘適用・compiler・本番HTML UI・保存可否判定は実装しない。
+## APIと信頼境界
 
-## API
+- `createASkillCatalog()`：毎回独立したtrusted定義。STATUS_GROUPSから全8statusを導出。
+- `getATriggerOptions(frame, catalog?)`：trigger候補、素体上の対象種類、価格。
+- `getAEffectOptions(frame, triggerId, catalog?)`：全候補とselectable/reason。専用effectも隠さない。
+- `getAEffectAvailability(effectId, frame, triggerId, catalog?)`：専用条件の検査。
+- `calculateASkillResources(build, selection, { rules?, catalog? })`：入力検証と純粋な見積。
+- `compileASkill(build, selection, { rules?, catalog? })`：`{ ok, skill, resources, errors, unresolved }`。
+  okならskillをduck.aSkillに設定できる。名前・IDは呼出側で付けられる。
 
-- `createASkillCatalog()`：独立した運営設定を生成する。
-- `getATriggerOptions(diceFrame, catalog?)`：素体で選べる条件ID、表示名、意味、素体上の対象出目、価格。
-- `getAEffectOptions(diceFrame, triggerId, catalog?)`：カテゴリごとの全効果、対象・状態候補、数量候補、還元値、選択可否と理由。
-- `getAEffectAvailability(effectId, diceFrame, triggerId, catalog?)`：条件に対する選択可否。数量や価格の確定状況とは別。
-- `calculateASkillResources(build, selection, { rules?, catalog? })`：純粋なポイント見積。
-
-catalog/rulesは信頼済みの運営設定。ユーザーから受け取らない。
-効果IDは対象・状態・増減方向まで含む公開組合せ。
-UIがtarget/status/directionからデメリットを再判定する必要はなく、
-各効果の `targetId/statusId/direction/polarity/drawbackPoints` を参照する。
-カテゴリのtargets/statusesで絞り込み、該当するeffectIdを選ぶ。
-生のエンジンeffect、任意のvalue/pointCost/target/statusを入力へ混ぜるとerrorsになる。
-
-## 選択データ
+catalog/rulesは運営だけが渡す。ユーザーから受け取らない。
+resource計算は初期diceの6枠・素体・個数制限・資源を検査するが、statsや他カテゴリを含む
+build全体の合法性は判定しない。ダイス資源はcalculateBuildResourcesを再利用する。
 
 ```js
-const aSkill = {
+const selection = {
   triggerId: "gte:3",
   effects: [
-    { effectId: "damage-enemy", amountOptionId: "test-amount" },
-    { effectId: "cancel-self-attack" },
+    { effectId: "heal-self", amountOptionId: "dev-5", chanceOptionId: "50" },
+    { effectId: "grant-clean-enemy", amountOptionId: "dev-1" },
   ],
 };
 ```
 
-`test-amount` はテスト専用の仮ID。本番で選べる数量候補はまだ空。
-数量を伴う効果では、その効果のamountOptionsに登録したIDだけを指定できる。
-候補は `{ id, label, value, pointCost }`。数量不要のキャンセル等はeffect.pointCostを使う。
-本番価格はすべてnull。無料に決めた場合のみ明示的に0を設定する。
-同じ効果を何件でも列挙でき、重複排除せず価格・還元を各件分加算する。
+`dev-*`は開発fixture専用ID。本番の数量候補はまだ空。
+DTOはtriggerIdとeffectsの配列のみ。各行はeffectId、amountOptionId、chanceOptionIdのみ。
+未知field、raw effect、target/status/direction/value/amount/cost/chance数値/duration/type/key/opを拒否する。
+compilerはID文字列を解釈してeffectを生成せず、catalogのsemanticsから生成する。
 
-## 条件と出目専用効果
+## 発動条件・頻度
 
-固定条件は0と元の素体出目。範囲条件のbaseFacesには0を含めない。
-範囲価格は素体の非0出目の対象種類数が1/2/3なら0/1/2pt、全出目は2pt。
-`baseFaces` は作成時の価格算定・表示用で、将来の戦闘で発動できる全出目の固定リストではない。
-将来compilerはkind/valueの意味を変換し、lte/gteで0を除外する必要がある。
-lightのgte:3にDで追加された5/6も発動対象になる意図は維持するが、今回戦闘処理は実装しない。
+発動窓は従来どおり `afterRoll → beforeDiceResolve（A）→ 通常攻撃・出目効果 → afterDiceResolve`。
+HeadwindのAキャンセルは既存処理を使う。
 
-専用効果は常に一覧に存在する。exactFaceと同じ固定条件でのみselectable:true。
-範囲・all・他出目では `reason: { code, message, requiredFace? }` を返す。
-選択可能でも数量・価格が未確定なら計算は完了しない。
-出目6の反動と出目4の反撃は別の効果。出目2の攻撃回数減少は2→1専用。
-将来のcompilerに未対応の意味も含むため、カタログ登録は戦闘実装済みを意味しない。
+| 条件 | 意味 | 作成コスト |
+| --- | --- | --- |
+| exact | 0または素体の非0出目に一致 | 0pt |
+| lte / gte | 非0の出目に対する比較 | 素体上の対象種類1/2/3で0/1/2pt |
+| all | 0を含む全出目 | 2pt |
 
-## 見積結果
+canonical triggerは `{ kind: "exact" | "lte" | "gte", value }` または `{ kind: "all" }`。
+rangeは0を除外する。ruleEngineはこの形式と旧文字列形式を別々に扱う。
+旧`onDice<=3`の0一致等は変更しない。
+baseFacesは作成価格・表示用で、戦闘中の対象リストではない。
+Dでlightに5を追加すればgte:3は5にも一致する。
 
-使用可能なダイス由来資源はcalculateBuildResources(build, rules).dice.remainingを利用する。
-ステータス資源や旧仮設定aUpgradeDicePointCostはA計算へ流用しない。
-例えばlight、ダイス `[0,0,0,1,1,1]` は3pt獲得・3個積み1pt消費で使用可能2pt。
-上の選択にテスト専用のダメージ価格3pt・攻撃キャンセル価格0ptを設定した場合：
+frequencyCountは初期6枠の実数。exact:0/allは0を数え、rangeは数えない。
+1/2枠→rank1、3/4枠→rank2、5/6枠→rank3。
+初期0枠の条件も作成可能（D追加で成立し得る）。0枠のrank仕様は未定義なのでnullを返す。
+このnullは価格未確定のunresolvedではない。頻度は価格・還元には一切使用しない。
 
-```js
-{
-  availableDicePoints: 2,
-  triggerCost: 1,
-  effectCost: 3,
-  drawbackPoints: 1,
-  grossCost: 4,
-  netCost: 3,
-  remaining: -1,
-  knownEffectCost: 3,
-  knownDrawbackPoints: 1,
-  complete: true,
-  errors: [],
-  unresolved: []
-}
+## ポイント・effect数
+
+```text
+availablePoints = basePoints 3 + dicePoints
+  dicePoints = calculateBuildResources(build, rules).dice.remaining
+benefitSlotCost = max(0, benefitCount - 1)
+effectCost = Σ max(0, benefit本体価格 - chanceDiscount)
+grossCost = triggerCost + benefitSlotCost + effectCost
+netCost = grossCost - drawbackPoints
+remaining = availablePoints - netCost
 ```
 
-completeは計算完了だけを表す。負のremainingでもtrueであり、保存可能を意味しない。
-ビルド全体の合法性もここでは検証しない。入力選択の不正をerrors、価格未確定・数量未選択をunresolvedで返す。
-未確定を含む合計はnull、判明済みの小計はknownEffectCost/knownDrawbackPointsで確認できる。
-不正な選択があれば最終合計grossCost/netCost/remainingはnullになる。
-運営価格の負数・非数値・無限値や計算のオーバーフローは設定ミスとして例外。
+0枠+1pt、同じ非0出目3個の種類ごと-1ptは共通build計算に従う。
+通常構成3pt、0を1つで4pt、0を1つと3個積みで3pt、全部0で9pt。
+1～4effectが必須。drawbackも上限に数えるがbenefit枠コストを増やさない。
+重複・相殺は許可し、選択順で実行する。compilerは並べ替えも統合もしない。
 
-## 未確定事項
+benefit価格は数量optionのpointCost（数量不要ならeffect.pointCost）。
+drawback還元は数量optionのdrawbackPoints（未定義ならeffect.drawbackPoints）。
+drawback自体のbenefit価格は計上しない。数量による還元差をtrusted側で設定できる。
 
-効果量候補、効果別価格、デメリット総還元上限は未確定。
-maxDrawbackPointsはnullの拡張口のみで、現在は上限処理を行わない。
-各デメリット定義のdrawbackPointsは現在1で、個別に変更可能。
-将来追加する倍率・確率・ランダム状態・状態解除・DF操作などは公開カタログに含めない。
+chance候補は100/50/25/10%。省略は100。drawbackの100以外はresource/compilerで拒否。
+100%はcanonical effectから一貫して省略する。他はbenefit各effectへchanceを設定。
+抽選は独立し、random statusはchance成功後にだけ抽選される。
+割引で本体価格が0になってもbenefit枠コストは残る。
 
-## 検証
+結果にはbasePoints/dicePoints/availablePoints、triggerCost、frequencyCount/frequencyRank、
+effectCount/benefitCount/drawbackCount/benefitSlotCost、baseEffectCost/chanceDiscount/effectCost、
+drawbackPoints/grossCost/netCost/remaining、effectBreakdownを含む。
+chanceDiscount合計は実際に適用した割引。各行には指定割引と下限適用後の割引も残す。
+availableDicePointsはdicePointsの互換名。
+未確定合計はnull、既知小計はknownEffectCost/knownDrawbackPoints。
+completeは見積完了で、負残高でもtrue。readyはcompleteかつ予算内。
+compilerは未完了・errors・数量未選択・未確定価格・予算不足をすべて拒否する。
 
-`node --test tests/*.test.mjs`（追加依存なし）。
-tests/aSkill.test.mjsの数量・価格fixtureはゲーム仕様ではない。
+## 公開effect
+
+| 機能 | benefit | drawback |
+| --- | --- | --- |
+| 固定ダメージ | 相手 | 自分 |
+| 固定回復 | 自分 | 相手 |
+| AP | 自分+、相手− | 自分−、相手+ |
+| 指定/ランダムstatus付与 | 自分buff、相手debuff | 自分debuff、相手buff |
+| 指定status 1stack解除 | 自分debuff、相手buff | 自分buff、相手debuff |
+| 次回通常攻撃AT | 自分+、相手− | 自分−、相手+ |
+| 現在phase補正 | 自分AT+、相手DF− | 自分AT−、相手DF+ |
+| 通常攻撃回数 | 全triggerで+N | キャンセル、exact:2で−1 |
+| 反動 | exact:6の既存反動軽減 | 全triggerで追加反動 |
+| 出目固有キャンセル | — | exact:1/3/4/5でAP+1/回復/反撃+1/相手AP−1をskip |
+
+指定解除はchangeStatus op:add value:-1を使用し、既存の0 clampに従う。
+randomは@buff/@debuffで1種類付与。指定付与と同じ仮価格で、ランダム割引はない。
+phase補正はaddBuff duration:{kind:"phase"}。次phaseへ持ち越さない。
+attackTimesOverride/attackTimesAddは既存engineの上書き値＋加算値の合成に従う。
+キャンセルと回数加算の相殺も許可する。
+
+倍率・turns buff・addDice・revive・割合ダメージ/回復・passive modifier・
+status全stack/group/ランダム解除・任意の生effectは公開しない。旧Aは引き続き実行できる。
+
+## engineの小さな追加
+
+- canonical trigger比較（rangeの0除外）。旧文字列の判定は維持。
+- changeValueのphase tempキーskipDice1/3/4/5。逆effectで相殺せず出目処理をskip。
+- changeValueのphase tempキーadditionalRecoil。phase開始でskipとともにreset。
+- 通常攻撃処理と出目固有処理の後、afterDiceResolveの前に追加反動を1回処理。
+  複数hitでも1回。キャンセル・湯気/効果MISS・連続行動命中率MISSでは発生しない。
+  回避は既存出目6のhadNonMissAttackに合わせ「攻撃成立」として扱う。
+  旧出目6は連続行動命中率判定前にhadNonMissAttackを立てるため、その従来挙動を保持し、
+  新追加反動だけ別フラグで連続行動MISSも除外する。recoilMinusは追加反動には効かない。
+
+## 未確定と検証
+
+productionの数量option・effect価格・drawback還元・chance価格補正は未確定。
+100%の割引0だけは補正なしとして定義。還元上限maxDrawbackPointsはnullの拡張口で未適用。
+frequencyの価格への利用、0/6のrankは今後決定する。
+`createADevCatalog()`の数値は開発確認用でゲームバランス仕様ではない。
+
+対象テスト：`node --test tests/aSkill.test.mjs tests/aSkillEngine.test.mjs`。
+engine近傍の互換確認：`tests/triggers.test.mjs`、`tests/buffDuration.test.mjs`。

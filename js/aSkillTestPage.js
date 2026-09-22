@@ -1,4 +1,7 @@
-// Aスキル仕様確認用・開発ページ。保存/戦闘適用/ビルド合法性判定は行わない。
+// A開発確認専用。本番保存・ビルド全体の合法性判定は行わない。
+import { createADevCatalog } from "./aSkillDevFixtures.js";
+import { compileASkill } from "./aSkillCompiler.js";
+import { runASkillTestBattle } from "./aSkillTestHarness.js";
 import { DICE_FRAMES, getDiceFrame } from "./diceFrames.js";
 import { createBuildRules } from "./buildRules.js";
 import { calculateBuildResources } from "./buildResources.js";
@@ -12,21 +15,10 @@ const state = {
   rows: [{ categoryId: "damage", effectId: "damage-enemy" }],
 };
 let catalog = createPageCatalog(false);
+let currentInput;
 
 function createPageCatalog(fixture) {
-  const independent = createASkillCatalog();
-  if (fixture) {
-    // 開発確認用・ゲーム仕様ではない。本番の定義を変更/保存しない。
-    for (const effect of independent.effects) {
-      if (effect.requiresAmount) effect.amountOptions = [
-        { id: "test-small", label: "仮：小", value: 1, pointCost: 1 },
-        { id: "test-medium", label: "仮：中", value: 2, pointCost: 2 },
-        { id: "test-large", label: "仮：大", value: 3, pointCost: 3 },
-      ];
-      else effect.pointCost = 0;
-    }
-  }
-  return independent;
+  return fixture ? createADevCatalog() : createASkillCatalog();
 }
 function element(tag, text, className) {
   const node = document.createElement(tag);
@@ -40,12 +32,13 @@ function option(id, label, disabled = false) {
 function labelled(text, control) { const label = element("label", text); label.append(control); return label; }
 function points(value, sign = "") { return value == null ? "未確定" : `${sign}${value}pt`; }
 function effectLabel(effect) {
-  return `${effect.label}（${effect.polarity === "drawback" ? `デメリット +${effect.drawbackPoints}pt` : "メリット"}）`;
+  return `${effect.label}（${effect.polarity === "drawback" ? `drawback 還元：${points(effect.drawbackPoints)}（数量別は計算内訳）` : "benefit"}）`;
 }
 function normalizeAmount(row) {
   const effect = catalog.effects.find(item => item.id === row.effectId);
   if (!effect?.requiresAmount || !effect.amountOptions.length) delete row.amountOptionId;
   else if (!effect.amountOptions.some(item => item.id === row.amountOptionId)) row.amountOptionId = effect.amountOptions[0].id;
+  if (effect?.polarity === "drawback") row.chanceOptionId = "100";
 }
 
 function renderInputs() {
@@ -68,6 +61,7 @@ function renderInputs() {
 }
 
 function renderRows() {
+  $("add-effect").disabled = state.rows.length >= catalog.maxEffects;
   const groups = getAEffectOptions(state.frame, state.triggerId, catalog);
   $("effects").replaceChildren();
   if (!state.rows.length) $("effects").append(element("p", "効果はまだありません。＋効果を追加から追加できます。", "muted"));
@@ -79,7 +73,18 @@ function renderRows() {
     const remove = element("button", "削除"); remove.type = "button";
     remove.setAttribute("aria-label", `効果${index + 1}を削除`);
     remove.addEventListener("click", () => { state.rows.splice(index, 1); renderRows(); renderResult(); });
-    heading.append(remove); wrapper.append(heading);
+    heading.append(remove);
+    for (const [delta, label] of [[-1, "↑"], [1, "↓"]]) {
+      const move = element("button", label); move.type = "button";
+      move.disabled = index + delta < 0 || index + delta >= state.rows.length;
+      move.setAttribute("aria-label", `効果${index + 1}を${delta < 0 ? "上" : "下"}へ`);
+      move.addEventListener("click", () => {
+        [state.rows[index], state.rows[index + delta]] = [state.rows[index + delta], state.rows[index]];
+        renderRows(); renderResult();
+      });
+      heading.append(move);
+    }
+    wrapper.append(heading);
     const controls = element("div", null, "effect-controls");
     const category = element("select"); category.id = `category-${index}`;
     category.append(...groups.map(group => option(group.id, group.label))); category.value = row.categoryId;
@@ -103,14 +108,19 @@ function renderRows() {
     const effect = group.effects.find(item => item.id === row.effectId);
     const amount = element("select"); amount.id = `amount-${index}`;
     if (effect?.requiresAmount && effect.amountOptions.length) {
-      amount.append(...effect.amountOptions.map(item => option(item.id, `${item.label} / ${points(item.pointCost)}`)));
+      amount.append(...effect.amountOptions.map(item => option(item.id, `${item.label} / ${effect.polarity === "drawback" ? `還元 ${points(item.drawbackPoints ?? effect.drawbackPoints)}` : points(item.pointCost)}`)));
       amount.value = row.amountOptionId;
     } else {
       amount.disabled = true;
       amount.append(option("", !effect ? "効果を選択してください" : effect.requiresAmount ? "効果量候補なし（未設定）" : "数量指定なし"));
     }
     amount.addEventListener("change", () => { row.amountOptionId = amount.value; renderResult(); });
-    controls.append(labelled(`効果${index + 1} 効果量`, amount)); wrapper.append(controls);
+    controls.append(labelled(`効果${index + 1} 効果量`, amount));
+    const chance = element("select"); chance.id = `chance-${index}`;
+    chance.append(...catalog.chanceOptions.map(item => option(item.id, item.label)));
+    chance.value = row.chanceOptionId ?? "100"; chance.disabled = effect?.polarity !== "benefit";
+    chance.addEventListener("change", () => { row.chanceOptionId = chance.value; renderResult(); });
+    controls.append(labelled(`効果${index + 1} 成功率`, chance)); wrapper.append(controls);
     if (effect) {
       wrapper.append(element("p", effectLabel(effect), `row-note ${effect.polarity}`));
       if (!effect.requiresAmount) wrapper.append(element("p", `効果コスト：${points(effect.pointCost)}`, "muted"));
@@ -132,21 +142,32 @@ function renderResult() {
   const build = { schemaVersion: 1, diceFrame: state.frame, stats: { AT: 1, DF: 1 }, dice: [...state.dice], skills: [] };
   const selection = { triggerId: state.triggerId, effects: state.rows.map(row => ({
     effectId: row.effectId, ...(row.amountOptionId ? { amountOptionId: row.amountOptionId } : {}),
+    chanceOptionId: row.chanceOptionId ?? "100",
   })) };
   const resources = calculateBuildResources(build, rules);
   const result = calculateASkillResources(build, selection, { rules, catalog });
+  const compilation = compileASkill(build, selection, { rules, catalog });
+  currentInput = { build, selection };
+  $("run-battle").disabled = !compilation.ok;
+  $("battle-log").textContent = "現在の選択で戦闘を実行するとログが表示されます。";
+  $("compiled").textContent = JSON.stringify(compilation, null, 2);
   $("dice-resource").textContent = `ダイスpt：獲得 ${resources.dice.earned} / 3個積み使用 ${resources.dice.spent} / 残り ${resources.dice.remaining}`;
   $("trigger-cost").textContent = `コスト：${points(result.triggerCost)}`;
   $("points").replaceChildren();
   for (const [key, label, sign] of [
+    ["basePoints", "基礎pt", ""], ["availablePoints", "使用可能pt", ""],
+    ["frequencyCount", "初期6枠の該当数", ""], ["frequencyRank", "頻度ランク（0枠は未定義）", ""],
+    ["effectCount", "effect数 / 上限4", ""], ["benefitCount", "benefit数", ""], ["drawbackCount", "drawback数", ""],
+    ["benefitSlotCost", "benefit追加枠コスト", ""], ["baseEffectCost", "benefit本体コスト", ""], ["chanceDiscount", "適用chance割引", ""],
     ["availableDicePoints", "ダイス由来pt", ""], ["triggerCost", "発動条件コスト", "−"],
     ["effectCost", "効果コスト", "−"], ["drawbackPoints", "デメリットpt", "+"],
-    ["grossCost", "grossCost（条件＋効果）", ""], ["netCost", "netCost（還元差引後）", ""],
+    ["grossCost", "grossCost（条件＋枠＋効果）", ""], ["netCost", "netCost（還元差引後）", ""],
     ["remaining", "残り", ""], ["complete", "complete", ""],
     ["knownEffectCost", "判明済み効果コスト", ""], ["knownDrawbackPoints", "判明済みデメリットpt", ""],
   ]) {
     const line = element("div", null, `point-line ${key}`);
-    const value = element("dd", key === "complete" ? String(result[key]) : points(result[key], sign));
+    const count = ["frequencyCount", "frequencyRank", "effectCount", "benefitCount", "drawbackCount"].includes(key);
+    const value = element("dd", key === "complete" ? String(result[key]) : count ? String(result[key] ?? "未定義") : points(result[key], sign));
     value.id = `point-${key}`;
     if (typeof result[key] === "number" && result[key] < 0) value.className = "negative";
     line.append(element("dt", label), value); $("points").append(line);
@@ -172,14 +193,21 @@ $("trigger").addEventListener("change", () => { state.triggerId = $("trigger").v
 $("fixture").addEventListener("change", () => {
   catalog = createPageCatalog($("fixture").checked);
   $("mode-note").textContent = $("fixture").checked
-    ? "仮値モード ON：開発確認用・ゲーム仕様ではない（仮：小／中／大、仮価格1／2／3pt）"
+    ? "仮値モード ON：数量・価格・chance割引・還元は開発確認用で、ゲームバランス仕様ではありません。"
     : "本番カタログ：効果量・価格は未設定です。";
   renderInputs();
 });
 $("add-effect").addEventListener("click", () => {
+  if (state.rows.length >= catalog.maxEffects) return;
   const group = getAEffectOptions(state.frame, state.triggerId, catalog)[0];
   state.rows.push({ categoryId: group.id, effectId: group.effects.find(item => item.selectable)?.id ?? "" });
   renderRows(); renderResult();
+});
+$("run-battle").addEventListener("click", () => {
+  try {
+    const { battle, compilation } = runASkillTestBattle(currentInput.build, currentInput.selection, { rules, catalog });
+    $("battle-log").textContent = JSON.stringify(battle?.events ?? compilation.errors, null, 2);
+  } catch (error) { $("battle-log").textContent = error.message; }
 });
 renderInputs();
 $("startup").hidden = true;

@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="css/a-skill-test.css">
 </head>
 <body>
-  <!-- 本番キャラ作成画面ではない。保存・登録・戦闘適用は行わない。 -->
+  <!-- 本番キャラ作成画面ではない。保存・登録は行わず開発戦闘のみ接続。 -->
   <header>
     <p class="eyebrow">DIES DUCK BATTLE / DEVELOPMENT</p>
     <h1>Aスキル仕様確認用・開発ページ</h1>
@@ -24,7 +24,7 @@
         <p id="frame-info" class="muted"></p>
         <div id="dice" class="dice-slots"></div>
         <p id="dice-resource"></p>
-        <p class="muted">0は空き枠です。AT / DFは開発確認用に各1で固定。ここではビルドの合法性・保存可否は判定しません。</p>
+        <p class="muted">0は空き枠です。作成データのAT / DFは各1で固定。初期ダイスを検査しますが、他カテゴリを含むビルド全体の合法性・保存可否は判定しません。</p>
         <p id="frame-reset" role="status"></p>
       </section>
       <section aria-labelledby="trigger-heading">
@@ -34,7 +34,7 @@
       </section>
       <section aria-labelledby="effects-heading">
         <div class="section-title"><h2 id="effects-heading">3. 効果一覧</h2><button id="add-effect" type="button">＋効果を追加</button></div>
-        <p class="muted">同じ効果を複数追加できます。条件変更で使用不可になった選択は残し、理由を表示します。</p>
+        <p class="muted">1～4effect。上から順に実行し、重複・相殺も選べます。↑↓で並べ替えできます。条件変更で使用不可になった選択は残し、理由を表示します。</p>
         <div id="effects"></div>
       </section>
     </div>
@@ -42,13 +42,15 @@
       <section aria-labelledby="points-heading">
         <h2 id="points-heading">Aスキルポイント</h2>
         <dl id="points" aria-live="polite"></dl>
-        <p class="muted">completeは計算完了を表します。残りが負数でも表示し、保存可否は判断しません。</p>
+        <p class="muted">completeは計算完了を表します。残りが負数ならcompile不可。頻度ランクは価格に使用しません。</p>
       </section>
       <section aria-labelledby="issues-heading">
         <h2 id="issues-heading">エラー／未確定情報</h2>
         <h3>errors</h3><ul id="errors"></ul>
         <h3>unresolved</h3><ul id="unresolved"></ul>
       </section>
+      <details open><summary>compiled trusted A / compiler検証</summary><pre id="compiled"></pre></details>
+      <section><h2>開発戦闘</h2><p>選択したAをP1に装備。初期6枠を使用し3ターン実行（戦闘確認用AT/DF各3・SP1・HP1000、P2は出目1）。</p><button id="run-battle" type="button" disabled>戦闘を実行</button><details><summary>戦闘ログ</summary><pre id="battle-log"></pre></details></section>
       <details><summary>現在の入力・計算結果（確認用）</summary><pre id="debug"></pre></details>
     </aside>
   </main>

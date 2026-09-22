@@ -170,6 +170,8 @@ const push = (type, actor = "system", extra = {}) => {
       atk.temp.attackTimesOverride = null; // 上書き無し
       atk.temp.attackTimesAdd = 0; // 加算無し
       atk.temp.recoilMinus = 0; // 反動軽減なし
+      atk.temp.additionalRecoil = 0;
+      for (const face of [1, 3, 4, 5]) atk.temp[`skipDice${face}`] = 0;
 
       push("phaseStart", atk.side, { code: "PHASE_START" });
 
@@ -777,7 +779,8 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
   let times = (typeof override === "number" ? override : baseTimes) + add;
   times = Math.max(0, Math.floor(times));
 
-  let hadNonMissAttack = false; // 出目6の反動判定用
+  let hadNonMissAttack = false; // 旧出目6の判定位置を維持
+  let hadAdditionalRecoilAttack = false; // 連続行動MISSも除外
 
     // ダメージ計算用の出目：ターン内1回目の行動だけ×2
     // ※diceValue自体は判定用に残す（出目2の2回攻撃、出目6のDF無視など）
@@ -967,6 +970,8 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
       }
     }
 
+    hadAdditionalRecoilAttack = true;
+
     // === 回避判定：miss の後に判定するので、miss時は回避を消費しない ===
     {
       // 追風：攻撃ごとに1消費して回避
@@ -1124,7 +1129,7 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
 
   // 出目の追加効果
   // 1：自分にAP+1
-  if (diceValue === 1) {
+  if (diceValue === 1 && !atk.temp?.skipDice1) {
     applyEffect(
       { type: "changeValue", target: "self", key: "ap", op: "add", value: 1, source: "dice1" },
       makeCtx(state, rng, push, atk, def, getRules),
@@ -1132,13 +1137,13 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
   }
 
   // 3：自分のHP回復
-  if (diceValue === 3) {
+  if (diceValue === 3 && !atk.temp?.skipDice3) {
     const ctx3 = makeCtx(state, rng, push, atk, def, getRules);
     ctx3.helpers.heal(atk, 3, atk.side, { source: "dice3" });
   }
 
   // 4：自分に反撃付与
-  if (diceValue === 4) {
+  if (diceValue === 4 && !atk.temp?.skipDice4) {
     const before = atk.status?.counter ?? 0;
     const cap = MAX_STACK; // 既存の最大3に合わせる
     const after = Math.max(0, Math.min(cap, before + 1));
@@ -1156,7 +1161,7 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
   }
 
   // 5：相手のAP-1
-  if (diceValue === 5) {
+  if (diceValue === 5 && !atk.temp?.skipDice5) {
     applyEffect(
       { type: "changeValue", target: "enemy", key: "ap", op: "add", value: -1, source: "dice5" },
       makeCtx(state, rng, push, atk, def, getRules),
@@ -1174,6 +1179,12 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
       recoilBase: 3,
       recoilMinus: Math.max(0, minus),
     });
+  }
+  // 通常攻撃成立時だけphaseにつき一度。出目6の反動軽減とは独立。
+  const additionalRecoil = Math.max(0, Math.trunc(atk.temp?.additionalRecoil ?? 0));
+  if (hadAdditionalRecoilAttack && additionalRecoil > 0) {
+    const ctx = makeCtx(state, rng, push, atk, def, getRules);
+    ctx.helpers.dealDamage(atk, additionalRecoil, atk.side, "recoil", { source: "aAdditionalRecoil" });
   }
 }
 

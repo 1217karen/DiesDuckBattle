@@ -1,71 +1,86 @@
 import { getDiceFrame } from "./diceFrames.js";
+import { STATUS_GROUPS } from "./statusGroups.js";
 
-// A作成専用。エンジンeffectではなく、運営が公開した意味・対象の組合せをIDで選ぶ。
-// 毎回独立した設定を返す。amountOptions / pointCost は未確定（0と区別）。
+// 信頼済み運営定義。数量/価格nullは未確定。各呼出しは独立した設定を返す。
 export function createASkillCatalog() {
   const categories = [
-    ["damage", "固定ダメージ"], ["healing", "HP回復"], ["ap", "AP操作"],
-    ["ailment", "状態異常付与"], ["enhancement", "状態強化付与"],
-    ["nextAttack", "次の通常攻撃へのAT補正"], ["cancelAttack", "通常攻撃キャンセル"],
-    ["diceOnly", "出目専用効果"],
+    ["damage", "固定ダメージ"], ["healing", "固定HP回復"], ["ap", "AP操作"],
+    ["ailment", "debuff付与"], ["enhancement", "buff付与"],
+    ["removeStatus", "指定status 1stack解除"], ["nextAttack", "次回通常攻撃AT"],
+    ["phase", "現在phase AT/DF"], ["cancelAttack", "通常攻撃回数"],
+    ["recoil", "追加反動"], ["diceOnly", "出目専用効果"],
   ].map(([id, label]) => ({ id, label }));
   const effects = [];
-  const add = (id, categoryId, label, targetId, drawback, extra = {}) => effects.push({
-    id, categoryId, label, targetId,
-    polarity: drawback ? "drawback" : "benefit",
-    drawbackPoints: drawback ? 1 : 0,
+  const add = (id, categoryId, label, target, drawback, semantics, extra = {}) => effects.push({
+    id, categoryId, label, targetId: target, polarity: drawback ? "drawback" : "benefit",
     requiresAmount: true, amountOptions: [], pointCost: null,
-    ...extra,
+    drawbackPoints: drawback ? null : 0, semantics: { ...semantics, target }, ...extra,
   });
-  add("damage-enemy", "damage", "相手に固定ダメージ", "enemy", false);
-  add("damage-self", "damage", "自分に固定ダメージ", "self", true);
-  add("heal-self", "healing", "自分のHP回復", "self", false);
-  add("heal-enemy", "healing", "相手のHP回復", "enemy", true);
+  const change = (key, sign = 1) => ({ type: "changeValue", key, op: "add", sign });
   for (const target of ["self", "enemy"]) {
+    add(`damage-${target}`, "damage", `${target}へ固定ダメージ`, target, target === "self", { type: "fixedDamage" });
+    add(`heal-${target}`, "healing", `${target}を固定回復`, target, target === "enemy", { type: "heal" });
     for (const direction of ["increase", "decrease"]) {
-      add(`ap-${target}-${direction}`, "ap",
-        `${target === "self" ? "自分" : "相手"}のAP${direction === "increase" ? "増加" : "減少"}`,
-        target, (target === "enemy") === (direction === "increase"), { direction });
+      const sign = direction === "increase" ? 1 : -1;
+      const drawback = (target === "enemy") === (sign === 1);
+      add(`ap-${target}-${direction}`, "ap", `${target} AP${sign === 1 ? "+" : "−"}`, target, drawback, change("ap", sign));
+      add(`next-at-${target}-${direction}`, "nextAttack", `${target} 次回通常攻撃AT${sign === 1 ? "+" : "−"}`, target, drawback, change("nextAttackATPlus", sign));
     }
   }
-  const statuses = [
-    ["crack", "亀裂", "ailment"], ["Headwind", "逆風", "ailment"],
-    ["roughWave", "荒波", "ailment"], ["steam", "湯気", "ailment"],
-    ["tailwind", "追風", "enhancement"], ["focus", "集中", "enhancement"],
-    ["counter", "反撃", "enhancement"], ["clean", "清潔", "enhancement"],
-  ].map(([id, label, categoryId]) => ({ id, label, categoryId }));
-  for (const status of statuses) {
+  const statuses = [];
+  for (const group of ["debuff", "buff"]) {
+    const categoryId = group === "debuff" ? "ailment" : "enhancement";
+    for (const status of STATUS_GROUPS[group]) statuses.push({ id: status, label: status, categoryId });
     for (const target of ["self", "enemy"]) {
-      add(`grant-${status.id}-${target}`, status.categoryId,
-        `${target === "self" ? "自分" : "相手"}に${status.label}付与`, target,
-        status.categoryId === "ailment" ? target === "self" : target === "enemy",
-        { statusId: status.id });
+      const drawback = (group === "debuff") === (target === "self");
+      for (const status of [...STATUS_GROUPS[group], `@${group}`]) {
+        const random = status.startsWith("@");
+        add(`grant-${random ? `random-${group}` : status}-${target}`, categoryId,
+          `${target}に${random ? `ランダム${group}` : status}付与`, target, drawback,
+          { type: "changeStatus", status, op: "add", sign: 1 }, random ? {} : { statusId: status });
+        if (!random) add(`remove-${status}-${target}`, "removeStatus", `${target}の${status}を1stack解除`, target, !drawback,
+          { type: "changeStatus", status, op: "add", value: -1 }, { requiresAmount: false, statusId: status });
+      }
     }
   }
-  add("next-at-self-increase", "nextAttack", "自分の次の通常攻撃にAT+n", "self", false, { direction: "increase" });
-  add("next-at-enemy-decrease", "nextAttack", "相手の次の通常攻撃にAT-n", "enemy", false, { direction: "decrease" });
-  add("cancel-self-attack", "cancelAttack", "自分の通常攻撃をキャンセル", "self", true, { requiresAmount: false });
+  for (const [target, stat] of [["self", "AT"], ["enemy", "DF"]]) {
+    for (const sign of [1, -1]) add(`phase-${stat.toLowerCase()}-${target}-${sign === 1 ? "increase" : "decrease"}`,
+      "phase", `${target} 現在phase ${stat}${sign === 1 ? "+" : "−"}`, target,
+      (target === "self") === (sign === -1), { type: "addBuff", stat, sign });
+  }
+  add("cancel-self-attack", "cancelAttack", "自分の通常攻撃を0回にする", "self", true,
+    { type: "changeValue", key: "attackTimesOverride", op: "set", value: 0 }, { requiresAmount: false });
+  add("increase-attacks", "cancelAttack", "現在phaseの通常攻撃回数 +N", "self", false, change("attackTimesAdd"));
+  add("additional-recoil", "recoil", "通常攻撃成立phaseの終了時に追加反動", "self", true, change("additionalRecoil"));
   for (const [face, id, label] of [
-    [1, "cancel-dice1-ap", "AP増加をキャンセル"],
-    [2, "reduce-dice2-attacks", "通常攻撃回数を1回減らす（2回→1回）"],
-    [3, "cancel-dice3-heal", "HP回復をキャンセル"],
-    [4, "cancel-dice4-counter", "反撃付与をキャンセル"],
-    [5, "cancel-dice5-ap", "AP減少をキャンセル"],
-  ]) add(id, "diceOnly", `[出目${face}専用] ${label}`, "self", true,
-    { exactFace: face, requiresAmount: false });
-  add("reduce-dice6-recoil", "diceOnly", "[出目6専用] 反動ダメージを軽減", "self", false,
-    { exactFace: 6, direction: "decrease" });
-  add("increase-dice6-recoil", "diceOnly", "[出目6専用] 反動ダメージを増加", "self", true,
-    { exactFace: 6, direction: "increase" });
+    [1, "cancel-dice1-ap", "AP+1キャンセル"], [3, "cancel-dice3-heal", "HP回復キャンセル"],
+    [4, "cancel-dice4-counter", "反撃+1キャンセル"], [5, "cancel-dice5-ap", "相手AP-1キャンセル"],
+  ]) add(id, "diceOnly", `[出目${face}] ${label}`, "self", true,
+    { type: "changeValue", key: `skipDice${face}`, op: "set", value: 1 }, { exactFace: face, requiresAmount: false });
+  add("reduce-dice2-attacks", "diceOnly", "[出目2] 通常攻撃2回→1回", "self", true,
+    { ...change("attackTimesAdd"), value: -1 }, { exactFace: 2, requiresAmount: false });
+  add("reduce-dice6-recoil", "diceOnly", "[出目6] 反動軽減", "self", false, change("recoilMinus"), { exactFace: 6 });
   return {
-    categories, effects, statuses,
+    categories, effects, statuses, basePoints: 3, maxEffects: 4,
     targets: [{ id: "self", label: "自分" }, { id: "enemy", label: "相手" }],
     triggerCosts: { exact: 0, rangeByCount: { 1: 0, 2: 1, 3: 2 }, all: 2 },
-    // TODO: 上限未確定。現在は還元の切り捨て・拒否を行わない。
+    chanceOptions: [100, 50, 25, 10].map(percent => ({ id: String(percent), label: `${percent}%`,
+      value: percent / 100, discount: percent === 100 ? 0 : null })),
     maxDrawbackPoints: null,
   };
 }
 
+// 作成時の頻度と戦闘時の意味を共有。baseFacesで戦闘中の追加出目を制限しない。
+export function matchesATrigger(trigger, value) {
+  if (!Number.isSafeInteger(value) || value < 0) return false;
+  switch (trigger?.kind) {
+    case "exact": return value === trigger.value;
+    case "lte": return value !== 0 && value <= trigger.value;
+    case "gte": return value !== 0 && value >= trigger.value;
+    case "all": return true;
+    default: return false;
+  }
+}
 // コストは素体の元の非0出目だけで計算。装着数や将来のDスキルは参照しない。
 export function getATriggerOptions(diceFrame, catalog = createASkillCatalog()) {
   const frame = getDiceFrame(diceFrame);
