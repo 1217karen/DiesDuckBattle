@@ -49,7 +49,8 @@ export function createASkillCatalog() {
       (target === "self") === (sign === -1), { type: "addBuff", stat, sign });
   }
   add("cancel-self-attack", "cancelAttack", "自分の通常攻撃を0回にする", "self", true,
-    { type: "changeValue", key: "attackTimesOverride", op: "set", value: 0 }, { requiresAmount: false });
+    { type: "changeValue", key: "attackTimesOverride", op: "set", value: 0 },
+    { requiresAmount: false, allowDuplicate: false });
   add("increase-attacks", "cancelAttack", "現在phaseの通常攻撃回数 +N", "self", false, change("attackTimesAdd"));
   add("additional-recoil", "recoil", "通常攻撃成立phaseの終了時に追加反動", "self", true, change("additionalRecoil"));
   for (const [face, id, label] of [

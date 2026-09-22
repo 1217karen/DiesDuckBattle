@@ -72,8 +72,9 @@ remaining = availablePoints - netCost
 通常構成3pt、0を1つで4pt、0を1つと3個積みで3pt、全部0で9pt。
 1～4effectが必須。drawbackも上限に数えるがbenefit枠コストを増やさない。
 原則として重複・相殺を許可し、選択順で実行する。compilerは並べ替えも統合もしない。
-例外として出目固有effectはcatalogの`allowDuplicate: false`に従い、同一effectを1スキル内で
-複数回選択できない。異なる出目固有effectの併用可否は通常どおりtrigger条件で決まる。
+例外として出目固有effectと通常攻撃キャンセルはcatalogの`allowDuplicate: false`に従い、
+同一effectを1スキル内で複数回選択できない。異なる出目固有effectの併用可否は通常どおり
+trigger条件で決まる。
 
 benefit価格は数量optionのpointCost（数量不要ならeffect.pointCost）。
 drawback還元は数量optionのdrawbackPoints（未定義ならeffect.drawbackPoints）。

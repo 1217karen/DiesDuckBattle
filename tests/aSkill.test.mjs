@@ -44,7 +44,7 @@ test("1〜4件、0/5件拒否、重複benefitの枠コスト", () => {
     if(count===0||count===5) assert.ok(r.errors.some(e=>e.code==="EFFECT_COUNT"));
   }
 });
-test("diceOnly同一effectだけ重複不可", () => {
+test("diceOnly同一effectは重複不可", () => {
   for (const effect of catalog.effects.filter(item => item.categoryId === "diceOnly")) {
     assert.equal(effect.allowDuplicate, false, effect.id);
     const frame = effect.exactFace <= 4 ? "light" : "heavy";
@@ -56,6 +56,20 @@ test("diceOnly同一effectだけ重複不可", () => {
       ["effects.1.effectId"], effect.id);
     assert.equal(compile(selection([item, item], `exact:${effect.exactFace}`), build(undefined, frame)).ok, false, effect.id);
   }
+});
+test("cancel-self-attackは1回なら使用可能、2回なら重複拒否", () => {
+  const once = calc(selection([chosen("cancel-self-attack")]));
+  assert.equal(once.complete, true);
+  assert.equal(once.ready, true);
+  assert.equal(once.errors.some(error => error.code === "DUPLICATE_EFFECT"), false);
+  assert.equal(compile(selection([chosen("cancel-self-attack")])).ok, true);
+
+  const duplicate = calc(selection([chosen("cancel-self-attack"), chosen("cancel-self-attack")]));
+  assert.equal(duplicate.complete, false);
+  assert.equal(duplicate.ready, false);
+  assert.deepEqual(duplicate.errors.filter(error => error.code === "DUPLICATE_EFFECT").map(error => error.path),
+    ["effects.1.effectId"]);
+  assert.equal(compile(selection([chosen("cancel-self-attack"), chosen("cancel-self-attack")])).ok, false);
 });
 test("異なるdiceOnly effectはtrusted条件が両方成立すれば併用可能", () => {
   const trustedCatalog = createADevCatalog();
