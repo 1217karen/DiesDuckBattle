@@ -1,0 +1,6 @@
+body { font-family: system-ui, sans-serif; margin: 0 auto; padding: 24px; max-width: 960px; color: #202c38; background: #f3f6f8; }
+header, section { background: white; border: 1px solid #ccd5de; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+nav { line-height: 2; } a { color: #07599d; }
+label { display: inline-block; margin: 8px 16px 8px 0; }
+select, input, button { font: inherit; padding: 8px; } input { width: 5em; }
+button { cursor: pointer; } pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #edf2f6; padding: 12px; }

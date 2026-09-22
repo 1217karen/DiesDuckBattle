@@ -14,7 +14,7 @@ const server = createServer(async (req, res) => {
     const pathname = decodeURIComponent(new URL(req.url, "http://127.0.0.1").pathname);
     const relative = pathname === "/" ? "a-skill-test.html" : pathname.slice(1);
     // 必要な静的ファイルだけを提供。.gitや任意のローカルファイルは提供しない。
-    if (!/^([abc]-skill-test\.html|js\/[\w-]+\.js|css\/[\w-]+\.css)$/.test(relative)) {
+    if (!/^([abcd]-skill-test\.html|js\/[\w-]+\.js|css\/[\w-]+\.css)$/.test(relative)) {
       res.writeHead(404).end(); return;
     }
     const path = resolve(root, relative);
@@ -25,4 +25,4 @@ const server = createServer(async (req, res) => {
   } catch { res.writeHead(404).end(); }
 });
 server.on("error", error => { console.error(error.message); process.exitCode = 1; });
-server.listen(port, "127.0.0.1", () => console.log(`開発確認: http://127.0.0.1:${port}/a-skill-test.html / http://127.0.0.1:${port}/b-skill-test.html / http://127.0.0.1:${port}/c-skill-test.html (Ctrl+Cで停止)`));
+server.listen(port, "127.0.0.1", () => console.log(`開発確認: http://127.0.0.1:${port}/a-skill-test.html / http://127.0.0.1:${port}/b-skill-test.html / http://127.0.0.1:${port}/c-skill-test.html / http://127.0.0.1:${port}/d-skill-test.html (Ctrl+Cで停止)`));
