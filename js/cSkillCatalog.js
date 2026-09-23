@@ -1,18 +1,25 @@
 import { STATUS_GROUPS } from "./statusGroups.js";
 
 // ユーザーはeffect/option IDのみ選択。semanticsは将来compiler用の信頼済み情報。
-// 数値optionは未設定。既知のstatus/scopeもapDelta:nullで価格未定と明示する。
+// balance v0。数値・価格の正式な設定元。
 export function createCSkillCatalog() {
-  const optionSets = {};
-  for (const key of ["damageAmount", "healAmount", "currentHpPct", "statusStacks",
-    "turnATAmount", "turnDFAmount", "turnCount", "timedStacks", "timedTurns", "revivePct",
-    "hpThreshold", "statusMultiplier", "stepBaseAmount", "stepEveryTurns", "stepAmount"]) optionSets[key] = [];
+  const tables = {
+    damageAmount: [[50,0],[60,1],[70,2],[80,3],[90,4],[100,5]],
+    healAmount: [[30,0],[40,1],[50,2]], currentHpPct: [[.25,0],[.5,5],[.75,10],[1,15]],
+    statusStacks: [[3,0]], turnATAmount: [[2,0],[3,1],[4,2]], turnDFAmount: [[2,0],[3,1],[4,2]],
+    turnCount: [[2,0],[3,1],[4,2]], timedStacks: [[1,0]], timedTurns: [[3,0],[4,1],[5,2]],
+    revivePct: [[.01,0],[.1,2],[.25,4]], hpThreshold: [[.25,-1],[.5,-1],[.75,-1]],
+    statusMultiplier: [[10,0],[15,1],[20,2]], stepBaseAmount: [[30,0]], stepEveryTurns: [[5,1],[10,0]], stepAmount: [[5,0],[10,2]],
+  };
+  const optionSets = Object.fromEntries(Object.entries(tables).map(([key, rows]) => [key,
+    rows.map(([value, apDelta]) => ({ id: key + "-" + value, value, apDelta,
+      label: ["currentHpPct", "revivePct", "hpThreshold"].includes(key) ? value * 100 + "%" : String(value) }))]));
   for (const group of ["debuff", "buff"]) {
     for (const purpose of ["grant", "clear", "timed"]) {
-      optionSets[`${purpose}-${group}`] = STATUS_GROUPS[group].map(id => ({ id, label: id, value: id, apDelta: null }));
+      optionSets[`${purpose}-${group}`] = STATUS_GROUPS[group].map(id => ({ id, label: id, value: id, apDelta: 0 }));
     }
-    optionSets[`grant-${group}`].push({ id: `random-${group}`, label: `ランダム${group}`, value: `@${group}`, apDelta: null });
-    optionSets[`clear-all-${group}`] = [{ id: "all", label: `全${group}解除`, value: group, apDelta: null }];
+    optionSets[`grant-${group}`].push({ id: `random-${group}`, label: `ランダム${group}`, value: `@${group}`, apDelta: 0 });
+    optionSets[`clear-all-${group}`] = [{ id: "all", label: `全${group}解除`, value: group, apDelta: 2 }];
   }
   const effects = [];
   const add = (id, category, label, polarity, axes, semantics, modes = ["normal", "special"]) => {
@@ -69,8 +76,8 @@ export function createCSkillCatalog() {
   add("revive-self", "revive", "最大HP割合で復活", "benefit", { maxHpPct: "revivePct" },
     { type: "revive", target: "self", maxHpPctAxis: "maxHpPct" }, ["special"]);
   return { effects, optionSets,
-    chanceOptions: [100, 70, 50, 25].map(percent => ({ id: String(percent), label: `${percent}%`,
-      value: percent / 100, apDiscount: percent === 100 ? 0 : null })) };
+    chanceOptions: [100, 70, 50, 25].map((percent, apDiscount) => ({ id: String(percent), label: `${percent}%`,
+      value: percent / 100, apDiscount })) };
 }
 
 export function getCEffectAvailability(effectId, mode, catalog = createCSkillCatalog()) {

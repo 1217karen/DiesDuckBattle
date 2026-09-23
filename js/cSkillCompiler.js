@@ -90,9 +90,13 @@ export function compileCSkill(selection, { catalog = createCSkillCatalog(), rule
   }
   const skill = { mode: selection.mode, costAP: resources.requiredAP, effect };
   if (selection.mode === "special" && rules.repeatReviveChance != null) {
-    if (!Number.isFinite(rules.repeatReviveChance) || rules.repeatReviveChance < 0 || rules.repeatReviveChance > 1)
+    const repeat = rules.repeatReviveChance;
+    const probability = value => Number.isFinite(value) && value >= 0 && value <= 1;
+    if (typeof repeat === "number" ? !probability(repeat)
+      : !repeat || Object.keys(repeat).some(key => !["2", "3", "default"].includes(key))
+        || ![repeat[2], repeat[3], repeat.default].every(probability))
       throw new TypeError("Invalid trusted repeatReviveChance");
-    skill.repeatReviveChance = rules.repeatReviveChance;
+    skill.repeatReviveChance = typeof repeat === "number" ? repeat : { ...repeat };
   }
   return { ...result, ok: true, skill };
 }

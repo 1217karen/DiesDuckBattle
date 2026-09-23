@@ -70,7 +70,7 @@ test("nonzero fixture価格もcalculatorの結果を利用する", () => {
 });
 test("productionの未選択/価格nullではcompile不可、0へ補完しない", () => {
   for (const selection of [{ mode: "normal", effects: [{ effectId: "damage-enemy", options: {} }] },
-    { mode: "normal", effects: [{ effectId: "clear-debuff-single-self", options: { status: "crack" } }] }]) {
+    { mode: "normal", effects: [{ effectId: "clear-debuff-single-self", options: {} }] }]) {
     const r = compileCSkill(selection); assert.equal(r.ok, false); assert.equal(r.skill, null); assert.ok(r.unresolved.length);
   }
   assert.equal(compile([chosen("damage-enemy")]).ok, true);
@@ -116,8 +116,8 @@ test("凍結入力で純粋、出力の変更がcatalogや次回出力へ漏れ�
   const r = compileCSkill(selection, { catalog, rules }); r.skill.effect[0].effect.value = 999;
   assert.equal(compileCSkill(selection, { catalog, rules }).skill.effect[0].effect.value, 1);
   assert.equal(JSON.stringify({ selection, catalog, rules }), before);
-  assert.ok(createCSkillCatalog().optionSets.damageAmount.length === 0);
-  assert.equal(createCSkillRules().repeatReviveChance, null);
+  assert.ok(createCSkillCatalog().optionSets.damageAmount.length === 6);
+  assert.deepEqual(createCSkillRules().repeatReviveChance, { 2: .5, 3: .25, default: .1 });
 });
 function run(effects, mode = "normal", settings = {}, chance = .5, rng = () => .9) {
   return runCSkillTestBattle(flatFixture({ mode, effects }), { catalog: createCDevCatalog(), rules: { ...createCSkillRules(), repeatReviveChance: chance },

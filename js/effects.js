@@ -864,7 +864,9 @@ function effRevive(eff, ctx, emit) {
     if (!Number.isFinite(pct) || pct < 0 || pct > 1 || !Number.isFinite(tgt.maxHP)) return;
     const activation = ctx.specialCActivation;
     if (activation?.count > 1) {
-      const probability = activation.repeatReviveChance;
+      const repeat = activation.repeatReviveChance;
+      const probability = repeat && typeof repeat === "object"
+        ? (repeat[activation.count] ?? repeat.default) : repeat;
       if (!Number.isFinite(probability) || probability < 0 || probability > 1)
         throw new TypeError("Repeated percentage revive requires trusted repeatReviveChance in [0, 1]");
       const success = ctx.rng() < probability;

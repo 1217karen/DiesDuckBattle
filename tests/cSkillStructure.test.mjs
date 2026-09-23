@@ -128,13 +128,13 @@ test("CS24: 3択の現在HP20/30/40%", () => {
   for (const [roll, amount] of [[.1, 200], [.5, 300], [.9, 400]]) assert.equal(execute(fixtures.CS24, { rng: () => roll }).enemy.hp, 1000 - amount);
 });
 
-test("normal reviveは全枝で拒否、special branchでは割合revive可能", () => {
+test("normal reviveは全枝で拒否、specialはflatのみ", () => {
   const revive = choose("revive-self", { maxHpPct: .3 });
   for (const s of [random([[damage(10)], [revive]]), hp([damage(10)], [revive])]) {
     assert.ok(compile(s).errors.some(e => e.code === "MODE_UNAVAILABLE"));
-    assert.equal(compile({ ...s, mode: "special" }).ok, true);
+    assert.ok(compile({ ...s, mode: "special" }).errors.some(e => e.code === "SPECIAL_FLAT_ONLY"));
   }
-  const result = runCSkillTestBattle({ ...hp([damage(10)], [revive]), mode: "special" }, { catalog, rules: { ...rules, repeatReviveChance: .5 },
+  const result = runCSkillTestBattle({ ...flat([revive]), mode: "special" }, { catalog, rules: { ...rules, repeatReviveChance: .5 },
     settings: { ...Object.fromEntries(C_TEST_FIELDS.map(f => [f.key, f.value])), p1HP: -100, p1Dice: 0, p2Dice: 0, maxTurns: 1 }, rng: () => .1 });
   assert.equal(result.battle.events.find(e => e.type === "revived").hpAfter, 300);
 });
@@ -180,19 +180,19 @@ test("全階層のraw injection拒否、旧新版flat DTOも明示的に移行�
   assert.equal(compile(flat([{ effectId: "repeat", options: {} }])).ok, false);
   assert.equal(catalog.effects.some(e => e.semantics.type === "repeat"), false);
 });
-test("productionの各価格・集約policyは未確定、nullを最終AP=0にしない", () => {
+test("production価格確定、trusted fixtureのnullは最終AP=0にしない", () => {
   const prod = createCSkillCatalog(), pr = createCSkillRules();
-  for (const set of ["hpThreshold", "statusMultiplier", "stepBaseAmount", "stepEveryTurns", "stepAmount"]) assert.deepEqual(prod.optionSets[set], []);
+  for (const set of ["hpThreshold", "statusMultiplier", "stepBaseAmount", "stepEveryTurns", "stepAmount"]) assert.ok(prod.optionSets[set].length);
   assert.deepEqual(prod.chanceOptions.map(o => o.value), [1, .7, .5, .25]);
-  assert.equal(pr.branchAggregation, null);
+  assert.equal(pr.branchAggregation, "sum");
   for (const s of [fixtures.CS11, fixtures.CS23]) {
-    const r = compile(s, { rules: pr }); assert.equal(r.ok, false); assert.equal(r.resources.requiredAP, null); assert.ok(r.unresolved.length);
+    const r = compile(s, { rules: pr }); assert.equal(r.ok, true);
   }
   for (const [s, field] of [[fixtures.CS11, "branchAggregation"]]) {
     assert.equal(compile(s, { rules: { ...rules, [field]: null } }).resources.requiredAP, null);
   }
-  for (const kind of ["random", "hpCondition"]) {
-    const s = kind === "random" ? fixtures.CS11 : fixtures.CS23;
+  for (const kind of ["random2", "hpCondition"]) {
+    const s = kind === "random2" ? fixtures.CS11 : fixtures.CS23;
     assert.equal(compile(s, { rules: { ...rules, branchAPDelta: { ...rules.branchAPDelta, [kind]: null } } }).resources.requiredAP, null);
   }
   for (const [s, set] of [[fixtures.CS23, "hpThreshold"], [fixtures.CS15, "statusMultiplier"], [fixtures.CS16, "stepBaseAmount"],

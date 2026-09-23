@@ -40,7 +40,7 @@ function compileOne(id, values = {}, chance = "50") {
 test("production/devのchance候補は100/70/50/25共通、量候補はchanceと独立", () => {
   assert.equal(C_HP_FAILURE_MULTIPLIER, .2);
   const prod = createCSkillCatalog(), dev = createCDevCatalog();
-  assert.deepEqual(prod.chanceOptions.map(o => [o.id, o.value, o.apDiscount]), [["100", 1, 0], ["70", .7, null], ["50", .5, null], ["25", .25, null]]);
+  assert.deepEqual(prod.chanceOptions.map(o => [o.id, o.value, o.apDiscount]), [["100", 1, 0], ["70", .7, 1], ["50", .5, 2], ["25", .25, 3]]);
   assert.deepEqual(dev.chanceOptions.map(o => [o.id, o.value]), prod.chanceOptions.map(o => [o.id, o.value]));
   assert.ok(dev.chanceOptions.every(o => o.apDiscount === 0 && !Object.hasOwn(o, "apDelta")));
   assert.deepEqual(prod.effects.filter(e => e.chanceEnabled === true).map(e => e.id), ["damage-enemy", "heal-self"]);
@@ -153,14 +153,15 @@ test("chance割引はleaf価格だけ、基礎/枠/分岐/他effectを割り引�
   damage.chanceOptionId = "50"; const clamped = compile(flat([damage, heal]), c);
   assert.equal(clamped.skill.costAP, 13); assert.equal(clamped.resources.effectBreakdown[0].effectDelta, 0);
   assert.equal(clamped.resources.effectBreakdown[1].effectDelta, 7);
-  const rules = createCDevRules(); rules.branchAPDelta.random = 3;
+  const rules = createCDevRules(); rules.branchAPDelta.random2 = 3;
   const branched = compile({ mode: "normal", structure: { kind: "random", branches: [{ effects: [damage] }, { effects: [heal] }] } }, c, rules);
   assert.equal(branched.skill.costAP, 16);
   c.chanceOptions.find(o => o.id === "50").apDiscount = -1;
   assert.throws(() => compile(flat([damage]), c), /chance discount/);
 });
-test("production discount nullはcompile不能。100%と確定optionのみなら利用可能", () => {
+test("trusted fixture discount nullはcompile不能。100%と確定optionのみなら利用可能", () => {
   const c = createCDevCatalog(); c.chanceOptions = createCSkillCatalog().chanceOptions;
+  c.chanceOptions.filter(o => o.id !== "100").forEach(o => { o.apDiscount = null; });
   const row = choose(c, "damage-enemy", "100");
   assert.equal(compile(flat([row]), c, createCSkillRules()).ok, true);
   for (const chance of ["70", "50", "25"]) {

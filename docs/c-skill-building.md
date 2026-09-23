@@ -3,7 +3,7 @@
 作成の最上位構造は次の順で選ぶ。
 
 ```text
-mode: normal / special
+mode: normal / special（specialはflatのみ）
 ↓
 分岐なし flat / 分岐あり
 ↓（分岐ありの場合）
@@ -138,21 +138,41 @@ knownOptionDelta、optionDelta、rawAP、requiredAP、complete、errors、unreso
 判明している符号付き小計はknownOptionDeltaへ残す。
 未選択はOPTION_UNSELECTED、価格未定はPRICE_UNRESOLVEDで示し、明示的apDelta=0と区別する。
 
-productionの数値option setは空。既知のstatus/scope候補も価格はnull。
-テスト用fixtureの数値・価格はゲームバランスの確定値ではない。
+### production balance v0
 
-production rulesの`branchAggregation`、`branchAPDelta.random/hpCondition`は引き続きnull。
-max/average/sumのいずれもproduction方式として確定しない。threshold、turnStep、stack倍率の候補は空・価格未定。
-chanceOptionsは100/70/50/25%で、非負の`apDiscount`を持つ。100%は0、70/50/25%はnull。
-成功率低下による補正は加算価格ではなく割引。負のapDeltaとして共通price()に渡さない。
-割引はそのeffectのoption価格までに限り、baseAP・追加benefit枠・分岐料金・他effectへ波及させない。
-割引額・最終バランスは未確定であり、旧chancePricing/onFailPricingの仮policyは廃止した。
-未確定discountはCHANCE_DISCOUNT_UNRESOLVEDとなり、`complete:false / requiredAP:null`でcompileを止める。
-明示的な0割引とnullは区別する。effectBreakdownにoptionPrice/apDiscount/appliedDiscount/effectDeltaを表示する。
+正式値はcreateCSkillCatalog / createCSkillRulesに定義する。productionのみでcompile・戦闘可能。今回対象の未確定項目はない。
 
-`createCDevRules()`だけは`branchAggregation:"dev-sum"`を使い、全枝の選択leaf価格とbenefit枠を合算する。
-自動onFailを数えない。dev catalogのoption価格・chance割引額と分岐補正は0。**仮の額・集約方式はゲーム仕様ではない。**
-非0割引の適用範囲はテスト専用価格でも確認する。productionの未確定割引を自動的に0へ補完する処理はない。
+| option set | 候補 → option AP |
+| --- | --- |
+| damageAmount | 50/60/70/80/90/100 → 0/1/2/3/4/5 |
+| healAmount | 30/40/50 → 0/1/2 |
+| currentHpPct | 25/50/75/100% → 0/5/10/15 |
+| statusStacks | 3 → 0 |
+| 指定/random buff・debuff | 全種類0 |
+| 単体status全stack解除 | 全種類0 |
+| buffまたはdebuffの1group解除 | 2 |
+| turnATAmount / turnDFAmount | 2/3/4 → 0/1/2 |
+| turnCount | 2/3/4 → 0/1/2 |
+| timedStacks | 1 → 0 |
+| timedTurns | 3/4/5 → 0/1/2 |
+| statusMultiplier | 10/15/20 → 0/1/2 |
+| stepBaseAmount | 30 → 0 |
+| stepEveryTurns | 5/10 → 1/0 |
+| stepAmount | 5/10 → 0/2 |
+| revivePct | 1/10/25% → 0/2/4 |
+| hpThreshold | 25/50/75% → すべて-1 |
+
+AT/DFはamount+duration、turnStepはbase+every+addのoption価格を合算する。mirror drawbackは対応benefitと共通表の価格を反転する。
+chanceOptionsは100/70/50/25%、非負のapDiscountは0/1/2/3。割引はそのleaf価格を下限0まで下げるだけで、baseAP・追加枠・分岐・他effectには波及しない。
+
+分岐は通常Cのみ。branchAggregationは正式名称sumで、全branchのleaf価格とbenefit枠を合算する。
+branchAPDeltaはrandom2:-1、random3:-2、hpCondition:0。HP threshold自体の価格は一律-1。
+requiredAP = max(5, rawAP)。特殊Cのrandom/hpConditionはSPECIAL_FLAT_ONLYで拒否し、UIではflatに初期化する。
+マイナス価格はtrusted分岐/thresholdに限り許可し、通常effect option価格とchance割引は非負のまま。
+effectBreakdownでoptionPrice/apDiscount/appliedDiscount/effectDelta、knownStructureDeltaで分岐・threshold合計補正を確認できる。
+
+createCDevCatalog / createCDevRulesは構造・旧能力テスト用に残す。dev独自数量とoption価格・chance割引・分岐補正0はゲーム仕様ではない。集約方式sumとspecial flat制限はproduction共通。
+nullのtrusted設定は引き続き未確定としてcompileを止めるが、production balance v0にはnullは残さない。
 
 ## 公開effect
 
@@ -179,7 +199,7 @@ AP操作、addDice、出目固有操作、B常時modifier、割合healはC catal
 現在HP基準で切り捨て、HP<=0なら0、最低1保証なし。
 HP101・30%なら30ダメージ、HP1・30%なら0、100%なら現在HP分となる。
 100%未満はそれ単体では正の整数HPを0にしきれない。100%は必殺相当なので高いAPを想定するが、
-100%未満を含め価格は未確定。自分への割合ダメージdrawbackは公開しない。
+価格はbalance v0で確定。自分への割合ダメージdrawbackは公開しない。
 
 healは既存固定値加算。HP=-30に50なら20、HP=-100に50なら-50。
 結果的に復帰してもhealであり、既存healログ/afterHealを通る。
@@ -275,10 +295,10 @@ floor結果への最低1保証は追加しない。
 初回成功本数ではなくspecial発動回数で判別する。revive失敗でもAPは消費済みで返却せず、
 後続の固定ダメージ・状態付与等を通常どおり実行する。
 
-repeatReviveChanceの最終値は未確定。createCSkillRulesの設定はnullで、50%等は採用していない。
-割合reviveを反復実行するtrusted Cには運営/テスト側で0～1の値を明示する必要がある。
-初回は未設定でも確定成功するが、2回目の割合reviveに設定がなければTypeErrorで
-設定不備を示す。暗黙に0%/50%へ補完しない。ユーザーselectionへこの値を持たせない。
+repeatReviveChanceはtrusted rulesに { 2: 0.5, 3: 0.25, default: 0.1 } を定義する。
+初回100%、2回目50%、3回目25%、4回目以降10%。判定はrng() < probabilityで、境界値そのものは失敗。
+各revive行は独立抽選し、generic chanceを重ねない。固定healや他effectには作用しない。
+legacy/開発用の単一数値確率も引き続き実行可能。ユーザーselectionへ確率設定は持たせない。
 割合復活optionのAP価格と、再抽選確率のゲームルールは別設定である。
 
 ## 旧buildRulesとの関係・未確定事項
@@ -287,8 +307,7 @@ repeatReviveChanceの最終値は未確定。createCSkillRulesの設定はnull�
 calculateBuildResourcesの未使用statポイント算出も壊さないが、新版Cには消費させない。
 今回のCは専用rules/catalog/resourcesで独立してAPを計算する。
 
-固定量/割合/stack/turn/AT/DF/timed rule/復活率ごとの最終option表・AP価格、
-repeatReviveChance、本番UI、最終buildCompiler、generic DTO統合は未実装・未確定。
+Cのoption表・AP価格・repeatReviveChanceはbalance v0として確定。本番UI、最終buildCompiler、generic DTO統合は今回対象外。
 A/B価格やD新版、cooldown、既存status自体のルールも変更しない。
 
 ## テスト
@@ -337,9 +356,7 @@ const selection = {
 DTOのraw effect/value/costAP/apDelta/target/duration/repeatReviveChanceは拒否する。
 入力catalog・rules・selectionは変更しない。
 
-specialにだけ、trusted rulesの有効なrepeatReviveChance（0～1）をコピーする。
-productionのnullは補完せず出力から省く。割合reviveを2回以上試す場合は、
-開発ページの別テスト設定で0%/50%/100%を指定する。この設定はselectionに入らない。
+specialにだけtrusted rulesの回数別repeatReviveChanceをコピーする。legacy/fixture用の単一数値0～1も許可する。開発ページの0/50/100%上書きはfixture ON時だけであり、selectionには入らない。
 
 ### 起動と操作
 
@@ -358,10 +375,10 @@ serverは127.0.0.1限定で、A/B/C/D HTMLとjs/cssの許可パスだけを配�
 
 本番catalogは初期状態でcompile不能になることが正常。
 「開発用fixture」をONにすると`createCDevCatalog()`が独立catalogを作り、
-数量候補とapDelta=0、および`createCDevRules()`の仮policyを設定する。production catalog自体は変更・保存しない。
+数量候補とapDelta=0、および`createCDevRules()`の開発用分岐価格を設定する。production catalog自体は変更・保存しない。
 固定ダメージ10/30/40/50/60/70/100、回復10/30/50/100、割合ダメージ10/20/30/40/50/100%、stack・AT/DF量1/2/3、
 turn数1/2/3/4、復活1/10/30/50%はすべて開発確認用で、ゲーム仕様ではない。
-status/scopeの未確定価格もfixture内だけ0にする。
+status/scope価格もfixture内では0にする。
 成功率100/70/50/25%（確率は確定・fixture割引額0は仮）、HP threshold50%、debuff倍率5、turnStepの基礎10/40・間隔5/10・増分10も開発専用。
 追加benefit枠APは通常どおりなので1/2/3メリットのcostAPは5/6/7になる。
 

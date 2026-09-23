@@ -98,13 +98,13 @@ function renderRows() {
   $("branch-count-label").hidden = kind !== "random";
   $("threshold-control").replaceChildren();
   if (kind === "hpCondition") $("threshold-control").append(labeled("自分HP割合 threshold", select(
-    [{ id: "", label: "threshold未選択 / production未確定" }, ...catalog.optionSets.hpThreshold],
+    [{ id: "", label: "threshold未選択" }, ...catalog.optionSets.hpThreshold.map(o => ({ ...o, label: o.label + " / ΔAP " + o.apDelta }))],
     selection.structure.thresholdOptionId, "HP threshold", id => {
       if (id) selection.structure.thresholdOptionId = id; else delete selection.structure.thresholdOptionId; update();
     })));
 }
 function changeStructure() {
-  const kind = $("branching").value === "flat" ? "flat" : $("branch-kind").value;
+  const kind = selection.mode === "special" || $("branching").value === "flat" ? "flat" : $("branch-kind").value;
   selection.structure = kind === "flat" ? { kind, effects: [newEffect()] }
     : kind === "random" ? { kind, branches: Array.from({ length: Number($("branch-count").value) }, () => ({ effects: [newEffect()] })) }
     : { kind, branches: { met: { effects: [newEffect()] }, unmet: { effects: [newEffect()] } } };
@@ -114,12 +114,14 @@ function update() {
   stale();
   rules = $("fixture").checked
     ? { ...createCDevRules(), repeatReviveChance: Number($("repeat-chance").value) }
-    : createCSkillRules(); // 仮policyと再復活率はfixture ON時だけ。DTO外。
+    : createCSkillRules(); // 開発用価格と単一再復活率の上書きはfixture ON時だけ。DTO外。
   try {
     compilation = compileCSkill(selection, { catalog, rules });
+    $("branching").disabled = selection.mode === "special";
+    $("branching").parentElement.hidden = selection.mode === "special";
     renderRows();
     $("resources").replaceChildren();
-    for (const key of ["mode", "effectCount", "benefitCount", "drawbackCount", "baseAP", "slotCost", "optionDelta", "rawAP", "requiredAP", "complete"]) {
+    for (const key of ["mode", "effectCount", "benefitCount", "drawbackCount", "baseAP", "slotCost", "optionDelta", "knownStructureDelta", "rawAP", "requiredAP", "complete"]) {
       $("resources").append(el("dt", key), el("dd", compilation.resources[key] ?? "未確定"));
     }
     $("issues").replaceChildren();
@@ -128,7 +130,7 @@ function update() {
     $("selection").textContent = json(selection); $("compiled").textContent = json(compilation.skill);
     $("resource-json").textContent = json(compilation.resources);
     $("battle").disabled = !compilation.ok;
-    $("battle-blocker").textContent = compilation.ok ? "compile済みcSkillで戦闘できます。" : "compile不能：上のerrors / unresolvedを確認してください。本番catalogでは未確定が正常です。";
+    $("battle-blocker").textContent = compilation.ok ? "compile済みcSkillで戦闘できます。" : "compile不能：上のerrors / unresolvedを確認してください。";
   } catch (error) {
     compilation = null; $("battle").disabled = true; $("battle-blocker").textContent = `設定エラー：${error.message}`;
   }
@@ -142,8 +144,8 @@ function switchCatalog() {
   if (!catalog.optionSets.hpThreshold.some(o => o.id === selection.structure.thresholdOptionId)) delete selection.structure.thresholdOptionId;
   $("repeat-chance").disabled = !$("fixture").checked;
   $("catalog-note").textContent = $("fixture").checked
-    ? "開発fixture ON：全leaf合算、option・分岐価格・chance割引額は仮の0。ゲーム仕様ではありません。"
-    : "本番catalog：数値option・価格は未確定です。開発fixtureをONにするとcompile・戦闘確認できます。";
+    ? "開発fixture ON：独自数量とoption・分岐価格・chance割引額0は動作確認用です。集約方式sumは本番と共通です。"
+    : "本番catalog：balance v0。fixtureなしでcompile・戦闘確認できます。復活は初回確定→50%→25%→10%。";
   update();
 }
 function renderEvents() {
@@ -161,7 +163,7 @@ for (const field of C_TEST_FIELDS) {
   const input = el("input"); input.type = "number"; input.id = field.key; input.min = field.min; input.max = field.max; input.step = "1"; input.value = field.value; input.required = true;
   input.addEventListener("input", stale); $("settings").append(labeled(field.label, input));
 }
-document.querySelectorAll('input[name="mode"]').forEach(radio => radio.addEventListener("change", () => { selection.mode = radio.value; update(); }));
+document.querySelectorAll('input[name="mode"]').forEach(radio => radio.addEventListener("change", () => { selection.mode = radio.value; if (selection.mode === "special" && selection.structure.kind !== "flat") { $("branching").value = "flat"; changeStructure(); } else update(); }));
 $("fixture").addEventListener("change", switchCatalog);
 $("repeat-chance").addEventListener("change", update);
 $("force-death").addEventListener("change", stale);

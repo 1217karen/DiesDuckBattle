@@ -34,7 +34,7 @@
       <h2>AP計算・compile結果</h2>
       <dl id="resources" aria-live="polite"></dl>
       <h3>errors / unresolved</h3><ul id="issues" role="status"></ul>
-      <p class="notice">productionのAP価格・分岐AP集約・chance割引額は未確定。割引はそのeffect部分だけに適用します。fixtureの価格・割引額0と全leaf合算は動作確認用です。</p>
+      <p class="notice">productionはbalance v0確定値。特殊Cは分岐なしのみ。割引はそのeffect部分だけに適用します。fixture独自候補と価格・割引額0は動作確認用です。</p>
     </aside>
     <section class="wide">
       <h2>2. 戦闘テスト</h2>
@@ -44,7 +44,7 @@
         <label>特殊C 再復活抽選率（開発テスト用）
           <select id="repeat-chance"><option value="0">0%</option><option value="0.5" selected>50%</option><option value="1">100%</option></select>
         </label>
-        <p class="notice">この抽選率は開発確認用であり、最終ゲーム仕様ではありません。selection DTOには入りません。</p>
+        <p class="notice">このselectorはfixture専用です。本番は初回確定、2回目50%、3回目25%、4回目以降10%。selection DTOには入りません。</p>
         <label><input id="force-death" type="checkbox"> P1の各phaseEndでHPを-1へ戻す（開発用B・反復特殊C確認）</label>
         <p>特殊CはP1開始HPを0以下に設定してください。複数回発動には十分な開始APとmaxTurnsを指定します。</p>
         <button id="battle" type="submit" disabled>戦闘する</button>

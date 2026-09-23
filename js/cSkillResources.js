@@ -9,9 +9,9 @@ export function calculateCSkillResources(selection, { catalog = createCSkillCata
   const keys = (object, allowed, path) => {
     for (const key of Reflect.ownKeys(object)) if (!allowed.includes(key)) error("UNKNOWN_FIELD", `${path}.${String(key)}`);
   };
-  const price = (value, path) => {
+  const price = (value, path, signed = false) => {
     if (value == null) { pending("PRICE_UNRESOLVED", path); return 0; } // 既知小計用のみ。最終APは必ずnull。
-    if (!Number.isFinite(value) || value < 0) throw new TypeError(`Invalid C option price: ${path}`);
+    if (!Number.isFinite(value) || (!signed && value < 0)) throw new TypeError(`Invalid C option price: ${path}`);
     return value;
   };
   const policy = (value, supported, code, path) => {
@@ -95,8 +95,11 @@ export function calculateCSkillResources(selection, { catalog = createCSkillCata
     branch({ effects: structure.effects }, "structure");
   } else if (["random", "hpCondition"].includes(structure.kind)) {
     keys(structure, structure.kind === "random" ? ["kind", "branches"] : ["kind", "thresholdOptionId", "branches"], "structure");
-    policy(rules.branchAggregation, "dev-sum", "BRANCH_AGGREGATION_UNRESOLVED", "rules.branchAggregation");
-    knownStructureDelta += price(rules.branchAPDelta?.[structure.kind], `rules.branchAPDelta.${structure.kind}`);
+    if (mode === "special") error("SPECIAL_FLAT_ONLY", "structure.kind");
+    policy(rules.branchAggregation, "sum", "BRANCH_AGGREGATION_UNRESOLVED", "rules.branchAggregation");
+    const priceKey = structure.kind === "random" ? `random${structure.branches?.length}` : "hpCondition";
+    if (["random2", "random3", "hpCondition"].includes(priceKey))
+      knownStructureDelta += price(rules.branchAPDelta?.[priceKey], `rules.branchAPDelta.${priceKey}`, true);
     if (structure.kind === "random") {
       if (!Array.isArray(structure.branches) || ![2, 3].includes(structure.branches.length)) error("BRANCH_COUNT", "structure.branches");
       if (Array.isArray(structure.branches)) for (const [i, b] of structure.branches.entries()) branch(b, `structure.branches.${i}`);
@@ -104,7 +107,7 @@ export function calculateCSkillResources(selection, { catalog = createCSkillCata
       const threshold = option(catalog.optionSets.hpThreshold, structure.thresholdOptionId, "structure.thresholdOptionId");
       if (threshold) {
         if (!Number.isFinite(threshold.value) || threshold.value <= 0 || threshold.value > 1) throw new TypeError("Invalid C HP threshold");
-        knownStructureDelta += price(threshold.apDelta, "structure.thresholdOptionId");
+        knownStructureDelta += price(threshold.apDelta, "structure.thresholdOptionId", true);
       }
       if (!record(structure.branches)) error("INVALID_BRANCHES", "structure.branches");
       else {

@@ -20,7 +20,7 @@ export function createCDevCatalog() {
   return catalog;
 }
 
-// 仮の全leaf合算と分岐追加価格0。ゲーム仕様ではない。自動onFailは数えない。
+// 構造はproduction共通。分岐価格0は開発専用。自動onFailは数えない。
 export function createCDevRules() {
-  return { ...createCSkillRules(), branchAggregation: "dev-sum", branchAPDelta: { random: 0, hpCondition: 0 } };
+  return { ...createCSkillRules(), branchAPDelta: { random2: 0, random3: 0, hpCondition: 0 } };
 }

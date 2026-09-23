@@ -17,7 +17,7 @@ const calculateCSkillResources = (value, options) => structuredcalculateCSkillRe
 function fixture() {
   const catalog = createCSkillCatalog();
   for (const [id, options] of Object.entries(catalog.optionSets)) {
-    if (options.length) options.forEach(o => { o.apDelta = 1; });
+    if (/^(grant|clear|timed)-/.test(id)) options.forEach(o => { o.apDelta = 1; });
     else catalog.optionSets[id] = [
       { id: "zero", label: "テスト無料", value: 1, apDelta: 0 },
       { id: "one", label: "テスト1", value: 2, apDelta: 1 },
