@@ -14,7 +14,7 @@ const server = createServer(async (req, res) => {
     const pathname = decodeURIComponent(new URL(req.url, "http://127.0.0.1").pathname);
     const relative = pathname === "/" ? "a-skill-test.html" : pathname.slice(1);
     // 必要な静的ファイルだけを提供。.gitや任意のローカルファイルは提供しない。
-    if (!/^(setting\.html|[abcd]-skill-test\.html|js\/[\w-]+\.js|css\/[\w-]+\.css)$/.test(relative)) {
+    if (!/^(select\.html|setting\.html|[abcd]-skill-test\.html|js\/[\w-]+\.js|css\/[\w-]+\.css)$/.test(relative)) {
       res.writeHead(404).end(); return;
     }
     const path = resolve(root, relative);
