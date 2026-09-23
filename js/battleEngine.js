@@ -787,7 +787,7 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
   const override = atk.temp?.attackTimesOverride;
   const add = atk.temp?.attackTimesAdd ?? 0;
 
-  let times = (typeof override === "number" ? override : baseTimes) + add;
+  let times = override === 0 ? 0 : (typeof override === "number" ? override : baseTimes) + add;
   times = Math.max(0, Math.floor(times));
 
   let hadNonMissAttack = false; // 旧出目6の判定位置を維持
@@ -847,6 +847,11 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
     const statusAT = baseAT;
 
     const bonusAT = atk.nextAttackATPlus ?? 0;
+    // beforeAttackの補正もこの通常攻撃試行で消費する。MISS・回避へ持ち越さない。
+    if (bonusAT !== 0) {
+      atk.nextAttackATPlus = 0;
+      push("note", atk.side, { code: "NEXT_ATTACK_ATPLUS_CONSUMED", value: bonusAT });
+    }
 
     const atkPower = diceValue + statusAT + bonusAT;
 
@@ -1051,18 +1056,6 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
 
     // 攻撃情報を最終形に更新（afterDamage等の参照用）
     afterHitCtx.attack.damage = finalDmg;
-
-    // nextAttackATPlusを消費する
-    if (bonusAT !== 0 && afterHitCtx.attack?.kind === "normalAttack" && !afterHitCtx.attack?.isCounter) {
-
-      // 消費した瞬間のログ（result.jsで表示する用）
-      afterHitCtx.push("note", atk.side, {
-        code: "NEXT_ATTACK_ATPLUS_CONSUMED",
-        value: bonusAT,
-      });
-
-      atk.nextAttackATPlus = 0;
-    }
 
     // ダメージ適用
     afterHitCtx.helpers.dealDamage(def, finalDmg, atk.side, "normalDamage", {
