@@ -66,7 +66,8 @@ effects.jsに小さなcontainer処理だけを追加し、既存condition evalua
 
 ### chance / onFailと追加能力
 
-全benefitは100%がdefaultで、省略可能。同じeffect・同じ効果量optionへ、成功率100/70/50/25%を後付けする。
+chance対応は相手への固定ダメージ（damage-enemy）と自分への固定回復（heal-self）のみ。trusted effect定義のchanceEnabled: trueで明示し、未指定のeffectは許可しない。
+この2effectは100%がdefaultで、省略可能。同じ効果量optionへ成功率100/70/50/25%を後付けする。その他はdrawbackを含め100%固定で、chanceOptionIdは"100"を含め指定自体をvalidation errorにする。
 成功率別の効果量表は設けない。drawbackは100%固定。100%ではcompiled effectにchance/onFailを付けず、chance判定の乱数を消費しない（randomPickやランダムstatus本来の抽選は別）。
 
 ユーザー指定onFailは廃止。chance関連のselection fieldはchanceOptionIdだけで、失敗時effectを編集できない。
@@ -75,12 +76,10 @@ effects.jsに小さなcontainer処理だけを追加し、既存condition evalua
 | HPを直接増減するeffect | 自動onFail |
 | --- | --- |
 | 固定ダメージ / 固定回復 | floor(amount × 0.2) |
-| 現在HP割合固定ダメージ | amountPct × 0.2（割合値自体を変換） |
-| debuff総stack × N | floor(N × 0.2) |
-| turnStep固定ダメージ | base/addをそれぞれfloor(値 × 0.2)、everyは維持 |
 
-20%は確定ルール。最低1保証なし。0なら何も起こらない。割合ダメージの既存amountPct処理は変更しない。
-status付与（ランダム含む）・解除・AT/DF補正・timed hit・reviveなど、それ以外にはonFailを生成せず完全失敗とする。
+20%は確定ルール。整数はfloor、最低1保証なし。0なら何も起こらない。
+現在HP割合・debuff総stack・turnStepダメージ、status付与（ランダム含む）・解除・AT/DF補正・timed hit・reviveなどにはgeneric chanceも自動onFailも生成しない。
+reviveは初回確定、2回目以降は既存repeatReviveChanceだけを使い、二重抽選しない。特殊Cのheal-selfもchance対応だが、repeatReviveChanceの対象外。100%の固定回復は特殊Cが発動するたびに必ず実行する。
 自動onFailにchanceやさらにonFailは付けない。失敗時20%は追加effectでも価格optionでもなく、effectCount/benefitCount/枠APへ数えず、追加APも課さない。
 flat/random/hpConditionのどの枝でも同じleaf compilerを使い、既存engineのeffect.chance/onFailで実行する。
 
@@ -111,7 +110,7 @@ semanticsは既存effect type、対象、符号、各軸の用途などの信頼
 確定ルールは1～5effect、baseAP=5、minimumAP=5、追加benefit枠1つにつき+1AP。
 別の作成用スキルポイントは使用しない。
 
-以下は従来のflat AP集計。benefitの各leaf option価格から、そのleaf専用のchance割引を差し引く。
+以下は従来のflat AP集計。chance対応2effectのleaf option価格から、そのleaf専用のchance割引を差し引く。その他のeffectではchance割引計算を行わない。
 
 ```text
 effectCount = benefitCount + drawbackCount
@@ -300,7 +299,7 @@ AP内訳・mirror・注入拒否・未確定価格・純粋性、割合ダメー
 仮数量/価格/確率はテストfixture内に限り使用する。
 
 構造テストはCS11/15/16/18/21/23/24/25系の能力をselectionからcompiler・harness・battleへ接続する。
-CS15系の能力テストは新版候補70%へ更新し、個別抽選とstack総数参照を維持する。
+CS15系の能力テストは新版ではstatusを100%付与し、stack総数参照を維持する。旧75%の個別抽選は新版selectionの再現対象外。
 CS23は旧実装の60を基準にする。旧CS03の80%・成功70/失敗30は新版で再現せず、legacy engine互換テストだけに残す。
 新版70ダメージの失敗時は14。repeatは非公開で、CS02完全再現は引き続き対象外。
 CS23の新分岐は今回仕様の>=50% / <50%なので、旧実装の<=49%との間にあった隙間は持たない。legacy入力自身の意味は維持する。
@@ -368,8 +367,8 @@ status/scopeの未確定価格もfixture内だけ0にする。
 
 mode → 分岐なし/あり → ランダム2/3択またはHP条件 → 各枝のeffect/optionの順に選ぶ。
 構造切替時は各枝を初期効果へ戻す。各枝のeditorは同じ実装を使用する。
-全枝の選択effect合計で最大5行まで追加・削除する。benefitはeffect → option → 成功率の順で表示する。
-100%未満なら編集不可の「失敗時：主効果の20%」または「失敗時：効果なし」を表示する。失敗時effectの追加checkbox/editorは設けない。
+全枝の選択effect合計で最大5行まで追加・削除する。chance対応effectはeffect → option → 成功率の順で表示する。
+成功率selectorはdamage-enemy / heal-selfだけに表示する。100%未満なら編集不可の「失敗時：主効果の20%」を表示する。その他のeffectにはselectorも失敗時説明も表示しない。失敗時effectの追加checkbox/editorは設けない。
 重複選択も可能。normalではreviveを無効表示し、理由を示す。
 AP内訳、errors/unresolved、selection、compiled cSkill、resource resultは常に確認できる。
 raw effectを編集して投入する機能は設けない。

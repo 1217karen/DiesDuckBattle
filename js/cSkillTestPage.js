@@ -69,14 +69,13 @@ function renderEffect(chosen, label) {
     });
     input.disabled = !options.length; row.append(labeled(axisLabels[axis] ?? axis, input));
   }
-  if (definition.polarity === "benefit") {
+  if (definition.polarity === "benefit" && definition.chanceEnabled === true) {
     row.append(labeled("成功率", select(catalog.chanceOptions, chosen.chanceOptionId ?? "100", label + " 成功率", id => {
       if (id === "100") { delete chosen.chanceOptionId; } else chosen.chanceOptionId = id;
       update();
     })));
     if (chosen.chanceOptionId && chosen.chanceOptionId !== "100") {
-      row.append(el("p", ["fixedDamage", "heal"].includes(definition.semantics.type)
-        ? "失敗時：主効果の20%（整数の効果量は切り捨て・最低1保証なし）" : "失敗時：効果なし"));
+      row.append(el("p", "失敗時：主効果の20%（整数の効果量は切り捨て・最低1保証なし）"));
     }
   }
   return row;

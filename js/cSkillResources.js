@@ -56,13 +56,15 @@ export function calculateCSkillResources(selection, { catalog = createCSkillCata
         if (!found || found.apDelta == null) priceComplete = false;
       }
     }
+    const chanceEnabled = benefit && effect.chanceEnabled === true;
+    if (!chanceEnabled && Object.hasOwn(chosen, "chanceOptionId"))
+      error("CHANCE_NOT_ALLOWED", `${path}.chanceOptionId`);
     const chanceId = Object.hasOwn(chosen, "chanceOptionId") ? chosen.chanceOptionId : "100";
-    const chance = typeof chanceId === "string" && catalog.chanceOptions.find(o => o.id === chanceId);
-    if (!chance) error("UNKNOWN_CHANCE_OPTION", `${path}.chanceOptionId`);
-    else {
+    const chance = chanceEnabled && typeof chanceId === "string" && catalog.chanceOptions.find(o => o.id === chanceId);
+    if (chanceEnabled && !chance) error("UNKNOWN_CHANCE_OPTION", `${path}.chanceOptionId`);
+    else if (chance) {
       if (!Number.isFinite(chance.value) || chance.value <= 0 || chance.value > 1 || (chance.id === "100" && chance.value !== 1))
         throw new TypeError("Invalid C chance definition");
-      if (!benefit && chanceId !== "100") error("DRAWBACK_CHANCE", `${path}.chanceOptionId`);
       if (benefit) {
         // 非負の割引をleaf単位で扱う。共通priceへ負値を渡さない。
         apDiscount = chance.apDiscount;
@@ -75,7 +77,7 @@ export function calculateCSkillResources(selection, { catalog = createCSkillCata
     const appliedDiscount = benefit && priceComplete && chance && apDiscount != null ? Math.min(leafPrice, apDiscount) : 0;
     const leafDelta = (benefit ? leafPrice - appliedDiscount : -leafPrice);
     knownOptionDelta += leafDelta;
-    const complete = priceComplete && !!chance && apDiscount != null;
+    const complete = priceComplete && (!chanceEnabled || !!chance) && apDiscount != null;
     effectBreakdown.push({ path, effectId: effect.id, optionPrice: priceComplete ? leafPrice : null,
       apDiscount, appliedDiscount: complete ? appliedDiscount : null, effectDelta: complete ? leafDelta : null });
   };

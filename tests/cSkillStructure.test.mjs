@@ -37,11 +37,11 @@ function context({ hp = 400, turn = 1, rng = () => .1 } = {}) {
 }
 const execute = (s, options) => { const h = context(options); applyEffect(compiled(s), h.ctx); return h; };
 
-// 旧effect量と分岐を基準。成功率は新版候補へ更新（CS15系は70%）。旧CS03の固有onFailはlegacyテストだけ。
+// 旧effect量と分岐を基準。CS15系のstatus付与は新版では100%固定。旧CS03の固有onFailはlegacyテストだけ。
 const fixtures = {
   HP70: flat([{ ...damage(70), chanceOptionId: "70" }]),
   CS11: random([[damage(60)], [damage(40), grant("buff", "self", "counter")]]),
-  CS15: flat([...["crack", "roughWave", "Headwind", "steam"].map(status => grant("debuff", "enemy", status, 70)),
+  CS15: flat([...["crack", "roughWave", "Headwind", "steam"].map(status => grant("debuff", "enemy", status)),
     choose("debuff-total-damage-enemy", { multiplier: 5 })]),
   CS16: flat([step(10, 5), buff("df", "self", "up", 2, 2)]),
   CS18: random([[damage(60)], [heal(50), grant("buff", "self", "clean")],
@@ -83,14 +83,12 @@ test("CS11/CS18: 2/3択は等確率、複数effect枝を順に全実行、CS18�
     assert.deepEqual(counts, Array(n).fill(60 / n));
   }
 });
-test("CS15能力（新版70%）: 個別抽選→付与済debuff総stack×5、buffは数えない", () => {
-  const rolls = [.69, .7, .1, .99];
-  const h = context({ rng: () => rolls.shift() }); h.enemy.status.focus = 3;
+test("CS15能力: 確定付与→debuff総stack×5、buffは数えない", () => {
+  const h = context({ rng: () => { throw new Error("statusは成功率抽選なし"); } }); h.enemy.status.focus = 3;
   applyEffect(compiled(fixtures.CS15), h.ctx);
-  assert.equal(h.enemy.hp, 970);
-  assert.deepEqual([h.enemy.status.crack, h.enemy.status.roughWave, h.enemy.status.Headwind, h.enemy.status.steam], [3, 0, 3, 0]);
-  assert.equal(h.logs.filter(e => e.type === "chanceRoll").length, 4);
-  assert.equal(rolls.length, 0);
+  assert.equal(h.enemy.hp, 940);
+  assert.deepEqual([h.enemy.status.crack, h.enemy.status.roughWave, h.enemy.status.Headwind, h.enemy.status.steam], [3, 3, 3, 3]);
+  assert.equal(h.logs.filter(e => e.type === "chanceRoll").length, 0);
   assert.equal(compile(fixtures.CS15).resources.effectCount, 5);
 });
 for (const [id, base, every] of [["CS16", 10, 5], ["CS25", 40, 10]]) test(`${id}: turnStepの境界とDF buff`, () => {

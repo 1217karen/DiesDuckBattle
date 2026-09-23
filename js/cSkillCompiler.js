@@ -6,13 +6,7 @@ import { STATUS_GROUPS } from "./statusGroups.js";
 // ユーザーが組む追加effectではなく、成功時のtrusted HP効果からだけ自動生成する。
 function hpFailureEffect(main) {
   if (!["fixedDamage", "heal"].includes(main.type)) return null;
-  const failure = { ...main };
-  const scaled = value => Math.floor(value * C_HP_FAILURE_MULTIPLIER);
-  if (main.amount !== undefined) failure.amount = scaled(main.amount);
-  if (main.amountPct !== undefined) failure.amountPct = main.amountPct * C_HP_FAILURE_MULTIPLIER;
-  if (main.byStatusCount) failure.byStatusCount = { n: scaled(main.byStatusCount.n), statuses: [...main.byStatusCount.statuses] };
-  if (main.turnStep) failure.turnStep = { every: main.turnStep.every, add: scaled(main.turnStep.add) };
-  return failure;
+  return { ...main, amount: Math.floor(main.amount * C_HP_FAILURE_MULTIPLIER) };
 }
 
 // selectionはIDのみ。catalog/rulesは運営側から注入する信頼境界。
@@ -75,8 +69,9 @@ export function compileCSkill(selection, { catalog = createCSkillCatalog(), rule
       default: throw new TypeError(`Unsupported C semantics type: ${s.type}`);
     } };
     const compiled = compileBase();
-    const chance = catalog.chanceOptions.find(o => o.id === (chosen.chanceOptionId ?? "100"));
-    if (chance.value !== 1) {
+    const chance = definition.chanceEnabled === true && definition.polarity === "benefit"
+      && catalog.chanceOptions.find(o => o.id === (chosen.chanceOptionId ?? "100"));
+    if (chance && chance.value !== 1) {
       const failure = hpFailureEffect(compiled);
       compiled.chance = chance.value;
       if (failure) compiled.onFail = failure;

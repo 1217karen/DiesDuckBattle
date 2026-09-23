@@ -22,13 +22,14 @@ export function createCSkillCatalog() {
   const pair = (category, axes, benefit, drawback) => {
     const b = add(benefit.id, category, benefit.label, "benefit", axes, benefit.semantics);
     const d = add(drawback.id, category, drawback.label, "drawback", axes, drawback.semantics);
+    b.chanceEnabled = benefit.chanceEnabled === true;
     b.mirrorId = d.id; d.mirrorId = b.id;
   };
   pair("damage", { amount: "damageAmount" },
-    { id: "damage-enemy", label: "相手に固定ダメージ", semantics: { type: "fixedDamage", target: "enemy", amountAxis: "amount" } },
+    { id: "damage-enemy", chanceEnabled: true, label: "相手に固定ダメージ", semantics: { type: "fixedDamage", target: "enemy", amountAxis: "amount" } },
     { id: "damage-self", label: "自分に固定ダメージ", semantics: { type: "fixedDamage", target: "self", amountAxis: "amount" } });
   pair("healing", { amount: "healAmount" },
-    { id: "heal-self", label: "自分を固定値回復", semantics: { type: "heal", target: "self", amountAxis: "amount" } },
+    { id: "heal-self", chanceEnabled: true, label: "自分を固定値回復", semantics: { type: "heal", target: "self", amountAxis: "amount" } },
     { id: "heal-enemy", label: "相手を固定値回復", semantics: { type: "heal", target: "enemy", amountAxis: "amount" } });
   add("current-hp-damage-enemy", "percentageDamage", "相手の現在HP割合固定ダメージ", "benefit",
     { amountPct: "currentHpPct" }, { type: "fixedDamage", target: "enemy", amountPctAxis: "amountPct" });
