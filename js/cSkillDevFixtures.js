@@ -15,13 +15,12 @@ export function createCDevCatalog() {
       label: `仮：${["currentHpPct", "revivePct", "hpThreshold"].includes(key) ? `${value * 100}%` : value}` }));
   }
   for (const options of Object.values(catalog.optionSets)) for (const option of options) option.apDelta = 0;
-  catalog.chanceOptions = [100, 80, 75, 50].map(percent => ({ id: percent === 100 ? "100" : `dev-chance-${percent}`,
-    label: `${percent}%`, value: percent / 100, apDelta: 0 }));
+  // 成功率候補はproductionと共通。割引額0は動作確認用の仮値。
+  for (const chance of catalog.chanceOptions) chance.apDiscount = 0;
   return catalog;
 }
 
-// 仮の全leaf合算（fallbackも枠・価格へ算入）と追加価格0。ゲーム仕様ではない。
+// 仮の全leaf合算と分岐追加価格0。ゲーム仕様ではない。自動onFailは数えない。
 export function createCDevRules() {
-  return { ...createCSkillRules(), branchAggregation: "dev-sum", branchAPDelta: { random: 0, hpCondition: 0 },
-    chancePricing: "dev-add", onFailPricing: "dev-sum" };
+  return { ...createCSkillRules(), branchAggregation: "dev-sum", branchAPDelta: { random: 0, hpCondition: 0 } };
 }

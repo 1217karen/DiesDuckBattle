@@ -3,7 +3,7 @@ import { createCSkillRules } from "./cSkillRules.js";
 
 const record = v => v !== null && typeof v === "object" && [Object.prototype, null].includes(Object.getPrototypeOf(v));
 export function calculateCSkillResources(selection, { catalog = createCSkillCatalog(), rules = createCSkillRules() } = {}) {
-  const errors = [], unresolved = [];
+  const errors = [], unresolved = [], effectBreakdown = [];
   const error = (code, path) => errors.push({ code, path });
   const pending = (code, path) => unresolved.push({ code, path });
   const keys = (object, allowed, path) => {
@@ -31,10 +31,10 @@ export function calculateCSkillResources(selection, { catalog = createCSkillCata
   const mode = record(selection) && Object.hasOwn(selection, "mode") ? selection.mode : null;
   if (!record(selection)) error("INVALID_SELECTION", "cSkill"); else keys(selection, ["mode", "structure"], "cSkill");
   if (!["normal", "special"].includes(mode)) error("INVALID_MODE", "mode");
-  const leaf = (chosen, path, fallback = false) => {
+  const leaf = (chosen, path) => {
     effectCount++;
     if (!record(chosen)) { error("INVALID_EFFECT", path); return; }
-    keys(chosen, fallback ? ["effectId", "options"] : ["effectId", "options", "chanceOptionId", "onFail"], path);
+    keys(chosen, ["effectId", "options", "chanceOptionId"], path);
     const effect = Object.hasOwn(chosen, "effectId") && typeof chosen.effectId === "string"
       && catalog.effects.find(item => item.id === chosen.effectId);
     if (!effect) { error("UNKNOWN_EFFECT", `${path}.effectId`); return; }
@@ -43,18 +43,19 @@ export function calculateCSkillResources(selection, { catalog = createCSkillCata
     if (!["benefit", "drawback"].includes(effect.polarity)) throw new TypeError("Invalid C polarity");
     const benefit = effect.polarity === "benefit";
     if (benefit) benefitCount++; else drawbackCount++;
+    let leafPrice = 0, priceComplete = true, apDiscount = 0;
     const options = Object.hasOwn(chosen, "options") ? chosen.options : {};
-    if (!record(options)) error("INVALID_OPTIONS", `${path}.options`);
+    if (!record(options)) { error("INVALID_OPTIONS", `${path}.options`); priceComplete = false; }
     else {
       keys(options, Object.keys(effect.optionAxes), `${path}.options`);
       for (const [axis, setId] of Object.entries(effect.optionAxes)) {
         const optionPath = `${path}.options.${axis}`, set = catalog.optionSets[setId];
         if (!Array.isArray(set)) throw new TypeError(`Unknown C option set: ${setId}`);
         const found = option(set, Object.hasOwn(options, axis) ? options[axis] : undefined, optionPath);
-        if (found) knownOptionDelta += (benefit ? 1 : -1) * price(found.apDelta, optionPath);
+        if (found) leafPrice += price(found.apDelta, optionPath);
+        if (!found || found.apDelta == null) priceComplete = false;
       }
     }
-    if (fallback) return; // fallbackのchance/onFail/branchは未知fieldとして拒否。再帰しない。
     const chanceId = Object.hasOwn(chosen, "chanceOptionId") ? chosen.chanceOptionId : "100";
     const chance = typeof chanceId === "string" && catalog.chanceOptions.find(o => o.id === chanceId);
     if (!chance) error("UNKNOWN_CHANCE_OPTION", `${path}.chanceOptionId`);
@@ -62,16 +63,21 @@ export function calculateCSkillResources(selection, { catalog = createCSkillCata
       if (!Number.isFinite(chance.value) || chance.value <= 0 || chance.value > 1 || (chance.id === "100" && chance.value !== 1))
         throw new TypeError("Invalid C chance definition");
       if (!benefit && chanceId !== "100") error("DRAWBACK_CHANCE", `${path}.chanceOptionId`);
-      if (chance.value !== 1) {
-        policy(rules.chancePricing, "dev-add", "CHANCE_PRICING_UNRESOLVED", "rules.chancePricing");
-        knownOptionDelta += price(chance.apDelta, `${path}.chanceOptionId`);
+      if (benefit) {
+        // 非負の割引をleaf単位で扱う。共通priceへ負値を渡さない。
+        apDiscount = chance.apDiscount;
+        if (apDiscount == null) pending("CHANCE_DISCOUNT_UNRESOLVED", `${path}.chanceOptionId`);
+        else if (!Number.isFinite(apDiscount) || apDiscount < 0 || (chance.value === 1 && apDiscount !== 0))
+          throw new TypeError("Invalid C chance discount");
       }
     }
-    if (Object.hasOwn(chosen, "onFail")) {
-      if (!benefit || !chance || chance.value === 1) error("ON_FAIL_REQUIRES_CHANCE_BENEFIT", `${path}.onFail`);
-      policy(rules.onFailPricing, "dev-sum", "ON_FAIL_PRICING_UNRESOLVED", "rules.onFailPricing");
-      leaf(chosen.onFail, `${path}.onFail`, true);
-    }
+    // 他effect・基礎AP・枠・分岐料金へ割引を流さないため、そのleaf価格を上限とする。
+    const appliedDiscount = benefit && priceComplete && chance && apDiscount != null ? Math.min(leafPrice, apDiscount) : 0;
+    const leafDelta = (benefit ? leafPrice - appliedDiscount : -leafPrice);
+    knownOptionDelta += leafDelta;
+    const complete = priceComplete && !!chance && apDiscount != null;
+    effectBreakdown.push({ path, effectId: effect.id, optionPrice: priceComplete ? leafPrice : null,
+      apDiscount, appliedDiscount: complete ? appliedDiscount : null, effectDelta: complete ? leafDelta : null });
   };
   const branch = (value, path) => {
     if (!record(value)) { error("INVALID_BRANCH", path); return; }
@@ -113,5 +119,5 @@ export function calculateCSkillResources(selection, { catalog = createCSkillCata
   const rawAP = complete ? rules.baseAP + slotCost + optionDelta + knownStructureDelta : null;
   if (rawAP !== null && !Number.isFinite(rawAP)) throw new TypeError("C resource arithmetic overflow");
   return { mode, effectCount, benefitCount, drawbackCount, baseAP: rules.baseAP, slotCost, knownOptionDelta,
-    knownStructureDelta, optionDelta, rawAP, requiredAP: rawAP === null ? null : Math.max(rules.minimumAP, rawAP), complete, errors, unresolved };
+    knownStructureDelta, effectBreakdown, optionDelta, rawAP, requiredAP: rawAP === null ? null : Math.max(rules.minimumAP, rawAP), complete, errors, unresolved };
 }

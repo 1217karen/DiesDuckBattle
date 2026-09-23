@@ -1,7 +1,19 @@
 import { createCSkillCatalog } from "./cSkillCatalog.js";
-import { createCSkillRules } from "./cSkillRules.js";
+import { createCSkillRules, C_HP_FAILURE_MULTIPLIER } from "./cSkillRules.js";
 import { calculateCSkillResources } from "./cSkillResources.js";
 import { STATUS_GROUPS } from "./statusGroups.js";
+
+// ユーザーが組む追加effectではなく、成功時のtrusted HP効果からだけ自動生成する。
+function hpFailureEffect(main) {
+  if (!["fixedDamage", "heal"].includes(main.type)) return null;
+  const failure = { ...main };
+  const scaled = value => Math.floor(value * C_HP_FAILURE_MULTIPLIER);
+  if (main.amount !== undefined) failure.amount = scaled(main.amount);
+  if (main.amountPct !== undefined) failure.amountPct = main.amountPct * C_HP_FAILURE_MULTIPLIER;
+  if (main.byStatusCount) failure.byStatusCount = { n: scaled(main.byStatusCount.n), statuses: [...main.byStatusCount.statuses] };
+  if (main.turnStep) failure.turnStep = { every: main.turnStep.every, add: scaled(main.turnStep.add) };
+  return failure;
+}
 
 // selectionはIDのみ。catalog/rulesは運営側から注入する信頼境界。
 export function compileCSkill(selection, { catalog = createCSkillCatalog(), rules = createCSkillRules() } = {}) {
@@ -64,8 +76,11 @@ export function compileCSkill(selection, { catalog = createCSkillCatalog(), rule
     } };
     const compiled = compileBase();
     const chance = catalog.chanceOptions.find(o => o.id === (chosen.chanceOptionId ?? "100"));
-    if (chance.value !== 1) compiled.chance = chance.value;
-    if (chosen.onFail) compiled.onFail = compileLeaf(chosen.onFail);
+    if (chance.value !== 1) {
+      const failure = hpFailureEffect(compiled);
+      compiled.chance = chance.value;
+      if (failure) compiled.onFail = failure;
+    }
     return compiled;
   };
   const structure = selection.structure;

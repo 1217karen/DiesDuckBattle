@@ -27,14 +27,14 @@
   <main>
     <section aria-labelledby="effects-heading">
       <h2 id="effects-heading">各枝のC効果を組む</h2>
-      <p>全枝・失敗時effectの合計で1～5effect。分岐のネストは不可。特殊Cは復活なしでも構成できます。</p>
+      <p>全枝の選択effect合計で1～5effect。自動生成する失敗時20%効果は数えません。分岐のネストは不可。特殊Cは復活なしでも構成できます。</p>
       <div id="effects"></div>
     </section>
     <aside>
       <h2>AP計算・compile結果</h2>
       <dl id="resources" aria-live="polite"></dl>
       <h3>errors / unresolved</h3><ul id="issues" role="status"></ul>
-      <p class="notice">productionのAP価格・分岐AP集約・chance/onFail価格式は未確定。fixtureは全leaf合算・追加価格0の仮方式で、ゲーム仕様ではありません。</p>
+      <p class="notice">productionのAP価格・分岐AP集約・chance割引額は未確定。割引はそのeffect部分だけに適用します。fixtureの価格・割引額0と全leaf合算は動作確認用です。</p>
     </aside>
     <section class="wide">
       <h2>2. 戦闘テスト</h2>

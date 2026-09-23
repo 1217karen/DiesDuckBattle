@@ -43,15 +43,15 @@ function branches() {
   const label = threshold ? threshold.value * 100 + "%" : "threshold未選択";
   return [["自分HP " + label + "以上", s.branches.met], ["自分HP " + label + "未満", s.branches.unmet]];
 }
-function leafCount() { return branches().reduce((sum, [, b]) => sum + b.effects.reduce((n, e) => n + 1 + (e.onFail ? 1 : 0), 0), 0); }
+function leafCount() { return branches().reduce((sum, [, b]) => sum + b.effects.length, 0); }
 function newEffect() { const e = { effectId: "damage-enemy", options: {} }; normalizeOptions(e); return e; }
-function renderEffect(chosen, label, fallback = false) {
+function renderEffect(chosen, label) {
   const available = getCEffectOptions(selection.mode, catalog);
   const categories = [...new Set(available.map(e => e.category))];
   const definition = available.find(e => e.id === chosen.effectId);
   const row = el("fieldset"); row.className = "effect-row"; row.append(el("legend", label));
   const changeEffect = id => {
-    chosen.effectId = id; chosen.options = {}; delete chosen.chanceOptionId; delete chosen.onFail;
+    chosen.effectId = id; chosen.options = {}; delete chosen.chanceOptionId;
     normalizeOptions(chosen); update();
   };
   row.append(labeled("カテゴリ", select(categories.map(id => ({ id, label: categoryLabels[id] ?? id })), definition.category, label + " カテゴリ",
@@ -69,17 +69,14 @@ function renderEffect(chosen, label, fallback = false) {
     });
     input.disabled = !options.length; row.append(labeled(axisLabels[axis] ?? axis, input));
   }
-  if (!fallback && definition.polarity === "benefit") {
+  if (definition.polarity === "benefit") {
     row.append(labeled("成功率", select(catalog.chanceOptions, chosen.chanceOptionId ?? "100", label + " 成功率", id => {
-      if (id === "100") { delete chosen.chanceOptionId; delete chosen.onFail; } else chosen.chanceOptionId = id;
+      if (id === "100") { delete chosen.chanceOptionId; } else chosen.chanceOptionId = id;
       update();
     })));
     if (chosen.chanceOptionId && chosen.chanceOptionId !== "100") {
-      const toggle = el("input"); toggle.type = "checkbox"; toggle.checked = !!chosen.onFail;
-      toggle.disabled = !chosen.onFail && leafCount() >= rules.maxEffects;
-      toggle.addEventListener("change", () => { if (toggle.checked) chosen.onFail = newEffect(); else delete chosen.onFail; update(); });
-      row.append(labeled("失敗時に1effect", toggle));
-      if (chosen.onFail) row.append(renderEffect(chosen.onFail, label + " 失敗時", true));
+      row.append(el("p", ["fixedDamage", "heal"].includes(definition.semantics.type)
+        ? "失敗時：主効果の20%（整数の効果量は切り捨て・最低1保証なし）" : "失敗時：効果なし"));
     }
   }
   return row;
@@ -141,13 +138,12 @@ function switchCatalog() {
   catalog = $("fixture").checked ? createCDevCatalog() : createCSkillCatalog();
   for (const [, branch] of branches()) for (const chosen of branch.effects) {
     normalizeOptions(chosen);
-    if (chosen.onFail) normalizeOptions(chosen.onFail);
-    if (!catalog.chanceOptions.some(o => o.id === chosen.chanceOptionId)) { delete chosen.chanceOptionId; delete chosen.onFail; }
+    if (!catalog.chanceOptions.some(o => o.id === chosen.chanceOptionId)) { delete chosen.chanceOptionId; }
   }
   if (!catalog.optionSets.hpThreshold.some(o => o.id === selection.structure.thresholdOptionId)) delete selection.structure.thresholdOptionId;
   $("repeat-chance").disabled = !$("fixture").checked;
   $("catalog-note").textContent = $("fixture").checked
-    ? "開発fixture ON：全leaf合算（fallback含む）、option・分岐・chance追加価格0。ゲーム仕様ではありません。"
+    ? "開発fixture ON：全leaf合算、option・分岐価格・chance割引額は仮の0。ゲーム仕様ではありません。"
     : "本番catalog：数値option・価格は未確定です。開発fixtureをONにするとcompile・戦闘確認できます。";
   update();
 }

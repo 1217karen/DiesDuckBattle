@@ -14,7 +14,7 @@ const choose = (effectId, values, chance) => {
   return { effectId, options: Object.fromEntries(Object.entries(definition.optionAxes).map(([axis, set]) => {
     const option = catalog.optionSets[set].find(o => o.value === values[axis]);
     assert.ok(option, `${effectId}.${axis}: ${values[axis]}`); return [axis, option.id];
-  })), ...(chance ? { chanceOptionId: `dev-chance-${chance}` } : {}) };
+  })), ...(chance ? { chanceOptionId: String(chance) } : {}) };
 };
 const damage = amount => choose("damage-enemy", { amount });
 const heal = amount => choose("heal-self", { amount });
@@ -37,11 +37,11 @@ function context({ hp = 400, turn = 1, rng = () => .1 } = {}) {
 }
 const execute = (s, options) => { const h = context(options); applyEffect(compiled(s), h.ctx); return h; };
 
-// base:js/data.jsの実装量を基準。CS03は70、CS23は60（descriptionの量ではない）。
+// 旧effect量と分岐を基準。成功率は新版候補へ更新（CS15系は70%）。旧CS03の固有onFailはlegacyテストだけ。
 const fixtures = {
-  CS03: flat([{ ...damage(70), chanceOptionId: "dev-chance-80", onFail: damage(30) }]),
+  HP70: flat([{ ...damage(70), chanceOptionId: "70" }]),
   CS11: random([[damage(60)], [damage(40), grant("buff", "self", "counter")]]),
-  CS15: flat([...["crack", "roughWave", "Headwind", "steam"].map(status => grant("debuff", "enemy", status, 75)),
+  CS15: flat([...["crack", "roughWave", "Headwind", "steam"].map(status => grant("debuff", "enemy", status, 70)),
     choose("debuff-total-damage-enemy", { multiplier: 5 })]),
   CS16: flat([step(10, 5), buff("df", "self", "up", 2, 2)]),
   CS18: random([[damage(60)], [heal(50), grant("buff", "self", "clean")],
@@ -60,10 +60,10 @@ for (const [id, selection] of Object.entries(fixtures)) test(`${id}: dev selecti
   assert.equal(result.battle.events.some(e => e.type === "cSkillActivated" && e.actor === "P2"), false);
 });
 
-test("CS03 80%成功70・失敗30、fallbackも1leaf、chanceは既存engine", () => {
-  assert.equal(compile(fixtures.CS03).resources.effectCount, 2);
-  for (const [roll, damage] of [[.799, 70], [.8, 30], [.99, 30]]) {
-    const h = execute(fixtures.CS03, { rng: () => roll });
+test("新版70ダメージは失敗14、自動failureは1leafのまま", () => {
+  assert.equal(compile(fixtures.HP70).resources.effectCount, 1);
+  for (const [roll, damage] of [[.699, 70], [.7, 14], [.99, 14]]) {
+    const h = execute(fixtures.HP70, { rng: () => roll });
     assert.equal(h.enemy.hp, 1000 - damage); assert.equal(h.logs.filter(e => e.type === "chanceRoll").length, 1);
   }
 });
@@ -83,8 +83,8 @@ test("CS11/CS18: 2/3択は等確率、複数effect枝を順に全実行、CS18�
     assert.deepEqual(counts, Array(n).fill(60 / n));
   }
 });
-test("CS15: 個別75%抽選→付与済debuff総stack×5、buffは数えない", () => {
-  const rolls = [.74, .75, .1, .99];
+test("CS15能力（新版70%）: 個別抽選→付与済debuff総stack×5、buffは数えない", () => {
+  const rolls = [.69, .7, .1, .99];
   const h = context({ rng: () => rolls.shift() }); h.enemy.status.focus = 3;
   applyEffect(compiled(fixtures.CS15), h.ctx);
   assert.equal(h.enemy.hp, 970);
@@ -130,9 +130,9 @@ test("CS24: 3択の現在HP20/30/40%", () => {
   for (const [roll, amount] of [[.1, 200], [.5, 300], [.9, 400]]) assert.equal(execute(fixtures.CS24, { rng: () => roll }).enemy.hp, 1000 - amount);
 });
 
-test("normal reviveは全枝/fallbackで拒否、special branchでは割合revive可能", () => {
+test("normal reviveは全枝で拒否、special branchでは割合revive可能", () => {
   const revive = choose("revive-self", { maxHpPct: .3 });
-  for (const s of [random([[damage(10)], [revive]]), hp([damage(10)], [revive]), flat([{ ...damage(70), chanceOptionId: "dev-chance-80", onFail: revive }])]) {
+  for (const s of [random([[damage(10)], [revive]]), hp([damage(10)], [revive])]) {
     assert.ok(compile(s).errors.some(e => e.code === "MODE_UNAVAILABLE"));
     assert.equal(compile({ ...s, mode: "special" }).ok, true);
   }
@@ -140,12 +140,12 @@ test("normal reviveは全枝/fallbackで拒否、special branchでは割合reviv
     settings: { ...Object.fromEntries(C_TEST_FIELDS.map(f => [f.key, f.value])), p1HP: -100, p1Dice: 0, p2Dice: 0, maxTurns: 1 }, rng: () => .1 });
   assert.equal(result.battle.events.find(e => e.type === "revived").hpAfter, 300);
 });
-test("2/3択のみ、全branch+fallback合計5、branchは非空でnest不可", () => {
+test("2/3択のみ、全branchの選択leaf合計5、branchは非空でnest不可", () => {
   for (const n of [0, 1, 4]) assert.equal(compile(random(Array.from({ length: n }, () => [damage(10)]))).ok, false);
   assert.equal(compile(random([[damage(10), damage(10), damage(10)], [heal(10), heal(10), heal(10)]])).ok, false);
   assert.equal(compile(random([[], [damage(10)]])).ok, false);
-  const withFallback = { ...damage(70), chanceOptionId: "dev-chance-80", onFail: damage(30) };
-  const five = random([[withFallback, damage(10)], [heal(10), heal(10)]]);
+  const withChance = { ...damage(70), chanceOptionId: "70" };
+  const five = random([[withChance, damage(10)], [heal(10), heal(10), heal(10)]]);
   assert.equal(compile(five).resources.effectCount, 5); assert.equal(compile(five).ok, true);
   five.structure.branches[1].effects.push(heal(10));
   assert.ok(compile(five).errors.some(e => e.code === "EFFECT_COUNT"));
@@ -155,20 +155,20 @@ test("2/3択のみ、全branch+fallback合計5、branchは非空でnest不可", 
     assert.equal(compile(s).ok, false);
   }
 });
-test("chance/fallbackはIDのみ、drawback低確率不可、fallback再帰と配列を拒否", () => {
-  for (const chance of ["dev-chance-80", "dev-chance-75", "dev-chance-50"]) {
+test("chanceはIDのみ、drawback低確率不可、ユーザーonFailは全形式を拒否", () => {
+  for (const chance of ["70", "25", "50"]) {
     assert.equal(compile(flat([{ ...choose("damage-self", { amount: 30 }), chanceOptionId: chance }])).ok, false);
   }
   for (const fallback of [[damage(30)], { ...damage(30), chanceOptionId: "100" }, { ...damage(30), onFail: damage(10) },
     { ...damage(30), structure: { kind: "flat", effects: [damage(10)] } }, random([[damage(10)], [damage(30)]]).structure]) {
-    assert.equal(compile(flat([{ ...damage(70), chanceOptionId: "dev-chance-80", onFail: fallback }])).ok, false);
+    assert.equal(compile(flat([{ ...damage(70), chanceOptionId: "70", onFail: fallback }])).ok, false);
   }
   assert.equal(compile(flat([{ ...damage(70), onFail: damage(30) }])).ok, false);
   assert.equal(compile(flat([{ ...damage(70), chanceOptionId: .8 }])).ok, false);
   assert.equal(compile(flat([{ ...damage(70), chanceOptionId: "unknown" }])).ok, false);
 });
 test("全階層のraw injection拒否、旧新版flat DTOも明示的に移行が必要", () => {
-  for (const field of ["effect", "target", "value", "chance", "when", "condition", "randomPick", "picks", "turnStep", "byStatusCount", "costAP", "apDelta", "repeat", "repeatReviveChance"]) {
+  for (const field of ["onFail", "failureRate", "failureEffect", "failureMultiplier", "apDiscount", "chanceDiscount", "effect", "target", "value", "chance", "when", "condition", "randomPick", "picks", "turnStep", "byStatusCount", "costAP", "apDelta", "repeat", "repeatReviveChance"]) {
     const base = random([[damage(10)], [heal(10)]]);
     const variants = [s => s, s => s.structure, s => s.structure.branches[0], s => s.structure.branches[0].effects[0],
       s => s.structure.branches[0].effects[0].options];
@@ -185,12 +185,12 @@ test("全階層のraw injection拒否、旧新版flat DTOも明示的に移行�
 test("productionの各価格・集約policyは未確定、nullを最終AP=0にしない", () => {
   const prod = createCSkillCatalog(), pr = createCSkillRules();
   for (const set of ["hpThreshold", "statusMultiplier", "stepBaseAmount", "stepEveryTurns", "stepAmount"]) assert.deepEqual(prod.optionSets[set], []);
-  assert.deepEqual(prod.chanceOptions.map(o => o.value), [1]);
-  assert.equal(pr.branchAggregation, null); assert.equal(pr.chancePricing, null); assert.equal(pr.onFailPricing, null);
-  for (const s of [fixtures.CS03, fixtures.CS11, fixtures.CS23]) {
+  assert.deepEqual(prod.chanceOptions.map(o => o.value), [1, .7, .5, .25]);
+  assert.equal(pr.branchAggregation, null);
+  for (const s of [fixtures.CS11, fixtures.CS23]) {
     const r = compile(s, { rules: pr }); assert.equal(r.ok, false); assert.equal(r.resources.requiredAP, null); assert.ok(r.unresolved.length);
   }
-  for (const [s, field] of [[fixtures.CS03, "chancePricing"], [fixtures.CS03, "onFailPricing"], [fixtures.CS11, "branchAggregation"]]) {
+  for (const [s, field] of [[fixtures.CS11, "branchAggregation"]]) {
     assert.equal(compile(s, { rules: { ...rules, [field]: null } }).resources.requiredAP, null);
   }
   for (const kind of ["random", "hpCondition"]) {
@@ -202,8 +202,8 @@ test("productionの各価格・集約policyは未確定、nullを最終AP=0に�
     const c = createCDevCatalog(); c.optionSets[set].forEach(o => { o.apDelta = null; });
     assert.equal(compile(s, { catalog: c }).resources.requiredAP, null);
   }
-  const c = createCDevCatalog(); c.chanceOptions.find(o => o.value === .8).apDelta = null;
-  assert.equal(compile(fixtures.CS03, { catalog: c }).resources.requiredAP, null);
+  const c = createCDevCatalog(); c.chanceOptions.find(o => o.value === .7).apDiscount = null;
+  assert.equal(compile(fixtures.HP70, { catalog: c }).resources.requiredAP, null);
 });
 test("legacy repeat/chance/onFail/when/randomPickは従来の実行経路を保持（CS02は新版公開しない）", () => {
   const h = context({ rng: () => .1 });

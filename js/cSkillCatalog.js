@@ -68,7 +68,8 @@ export function createCSkillCatalog() {
   add("revive-self", "revive", "最大HP割合で復活", "benefit", { maxHpPct: "revivePct" },
     { type: "revive", target: "self", maxHpPctAxis: "maxHpPct" }, ["special"]);
   return { effects, optionSets,
-    chanceOptions: [{ id: "100", label: "100%", value: 1, apDelta: 0 }] };
+    chanceOptions: [100, 70, 50, 25].map(percent => ({ id: String(percent), label: `${percent}%`,
+      value: percent / 100, apDiscount: percent === 100 ? 0 : null })) };
 }
 
 export function getCEffectAvailability(effectId, mode, catalog = createCSkillCatalog()) {

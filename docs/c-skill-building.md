@@ -13,7 +13,7 @@ random（等確率2択 / 3択） / hpCondition（自分HP割合のみ）
 ```
 
 branchのネスト、重み付け、4択以上、enemy HP/AP/status/turn条件は公開しない。
-全枝のleaf effectとonFail fallbackの合計が1～5。containerは数えず、各枝は1effect以上を持つ。
+全枝の選択leaf effect合計が1～5。containerと自動生成する失敗時20%効果は数えず、各枝は1effect以上を持つ。
 catalogは公開能力、engineは信頼済み内部データを実行する能力を担当する。
 この基盤はgeneric build DTO / validateBuildとは独立する。C専用compilerと開発確認ページは実装済みで、本番UI・保存処理・generic buildCompilerは未実装。
 
@@ -66,16 +66,29 @@ effects.jsに小さなcontainer処理だけを追加し、既存condition evalua
 
 ### chance / onFailと追加能力
 
-benefitにだけ`chanceOptionId`を選べる。100%は省略可能で、compiled effectにもchanceを付けず乱数を消費しない。
-drawbackは100%固定。100%未満のbenefitは任意で`onFail: {effectId, options}`を1つ持てる。
-fallbackにchanceOptionId/chance/onFail/structure/branchや配列は許可しない。fallbackも1leafとして数え、reviveのspecial限定検査も行う。
-compilerは既存`effect.chance`と`effect.onFail`へ変換し、既存engineで抽選・失敗時処理を実行する。
+全benefitは100%がdefaultで、省略可能。同じeffect・同じ効果量optionへ、成功率100/70/50/25%を後付けする。
+成功率別の効果量表は設けない。drawbackは100%固定。100%ではcompiled effectにchance/onFailを付けず、chance判定の乱数を消費しない（randomPickやランダムstatus本来の抽選は別）。
+
+ユーザー指定onFailは廃止。chance関連のselection fieldはchanceOptionIdだけで、失敗時effectを編集できない。
+100%未満なら共通leaf compilerが通常のmain effectを作り、そのtrusted値から以下を自動生成する。
+
+| HPを直接増減するeffect | 自動onFail |
+| --- | --- |
+| 固定ダメージ / 固定回復 | floor(amount × 0.2) |
+| 現在HP割合固定ダメージ | amountPct × 0.2（割合値自体を変換） |
+| debuff総stack × N | floor(N × 0.2) |
+| turnStep固定ダメージ | base/addをそれぞれfloor(値 × 0.2)、everyは維持 |
+
+20%は確定ルール。最低1保証なし。0なら何も起こらない。割合ダメージの既存amountPct処理は変更しない。
+status付与（ランダム含む）・解除・AT/DF補正・timed hit・reviveなど、それ以外にはonFailを生成せず完全失敗とする。
+自動onFailにchanceやさらにonFailは付けない。失敗時20%は追加effectでも価格optionでもなく、effectCount/benefitCount/枠APへ数えず、追加APも課さない。
+flat/random/hpConditionのどの枝でも同じleaf compilerを使い、既存engineのeffect.chance/onFailで実行する。
 
 ```js
-// dev fixture専用（CS03）。production値ではない。
-{ effectId: "damage-enemy", options: { amount: "dev-damageAmount-70" },
-  chanceOptionId: "dev-chance-80",
-  onFail: { effectId: "damage-enemy", options: { amount: "dev-damageAmount-30" } } }
+// optionの量・価格は開発fixture。chance IDはproductionと共通。
+{ effectId: "damage-enemy", options: { amount: "dev-damageAmount-70" }, chanceOptionId: "70" }
+// compiled main: amount:70, chance:0.7,
+// onFail:{type:"fixedDamage",target:"enemy",amount:14}
 ```
 
 - status付与だけに`random-buff` / `random-debuff`のtrusted IDがあり、`@buff` / `@debuff`へcompileする。clearStatus/timed-hitへ流用しない。
@@ -83,7 +96,7 @@ compilerは既存`effect.chance`と`effect.onFail`へ変換し、既存engineで
 - `turn-step-damage-enemy`は`baseAmount / everyTurns / stepAmount`を選び、既存`fixedDamage.amount / turnStep`へcompileする。増分は`floor(turn/every) * add`で5/10turn境界を含む。
 - `repeat`は公開しない。CS02の9回×各50%を完全再現する作成DTOは対象外。legacy engineのrepeatは削除しない。
 
-raw effect/target/value/chance/when/condition/randomPick/picks/turnStep/byStatusCount/costAP/apDelta/repeat/repeatReviveChanceと未知fieldは、DTO各階層で拒否する。
+raw onFail/failureRate/failureEffect/failureMultiplier/apDiscount/chanceDiscount/effect/target/value/chance/when/condition/randomPick/picks/turnStep/byStatusCount/costAP/apDelta/repeat/repeatReviveChanceと未知fieldは、DTO各階層で拒否する。
 
 effect定義はid / category / label / modes / polarity / optionAxes / mirrorId / semanticsを持つ。
 optionAxesは軸名→option set ID、optionSetsはID→`{ id, label, value, apDelta }[]`。
@@ -98,12 +111,14 @@ semanticsは既存effect type、対象、符号、各軸の用途などの信頼
 確定ルールは1～5effect、baseAP=5、minimumAP=5、追加benefit枠1つにつき+1AP。
 別の作成用スキルポイントは使用しない。
 
-以下の確定式はflatかつchance/onFailを使わない従来部分に適用する。
+以下は従来のflat AP集計。benefitの各leaf option価格から、そのleaf専用のchance割引を差し引く。
 
 ```text
 effectCount = benefitCount + drawbackCount
 slotCost = max(0, benefitCount - 1) × additionalBenefitSlotAP
-optionDelta = 全行の全option軸の符号付きapDelta合計
+benefit leafDelta = option軸価格合計 - min(option軸価格合計, apDiscount)
+drawback leafDelta = -option軸価格合計
+optionDelta = 全leafDeltaの合計
 rawAP = baseAP + slotCost + optionDelta
 requiredAP = max(minimumAP, rawAP)
 ```
@@ -127,15 +142,18 @@ knownOptionDelta、optionDelta、rawAP、requiredAP、complete、errors、unreso
 productionの数値option setは空。既知のstatus/scope候補も価格はnull。
 テスト用fixtureの数値・価格はゲームバランスの確定値ではない。
 
-production rulesの`branchAggregation`、`branchAPDelta.random/hpCondition`、`chancePricing`、`onFailPricing`はnull。
+production rulesの`branchAggregation`、`branchAPDelta.random/hpCondition`は引き続きnull。
 max/average/sumのいずれもproduction方式として確定しない。threshold、turnStep、stack倍率の候補は空・価格未定。
-chance候補は確実実行を表す100%のみで、100%未満のproduction候補・価格はまだ定義しない。
-未確定なら`complete:false / requiredAP:null`でcompilerを止める。既知小計に0を足して進めても最終APを0には補完しない。
+chanceOptionsは100/70/50/25%で、非負の`apDiscount`を持つ。100%は0、70/50/25%はnull。
+成功率低下による補正は加算価格ではなく割引。負のapDeltaとして共通price()に渡さない。
+割引はそのeffectのoption価格までに限り、baseAP・追加benefit枠・分岐料金・他effectへ波及させない。
+割引額・最終バランスは未確定であり、旧chancePricing/onFailPricingの仮policyは廃止した。
+未確定discountはCHANCE_DISCOUNT_UNRESOLVEDとなり、`complete:false / requiredAP:null`でcompileを止める。
+明示的な0割引とnullは区別する。effectBreakdownにoptionPrice/apDiscount/appliedDiscount/effectDeltaを表示する。
 
-`createCDevRules()`だけは`branchAggregation:"dev-sum"`、`chancePricing:"dev-add"`、`onFailPricing:"dev-sum"`を設定する。
-これは全枝・fallbackのleaf価格とbenefit枠を合算し、chanceの仮apDeltaと分岐補正を足す開発用方式。
-dev catalogのoption/chance価格と分岐補正は0。**この式・値はゲーム仕様ではない。**
-production rulesをdev catalogと組み合わせても、分岐/chance/onFailの未確定policyは解消しない。
+`createCDevRules()`だけは`branchAggregation:"dev-sum"`を使い、全枝の選択leaf価格とbenefit枠を合算する。
+自動onFailを数えない。dev catalogのoption価格・chance割引額と分岐補正は0。**仮の額・集約方式はゲーム仕様ではない。**
+非0割引の適用範囲はテスト専用価格でも確認する。productionの未確定割引を自動的に0へ補完する処理はない。
 
 ## 公開effect
 
@@ -276,13 +294,15 @@ A/B価格やD新版、cooldown、既存status自体のルールも変更しな�
 
 ## テスト
 
-Node標準テストで`tests/cSkillResources.test.mjs`、`tests/cSkillEngine.test.mjs`、`tests/cSkillCompiler.test.mjs`、`tests/cSkillStructure.test.mjs`を実行する。
+Node標準テストで`tests/cSkillResources.test.mjs`、`tests/cSkillEngine.test.mjs`、`tests/cSkillCompiler.test.mjs`、`tests/cSkillStructure.test.mjs`、`tests/cSkillChance.test.mjs`を実行する。
 AP内訳・mirror・注入拒否・未確定価格・純粋性、割合ダメージ、全解除、命中ruleの時系列と寿命、
 特殊Cの発動/AP/復活・再抽選・旧互換を検証する。
 仮数量/価格/確率はテストfixture内に限り使用する。
 
-構造テストはCS03/11/15/16/18/21/23/24/25相当のselectionからcompiler・harness・battleへ接続する。
-CS03は旧実装の70（descriptionの80ではない）、CS23は60（descriptionの70ではない）を基準にする。
+構造テストはCS11/15/16/18/21/23/24/25系の能力をselectionからcompiler・harness・battleへ接続する。
+CS15系の能力テストは新版候補70%へ更新し、個別抽選とstack総数参照を維持する。
+CS23は旧実装の60を基準にする。旧CS03の80%・成功70/失敗30は新版で再現せず、legacy engine互換テストだけに残す。
+新版70ダメージの失敗時は14。repeatは非公開で、CS02完全再現は引き続き対象外。
 CS23の新分岐は今回仕様の>=50% / <50%なので、旧実装の<=49%との間にあった隙間は持たない。legacy入力自身の意味は維持する。
 CS10/22の固定HP・onceへ新版reviveを戻さず、最大HP割合・特殊C再発動・repeatReviveChanceを維持する。
 
@@ -343,12 +363,13 @@ serverは127.0.0.1限定で、A/B/C/D HTMLとjs/cssの許可パスだけを配�
 固定ダメージ10/30/40/50/60/70/100、回復10/30/50/100、割合ダメージ10/20/30/40/50/100%、stack・AT/DF量1/2/3、
 turn数1/2/3/4、復活1/10/30/50%はすべて開発確認用で、ゲーム仕様ではない。
 status/scopeの未確定価格もfixture内だけ0にする。
-成功率100/80/75/50%、HP threshold50%、debuff倍率5、turnStepの基礎10/40・間隔5/10・増分10も開発専用。
+成功率100/70/50/25%（確率は確定・fixture割引額0は仮）、HP threshold50%、debuff倍率5、turnStepの基礎10/40・間隔5/10・増分10も開発専用。
 追加benefit枠APは通常どおりなので1/2/3メリットのcostAPは5/6/7になる。
 
 mode → 分岐なし/あり → ランダム2/3択またはHP条件 → 各枝のeffect/optionの順に選ぶ。
-構造切替時は各枝を初期効果へ戻す。各枝のeditorとfallback editorは同じ実装を使用する。
-全枝とfallbackの合計で最大5行まで追加・削除する。
+構造切替時は各枝を初期効果へ戻す。各枝のeditorは同じ実装を使用する。
+全枝の選択effect合計で最大5行まで追加・削除する。benefitはeffect → option → 成功率の順で表示する。
+100%未満なら編集不可の「失敗時：主効果の20%」または「失敗時：効果なし」を表示する。失敗時effectの追加checkbox/editorは設けない。
 重複選択も可能。normalではreviveを無効表示し、理由を示す。
 AP内訳、errors/unresolved、selection、compiled cSkill、resource resultは常に確認できる。
 raw effectを編集して投入する機能は設けない。
