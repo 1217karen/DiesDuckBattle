@@ -1,5 +1,6 @@
 import { createPlayerBuildStorage } from "./playerBuildStorage.js";
-import { createSettingState, changeSetting, selectedDuck, SP_OPTIONS, cBranches, createCStructure, battlerSummary, duckSummary } from "./settingState.js";
+import { createSettingState, changeSetting, selectedDuck, SP_OPTIONS, cBranches, createCStructure, duckSummary } from "./settingState.js";
+import { inspectBuildForSave, saveSectionSummary, saveInspectedBuild } from "./buildSaveInspection.js";
 import { getDiceFrame } from "./diceFrames.js";
 import { createBuildRules } from "./buildRules.js";
 import { createASkillCatalog, getATriggerOptions, getAEffectOptions, getAEffectAvailability } from "./aSkillCatalog.js";
@@ -26,18 +27,23 @@ const axisLabels = { baseAmount: "基礎ダメージ", everyTurns: "何ターン
 function button(text, onClick, className) {
   const node = el("button", text, className); node.type = "button"; node.addEventListener("click", onClick); return node;
 }
-function confirmChange(message, onConfirm) {
+function showDialog({ title, message, issues = [], onConfirm, confirmLabel = "変更する", cancelLabel = "取り消す" }) {
   const dialog = el("dialog", null, "confirm-dialog");
   dialog.setAttribute("aria-labelledby", "confirm-heading");
-  const heading = el("h3", "設定の変更を確認"); heading.id = "confirm-heading";
+  const heading = el("h3", title); heading.id = "confirm-heading";
   const actions = el("div", null, "actions");
-  actions.append(button("取り消す", () => dialog.close()), button("変更する", () => {
+  actions.append(button(cancelLabel, () => dialog.close()));
+  if (onConfirm) actions.append(button(confirmLabel, () => {
     dialog.close(); onConfirm();
   }, "primary"));
-  dialog.append(heading, el("p", message), actions);
+  const list = el("ul", null, "dialog-issues");
+  const sections = { stats: "ステータス", dice: "ダイス", ducks: "アヒル設定", build: "保存形式" };
+  for (const issue of issues) list.append(el("li", `${issue.ownerName} / ${sections[issue.section] ?? issue.section + "スキル"}：${issue.message}`));
+  dialog.append(heading, list, el("p", message), actions);
   dialog.addEventListener("close", () => { dialog.remove(); render(); }, { once: true });
   document.body.append(dialog); dialog.showModal();
 }
+function confirmChange(message, onConfirm) { showDialog({ title: "設定の変更を確認", message, onConfirm }); }
 function labeled(text, input) { const label = el("label", text); label.append(input); return label; }
 function select(id, items, current, onChange, placeholder = "選択してください") {
   const input = el("select"); input.id = id;
@@ -72,8 +78,12 @@ function feedback(box, key) { const list = el("ul", null, "issues"); list.id = `
 function setFeedback(key, summary) {
   const badge = $(`${key}-status`); if (!badge) return;
   badge.textContent = summary.label;
-  badge.className = "badge" + (summary.label === "設定完了" ? " good" : summary.label.includes("問題") || summary.label.includes("不正") ? " warning" : "");
-  $(`${key}-issues`)?.replaceChildren(...summary.messages.map(message => el("li", message)));
+  badge.className = "badge" + (summary.invalid.length ? " invalid" : summary.incomplete.length ? " warning" : " good");
+  const issues = [...summary.invalid.map(i => ({ ...i, severity: "invalid" })), ...summary.incomplete.map(i => ({ ...i, severity: "warning" }))];
+  const seen = new Set();
+  $(`${key}-issues`)?.replaceChildren(...issues.filter(i => {
+    const key = i.severity + i.message; if (seen.has(key)) return false; seen.add(key); return true;
+  }).map(i => el("li", i.message, i.severity)));
 }
 function commit(action, redraw = true) {
   state = changeSetting(state, action);
@@ -269,11 +279,19 @@ function renderDuck() {
   renderStats(duck, box); renderA(duck, box); renderC(duck, box);
 }
 function renderSummaries() {
-  const battler = battlerSummary(state.build.battler); setFeedback("b", battler.B); setFeedback("d", battler.D);
+  const inspection = inspectBuildForSave(state.build);
+  $("save").classList.toggle("save-invalid", !inspection.canSave);
+  $("save").setAttribute("aria-disabled", String(!inspection.canSave));
+  $("save").title = !inspection.canSave ? "保存できない理由を表示" : inspection.complete ? "設定を保存" : "未完成の項目を確認して保存";
+  for (const key of ["B", "D"]) setFeedback(key.toLowerCase(), saveSectionSummary(inspection, key));
   const duck = selectedDuck(state); if (!duck) return;
   const summary = duckSummary(duck);
-  for (const key of ["stats", "dice"]) setFeedback(key, summary[key]);
-  setFeedback("a", summary.A); setFeedback("c", summary.C);
+  for (const key of ["stats", "dice", "A", "C"]) {
+    const status = saveSectionSummary(inspection, key, duck.id);
+    setFeedback(key.toLowerCase(), status);
+    const metricId = key === "stats" ? "stat" : key.toLowerCase();
+    $(`${metricId}-metrics`)?.classList.toggle("invalid", status.invalid.length > 0);
+  }
   $("stat-metrics").textContent = `合計 ${num(summary.stats.total)} / ${rules.stats.totalMax}　　HP ${num(summary.stats.hp)}`;
   const dice = summary.dice.resources;
   $("dice-metrics").textContent = `ダイス資源　獲得 ${num(dice?.earned)}pt / 消費 ${num(dice?.spent)}pt / 残り ${num(dice?.remaining)}pt`;
@@ -293,12 +311,21 @@ const storageMessages = {
   "invalid-build": "保存できない形式が含まれています。設定内容を確認してください。",
 };
 $("add-duck").addEventListener("click", () => commit({ type: "add" }));
-$("save").addEventListener("click", () => {
+function saveSettings(approveIncomplete = false) {
   if (!state.build) return;
-  const result = repository.save(state.build);
-  if (result.ok) { state = { ...state, dirty: false }; $("save-message").textContent = "保存しました"; }
+  const result = saveInspectedBuild(state, repository, { approveIncomplete });
+  state = result.state;
+  if (result.status === "invalid") {
+    showDialog({ title: "保存できない設定があります", issues: result.inspection.invalid,
+      message: "修正してから保存してください。", cancelLabel: "閉じる" });
+  } else if (result.status === "confirmation-required") {
+    showDialog({ title: "未完成の設定があります", issues: result.inspection.incomplete,
+      message: "この設定は保存できますが、完成するまで戦闘には使用できません。",
+      cancelLabel: "キャンセル", confirmLabel: "このまま保存", onConfirm: () => saveSettings(true) });
+  } else if (result.status === "saved") $("save-message").textContent = "保存しました";
   else $("save-message").textContent = storageMessages[result.status] ?? "保存できませんでした。";
-});
+}
+$("save").addEventListener("click", () => saveSettings());
 window.addEventListener("beforeunload", event => { if (state.dirty) { event.preventDefault(); event.returnValue = ""; } });
 if (state.build) {
   $("editor").hidden = false; $("load-message").hidden = true; render();

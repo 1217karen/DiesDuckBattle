@@ -52,4 +52,11 @@ button.danger { color:var(--warn); background:transparent; }
 #load-message { color:var(--warn); }[hidden] { display:none !important; }
 .confirm-dialog { color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:26px; width:min(460px,90vw); }
 .confirm-dialog::backdrop { background:#0009; }.confirm-dialog .actions { justify-content:flex-end; margin-top:22px; }
+.badge.invalid,.issues .invalid,.metrics.invalid { color:#ff8d96; }
+.issues .warning { color:var(--warn); }
+button.primary.save-invalid { color:#c1c8c9; background:#3a4244; border-color:#667174; cursor:help; }
+button.primary.save-invalid:hover { background:#495356; }
+.confirm-dialog { max-height:85vh; overflow-y:auto; }
+.dialog-issues { padding-left:22px; margin:16px 0; font-size:.88rem; overflow-wrap:anywhere; }
+.dialog-issues li { margin-bottom:9px; }
 @media(max-width:700px) { .setting-shell { padding:26px 16px; }.battler-grid { grid-template-columns:1fr; gap:0; }.card { padding:17px; }.dice-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }.stat-grid { gap:10px; }.stat-grid label { flex-direction:column; align-items:stretch; }.stat-grid input,.stat-grid select { margin:0; }.save-bar { position:static; flex-direction:column; align-items:stretch; }.controls { grid-template-columns:1fr; } }
