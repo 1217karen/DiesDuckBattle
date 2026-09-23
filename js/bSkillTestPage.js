@@ -62,7 +62,7 @@ function renderChoices() {
     for (const [key, value] of Object.entries(definition.tuning)) pair($("tuning"), definition.tuningLabels[key], value == null ? "未確定" : value === false ? "上限なし" : String(value));
     if (!Object.keys(definition.tuning).length) pair($("tuning"), "未確定値", "なし（構造上の確定値のみ）");
   }
-  $("selection-note").textContent = $("fixture").checked ? "表示値は開発用仮値です。数値はDTOに含めず、trusted catalogからcompileします。" : "未確定値があるoptionはcompile・戦闘できません。";
+  $("selection-note").textContent = $("fixture").checked ? "表示値は開発用仮値です。数値はDTOに含めず、trusted catalogからcompileします。" : "表示値はproduction balance v0です。1キャラにつき1候補、選択コストなし。数値はDTOに含めません。";
 }
 function update() {
   stale();
@@ -110,7 +110,7 @@ $("fixture").addEventListener("change", () => {
 });
 function catalogNote() { $("catalog-note").textContent = $("fixture").checked
   ? "開発fixture ON：この値は開発確認用でありゲームバランス仕様ではありません。"
-  : "production catalog：未確定tuningのあるoptionは選択できますがcompileできません。"; }
+  : "production balance v0：event 56・trait 14の全70候補がcompile可能です。fixtureなしで戦闘確認できます。"; }
 for (const id of ["dev-heal", "heal-target", "heal-amount"]) $(id).addEventListener("input", stale);
 $("important-only").addEventListener("change", renderEvents);
 $("battle-form").addEventListener("submit", event => {

@@ -38,10 +38,10 @@ test("表示metadata、queryの合法絞り込み、status group、trait一覧",
   assert.ok(Object.values(c.optionSets).flat().every(o => o.label));
 });
 
-test("production未解決は戦闘なし・harnessで毎回再compileしraw/不正IDを拒否", () => {
+test("productionで戦闘可・harnessで毎回再compileしraw/不正IDを拒否", () => {
   const selection = event("phase-start", "always", "both-buff");
-  const blocked = runBSkillTestBattle(selection);
-  assert.equal(blocked.compilation.valid, true); assert.ok(blocked.compilation.unresolved.length); assert.equal(blocked.battle, null);
+  const production = runBSkillTestBattle(selection);
+  assert.equal(production.compilation.ok, true); assert.deepEqual(production.compilation.unresolved, []); assert.ok(production.battle);
   assert.ok(run(selection).battle);
   assert.equal(run({ ...selection, bSkills: [{ trigger: "phaseStart" }] }).battle, null);
   const c = createBDevCatalog(); assert.equal(compileBSkill(selection, { catalog: c }).ok, true);

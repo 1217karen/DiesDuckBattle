@@ -30,16 +30,14 @@ function harness() {
   } };
 }
 
-test("production全未確定optionは未解決、dev全完成optionはcompile可能", () => {
+test("production/dev全完成optionはcompile可能", () => {
   const production = createBSkillCatalog();
   for (const definition of [...catalog.events, ...catalog.traits]) {
     const selection = chosen(definition), result = compileBSkill(selection);
     assert.equal(result.valid, true);
     const original = [...production.events, ...production.traits].find(d => d.id === definition.id);
-    assert.ok(Object.values(original.tuning).every(value => value === null));
-    if (Object.keys(original.tuning).length) {
-      assert.equal(result.ok, false); assert.equal(result.bSkills, null); assert.ok(result.unresolved.length);
-    } else assert.equal(result.ok, true); // 被命中「常に」+1は仕様確定済み。
+    assert.ok(Object.values(original.tuning).every(Number.isFinite));
+    assert.equal(result.ok, true); assert.deepEqual(result.unresolved, []);
     assert.ok(compile(selection).length);
   }
   assert.deepEqual(production.triggers.map(t => t.engineTrigger), ["phaseStart", "beforeAttack", "afterDamage", "afterTakeDamage", "afterHeal", "phaseEnd"]);
@@ -59,7 +57,7 @@ test("DTOはIDのみ、raw・未知・違法組合せ・status別groupを拒否"
     event("before-attack", "self-has-buff", "attack-at-up"),
     event("after-take-hit", "always", "self-next-at-up"),
     event("after-take-hit", "always", "heal-by-ap"),
-    event("after-take-hit", "damage-high", "heal-by-ap"),
+    event("after-take-hit", "damage-medium", "heal-by-ap"),
     event("after-take-hit", "damage-medium", "ap-cost-heal"),
     event("after-take-hit", "damage-medium", "damage-by-enemy-ap"),
     event("phase-end", "always", "enemy-buff-remove")])
@@ -107,7 +105,7 @@ test("afterDamageの確定damage閾値・counter条件・付与中buff解除", (
 });
 
 test("AP参照回復、AP不足不発、AP消費後回復、相手AP固定damage", () => {
-  const h = harness(); h.run(event("after-take-hit", "damage-medium", "heal-by-ap")); assert.equal(h.actor.hp, 45);
+  const h = harness(); h.run(event("after-take-hit", "damage-high", "heal-by-ap")); assert.equal(h.actor.hp, 45);
   h.actor.ap = 2; h.run(event("after-take-hit", "damage-high", "ap-cost-heal"));
   assert.equal(h.actor.ap, 2); assert.equal(h.actor.hp, 45);
   h.actor.ap = 3; h.run(event("after-take-hit", "damage-high", "ap-cost-heal"));
@@ -133,9 +131,8 @@ test("healTargetへbuff/AP/nextAT/解除、actual=0は不発、緊急複合", ()
 test("phaseEnd buff総量回復、maxHPコスト後効果", () => {
   const h = harness(); h.actor.status.focus = 2; h.actor.status.clean = 1;
   h.run(event("phase-end", "always", "heal-by-buff")); assert.equal(h.actor.hp, 46);
-  h.run(event("phase-end", "hp-high", "ap-up")); assert.equal(h.actor.ap, 5);
-  h.actor.hp = 60; h.run(event("phase-end", "hp-high", "ap-up"));
-  assert.equal(h.actor.hp, 50); assert.equal(h.actor.ap, 10);
+  h.run(event("phase-end", "always", "ap-up-cost-5"));
+  assert.equal(h.actor.hp, 36); assert.equal(h.actor.ap, 10); // dev専用10%/AP+5
 });
 
 test("HP/AP canonical passive、攻撃回数、倍率の複数rule展開", () => {

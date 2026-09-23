@@ -1,6 +1,6 @@
 import { STATUS_GROUPS } from "./statusGroups.js";
 
-// trusted catalog。数値未確定は各完成optionのtuningに隔離し、selectionから受け取らない。
+// trusted production catalog / balance v0。数値はselectionから受け取らない。
 export function createBSkillCatalog() {
   const triggers = [
     ["phase-start", "フェイズ開始時", "phaseStart"], ["before-attack", "通常攻撃前", "beforeAttack"],
@@ -67,7 +67,7 @@ export function createBSkillCatalog() {
     for (const [id, effect] of [["self-next-at-up", next("self")], ["enemy-next-at-down", next("enemy", true)]])
       add("after-take-hit", condition, id, damageCondition(condition), effect);
   }
-  add("after-take-hit", "damage-medium", "heal-by-ap", damageCondition("damage-medium"),
+  add("after-take-hit", "damage-high", "heal-by-ap", damageCondition("damage-high"),
     heal("self", { read: "self.ap" }, { max: n("healCap", "optionalCap") }));
   add("after-take-hit", "damage-high", "ap-cost-heal", all(damageCondition("damage-high"),
     cond("self.ap", ">=", n("apCost"))), [change("self", "ap", { negate: n("apCost") }), heal("self")]);
@@ -81,16 +81,16 @@ export function createBSkillCatalog() {
       ["target-debuff-remove", remove("healTarget", "debuff")], ["target-next-at-up", next("healTarget")],
       ["target-heal", heal("healTarget", n("amount"), { source: "afterHealBonus" })]])
       add("after-heal", condition, id, when, effect);
-    if (condition === "hp-medium") add("after-heal", condition, "target-ap-up", when, change("healTarget", "ap", n("amount")));
+    if (condition !== "always") add("after-heal", condition, "target-ap-up", when, change("healTarget", "ap", n("amount")));
     if (condition === "hp-low") add("after-heal", condition, "emergency", when,
       [remove("healTarget", "debuff"), grant("healTarget", "buff")]);
   }
   add("phase-end", "always", "heal-by-buff", null, { type: "heal", target: "self",
     byStatusCount: { statuses: [...STATUS_GROUPS.buff], n: n("perStack") } });
-  for (const [id, effect] of [["ap-up", change("self", "ap", n("amount"))],
-    ["self-buff", grant("self", "buff")], ["self-debuff-remove", remove("self", "debuff")]])
-    add("phase-end", "hp-high", id, cond("self.hpPct", ">=", n("hpThreshold", "probability")),
-      [{ type: "fixedDamage", target: "self", amountMaxHpPct: n("hpCostPct", "probability") }, effect]);
+  for (const cost of [5, 8, 10])
+    add("phase-end", "always", `ap-up-cost-${cost}`, null,
+      [{ type: "fixedDamage", target: "self", amountMaxHpPct: n("hpCostPct", "probability") },
+        change("self", "ap", n("amount"))]);
 
   for (const [id, op] of [["high", ">="], ["low", "<="]]) {
     for (const stats of [["AT"], ["DF"], ["AT", "DF"]]) trait(`hp-${id}-${stats.join("-").toLowerCase()}`, [{
@@ -115,8 +115,53 @@ export function createBSkillCatalog() {
     event.effectLabel = effectLabel(event);
   }
   for (const item of traits) item.label = traitLabel(item.id);
+  for (const definition of [...events, ...traits]) {
+    const values = productionTuning(definition);
+    for (const key of Object.keys(definition.tuning)) {
+      if (!Object.hasOwn(values, key)) throw new Error(`Missing production B tuning: ${definition.id}.${key}`);
+      definition.tuning[key] = values[key];
+    }
+  }
   return { triggers, events, traits, optionSets: Object.fromEntries(["buff", "debuff"].map(group =>
     [group, STATUS_GROUPS[group].map(id => ({ id, value: id, label: B_STATUS_LABELS[id] ?? id }))])) };
+}
+
+// balance v0の唯一の数値表。dev fixtureを参照しない。
+function productionTuning({ id, triggerId, conditionId: condition, effectId: effect }) {
+  if (triggerId === "phase-start") return {
+    stacks: condition === "first-action" && effect.startsWith("chance-strong-") ? 2 : 1, chance: .5,
+  };
+  if (triggerId === "before-attack") return { amount: 3, threshold: 4 };
+  if (triggerId === "after-hit") {
+    const [stacks, repeat, amount, threshold] = {
+      always: [1, 1, 2], "damage-medium": [1, 2, 4, 5], "damage-high": [2, 3, 6, 8], counter: [1, 2, 3],
+    }[condition];
+    return { stacks, repeat, amount, threshold };
+  }
+  if (triggerId === "after-take-hit") return {
+    threshold: condition === "damage-medium" ? 5 : 8,
+    stacks: condition === "damage-medium" ? 2 : 3,
+    amount: effect === "ap-cost-heal" ? 15 : condition === "damage-medium" ? 4 : 6,
+    healCap: 10, apCost: 1,
+  };
+  if (triggerId === "after-heal") {
+    const [stacks, repeat, nextAT, heal, ap, hpThreshold] = {
+      always: [1, 1, 3, 5], "hp-medium": [2, 2, 5, 8, 1, .5], "hp-low": [3, 3, 8, 10, 2, .25],
+    }[condition];
+    return { stacks: effect === "emergency" ? 2 : stacks, repeat: effect === "emergency" ? 2 : repeat,
+      amount: effect === "target-ap-up" ? ap : effect === "target-heal" ? heal : nextAT, hpThreshold };
+  }
+  if (triggerId === "phase-end") return effect === "heal-by-buff" ? { perStack: 3 }
+    : { "ap-up-cost-5": { hpCostPct: .05, amount: 2 }, "ap-up-cost-8": { hpCostPct: .08, amount: 3 },
+      "ap-up-cost-10": { hpCostPct: .1, amount: 4 } }[effect];
+  if (id.startsWith("hp-")) return {
+    hpThreshold: id.includes("extra-attack") ? (id.startsWith("hp-high") ? .75 : .25)
+      : id.startsWith("hp-high") ? .6 : .4,
+    AT: id.endsWith("at-df") ? 2 : 4, DF: id.endsWith("at-df") ? 2 : 4,
+  };
+  if (id.startsWith("ap-")) return { scale: 1, min: 0, max: 5 };
+  if (id.endsWith("random")) return { low: 0, high: 2 };
+  return { outgoing: id.endsWith("up") ? 2 : .5, incoming: id.endsWith("up") ? 2 : .5 };
 }
 
 // 表示metadataのみ。合法な組み合わせ・semantics・数値は上の完成optionがSSOT。
@@ -136,6 +181,8 @@ function conditionLabel({ conditionId: id, triggerId }) {
     "hp-low": "回復後も対象HPが低割合以下", "hp-high": "自分のHPが一定割合以上" }[id];
 }
 function effectLabel({ effectId: id, triggerId, conditionId }) {
+  if (triggerId === "phase-end" && id.startsWith("ap-up-cost-"))
+    return `最大HPの${id.slice("ap-up-cost-".length)}%固定ダメージ後、自分APを増加`;
   if (triggerId === "phase-start") return {
     "both-buff": "自分と相手にランダム強化", "both-debuff": "相手と自分にランダム異常",
     "self-buff-debuff": "自分にランダム強化と異常", "chance-enemy-debuff": "一定確率で相手にランダム異常",
