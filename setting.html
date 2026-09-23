@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>戦闘設定 | DiesDuckBattle</title>
+  <link rel="stylesheet" href="css/setting.css">
+</head>
+<body>
+  <main class="setting-shell">
+    <header class="page-header">
+      <p class="eyebrow">DIES DUCK BATTLE</p>
+      <h1>BATTLE SETTING</h1>
+      <p>戦うスタイルを、あなただけの組合せに。</p>
+      <p class="muted">Battlerの共通スキルと、アヒルごとの能力・スキルを設定します。作成途中でも保存できます。</p>
+    </header>
+    <p id="load-message" role="status">設定を読み込んでいます…</p>
+    <noscript>設定ページを使用するにはJavaScriptを有効にしてください。</noscript>
+    <div id="editor" hidden>
+      <section aria-labelledby="battler-heading">
+        <div class="section-heading"><span>01</span><div><h2 id="battler-heading">BATTLER SETTING</h2><p>すべてのアヒルで共有するB・Dスキル</p></div></div>
+        <div id="battler-editor" class="battler-grid"></div>
+      </section>
+      <section aria-labelledby="duck-heading">
+        <div class="section-heading"><span>02</span><div><h2 id="duck-heading">DUCK SETTING</h2><p>アヒルごとの能力・ダイス・A・Cスキル</p></div></div>
+        <div class="duck-toolbar"><div id="duck-tabs" aria-label="編集するアヒル"></div><button id="add-duck" type="button">＋ 新規アヒル</button></div>
+        <div id="duck-editor"></div>
+      </section>
+      <footer class="save-bar"><div><strong id="save-message" role="status">変更はありません</strong><p class="muted">このブラウザに、すべての設定をまとめて保存します。</p></div><button id="save" class="primary" type="button">設定を保存</button></footer>
+    </div>
+  </main>
+  <script type="module" src="js/settingPage.js"></script>
+</body>
+</html>
