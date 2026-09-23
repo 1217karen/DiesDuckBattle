@@ -5,11 +5,13 @@ import { STATUS_GROUPS } from "./statusGroups.js";
 export function createCSkillCatalog() {
   const optionSets = {};
   for (const key of ["damageAmount", "healAmount", "currentHpPct", "statusStacks",
-    "turnATAmount", "turnDFAmount", "turnCount", "timedStacks", "timedTurns", "revivePct"]) optionSets[key] = [];
+    "turnATAmount", "turnDFAmount", "turnCount", "timedStacks", "timedTurns", "revivePct",
+    "hpThreshold", "statusMultiplier", "stepBaseAmount", "stepEveryTurns", "stepAmount"]) optionSets[key] = [];
   for (const group of ["debuff", "buff"]) {
     for (const purpose of ["grant", "clear", "timed"]) {
       optionSets[`${purpose}-${group}`] = STATUS_GROUPS[group].map(id => ({ id, label: id, value: id, apDelta: null }));
     }
+    optionSets[`grant-${group}`].push({ id: `random-${group}`, label: `ランダム${group}`, value: `@${group}`, apDelta: null });
     optionSets[`clear-all-${group}`] = [{ id: "all", label: `全${group}解除`, value: group, apDelta: null }];
   }
   const effects = [];
@@ -30,6 +32,11 @@ export function createCSkillCatalog() {
     { id: "heal-enemy", label: "相手を固定値回復", semantics: { type: "heal", target: "enemy", amountAxis: "amount" } });
   add("current-hp-damage-enemy", "percentageDamage", "相手の現在HP割合固定ダメージ", "benefit",
     { amountPct: "currentHpPct" }, { type: "fixedDamage", target: "enemy", amountPctAxis: "amountPct" });
+  add("debuff-total-damage-enemy", "statusDamage", "相手debuff総stack × Nダメージ", "benefit",
+    { multiplier: "statusMultiplier" }, { type: "fixedDamage", target: "enemy", statusMultiplierAxis: "multiplier" });
+  add("turn-step-damage-enemy", "turnStepDamage", "経過turnで増加する固定ダメージ", "benefit",
+    { baseAmount: "stepBaseAmount", everyTurns: "stepEveryTurns", stepAmount: "stepAmount" },
+    { type: "fixedDamage", target: "enemy", amountAxis: "baseAmount", everyTurnsAxis: "everyTurns", stepAmountAxis: "stepAmount" });
   for (const group of ["debuff", "buff"]) {
     const benefitTarget = group === "debuff" ? "enemy" : "self";
     const drawbackTarget = benefitTarget === "self" ? "enemy" : "self";
@@ -60,7 +67,8 @@ export function createCSkillCatalog() {
   }
   add("revive-self", "revive", "最大HP割合で復活", "benefit", { maxHpPct: "revivePct" },
     { type: "revive", target: "self", maxHpPctAxis: "maxHpPct" }, ["special"]);
-  return { effects, optionSets };
+  return { effects, optionSets,
+    chanceOptions: [{ id: "100", label: "100%", value: 1, apDelta: 0 }] };
 }
 
 export function getCEffectAvailability(effectId, mode, catalog = createCSkillCatalog()) {

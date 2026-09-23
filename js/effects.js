@@ -70,6 +70,14 @@ export function applyEffect(effect, ctx) {
   // ログ出力は ctx.push を最優先（push引数に依存しない）
   const emit = typeof ctx?.push === "function" ? ctx.push : () => {};
 
+  // Cの排他的分岐。枝の回復/自傷後に再判定せず、既存condition evaluatorで1回選ぶ。
+  if (effect.type === "conditional") {
+    const met = evaluateCondition(effect.when, ctx);
+    emit("conditionalBranch", ctx.actor?.side ?? "system", { met });
+    applyEffect(met ? effect.met : effect.unmet, ctx);
+    return;
+  }
+
   // when 条件（満たさないなら何もしない）
   if (effect.when !== undefined) {
     const ok = evaluateCondition(effect.when, ctx);

@@ -2,8 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createCSkillRules } from "../js/cSkillRules.js";
 import { createCSkillCatalog, getCEffectOptions } from "../js/cSkillCatalog.js";
-import { calculateCSkillResources } from "../js/cSkillResources.js";
+import { calculateCSkillResources as structuredcalculateCSkillResources } from "../js/cSkillResources.js";
 import { STATUS_GROUPS } from "../js/statusGroups.js";
+
+
+// 既存flatケースのfixtureを新DTOへ移行（productionに旧DTO互換入口はない）。
+const flatFixture = value => {
+  if (!value || Object.getPrototypeOf(value) !== Object.prototype) return value;
+  const { effects, ...rest } = value; return { ...rest, structure: { kind: "flat", effects } };
+};
+const calculateCSkillResources = (value, options) => structuredcalculateCSkillResources(flatFixture(value), options);
 
 // このテストだけの仮数量・価格。productionのゲームバランスではない。
 function fixture() {
@@ -106,7 +114,7 @@ test("公開候補: AP/割合heal/出目操作/addDice/passiveなし、片方向
   assert.equal(catalog.effects.some(e => ["changeValue", "addDice", "passive"].includes(e.semantics.type)), false);
   assert.ok(catalog.effects.filter(e => e.semantics.type === "heal").every(e => Object.keys(e.optionAxes).join() === "amount"));
   for (const category of ["percentageDamage", "timedHit", "revive"]) assert.ok(catalog.effects.filter(e => e.category === category).every(e => e.polarity === "benefit" && !e.mirrorId));
-  for (const group of ["debuff", "buff"]) assert.deepEqual(catalog.optionSets[`grant-${group}`].map(o => o.id), [...STATUS_GROUPS[group]]);
+  for (const group of ["debuff", "buff"]) assert.deepEqual(catalog.optionSets[`grant-${group}`].map(o => o.id), [...STATUS_GROUPS[group], `random-${group}`]);
   assert.equal(getCEffectOptions("normal").find(e => e.id === "revive-self").selectable, false);
 });
 test("clearはstatus/scope、timedはstatus/amount/durationの独立軸", () => {

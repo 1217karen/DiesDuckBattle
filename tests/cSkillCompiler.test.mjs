@@ -1,11 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { compileCSkill } from "../js/cSkillCompiler.js";
+import { compileCSkill as structuredcompileCSkill } from "../js/cSkillCompiler.js";
 import { createCSkillCatalog } from "../js/cSkillCatalog.js";
 import { createCSkillRules } from "../js/cSkillRules.js";
 import { calculateCSkillResources } from "../js/cSkillResources.js";
 import { createCDevCatalog } from "../js/cSkillDevFixtures.js";
 import { C_TEST_FIELDS, runCSkillTestBattle } from "../js/cSkillTestHarness.js";
+
+
+// 既存flatケースのfixtureを新DTOへ移行（productionに旧DTO互換入口はない）。
+const flatFixture = value => {
+  if (!value || Object.getPrototypeOf(value) !== Object.prototype) return value;
+  const { effects, ...rest } = value; return { ...rest, structure: { kind: "flat", effects } };
+};
+const compileCSkill = (value, options) => structuredcompileCSkill(flatFixture(value), options);
 
 // 値・価格は開発fixture。productionの価格決定ではない。
 function chosen(id, values = {}, catalog = createCDevCatalog()) {
@@ -50,7 +58,7 @@ test("配列順・重複保持、costAPはresources.requiredAPから取得", () 
   const effects = [chosen("damage-enemy"), chosen("heal-enemy"), chosen("damage-enemy")];
   const r = compile(effects);
   assert.deepEqual(r.skill.effect.map(e => e.type), ["fixedDamage", "heal", "fixedDamage"]);
-  assert.equal(r.skill.costAP, calculateCSkillResources({ mode: "normal", effects }, { catalog: createCDevCatalog() }).requiredAP);
+  assert.equal(r.skill.costAP, calculateCSkillResources(flatFixture({ mode: "normal", effects }), { catalog: createCDevCatalog() }).requiredAP);
   assert.equal(r.skill.costAP, createCSkillRules().baseAP + 1);
   assert.notEqual(r.skill.effect[0], r.skill.effect[2]);
 });
@@ -112,7 +120,7 @@ test("凍結入力で純粋、出力の変更がcatalogや次回出力へ漏れ�
   assert.equal(createCSkillRules().repeatReviveChance, null);
 });
 function run(effects, mode = "normal", settings = {}, chance = .5, rng = () => .9) {
-  return runCSkillTestBattle({ mode, effects }, { catalog: createCDevCatalog(), rules: { ...createCSkillRules(), repeatReviveChance: chance },
+  return runCSkillTestBattle(flatFixture({ mode, effects }), { catalog: createCDevCatalog(), rules: { ...createCSkillRules(), repeatReviveChance: chance },
     settings: { ...Object.fromEntries(C_TEST_FIELDS.map(f => [f.key, f.value])), ...settings }, rng });
 }
 test("開発harnessで通常C compile→damage/heal/割合/turn補正/statusが実行できる", () => {
@@ -147,5 +155,5 @@ test("special固定ダメージのみ/固定healのみも接続、compile失敗�
     assert.ok(r.battle.events.some(e => e.type === "cSkillActivated"));
     assert.equal(r.finalState.hp.P1, id === "heal-self" ? 20 : -30);
   }
-  assert.equal(runCSkillTestBattle({ mode: "normal", effects: [{ effectId: "damage-enemy" }] }, { settings: {} }).battle, null);
+  assert.equal(runCSkillTestBattle(flatFixture({ mode: "normal", effects: [{ effectId: "damage-enemy" }] }), { settings: {} }).battle, null);
 });

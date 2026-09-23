@@ -9,49 +9,109 @@ export function calculateCSkillResources(selection, { catalog = createCSkillCata
   const keys = (object, allowed, path) => {
     for (const key of Reflect.ownKeys(object)) if (!allowed.includes(key)) error("UNKNOWN_FIELD", `${path}.${String(key)}`);
   };
+  const price = (value, path) => {
+    if (value == null) { pending("PRICE_UNRESOLVED", path); return 0; } // 既知小計用のみ。最終APは必ずnull。
+    if (!Number.isFinite(value) || value < 0) throw new TypeError(`Invalid C option price: ${path}`);
+    return value;
+  };
+  const policy = (value, supported, code, path) => {
+    if (value == null) pending(code, path);
+    else if (value !== supported) throw new TypeError(`Unsupported C dev policy: ${path}`);
+  };
+  const option = (set, id, path) => {
+    if (id === undefined) { pending("OPTION_UNSELECTED", path); return null; }
+    const found = typeof id === "string" && set.find(o => o.id === id);
+    if (!found) { error("UNKNOWN_OPTION", path); return null; }
+    return found;
+  };
   for (const key of ["baseAP", "minimumAP", "minEffects", "maxEffects", "additionalBenefitSlotAP"]) {
     if (!Number.isFinite(rules[key]) || rules[key] < 0) throw new TypeError(`Invalid C rules: ${key}`);
   }
-  let benefitCount = 0, drawbackCount = 0, knownOptionDelta = 0;
+  let effectCount = 0, benefitCount = 0, drawbackCount = 0, knownOptionDelta = 0, knownStructureDelta = 0;
   const mode = record(selection) && Object.hasOwn(selection, "mode") ? selection.mode : null;
-  const list = record(selection) && Object.hasOwn(selection, "effects") && Array.isArray(selection.effects) ? selection.effects : null;
-  if (!record(selection)) error("INVALID_SELECTION", "cSkill"); else keys(selection, ["mode", "effects"], "cSkill");
+  if (!record(selection)) error("INVALID_SELECTION", "cSkill"); else keys(selection, ["mode", "structure"], "cSkill");
   if (!["normal", "special"].includes(mode)) error("INVALID_MODE", "mode");
-  const effectCount = list?.length ?? 0;
-  if (!list) error("INVALID_EFFECTS", "effects");
-  if (effectCount < rules.minEffects || effectCount > rules.maxEffects) error("EFFECT_COUNT", "effects");
-  for (const [i, chosen] of (list ?? []).entries()) {
-    const path = `effects.${i}`;
-    if (!record(chosen)) { error("INVALID_EFFECT", path); continue; }
-    keys(chosen, ["effectId", "options"], path);
+  const leaf = (chosen, path, fallback = false) => {
+    effectCount++;
+    if (!record(chosen)) { error("INVALID_EFFECT", path); return; }
+    keys(chosen, fallback ? ["effectId", "options"] : ["effectId", "options", "chanceOptionId", "onFail"], path);
     const effect = Object.hasOwn(chosen, "effectId") && typeof chosen.effectId === "string"
       && catalog.effects.find(item => item.id === chosen.effectId);
-    if (!effect) { error("UNKNOWN_EFFECT", `${path}.effectId`); continue; }
+    if (!effect) { error("UNKNOWN_EFFECT", `${path}.effectId`); return; }
     const availability = getCEffectAvailability(effect.id, mode, catalog);
     if (!availability.selectable) error(availability.reason.code, path);
     if (!["benefit", "drawback"].includes(effect.polarity)) throw new TypeError("Invalid C polarity");
-    if (effect.polarity === "benefit") benefitCount++; else drawbackCount++;
+    const benefit = effect.polarity === "benefit";
+    if (benefit) benefitCount++; else drawbackCount++;
     const options = Object.hasOwn(chosen, "options") ? chosen.options : {};
-    if (!record(options)) { error("INVALID_OPTIONS", `${path}.options`); continue; }
-    keys(options, Object.keys(effect.optionAxes), `${path}.options`);
-    for (const [axis, setId] of Object.entries(effect.optionAxes)) {
-      const optionPath = `${path}.options.${axis}`;
-      if (!Object.hasOwn(options, axis)) { pending("OPTION_UNSELECTED", optionPath); continue; }
-      const set = catalog.optionSets[setId];
-      if (!Array.isArray(set)) throw new TypeError(`Unknown C option set: ${setId}`);
-      const option = typeof options[axis] === "string" && set.find(item => item.id === options[axis]);
-      if (!option) { error("UNKNOWN_OPTION", optionPath); continue; }
-      if (option.apDelta == null) { pending("PRICE_UNRESOLVED", optionPath); continue; }
-      if (!Number.isFinite(option.apDelta) || option.apDelta < 0) throw new TypeError(`Invalid C option price: ${setId}`);
-      knownOptionDelta += (effect.polarity === "benefit" ? 1 : -1) * option.apDelta;
-      if (!Number.isFinite(knownOptionDelta)) throw new TypeError("C resource arithmetic overflow");
+    if (!record(options)) error("INVALID_OPTIONS", `${path}.options`);
+    else {
+      keys(options, Object.keys(effect.optionAxes), `${path}.options`);
+      for (const [axis, setId] of Object.entries(effect.optionAxes)) {
+        const optionPath = `${path}.options.${axis}`, set = catalog.optionSets[setId];
+        if (!Array.isArray(set)) throw new TypeError(`Unknown C option set: ${setId}`);
+        const found = option(set, Object.hasOwn(options, axis) ? options[axis] : undefined, optionPath);
+        if (found) knownOptionDelta += (benefit ? 1 : -1) * price(found.apDelta, optionPath);
+      }
     }
-  }
+    if (fallback) return; // fallbackのchance/onFail/branchは未知fieldとして拒否。再帰しない。
+    const chanceId = Object.hasOwn(chosen, "chanceOptionId") ? chosen.chanceOptionId : "100";
+    const chance = typeof chanceId === "string" && catalog.chanceOptions.find(o => o.id === chanceId);
+    if (!chance) error("UNKNOWN_CHANCE_OPTION", `${path}.chanceOptionId`);
+    else {
+      if (!Number.isFinite(chance.value) || chance.value <= 0 || chance.value > 1 || (chance.id === "100" && chance.value !== 1))
+        throw new TypeError("Invalid C chance definition");
+      if (!benefit && chanceId !== "100") error("DRAWBACK_CHANCE", `${path}.chanceOptionId`);
+      if (chance.value !== 1) {
+        policy(rules.chancePricing, "dev-add", "CHANCE_PRICING_UNRESOLVED", "rules.chancePricing");
+        knownOptionDelta += price(chance.apDelta, `${path}.chanceOptionId`);
+      }
+    }
+    if (Object.hasOwn(chosen, "onFail")) {
+      if (!benefit || !chance || chance.value === 1) error("ON_FAIL_REQUIRES_CHANCE_BENEFIT", `${path}.onFail`);
+      policy(rules.onFailPricing, "dev-sum", "ON_FAIL_PRICING_UNRESOLVED", "rules.onFailPricing");
+      leaf(chosen.onFail, `${path}.onFail`, true);
+    }
+  };
+  const branch = (value, path) => {
+    if (!record(value)) { error("INVALID_BRANCH", path); return; }
+    keys(value, ["effects"], path);
+    if (!Array.isArray(value.effects)) { error("INVALID_EFFECTS", `${path}.effects`); return; }
+    if (!value.effects.length) error("EMPTY_BRANCH", `${path}.effects`);
+    for (const [i, chosen] of value.effects.entries()) leaf(chosen, `${path}.effects.${i}`);
+  };
+  const structure = record(selection) && Object.hasOwn(selection, "structure") ? selection.structure : null;
+  if (!record(structure)) error("INVALID_STRUCTURE", "structure");
+  else if (structure.kind === "flat") {
+    keys(structure, ["kind", "effects"], "structure");
+    branch({ effects: structure.effects }, "structure");
+  } else if (["random", "hpCondition"].includes(structure.kind)) {
+    keys(structure, structure.kind === "random" ? ["kind", "branches"] : ["kind", "thresholdOptionId", "branches"], "structure");
+    policy(rules.branchAggregation, "dev-sum", "BRANCH_AGGREGATION_UNRESOLVED", "rules.branchAggregation");
+    knownStructureDelta += price(rules.branchAPDelta?.[structure.kind], `rules.branchAPDelta.${structure.kind}`);
+    if (structure.kind === "random") {
+      if (!Array.isArray(structure.branches) || ![2, 3].includes(structure.branches.length)) error("BRANCH_COUNT", "structure.branches");
+      if (Array.isArray(structure.branches)) for (const [i, b] of structure.branches.entries()) branch(b, `structure.branches.${i}`);
+    } else {
+      const threshold = option(catalog.optionSets.hpThreshold, structure.thresholdOptionId, "structure.thresholdOptionId");
+      if (threshold) {
+        if (!Number.isFinite(threshold.value) || threshold.value <= 0 || threshold.value > 1) throw new TypeError("Invalid C HP threshold");
+        knownStructureDelta += price(threshold.apDelta, "structure.thresholdOptionId");
+      }
+      if (!record(structure.branches)) error("INVALID_BRANCHES", "structure.branches");
+      else {
+        keys(structure.branches, ["met", "unmet"], "structure.branches");
+        for (const key of ["met", "unmet"]) branch(structure.branches[key], `structure.branches.${key}`);
+      }
+    }
+  } else error("UNKNOWN_STRUCTURE", "structure.kind");
+  if (effectCount < rules.minEffects || effectCount > rules.maxEffects) error("EFFECT_COUNT", "structure");
+  if (!Number.isFinite(knownOptionDelta + knownStructureDelta)) throw new TypeError("C resource arithmetic overflow");
   const slotCost = Math.max(0, benefitCount - 1) * rules.additionalBenefitSlotAP;
   const complete = errors.length === 0 && unresolved.length === 0;
   const optionDelta = complete ? knownOptionDelta : null;
-  const rawAP = complete ? rules.baseAP + slotCost + optionDelta : null;
+  const rawAP = complete ? rules.baseAP + slotCost + optionDelta + knownStructureDelta : null;
   if (rawAP !== null && !Number.isFinite(rawAP)) throw new TypeError("C resource arithmetic overflow");
   return { mode, effectCount, benefitCount, drawbackCount, baseAP: rules.baseAP, slotCost, knownOptionDelta,
-    optionDelta, rawAP, requiredAP: rawAP === null ? null : Math.max(rules.minimumAP, rawAP), complete, errors, unresolved };
+    knownStructureDelta, optionDelta, rawAP, requiredAP: rawAP === null ? null : Math.max(rules.minimumAP, rawAP), complete, errors, unresolved };
 }

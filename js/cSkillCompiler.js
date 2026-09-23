@@ -8,7 +8,7 @@ export function compileCSkill(selection, { catalog = createCSkillCatalog(), rule
   const resources = calculateCSkillResources(selection, { catalog, rules });
   const result = { ok: false, skill: null, resources, errors: resources.errors, unresolved: resources.unresolved };
   if (!resources.complete) return result;
-  const effect = selection.effects.map(chosen => {
+  const compileLeaf = chosen => {
     const definition = catalog.effects.find(item => item.id === chosen.effectId);
     const s = definition.semantics;
     const require = (valid, description) => { if (!valid) throw new TypeError(`Invalid C catalog semantics (${definition.id}): ${description}`); };
@@ -25,13 +25,20 @@ export function compileCSkill(selection, { catalog = createCSkillCatalog(), rule
     };
     const status = () => {
       const value = read(s.statusAxis);
-      require(["debuff", "buff"].includes(s.group) && STATUS_GROUPS[s.group].includes(value), "status/group");
+      require(["debuff", "buff"].includes(s.group) && (STATUS_GROUPS[s.group].includes(value)
+        || (s.type === "changeStatus" && value === `@${s.group}`)), "status/group");
       return value;
     };
     const duration = () => ({ kind: "turns", count: number(s.durationAxis, { min: 1 }) });
     const base = { type: s.type, target: s.target };
-    switch (s.type) {
+    const compileBase = () => { switch (s.type) {
       case "fixedDamage":
+        if (s.statusMultiplierAxis) {
+          require(s.target === "enemy", "status damage target");
+          return { ...base, byStatusCount: { n: number(s.statusMultiplierAxis, { min: 1 }), statuses: [...STATUS_GROUPS.debuff] } };
+        }
+        if (s.everyTurnsAxis) return { ...base, amount: number(s.amountAxis),
+          turnStep: { every: number(s.everyTurnsAxis, { min: 1 }), add: number(s.stepAmountAxis) } };
         return s.amountPctAxis ? { ...base, amountPct: number(s.amountPctAxis, { integer: false, max: 1 }) }
           : { ...base, amount: number(s.amountAxis) };
       case "heal": return { ...base, amount: number(s.amountAxis) };
@@ -54,8 +61,23 @@ export function compileCSkill(selection, { catalog = createCSkillCatalog(), rule
         require(selection.mode === "special", "revive mode");
         return { ...base, maxHpPct: number(s.maxHpPctAxis, { integer: false, max: 1 }) };
       default: throw new TypeError(`Unsupported C semantics type: ${s.type}`);
-    }
-  });
+    } };
+    const compiled = compileBase();
+    const chance = catalog.chanceOptions.find(o => o.id === (chosen.chanceOptionId ?? "100"));
+    if (chance.value !== 1) compiled.chance = chance.value;
+    if (chosen.onFail) compiled.onFail = compileLeaf(chosen.onFail);
+    return compiled;
+  };
+  const structure = selection.structure;
+  const branch = b => b.effects.map(compileLeaf);
+  let effect;
+  if (structure.kind === "flat") effect = branch(structure);
+  else if (structure.kind === "random") effect = [{ type: "randomPick", picks: structure.branches.map(branch) }];
+  else {
+    const threshold = catalog.optionSets.hpThreshold.find(o => o.id === structure.thresholdOptionId).value;
+    effect = [{ type: "conditional", when: { left: "self.hpPct", op: ">=", right: threshold },
+      met: branch(structure.branches.met), unmet: branch(structure.branches.unmet) }];
+  }
   const skill = { mode: selection.mode, costAP: resources.requiredAP, effect };
   if (selection.mode === "special" && rules.repeatReviveChance != null) {
     if (!Number.isFinite(rules.repeatReviveChance) || rules.repeatReviveChance < 0 || rules.repeatReviveChance > 1)

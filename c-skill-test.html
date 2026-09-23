@@ -12,26 +12,29 @@
     <p>DIES DUCK BATTLE / DEVELOPMENT</p>
     <h1>Cスキル仕様確認用・開発ページ</h1>
     <p>catalog選択 → compiler → 実戦闘の接続を確認します。本番画面ではありません。操作・結果は保存しません。</p>
-    <fieldset><legend>C mode</legend>
+    <fieldset><legend>1. C mode</legend>
       <label><input type="radio" name="mode" value="normal" checked> 通常C</label>
       <label><input type="radio" name="mode" value="special"> 特殊C</label>
     </fieldset>
+    <label>2. 構造 <select id="branching"><option value="flat">分岐なし</option><option value="branch">分岐あり</option></select></label>
+    <label id="branch-kind-label" hidden>3. 分岐方式 <select id="branch-kind"><option value="random">ランダム</option><option value="hpCondition">HP条件</option></select></label>
+    <label id="branch-count-label" hidden>ランダム択数 <select id="branch-count"><option value="2">2択</option><option value="3">3択</option></select></label>
+    <div id="threshold-control"></div>
     <label><input type="checkbox" id="fixture"> 開発用fixtureを使用する</label>
     <p id="catalog-note" class="notice"></p>
     <nav aria-label="開発ページ"><a href="a-skill-test.html">A確認ページ</a> / <a href="b-skill-test.html">B確認ページ</a> / <a href="c-skill-test.html" aria-current="page">C確認ページ</a> / <a href="d-skill-test.html">D確認ページ</a></nav>
   </header>
   <main>
     <section aria-labelledby="effects-heading">
-      <h2 id="effects-heading">1. C効果を組む</h2>
-      <p>同じ効果を複数追加できます。特殊Cは復活なしでも構成できます。</p>
+      <h2 id="effects-heading">各枝のC効果を組む</h2>
+      <p>全枝・失敗時effectの合計で1～5effect。分岐のネストは不可。特殊Cは復活なしでも構成できます。</p>
       <div id="effects"></div>
-      <button id="add-effect" type="button">＋効果を追加</button>
     </section>
     <aside>
       <h2>AP計算・compile結果</h2>
       <dl id="resources" aria-live="polite"></dl>
       <h3>errors / unresolved</h3><ul id="issues" role="status"></ul>
-      <p class="notice">effect数値ごとのAP価格は未確定。fixtureのoption価格は開発用0です。追加メリット枠のAPは計算されます。</p>
+      <p class="notice">productionのAP価格・分岐AP集約・chance/onFail価格式は未確定。fixtureは全leaf合算・追加価格0の仮方式で、ゲーム仕様ではありません。</p>
     </aside>
     <section class="wide">
       <h2>2. 戦闘テスト</h2>
