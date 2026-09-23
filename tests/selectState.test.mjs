@@ -41,7 +41,7 @@ test("1P Battler remains fixed through Duck changes and VS remains unavailable",
     state = selectOwnDuck(state,id); assert.deepEqual(state.self,SELF_BATTLER);
     assert.equal(Object.isFrozen(state.self),true); assert.equal(battleStartStatus(state).canStart,false);
   }
-  assert.equal(battleStartStatus(state).reason,"相手データ未接続");
+  assert.equal(battleStartStatus(state).reason,"相手を選択してください。");
 });
 test("unset shared Battler prevents selection of all Ducks", () => {
   const build = complete(); build.battler.bSelection = null;

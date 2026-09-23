@@ -15,7 +15,7 @@ const loadMessages = {
 export function createSelectState(result, metadata = SELF_BATTLER) {
   const readable = result.ok && ["empty", "loaded"].includes(result.status);
   return { build: readable ? clonePlayerBuild(result.build) : null,
-    self: Object.freeze({ id: metadata.id, name: metadata.name }), selectedDuckId: null,
+    self: Object.freeze({ id: metadata.id, name: metadata.name }), selectedDuckId: null, opponent: null, opponentDuckId: null,
     loadStatus: result.status, message: readable ? "" : loadMessages[result.status] ?? "保存データを読み込めませんでした。" };
 }
 export function duckChoices(state) {
@@ -30,8 +30,22 @@ export function selectOwnDuck(state, id) {
   if (!state.build || !inspectBattleLoadout(state.build, id).ready) return state;
   return { ...state, selectedDuckId: id };
 }
-// Opponent source is deliberately unconnected in this stage.
-export function battleStartStatus() { return { canStart: false, reason: "相手データ未接続" }; }
+export function selectOpponent(state, opponent) {
+  return { ...state, opponent: opponent ? { id: opponent.id, name: opponent.name, build: clonePlayerBuild(opponent.build) } : null, opponentDuckId: null };
+}
+export function opponentDuckChoices(state) { return duckChoices({ build: state.opponent?.build }); }
+export function selectOpponentDuck(state, id) {
+  if (!state.opponent || !inspectBattleLoadout(state.opponent.build, id).ready) return state;
+  return { ...state, opponentDuckId: id };
+}
+export function battleStartStatus(state) {
+  if (!state?.build || !inspectBattleLoadout(state.build, state.selectedDuckId).ready)
+    return { canStart: false, reason: "1Pの使用可能なDuckを選択してください。" };
+  if (!state.opponent) return { canStart: false, reason: "相手を選択してください。" };
+  if (!inspectBattleLoadout(state.opponent.build, state.opponentDuckId).ready)
+    return { canStart: false, reason: "2Pの使用可能なDuckを選択してください。" };
+  return { canStart: true, reason: "準備完了 — VSで戦闘開始" };
+}
 const label = (items, id) => items?.find(item => item.id === id)?.label ?? "未設定・不明な選択";
 const ac = createASkillCatalog(), bc = createBSkillCatalog(), cc = createCSkillCatalog();
 export function battlerSummary(battler) {

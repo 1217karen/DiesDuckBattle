@@ -41,3 +41,10 @@ button.duckPick { cursor:pointer; } .duckPick>span:first-child { font-size:26px;
 @media(max-width:600px) { .screen { padding:0 8px 8px; min-height:780px; } .selectGrid { grid-template-columns:minmax(0,1fr) 96px minmax(0,1fr); grid-template-rows:57% 1fr; } .silhouette { padding-top:140px; } .infoPanel { padding:8px; } .infoPanel__body { font-size:12px; } .infoPanel h2 { font-size:13px; } }
 @media(prefers-reduced-motion:reduce) { .tray[open] { animation:none; } }
 
+button.silhouette { width:100%; border:0; background:transparent; color:inherit; font:inherit; cursor:pointer; }
+button.silhouette:hover .figure { opacity:.85; }
+.tray--p2 .tray__header { background:#3399ff2e; border-color:#3399ff59; }
+#battle-result { font-size:clamp(16px,2vw,26px); font-weight:900; color:#ffcf60; }
+#opponent-name { max-width:90%; text-align:center; overflow-wrap:anywhere; }
+#p2-duck-name { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.vs:not(:disabled) { cursor:pointer; filter:drop-shadow(0 0 10px #ffb40088); }
