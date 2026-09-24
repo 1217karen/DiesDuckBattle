@@ -15,7 +15,11 @@ export function startSelectedBattle(state, { rng = Math.random, maxTurns = 50 } 
   const battle = runBattle({ p1: { battlerId: p1.battler.id, duckId: p1.duck.id },
     p2: { battlerId: p2.battler.id, duckId: p2.duck.id },
     data: { BATTLERS: [p1.battler, p2.battler], DUCKS: [p1.duck, p2.duck] }, rng, maxTurns });
+  const battleStart = battle.events.find(event => event.type === "battleStart");
   return { ok: true, result: battle.result,
     label: { P1_win: "P1 WIN", P2_win: "P2 WIN", draw: "DRAW" }[battle.result],
-    turns: battle.events.findLast(e => e.type === "battleEnd")?.turn ?? 0 };
+    turns: battle.events.findLast(e => e.type === "battleEnd")?.turn ?? 0,
+    events: battle.events,
+    p1: battleStart?.meta?.P1 ?? null,
+    p2: battleStart?.meta?.P2 ?? null };
 }

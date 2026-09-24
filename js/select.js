@@ -2,6 +2,7 @@ import { createPlayerBuildStorage } from "./playerBuildStorage.js";
 import { createSelectState, duckChoices, selectOwnDuck, battleStartStatus, battlerSummary, duckSummary, selectOpponent, selectOpponentDuck, opponentDuckChoices } from "./selectState.js";
 import { listOpponents, getOpponent } from "./opponentSource.js";
 import { startSelectedBattle } from "./selectBattle.js";
+import { createBattleId, createBattleResultStorage } from "./battleResultStorage.js";
 let state = createSelectState(createPlayerBuildStorage().load());
 const el = id => document.getElementById(id);
 const tray = el("tray");
@@ -86,9 +87,32 @@ el("vsButton").addEventListener("click", () => {
   if (!battleStartStatus(state).canStart) return;
   el("vsButton").disabled = true;
   try {
-    const result = startSelectedBattle(state);
-    el("battle-result").textContent = result.ok ? `${result.label} — ${result.turns} TURN` : result.message;
-  } catch { el("battle-result").textContent = "戦闘を開始できませんでした。設定を確認してください。"; }
+    const battle = startSelectedBattle(state);
+    if (!battle.ok) {
+      el("battle-result").textContent = battle.message;
+      renderScreen();
+      return;
+    }
+    const battleId = createBattleId();
+    const side = meta => ({ battlerId: String(meta?.battlerId ?? ""), battlerName: String(meta?.battlerName ?? ""),
+      duckId: String(meta?.duckId ?? ""), duckName: String(meta?.duckName ?? "") });
+    const saved = createBattleResultStorage().save({
+      battleId,
+      dateISO: new Date().toISOString(),
+      p1: side(battle.p1),
+      p2: side(battle.p2),
+      result: battle.result,
+      events: battle.events,
+    });
+    if (!saved.ok) {
+      el("battle-result").textContent = "戦闘結果を保存できませんでした。空き容量やブラウザ設定を確認してください。";
+      renderScreen();
+      return;
+    }
+    location.assign(`result.html?battleId=${encodeURIComponent(battleId)}`);
+  } catch {
+    el("battle-result").textContent = "戦闘を開始できませんでした。設定を確認してください。";
+  }
   renderScreen();
 });
 renderScreen();

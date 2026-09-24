@@ -1,0 +1,135 @@
+:root {
+  --header-h: 160px;
+  --footer-h: 46px;
+  --column-max: 1000px;
+  --gutter: 16px;
+  --battler-size: 120px;
+  --duck-size: 60px;
+  --p1: #e35b5b;
+  --p2: #4a86e8;
+  --damage: #8b3fe6;
+  --heal: #2e9b4f;
+  --buff: #f08a24;
+  --debuff: #7a7a7a;
+  --ff-base: system-ui, -apple-system, "Kosugi Maru", sans-serif;
+  --ff-display: "Roboto Slab", system-ui, sans-serif;
+  --fs-10: clamp(10px, .9vw, 12px);
+  --fs-12: clamp(12px, 1vw, 13px);
+  --fs-14: clamp(13px, 1.1vw, 14px);
+  --fs-16: clamp(15px, 1.25vw, 16px);
+  --fs-18: clamp(16px, 1.4vw, 18px);
+  --fs-20: clamp(20px, 1.7vw, 25px);
+}
+
+html, body { height: 100%; margin: 0; }
+body {
+  color: #111;
+  font: 400 var(--fs-14)/1.35 var(--ff-base);
+  background-color: #d9e9ee;
+  background-image: url("https://duckbattlebeta.web.fc2.com/img/result_BG.webp");
+  background-repeat: repeat;
+  background-position: top left;
+}
+.whiteStripe {
+  position: fixed; inset: 0 auto 0 50%; transform: translateX(-50%);
+  width: min(var(--column-max), calc(100vw - var(--gutter) * 2));
+  background: rgba(255,255,255,.92); z-index: 0;
+}
+.header {
+  position: fixed; inset: 0 0 auto; height: var(--header-h); padding: 12px var(--gutter);
+  box-sizing: border-box; z-index: 10; background: #fff;
+}
+.headerInner {
+  width: min(var(--column-max), calc(100vw - var(--gutter) * 2)); height: 100%; margin: 0 auto;
+  display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 10px;
+}
+.side { min-width: 0; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 12px; align-items: center; }
+.side.right { grid-template-columns: 1fr auto; }
+.battlerIcon, .duckIcon { box-sizing: border-box; border-radius: 10px; background: #f0f0f0; border: 2px solid #cfcfcf; }
+.battlerIcon { width: var(--battler-size); height: var(--battler-size); grid-column: 1; grid-row: 1 / span 2; }
+.duckIcon { width: var(--duck-size); height: var(--duck-size); }
+.placeholderIcon { display: grid; place-items: center; font-weight: 900; color: #777; }
+.nameBlock { grid-column: 2; grid-row: 1; min-width: 0; }
+.nameLine { font-weight: 900; overflow-wrap: anywhere; line-height: 1.15; }
+.duckIcon.underName { grid-column: 2; grid-row: 2; margin-top: 6px; }
+.side.right .battlerIcon { grid-column: 2; }
+.side.right .nameBlock { grid-column: 1; text-align: right; }
+.side.right .duckIcon.underName { grid-column: 1; justify-self: end; }
+.centerInfo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; }
+.turn { font: 900 var(--fs-18) var(--ff-display); }
+.centerTable { display: grid; grid-template-columns: 1fr auto 1fr; gap: 4px 10px; align-items: baseline; }
+.centerTable .cell { white-space: nowrap; opacity: .9; }
+.centerTable .left { text-align: right; }
+.centerTable .right { text-align: left; }
+.centerTable .mid { font-weight: 900; letter-spacing: .06em; }
+.hpLine { font-size: var(--fs-12); opacity: .9; }
+
+.main { position: relative; margin-top: var(--header-h); padding: 0 var(--gutter) calc(var(--footer-h) + 80px); display: flex; justify-content: center; }
+.logArea { width: min(var(--column-max), calc(100vw - var(--gutter) * 2)); padding: 18px 0; display: flex; flex-direction: column; gap: 60px; }
+.phaseBlock { width: calc(50% - 10px); max-width: calc(50% - 10px); box-sizing: border-box; }
+.phaseBlock.p1 { align-self: flex-start; }
+.phaseBlock.p2 { align-self: flex-end; }
+.phaseBlock.system { align-self: center; width: 90%; max-width: 90%; text-align: center; }
+.phaseHeader { width: 100%; box-sizing: border-box; padding: 8px 10px; font-size: var(--fs-18); font-weight: 700; }
+.phaseHeader.p1 { background: linear-gradient(90deg, rgba(227,91,91,.6), rgba(227,91,91,.08)); border-left: 6px solid var(--p1); }
+.phaseHeader.p2 { background: linear-gradient(90deg, rgba(74,134,232,.6), rgba(74,134,232,.08)); border-left: 6px solid var(--p2); }
+.phaseHeader.system { font: 400 var(--fs-20) var(--ff-display); background: rgba(0,0,0,.06); border-inline: 6px solid rgba(0,0,0,.25); }
+.lines { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.line { width: 100%; box-sizing: border-box; padding: 2px 6px; white-space: pre-wrap; }
+.line.soft { background: rgba(0,0,0,.035); }
+.line.note { padding-left: 10px; font-weight: 900; background: rgba(255,236,140,.35); border-left: 6px solid rgba(240,138,36,.75); }
+.line.note.p1 { background: rgba(227,91,91,.18); border-left-color: rgba(227,91,91,.55); }
+.line.note.p2 { background: rgba(74,134,232,.18); border-left-color: rgba(74,134,232,.55); }
+.line.note.status { background: rgba(180,130,255,.18); border-left-color: rgba(180,130,255,.55); }
+.line.meta { padding: 0 6px; font-size: var(--fs-10); opacity: .58; background: transparent; }
+.line.spacer { height: 10px; padding: 0; }
+.line.skill { margin-left: 28px; width: calc(100% - 28px); }
+.line.rollLine { display: flex; align-items: center; gap: 10px; }
+.logDuckIcon { width: 60px; height: 60px; flex: 0 0 60px; display: grid; place-items: center; border-radius: 50%; background: rgba(0,0,0,.06); font-size: 28px; }
+.rollMain { font-size: var(--fs-16); font-weight: 900; }
+.rollSub { font-size: var(--fs-12); opacity: .55; }
+.miniHint { font-size: .85em; opacity: .65; }
+.num { font-size: 1.5em; font-weight: 900; }
+.num.damage { color: var(--damage); }
+.num.heal { color: var(--heal); }
+.num.buff { color: var(--buff); }
+.num.debuff { color: var(--debuff); }
+.line.victoryLine { padding: 14px 12px; text-align: center; font-weight: 900; border-radius: 12px; background: linear-gradient(90deg,rgba(255,214,102,.55),rgba(255,255,255,.75),rgba(255,214,102,.55)); border: 2px solid rgba(160,120,0,.28); }
+.victoryWrap { display: flex; flex-direction: column; gap: 6px; }
+.victoryTop { font: 400 var(--fs-12) var(--ff-display); letter-spacing: .18em; }
+.victoryMain { font-size: var(--fs-20); letter-spacing: .04em; }
+.turnTitle { font-size: var(--fs-18); font-weight: 900; letter-spacing: .08em; }
+.turnRow { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 14px; margin-top: 6px; font-size: var(--fs-12); }
+.miniPanel { display: flex; align-items: center; gap: 10px; padding: 6px 10px; background: rgba(0,0,0,.035); min-width: 0; }
+.miniTag { padding: 2px 6px; font-weight: 900; background: rgba(0,0,0,.08); }
+.miniTag.p1 { border-left: 4px solid var(--p1); }
+.miniTag.p2 { border-left: 4px solid var(--p2); }
+.hpBar { flex: 1; min-width: 50px; height: 10px; background: rgba(0,0,0,.1); overflow: hidden; }
+.hpFill { height: 100%; }
+.hpFill.p1 { background: rgba(227,91,91,.7); }
+.hpFill.p2 { background: rgba(74,134,232,.7); }
+.statusLine { margin: 4px 0 10px; font-size: var(--fs-10); opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.errorMessage { align-self: center; width: 90%; padding: 24px; box-sizing: border-box; text-align: center; background: rgba(255,255,255,.85); border-left: 6px solid var(--p1); }
+.footer { position: fixed; inset: auto 0 0; height: var(--footer-h); padding: 6px var(--gutter); box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; z-index: 10; background: #fff; }
+.footerActions { display: flex; gap: 10px; align-items: center; }
+.btn { appearance: none; border: 0; border-radius: 10px; padding: 8px 12px; min-width: 96px; font: 900 var(--fs-14)/1.15 var(--ff-base); cursor: pointer; background: #f0f0f0; color: #111; }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { cursor: default; opacity: .45; }
+
+@media (max-width: 700px) {
+  :root { --header-h: 150px; --battler-size: 72px; --duck-size: 36px; }
+  .phaseBlock { width: 92%; max-width: 92%; }
+  .turnRow { display: flex; flex-direction: column; }
+  .turnRow > :nth-child(1) { order: 1; } .turnRow > :nth-child(3) { order: 2; }
+  .turnRow > :nth-child(2) { order: 3; } .turnRow > :nth-child(4) { order: 4; }
+  .side, .side.right { grid-template-columns: auto auto; grid-template-rows: auto auto; justify-content: center; }
+  .side .battlerIcon, .side.right .battlerIcon { grid-column: 1; grid-row: 1; }
+  .side .duckIcon.underName, .side.right .duckIcon.underName { grid-column: 2; grid-row: 1; justify-self: start; margin-top: 0; }
+  .side .nameBlock, .side.right .nameBlock { grid-column: 1 / span 2; grid-row: 2; text-align: center; }
+  .btn { min-width: 92px; padding: 8px 10px; }
+}
+
+@media (max-width: 420px) {
+  :root { --battler-size: 66px; --duck-size: 34px; }
+  .btn { min-width: 96px; padding: 13px 12px; }
+}
