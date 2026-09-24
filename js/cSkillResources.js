@@ -1,8 +1,9 @@
+import { resolveSelection, withSelectionIssues } from "./selectionNormalization.js";
 import { createCSkillCatalog, getCEffectAvailability } from "./cSkillCatalog.js";
 import { createCSkillRules } from "./cSkillRules.js";
 
 const record = v => v !== null && typeof v === "object" && [Object.prototype, null].includes(Object.getPrototypeOf(v));
-export function calculateCSkillResources(selection, { catalog = createCSkillCatalog(), rules = createCSkillRules() } = {}) {
+function legacycalculateCSkillResources(selection, { catalog = createCSkillCatalog(), rules = createCSkillRules() } = {}) {
   const errors = [], unresolved = [], effectBreakdown = [];
   const error = (code, path) => errors.push({ code, path });
   const pending = (code, path) => unresolved.push({ code, path });
@@ -125,4 +126,12 @@ export function calculateCSkillResources(selection, { catalog = createCSkillCata
   if (rawAP !== null && !Number.isFinite(rawAP)) throw new TypeError("C resource arithmetic overflow");
   return { mode, effectCount, benefitCount, drawbackCount, baseAP: rules.baseAP, slotCost, knownOptionDelta,
     knownStructureDelta, effectBreakdown, optionDelta, rawAP, requiredAP: rawAP === null ? null : Math.max(rules.minimumAP, rawAP), complete, errors, unresolved };
+}
+
+export function calculateCSkillResources(selection, options = {}) {
+  const catalog = options.catalog ?? createCSkillCatalog();
+  const resolved = resolveSelection("C", selection, catalog);
+  const result = legacycalculateCSkillResources(resolved.selection, { ...options, catalog });
+  const merged = withSelectionIssues(result, resolved);
+  return merged;
 }

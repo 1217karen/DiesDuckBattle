@@ -1,16 +1,19 @@
+import { effectSelectionFields } from "./effectSelectionCatalog.js";
+import { selectionRows } from "./selectionNormalization.js";
 import { createPlayerBuildStorage } from "./playerBuildStorage.js";
 import { createSettingState, changeSetting, selectedDuck, SP_OPTIONS, cBranches, createCStructure, duckSummary } from "./settingState.js";
 import { inspectBuildForSave, saveSectionSummary, saveInspectedBuild } from "./buildSaveInspection.js";
 import { getDiceFrame } from "./diceFrames.js";
 import { createBuildRules } from "./buildRules.js";
-import { createASkillCatalog, getATriggerOptions, getAEffectOptions, getAEffectAvailability } from "./aSkillCatalog.js";
-import { createBSkillCatalog, getBTriggerOptions, getBConditionOptions, getBEffectOptions, getBTraitOptions, getBSelectionDefinition } from "./bSkillCatalog.js";
-import { createCSkillCatalog, getCEffectOptions } from "./cSkillCatalog.js";
+import { createASkillCatalog, getATriggerOptions } from "./aSkillCatalog.js";
+import { createBSkillCatalog, getBTriggerOptions, getBConditionOptions, getBTraitOptions, getBSelectionDefinition } from "./bSkillCatalog.js";
+import { createCSkillCatalog } from "./cSkillCatalog.js";
 import { createCSkillRules } from "./cSkillRules.js";
 import { D_SKILL_OPTIONS } from "./dSkillCatalog.js";
 
 const repository = createPlayerBuildStorage();
-let state = createSettingState(repository.load());
+const loaded = repository.load();
+let state = createSettingState(loaded);
 const rules = createBuildRules(), aCatalog = createASkillCatalog(), bCatalog = createBSkillCatalog();
 const cCatalog = createCSkillCatalog(), cRules = createCSkillRules();
 const $ = id => document.getElementById(id);
@@ -22,8 +25,6 @@ const el = (tag, text, className) => {
 };
 const labelText = text => String(text).replaceAll("self", "自分").replaceAll("enemy", "相手");
 const num = value => value ?? "—";
-const axisLabels = { baseAmount: "基礎ダメージ", everyTurns: "何ターンごと", stepAmount: "増加ダメージ", multiplier: "状態数の倍率",
-  amount: "効果量", duration: "期間（ターン）", status: "状態", scope: "解除範囲", amountPct: "現在HP割合", maxHpPct: "復活HP割合" };
 function button(text, onClick, className) {
   const node = el("button", text, className); node.type = "button"; node.addEventListener("click", onClick); return node;
 }
@@ -93,6 +94,34 @@ function commit(action, redraw = true) {
 const patchDuck = (patch, redraw = true) => commit({ type: "duck", patch }, redraw);
 const patchBattler = patch => commit({ type: "battler", patch });
 
+// Catalog-driven normalized leaf editor: parameters stay separate from effect labels.
+function renderEffectControls(box, category, chosen, replace, id, context = {}) {
+  chosen ??= {effectId:"",options:{}};
+  const catalog = category === "A" ? aCatalog : category === "B" ? bCatalog : cCatalog;
+  const definitions = selectionRows(category,catalog,context);
+  field(box,"効果",id,definitions,chosen.effectId,effectId => replace({effectId,options:{}}));
+  const view = effectSelectionFields(definitions,chosen);
+  const put = (key,value) => {
+    const next = {...chosen};
+    if(key.startsWith("options.")) next.options={...chosen.options,[key.slice(8)]:value};
+    else if(key==="chanceOptionId" && !value) delete next[key];
+    else next[key]=value;
+    replace(next);
+  };
+  const order = key => key === "targetId" ? 1 : key === "statusId" ? 2 : key === "options.amount" ? 3 : 5;
+  const fields = [...view.fields];
+  if(view.chanceEnabled || Object.hasOwn(chosen,"chanceOptionId")) fields.push({key:"chanceOptionId",label:"成功率",options:view.chanceEnabled?catalog.chanceOptions:category==="A"?[catalog.chanceOptions[0]]:[],placeholder:view.chanceEnabled?null:"指定を解除"});
+  fields.sort((a,b)=>(a.key==="chanceOptionId"?4:order(a.key))-(b.key==="chanceOptionId"?4:order(b.key)));
+  for(const f of fields) field(box,f.label,id+"-"+f.key,f.options,
+    f.key.startsWith("options.")?chosen.options?.[f.key.slice(8)]:chosen[f.key]??(f.key==="chanceOptionId"?"100":""),
+    value=>put(f.key,value),f.key==="chanceOptionId"?f.placeholder:undefined);
+  if(view.variants.length && !view.chanceEnabled && category!=="B") box.append(el("p","成功率100%固定", "description"));
+  if(category==="B" && view.variants.length===1) {
+    const d=view.variants[0].definition;
+    box.append(el("p",Object.entries(d.tuning).map(([key,value])=>`${d.tuningLabels[key]}：${value===false?"上限なし":value}`).join(" / "),"description"));
+  }
+}
+
 function renderBattler() {
   const { bSelection: b, dSelection: d } = state.build.battler;
   const bBox = card("B SKILL / Bスキル", "b"), controls = el("div", null, "controls");
@@ -105,10 +134,9 @@ function renderBattler() {
   if (b?.type === "event") {
     field(controls, "発動タイミング", "b-trigger", getBTriggerOptions(bCatalog), b.triggerId, triggerId => setB({ triggerId }));
     field(controls, "条件", "b-condition", getBConditionOptions(b.triggerId, bCatalog), b.conditionId, conditionId => setB({ conditionId }));
-    field(controls, "効果", "b-effect", getBEffectOptions(b.triggerId, b.conditionId, bCatalog).map(e => ({ id: e.effectId, label: e.effectLabel })),
-      b.effectId, effectId => setB({ effectId, options: {} }));
+    renderEffectControls(controls,"B",b,leaf => patchBattler({bSelection:{type:b.type,triggerId:b.triggerId,conditionId:b.conditionId,...leaf}}),"b-effect",b);
   } else if (b?.type === "trait") field(controls, "特性", "b-trait", getBTraitOptions(bCatalog), b.traitId, traitId => setB({ traitId, options: {} }));
-  const definition = getBSelectionDefinition(b, bCatalog);
+  const definition = b?.type === "trait" ? getBSelectionDefinition(b, bCatalog) : null;
   for (const [axis, group] of Object.entries(definition?.optionAxes ?? {})) field(controls, "指定する状態", `b-${axis}`, bCatalog.optionSets[group],
     b.options?.[axis], value => setB({ options: { ...b.options, [axis]: value } }));
   bBox.append(controls);
@@ -165,26 +193,12 @@ function renderA(duck, box) {
       triggerId => patchDuck({ aSelection: { ...a, triggerId } }));
     const effects = a.effects ?? [];
     const setRows = rows => patchDuck({ aSelection: { ...a, effects: rows } });
-    const groups = getAEffectOptions(duck.diceFrame, a.triggerId, aCatalog);
     effects.forEach((chosen, index) => {
       const row = el("div", null, "effect-row"), head = el("div", null, "row-heading"), controls = el("div", null, "controls");
       head.append(el("strong", `効果 ${index + 1}`), button("削除", () => setRows(effects.filter((_, i) => i !== index))));
       const replace = value => setRows(effects.map((old, i) => i === index ? value : old));
-      field(controls, "効果", `a-effect-${index}`, groups.flatMap(g => g.effects.map(e => ({ id: e.id, group: g.label,
-        label: `${e.label}${e.polarity === "drawback" ? "（代償）" : ""}${!e.selectable ? " — " + e.reason.message : ""}`, disabled: !e.selectable }))),
-      chosen?.effectId, effectId => replace({ effectId }));
-      const definition = aCatalog.effects.find(e => e.id === chosen?.effectId);
-      if (definition?.requiresAmount) field(controls, "効果量", `a-amount-${index}`, definition.amountOptions.map(o => ({ ...o,
-        label: `${o.label} / ${definition.polarity === "drawback" ? `還元 ${o.drawbackPoints ?? definition.drawbackPoints}` : o.pointCost}pt` })), chosen.amountOptionId,
-      value => { const next = { ...chosen }; if (value) next.amountOptionId = value; else delete next.amountOptionId; replace(next); });
-      if (definition?.polarity === "benefit") field(controls, "成功率", `a-chance-${index}`, aCatalog.chanceOptions, chosen.chanceOptionId ?? "100",
-        value => replace({ ...chosen, chanceOptionId: value }), null);
+      renderEffectControls(controls,"A",chosen,replace,`a-effect-${index}`);
       row.append(head, controls);
-      if (definition) {
-        const availability = getAEffectAvailability(definition.id, duck.diceFrame, a.triggerId, aCatalog);
-        row.append(el("p", labelText(definition.label) + (definition.polarity === "drawback" ? " / 代償効果・成功率100%固定" : ""), "description"));
-        if (!availability.selectable) row.append(el("p", availability.reason.message, "issues"));
-      }
       panel.append(row);
     });
     const add = button("＋ A効果を追加", () => setRows([...effects, { effectId: "" }]));
@@ -225,7 +239,6 @@ function renderC(duck, box) {
         patchDuck({ cSelection: { ...c, structure: next } });
       });
     const branches = cBranches(c), count = branches.reduce((sum, { branch }) => sum + (branch?.effects?.length ?? 0), 0);
-    const available = getCEffectOptions(c.mode, cCatalog);
     for (const { key, label, branch } of branches) {
       const branchBox = el("div", null, "branch"), effects = branch?.effects ?? [];
       branchBox.append(el("h4", label));
@@ -245,18 +258,8 @@ function renderC(duck, box) {
         const row = el("div", null, "effect-row"), head = el("div", null, "row-heading"), controls = el("div", null, "controls");
         head.append(el("strong", `効果 ${index + 1}`), button("削除", () => setRows(effects.filter((_, i) => i !== index))));
         const replace = value => setRows(effects.map((old, i) => i === index ? value : old));
-        field(controls, "効果", `c-effect-${key}-${index}`, available.map(e => ({ id: e.id,
-          label: `${e.label}${e.polarity === "drawback" ? "（代償）" : ""}${!e.selectable ? " — 特殊C専用" : ""}`, disabled: !e.selectable })),
-        chosen?.effectId, effectId => replace({ effectId, options: {} }));
-        const definition = available.find(e => e.id === chosen?.effectId);
-        for (const [axis, options] of Object.entries(definition?.options ?? {})) field(controls, axisLabels[axis] ?? axis, `c-${axis}-${key}-${index}`,
-          options, chosen?.options?.[axis], value => {
-            const options = { ...chosen.options }; if (value) options[axis] = value; else delete options[axis]; replace({ ...chosen, options });
-          });
-        if (definition?.polarity === "benefit" && definition.chanceEnabled) field(controls, "成功率", `c-chance-${key}-${index}`,
-          cCatalog.chanceOptions, chosen.chanceOptionId ?? "100", value => replace({ ...chosen, chanceOptionId: value }), null);
+        renderEffectControls(controls,"C",chosen,replace,`c-effect-${key}-${index}`,c);
         row.append(head, controls);
-        if (definition) row.append(el("p", labelText(definition.label) + (definition.polarity === "drawback" ? " / 代償効果・成功率100%固定" : ""), "description"));
         branchBox.append(row);
       });
       const add = button("＋ C効果を追加", () => setRows([...effects, { effectId: "", options: {} }]));
@@ -305,6 +308,7 @@ function render() {
   if (focused) $(focused)?.focus({ preventScroll: true });
 }
 const storageMessages = {
+  "migration-required": "旧保存データを安全に移行できませんでした。元データを保護し、編集・保存を停止しています。",
   corrupt: "保存データを読み込めませんでした。保存形式が壊れているため、既存データを保護して編集・保存を停止しています。",
   "unsupported-version": "このページでは対応していないバージョンの保存データです。対応するページで開いてください。",
   "storage-error": "保存領域にアクセスできませんでした。ブラウザの保存許可・空き容量などを確認してください。",
@@ -329,6 +333,7 @@ $("save").addEventListener("click", () => saveSettings());
 window.addEventListener("beforeunload", event => { if (state.dirty) { event.preventDefault(); event.returnValue = ""; } });
 if (state.build) {
   $("editor").hidden = false; $("load-message").hidden = true; render();
+  if (loaded.migratedFrom) $("save-message").textContent = "v1データをv2へ移行して読み込みました。保存するまで元データは変更されません。";
 } else {
   $("load-message").textContent = storageMessages[state.loadStatus] ?? "保存データを読み込めませんでした。";
   $("save").disabled = true;

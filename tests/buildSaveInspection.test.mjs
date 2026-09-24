@@ -1,3 +1,4 @@
+import { migratePlayerBuild } from "../js/playerBuildMigration.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createEmptyPlayerBuild, createEmptyDuck } from "../js/playerBuildModel.js";
@@ -124,12 +125,12 @@ test("save gate does not write invalid or unapproved drafts and preserves dirty"
   const saved = saveInspectedBuild(draft,repository,{approveIncomplete:true}); assert.equal(saved.state.dirty,false); assert.equal(calls,1);
   const normal = saveInspectedBuild({build:complete(),dirty:true},repository); assert.equal(normal.status,"saved"); assert.equal(normal.state.dirty,false); assert.equal(calls,2);
 });
-test("approved incomplete round-trip remains v1, with no inspection data", () => {
+test("approved incomplete round-trip uses v2, with no inspection data", () => {
   let raw = null; const repository = createPlayerBuildStorage({getItem:()=>raw,setItem:(_,v)=>{raw=v;}});
   const b = complete(); b.ducks[0].aSelection.effects = []; b.battler.dSelection = null;
   assert.equal(saveInspectedBuild({build:b,dirty:true},repository).status,"confirmation-required"); assert.equal(raw,null);
   assert.equal(saveInspectedBuild({build:b,dirty:true},repository,{approveIncomplete:true}).status,"saved");
-  assert.deepEqual(repository.load().build,b); assert.deepEqual(Object.keys(JSON.parse(raw)),["schemaVersion","battler","ducks"]);
+  assert.deepEqual(repository.load().build,migratePlayerBuild(b).build); assert.deepEqual(Object.keys(JSON.parse(raw)),["schemaVersion","battler","ducks"]);
 });
 test("storage failure never clears dirty and storage itself still permits game-invalid models", () => {
   const state = {build:complete(),dirty:true};

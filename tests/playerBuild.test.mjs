@@ -1,3 +1,4 @@
+import { migrateSelection } from "../js/selectionNormalization.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createEmptyPlayerBuild, createEmptyDuck, addDuck, duplicateDuck, updateDuck,
@@ -15,15 +16,15 @@ function memoryStorage(raw = null) {
 }
 const duck = id => createEmptyDuck({ idFactory: () => id });
 const initial = () => addDuck(createEmptyPlayerBuild(), duck("first"));
-const aSelection = { triggerId: "exact:0", effects: [{ effectId: "damage-enemy", amountOptionId: "5", chanceOptionId: "70" }] };
-const cLeaf = { effectId: "damage-enemy", options: { amount: "damageAmount-50" }, chanceOptionId: "50" };
+const aSelection = { triggerId: "exact:0", effects: [{ effectId: "damage", targetId: "enemy", options: {amount: "5"}, chanceOptionId: "70" }] };
+const cLeaf = { effectId: "damage", targetId: "enemy", options: { amount: "damageAmount-50" }, chanceOptionId: "50" };
 const cSelection = { mode: "normal", structure: { kind: "flat", effects: [cLeaf] } };
 
-test("missing storage returns independent empty v1 without writing", () => {
+test("missing storage returns independent empty v2 without writing", () => {
   const memory = memoryStorage(), storage = createPlayerBuildStorage(memory);
   const a = storage.load(), b = storage.load();
   assert.deepEqual(a, { ok: true, status: "empty", build: {
-    schemaVersion: 1, battler: { bSelection: null, dSelection: null }, ducks: [] } });
+    schemaVersion: 2, battler: { bSelection: null, dSelection: null }, ducks: [] } });
   assert.notEqual(a.build, b.build);
   assert.notEqual(a.build.battler, b.build.battler);
   assert.equal(memory.writes, 0);
@@ -74,7 +75,7 @@ test("editing preserves ID and detaches patch, other Ducks and Battler", () => {
   edited.ducks[0].aSelection.effects[0].effectId = "changed";
   edited.ducks[1].dice[0] = 6;
   edited.battler.dSelection = {};
-  assert.equal(patch.aSelection.effects[0].effectId, "damage-enemy");
+  assert.equal(patch.aSelection.effects[0].effectId, "damage");
   assert.equal(original.ducks[1].dice[0], 0);
   assert.equal(original.battler.dSelection, null);
   assert.throws(() => updateDuck(original, "first", { id: "changed" }), TypeError);
@@ -120,16 +121,16 @@ test("current catalog selection DTOs persist unchanged across all categories and
   let build = initial();
   const roundTrip = () => { assert.equal(storage.save(build).ok, true); assert.deepEqual(storage.load().build, build); };
   for (const e of createASkillCatalog().effects) {
-    build = updateDuck(build, "first", { aSelection: { triggerId: "exact:0", effects: [{ effectId: e.id,
-      ...(e.requiresAmount ? { amountOptionId: e.amountOptions[0].id } : {}), chanceOptionId: "70" }] } });
+    build = updateDuck(build, "first", { aSelection: migrateSelection("A", { triggerId: "exact:0", effects: [{ effectId: e.id,
+      ...(e.requiresAmount ? { amountOptionId: e.amountOptions[0].id } : {}), chanceOptionId: "70" }] }, createASkillCatalog()) });
     roundTrip();
   }
   const b = createBSkillCatalog();
   for (const e of [...b.events, ...b.traits]) {
     const options = Object.fromEntries(Object.entries(e.optionAxes).map(([axis, set]) => [axis, b.optionSets[set][0].id]));
-    build = updateBattler(build, { bSelection: e.triggerId
+    build = updateBattler(build, { bSelection: migrateSelection("B", e.triggerId
       ? { type: "event", triggerId: e.triggerId, conditionId: e.conditionId, effectId: e.effectId, options }
-      : { type: "trait", traitId: e.id, options } });
+      : { type: "trait", traitId: e.id, options }, b) });
     roundTrip();
   }
   const c = createCSkillCatalog();
@@ -138,7 +139,7 @@ test("current catalog selection DTOs persist unchanged across all categories and
     const branch = { effects: [leaf] };
     for (const structure of [{ kind: "flat", ...branch }, { kind: "random", branches: [branch, branch] },
       { kind: "hpCondition", thresholdOptionId: c.optionSets.hpThreshold[0].id, branches: { met: branch, unmet: branch } }]) {
-      build = updateDuck(build, "first", { cSelection: { mode: e.id === "revive-self" ? "special" : "normal", structure } });
+      build = updateDuck(build, "first", { cSelection: migrateSelection("C", { mode: e.id === "revive-self" ? "special" : "normal", structure }, c) });
       roundTrip();
     }
   }
@@ -146,7 +147,7 @@ test("current catalog selection DTOs persist unchanged across all categories and
 });
 
 for (const [name, raw, status] of [
-  ["broken JSON", "{", "corrupt"], ["unsupported version", '{"schemaVersion":2}', "unsupported-version"],
+  ["broken JSON", "{", "corrupt"], ["unsupported version", '{"schemaVersion":99}', "unsupported-version"],
   ["null", "null", "corrupt"], ["wrong root", "[]", "corrupt"],
   ["missing fields", '{"schemaVersion":1}', "corrupt"],
   ["wrong version type", '{"schemaVersion":"1"}', "corrupt"],

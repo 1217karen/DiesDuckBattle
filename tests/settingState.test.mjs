@@ -1,3 +1,4 @@
+import { migrateSelection } from "../js/selectionNormalization.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createPlayerBuildStorage, PLAYER_BUILD_STORAGE_KEY } from "../js/playerBuildStorage.js";
@@ -7,7 +8,7 @@ import { createASkillCatalog } from "../js/aSkillCatalog.js";
 import { createCSkillCatalog } from "../js/cSkillCatalog.js";
 
 function setup(raw = null) {
-  const memory = { raw, writes: 0, getItem(key) { assert.equal(key, PLAYER_BUILD_STORAGE_KEY); return this.raw; },
+  const memory = { raw, writes: 0, getItem(key) { return key === PLAYER_BUILD_STORAGE_KEY ? this.raw : null; },
     setItem(key, value) { assert.equal(key, PLAYER_BUILD_STORAGE_KEY); this.raw = value; this.writes++; } };
   const storage = createPlayerBuildStorage(memory);
   return { storage, memory, state: createSettingState(storage.load()) };
@@ -87,13 +88,13 @@ test("HP uses stats utility, stats/dice warnings do not block persistence", () =
   assert.equal(summary.stats.label, "設定に問題あり"); assert.equal(summary.dice.label, "設定に問題あり");
   assert.equal(storage.save(state.build).ok, true);
 });
-test("A/B/C/D DTOs round-trip as the v1 model and summaries are not persisted", () => {
+test("A/B/C/D DTOs round-trip as the v2 model and summaries are not persisted", () => {
   const { storage } = setup();
   const a = createASkillCatalog().effects.find(e => e.id === "damage-enemy");
   const c = createCSkillCatalog(), effect = c.effects.find(e => e.id === "damage-enemy");
-  const aSelection = { triggerId: "exact:0", effects: [{ effectId: a.id, amountOptionId: a.amountOptions[0].id }] };
-  const cSelection = { mode: "normal", structure: { kind: "flat", effects: [{ effectId: effect.id,
-    options: Object.fromEntries(Object.entries(effect.optionAxes).map(([axis, set]) => [axis, c.optionSets[set][0].id])) }] } };
+  const aSelection = migrateSelection("A", { triggerId: "exact:0", effects: [{ effectId: a.id, amountOptionId: a.amountOptions[0].id }] }, createASkillCatalog());
+  const cSelection = migrateSelection("C", { mode: "normal", structure: { kind: "flat", effects: [{ effectId: effect.id,
+    options: Object.fromEntries(Object.entries(effect.optionAxes).map(([axis, set]) => [axis, c.optionSets[set][0].id])) }] } }, c);
   let state = sp(patch(add(setup().state), { aSelection, cSelection, name: "基本型", stats: { AT: 2, DF: 3, SP: null } }), "heavy");
   state = apply(state, { type: "battler", patch: { bSelection: { type: "trait", traitId: "hp-high-at", options: {} }, dSelection: { optionId: "add-self-3" } } });
   const summary = duckSummary(selectedDuck(state));

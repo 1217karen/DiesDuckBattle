@@ -1,3 +1,4 @@
+import { resolveSelection, isDeferredSelectionIssue } from "./selectionNormalization.js";
 import { clonePlayerBuild, createEmptyPlayerBuild, createEmptyDuck } from "./playerBuildModel.js";
 import { createBuildRules } from "./buildRules.js";
 import { calculateBuildResources } from "./buildResources.js";
@@ -26,7 +27,7 @@ const text = {
 };
 
 /** Current production inspection, never persisted. No input mutation or battle data. */
-export function inspectBuildForSave(build) {
+function inspectLegacyBuildForSave(build) {
   const invalid = [], incomplete = [];
   const result = () => ({ canSave: invalid.length === 0, complete: invalid.length === 0 && incomplete.length === 0, invalid, incomplete });
   const add = (scope, level, code, path, message) => {
@@ -52,7 +53,7 @@ export function inspectBuildForSave(build) {
       add(owner, "incomplete", "UNSET", "", `${section}スキルが未設定です。`); return false;
     }
     try {
-      const shell = createEmptyPlayerBuild();
+      const shell = createEmptyPlayerBuild(); shell.schemaVersion = 1;
       if (["B", "D"].includes(section)) shell.battler[`${section.toLowerCase()}Selection`] = selection;
       else { const duck = createEmptyDuck({ idFactory: () => "inspection" }); duck[`${section.toLowerCase()}Selection`] = selection; shell.ducks.push(duck); }
       clonePlayerBuild(shell);
@@ -224,4 +225,30 @@ export function saveInspectedBuild(state, repository, { approveIncomplete = fals
   if (!inspection.complete && !approveIncomplete) return { state, inspection, status: "confirmation-required" };
   const saved = repository.save(state.build);
   return { state: saved.ok ? { ...state, dirty: false } : state, inspection, status: saved.status };
+}
+
+/** v2 axes are resolved before reusing legacy production inspection and costs. */
+export function inspectBuildForSave(build) {
+  if (build?.schemaVersion !== 2) return inspectLegacyBuildForSave(build);
+  let legacy;
+  try { legacy = clonePlayerBuild(build); }
+  catch { return {canSave:false,complete:false,incomplete:[],invalid:[{section:"build",duckId:null,ownerName:"設定全体",code:"INVALID_MODEL",path:"build",message:"保存形式が不正です。"}]}; }
+  const invalid=[],incomplete=[],deferred=[];
+  function convert(category, value, catalog, duck=null, index=0) {
+    const resolved=resolveSelection(category,value,catalog,{force:true});
+    const owner={section:category,duckId:duck?.id??null,ownerName:duck?(duck.name||`アヒル ${index+1}`):"BATTLER"};
+    deferred.push({owner,resolved});
+    invalid.push(...resolved.errors.map(i=>({...owner,...i})));
+    incomplete.push(...resolved.incomplete.map(i=>({...owner,...i})));
+    return resolved.selection;
+  }
+  legacy.schemaVersion=1;
+  legacy.battler.bSelection=convert("B",legacy.battler.bSelection,createBSkillCatalog());
+  legacy.ducks.forEach((duck,i)=>{
+    duck.aSelection=convert("A",duck.aSelection,createASkillCatalog(),duck,i);
+    duck.cSelection=convert("C",duck.cSelection,createCSkillCatalog(),duck,i);
+  });
+  const result=inspectLegacyBuildForSave(legacy);
+  invalid.push(...result.invalid.filter(issue=>!deferred.some(({owner,resolved})=>issue.section===owner.section && issue.duckId===owner.duckId && isDeferredSelectionIssue(issue,resolved)))); incomplete.push(...result.incomplete);
+  return {canSave:!invalid.length,complete:!invalid.length&&!incomplete.length,invalid,incomplete};
 }

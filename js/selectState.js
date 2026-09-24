@@ -1,3 +1,4 @@
+import { resolveSelection } from "./selectionNormalization.js";
 import { clonePlayerBuild } from "./playerBuildModel.js";
 import { inspectBattleLoadout } from "./battleLoadoutCompiler.js";
 import { calcMaxHPFromStats } from "./statsUtil.js";
@@ -8,6 +9,7 @@ import { D_SKILL_OPTIONS } from "./dSkillCatalog.js";
 
 export const SELF_BATTLER = Object.freeze({ id: "local-player", name: "自分" });
 const loadMessages = {
+  "migration-required": "旧保存データを安全に移行できませんでした。既存データは変更していません。",
   corrupt: "保存データが壊れているため読み込めません。既存データは変更していません。",
   "unsupported-version": "未対応の保存バージョンです。既存データは変更していません。",
   "storage-error": "保存領域にアクセスできません。ブラウザの設定を確認してください。",
@@ -50,7 +52,7 @@ const label = (items, id) => items?.find(item => item.id === id)?.label ?? "未�
 const ac = createASkillCatalog(), bc = createBSkillCatalog(), cc = createCSkillCatalog();
 export function battlerSummary(battler) {
   if (!battler) return "B / D：読み込み待ち";
-  const b = battler.bSelection, definition = b && getBSelectionDefinition(b, bc);
+  const b = resolveSelection("B", battler.bSelection, bc).selection, definition = b && getBSelectionDefinition(b, bc);
   const bText = !b ? "未設定" : !definition ? "未完成・設定を確認してください" :
     [definition.label ?? [definition.triggerLabel, definition.conditionLabel, definition.effectLabel].join(" / "),
       ...Object.entries(definition.optionAxes).map(([axis, set]) => label(bc.optionSets[set], b.options?.[axis]))].join(" / ");
@@ -58,7 +60,7 @@ export function battlerSummary(battler) {
 }
 export function duckSummary(duck, displayName = duck?.name) {
   if (!duck) return "中央の1P DUCKからアヒルを選択してください。";
-  const a = duck.aSelection, c = duck.cSelection;
+  const a = resolveSelection("A", duck.aSelection, ac).selection, c = resolveSelection("C", duck.cSelection, cc).selection;
   const aText = !a ? "未設定" : [label(getATriggerOptions(duck.diceFrame), a.triggerId), ...(a.effects ?? []).map(leaf => {
     const effect = ac.effects.find(e => e.id === leaf.effectId);
     return [effect?.label ?? "不明な効果", effect?.requiresAmount ? label(effect.amountOptions, leaf.amountOptionId) : "",

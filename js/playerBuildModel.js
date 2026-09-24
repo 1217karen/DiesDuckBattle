@@ -1,4 +1,4 @@
-export const PLAYER_BUILD_SCHEMA_VERSION = 1;
+export const PLAYER_BUILD_SCHEMA_VERSION = 2;
 
 const record = value => value !== null && typeof value === "object"
   && [Object.prototype, null].includes(Object.getPrototypeOf(value));
@@ -37,7 +37,7 @@ const nullableNumber = value => value === null || Number.isFinite(value);
 
 // Structural boundary for the existing compiler DTOs, including partial drafts.
 // No catalog lookup, option legality, costs, counts or compiler invocation here.
-function selection(value, category) {
+function selection(value, category, version) {
   if (value === null) return;
   const strings = (object, allowed) => {
     fields(object, allowed, `${category} selection`, []);
@@ -53,9 +53,9 @@ function selection(value, category) {
     requireShape(Array.isArray(value), `${category} effects`);
     for (const item of value) {
       if (item === null) continue;
-      if (category === "A") strings(item, ["effectId", "amountOptionId", "chanceOptionId"]);
+      if (category === "A" && version === 1) strings(item, ["effectId", "amountOptionId", "chanceOptionId"]);
       else {
-        fields(item, ["effectId", "options", "chanceOptionId"], "C effect selection", []);
+        fields(item, version === 2 ? ["effectId", "targetId", "statusId", "options", "chanceOptionId"] : ["effectId", "options", "chanceOptionId"], "C effect selection", []);
         for (const [key, v] of Object.entries(item)) {
           if (key === "options") options(v);
           else requireShape(nullableString(v), "C effect ID");
@@ -70,7 +70,7 @@ function selection(value, category) {
   };
   if (category === "D") strings(value, ["optionId"]);
   if (category === "B") {
-    fields(value, ["type", "triggerId", "conditionId", "effectId", "traitId", "options"], "B selection", []);
+    fields(value, ["type", "triggerId", "conditionId", "effectId", "traitId", "options", ...(version === 2 ? ["targetId", "statusId"] : [])], "B selection", []);
     for (const [key, v] of Object.entries(value)) {
       if (key === "options") options(v);
       else requireShape(nullableString(v), "B selection ID");
@@ -101,7 +101,7 @@ function selection(value, category) {
   }
 }
 
-function checkDuck(duck) {
+function checkDuck(duck, version = PLAYER_BUILD_SCHEMA_VERSION) {
   fields(duck, ["id", "name", "stats", "diceFrame", "dice", "aSelection", "cSelection"], "duck");
   requireShape(typeof duck.id === "string" && duck.id.trim().length > 0, "duck.id");
   requireShape(typeof duck.name === "string", "duck.name");
@@ -109,20 +109,20 @@ function checkDuck(duck) {
   requireShape(Object.values(duck.stats).every(nullableNumber), "duck.stats values");
   requireShape(nullableString(duck.diceFrame), "duck.diceFrame");
   requireShape(Array.isArray(duck.dice) && duck.dice.length === 6 && duck.dice.every(Number.isFinite), "duck.dice");
-  selection(duck.aSelection, "A");
-  selection(duck.cSelection, "C");
+  selection(duck.aSelection, "A", version);
+  selection(duck.cSelection, "C", version);
 }
 
 /** Validate only persistence shape and return a completely detached copy. */
 export function clonePlayerBuild(build) {
   const copy = cloneData(build);
   fields(copy, ["schemaVersion", "battler", "ducks"], "root");
-  requireShape(copy.schemaVersion === PLAYER_BUILD_SCHEMA_VERSION, "schemaVersion");
+  requireShape([1, PLAYER_BUILD_SCHEMA_VERSION].includes(copy.schemaVersion), "schemaVersion");
   fields(copy.battler, ["bSelection", "dSelection"], "battler");
-  selection(copy.battler.bSelection, "B");
-  selection(copy.battler.dSelection, "D");
+  selection(copy.battler.bSelection, "B", copy.schemaVersion);
+  selection(copy.battler.dSelection, "D", copy.schemaVersion);
   requireShape(Array.isArray(copy.ducks), "ducks");
-  copy.ducks.forEach(checkDuck);
+  copy.ducks.forEach(duck => checkDuck(duck, copy.schemaVersion));
   requireShape(new Set(copy.ducks.map(duck => duck.id)).size === copy.ducks.length, "duplicate duck ID");
   return copy;
 }

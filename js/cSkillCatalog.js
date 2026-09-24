@@ -1,3 +1,5 @@
+import { normalizedCCatalog } from "./effectSelectionCatalog.js";
+import { statusLabel } from "./statusMetadata.js";
 import { STATUS_GROUPS } from "./statusGroups.js";
 
 // ユーザーはeffect/option IDのみ選択。semanticsは将来compiler用の信頼済み情報。
@@ -16,9 +18,9 @@ export function createCSkillCatalog() {
       label: ["currentHpPct", "revivePct", "hpThreshold"].includes(key) ? value * 100 + "%" : String(value) }))]));
   for (const group of ["debuff", "buff"]) {
     for (const purpose of ["grant", "clear", "timed"]) {
-      optionSets[`${purpose}-${group}`] = STATUS_GROUPS[group].map(id => ({ id, label: id, value: id, apDelta: 0 }));
+      optionSets[`${purpose}-${group}`] = STATUS_GROUPS[group].map(id => ({ id, label: statusLabel(id), value: id, apDelta: 0 }));
     }
-    optionSets[`grant-${group}`].push({ id: `random-${group}`, label: `ランダム${group}`, value: `@${group}`, apDelta: 0 });
+    optionSets[`grant-${group}`].push({ id: `random-${group}`, label: statusLabel(`@${group}`), value: `@${group}`, apDelta: 0 });
     optionSets[`clear-all-${group}`] = [{ id: "all", label: `全${group}解除`, value: group, apDelta: 2 }];
   }
   const effects = [];
@@ -75,9 +77,11 @@ export function createCSkillCatalog() {
   }
   add("revive-self", "revive", "最大HP割合で復活", "benefit", { maxHpPct: "revivePct" },
     { type: "revive", target: "self", maxHpPctAxis: "maxHpPct" }, ["special"]);
-  return { effects, optionSets,
+  const catalog = { effects, optionSets,
     chanceOptions: [100, 70, 50, 25].map((percent, apDiscount) => ({ id: String(percent), label: `${percent}%`,
       value: percent / 100, apDiscount })) };
+  catalog.selectionEffects = normalizedCCatalog(catalog);
+  return catalog;
 }
 
 export function getCEffectAvailability(effectId, mode, catalog = createCSkillCatalog()) {

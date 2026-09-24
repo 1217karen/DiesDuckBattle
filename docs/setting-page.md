@@ -1,3 +1,5 @@
+> 現行selectionはschema v2です。移行・catalog境界は[selection-v2.md](selection-v2.md)を参照してください。以下のv1例は旧形式です。
+
 # 戦闘設定ページ
 
 `setting.html` は本番catalogを使う作成・編集・保存ページ。戦闘開始機能はありません。

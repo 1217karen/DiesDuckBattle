@@ -1,3 +1,5 @@
+> 現行selectionはschema v2です。移行・catalog境界は[selection-v2.md](selection-v2.md)を参照してください。以下のv1例は旧形式です。
+
 # Production battle loadout
 
 `js/battleLoadoutCompiler.js` は保存済みv1モデルを読み取り、現在のproduction compilerでengine入力を生成するpure moduleです。storage/UIへのアクセスや戦闘開始は行いません。

@@ -1,3 +1,6 @@
+import { resolveSelection } from "./selectionNormalization.js";
+import { normalizedBCatalog } from "./effectSelectionCatalog.js";
+import { statusLabel } from "./statusMetadata.js";
 import { STATUS_GROUPS } from "./statusGroups.js";
 
 // trusted production catalog / balance v0。数値はselectionから受け取らない。
@@ -122,8 +125,10 @@ export function createBSkillCatalog() {
       definition.tuning[key] = values[key];
     }
   }
-  return { triggers, events, traits, optionSets: Object.fromEntries(["buff", "debuff"].map(group =>
-    [group, STATUS_GROUPS[group].map(id => ({ id, value: id, label: B_STATUS_LABELS[id] ?? id }))])) };
+  const catalog = { triggers, events, traits, optionSets: Object.fromEntries(["buff", "debuff"].map(group =>
+    [group, STATUS_GROUPS[group].map(id => ({ id, value: id, label: statusLabel(id) }))])) };
+  catalog.selectionEffects = normalizedBCatalog(catalog);
+  return catalog;
 }
 
 // balance v0の唯一の数値表。dev fixtureを参照しない。
@@ -165,8 +170,6 @@ function productionTuning({ id, triggerId, conditionId: condition, effectId: eff
 }
 
 // 表示metadataのみ。合法な組み合わせ・semantics・数値は上の完成optionがSSOT。
-const B_STATUS_LABELS = { crack: "亀裂", Headwind: "向かい風", roughWave: "荒波", tailwind: "追風",
-  focus: "集中", counter: "反撃", clean: "清潔", steam: "湯気" };
 const B_TUNING_LABELS = { stacks: "付与stack数", repeat: "ランダム1stack解除の回数", amount: "効果量",
   chance: "発動確率（0～1）", threshold: "条件の閾値", hpThreshold: "HP割合の閾値（0～1）",
   hpCostPct: "最大HP消費率（0～1）", apCost: "消費AP", healCap: "回復上限", perStack: "1stackあたり回復量",
@@ -223,6 +226,9 @@ export function getBEffectOptions(triggerId, conditionId, catalog = createBSkill
 }
 export function getBTraitOptions(catalog = createBSkillCatalog()) { return catalog.traits; }
 export function getBSelectionDefinition(selection, catalog = createBSkillCatalog()) {
+  const resolved = resolveSelection("B", selection, catalog);
+  if (resolved.errors.length || resolved.incomplete.length) return undefined;
+  selection = resolved.selection;
   return selection?.type === "trait" ? catalog.traits.find(t => t.id === selection.traitId)
     : selection?.type === "event" ? getBEffectOptions(selection.triggerId, selection.conditionId, catalog).find(e => e.effectId === selection.effectId) : undefined;
 }

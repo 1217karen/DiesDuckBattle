@@ -1,3 +1,5 @@
+import { normalizedACatalog } from "./effectSelectionCatalog.js";
+import { statusLabel } from "./statusMetadata.js";
 import { getDiceFrame } from "./diceFrames.js";
 import { STATUS_GROUPS } from "./statusGroups.js";
 
@@ -30,15 +32,15 @@ export function createASkillCatalog() {
   const statuses = [];
   for (const group of ["debuff", "buff"]) {
     const categoryId = group === "debuff" ? "ailment" : "enhancement";
-    for (const status of STATUS_GROUPS[group]) statuses.push({ id: status, label: status, categoryId });
+    for (const status of STATUS_GROUPS[group]) statuses.push({ id: status, label: statusLabel(status), categoryId });
     for (const target of ["self", "enemy"]) {
       const drawback = (group === "debuff") === (target === "self");
       for (const status of [...STATUS_GROUPS[group], `@${group}`]) {
         const random = status.startsWith("@");
         add(`grant-${random ? `random-${group}` : status}-${target}`, categoryId,
-          `${target}に${random ? `ランダム${group}` : status}付与`, target, drawback,
+          `${target}に${statusLabel(status)}付与`, target, drawback,
           { type: "changeStatus", status, op: "add", sign: 1 }, random ? {} : { statusId: status });
-        if (!random) add(`remove-${status}-${target}`, "removeStatus", `${target}の${status}を1stack解除`, target, !drawback,
+        if (!random) add(`remove-${status}-${target}`, "removeStatus", `${target}の${statusLabel(status)}を1stack解除`, target, !drawback,
           { type: "changeStatus", status, op: "add", value: -1 }, { requiresAmount: false, statusId: status });
       }
     }
@@ -90,7 +92,7 @@ export function createASkillCatalog() {
       drawbackPoints: drawback ? points : 0,
     }));
   }
-  return {
+  const catalog = {
     categories, effects, statuses, basePoints: 3, maxEffects: 4,
     targets: [{ id: "self", label: "自分" }, { id: "enemy", label: "相手" }],
     triggerCosts: { exact: 0, rangeByCount: { 1: 0, 2: 1, 3: 2 }, all: 2 },
@@ -98,6 +100,8 @@ export function createASkillCatalog() {
       value: percent / 100, discount })),
     maxDrawbackPoints: null,
   };
+  catalog.selectionEffects = normalizedACatalog(catalog);
+  return catalog;
 }
 
 // 作成時の頻度と戦闘時の意味を共有。baseFacesで戦闘中の追加出目を制限しない。

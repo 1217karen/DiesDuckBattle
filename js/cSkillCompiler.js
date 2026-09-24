@@ -1,3 +1,4 @@
+import { resolveSelection, withSelectionIssues } from "./selectionNormalization.js";
 import { createCSkillCatalog } from "./cSkillCatalog.js";
 import { createCSkillRules, C_HP_FAILURE_MULTIPLIER } from "./cSkillRules.js";
 import { calculateCSkillResources } from "./cSkillResources.js";
@@ -10,7 +11,7 @@ function hpFailureEffect(main) {
 }
 
 // selectionはIDのみ。catalog/rulesは運営側から注入する信頼境界。
-export function compileCSkill(selection, { catalog = createCSkillCatalog(), rules = createCSkillRules() } = {}) {
+function legacycompileCSkill(selection, { catalog = createCSkillCatalog(), rules = createCSkillRules() } = {}) {
   const resources = calculateCSkillResources(selection, { catalog, rules });
   const result = { ok: false, skill: null, resources, errors: resources.errors, unresolved: resources.unresolved };
   if (!resources.complete) return result;
@@ -99,4 +100,16 @@ export function compileCSkill(selection, { catalog = createCSkillCatalog(), rule
     skill.repeatReviveChance = typeof repeat === "number" ? repeat : { ...repeat };
   }
   return { ...result, ok: true, skill };
+}
+
+export function compileCSkill(selection, options = {}) {
+  const catalog = options.catalog ?? createCSkillCatalog();
+  const resolved = resolveSelection("C", selection, catalog);
+  const result = legacycompileCSkill(resolved.selection, { ...options, catalog });
+  const merged = withSelectionIssues(result, resolved);
+  if (resolved.errors.length || resolved.incomplete.length) {
+    merged.skill = null;
+    merged.resources = withSelectionIssues(result.resources, resolved);
+  }
+  return merged;
 }

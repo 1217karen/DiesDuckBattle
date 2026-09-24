@@ -1,8 +1,9 @@
+import { resolveSelection, withSelectionIssues } from "./selectionNormalization.js";
 import { createASkillCatalog, getATriggerOptions } from "./aSkillCatalog.js";
 import { calculateASkillResources } from "./aSkillResources.js";
 
 // buildの初期diceとselectionを検証。catalog/rulesはユーザーから受け取らない。
-export function compileASkill(build, selection, { catalog = createASkillCatalog(), rules } = {}) {
+function legacycompileASkill(build, selection, { catalog = createASkillCatalog(), rules } = {}) {
   const resources = calculateASkillResources(build, selection, { catalog, rules });
   const errors = [...resources.errors];
   if (resources.complete && resources.remaining < 0) errors.push({ code: "INSUFFICIENT_A_POINTS", path: "aSkill", message: "Aポイント不足です。" });
@@ -31,4 +32,16 @@ export function compileASkill(build, selection, { catalog = createASkillCatalog(
     return compiled;
   });
   return { ...result, ok: true, skill: { trigger, effect } };
+}
+
+export function compileASkill(build, selection, options = {}) {
+  const catalog = options.catalog ?? createASkillCatalog();
+  const resolved = resolveSelection("A", selection, catalog);
+  const result = legacycompileASkill(build, resolved.selection, { ...options, catalog });
+  const merged = withSelectionIssues(result, resolved);
+  if (resolved.errors.length || resolved.incomplete.length) {
+    merged.skill = null;
+    merged.resources = withSelectionIssues(result.resources, resolved);
+  }
+  return merged;
 }

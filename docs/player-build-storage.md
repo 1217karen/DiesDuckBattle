@@ -1,3 +1,5 @@
+> 現行selectionはschema v2です。移行・catalog境界は[selection-v2.md](selection-v2.md)を参照してください。以下のv1例は旧形式です。
+
 # Player build 保存 v1
 
 `js/playerBuildModel.js` はDOM/storage/compilerに依存しないmodel、

@@ -1,3 +1,4 @@
+import { resolveSelection, withSelectionIssues } from "./selectionNormalization.js";
 import { createBSkillCatalog } from "./bSkillCatalog.js";
 import { STATUS_GROUPS } from "./statusGroups.js";
 
@@ -7,7 +8,7 @@ const exactKeys = (value, keys) => record(value) && Object.keys(value).length ==
   && keys.every(key => Object.hasOwn(value, key));
 
 // catalog引数は運営側の信頼済みデータ専用。ユーザーDTOと一緒に受け取らない。
-export function validateBSkillSelection(selection, { catalog = createBSkillCatalog() } = {}) {
+function legacyvalidateBSkillSelection(selection, { catalog = createBSkillCatalog() } = {}) {
   const errors = [], unresolved = [];
   const fail = code => errors.push({ code });
   let definition;
@@ -35,8 +36,8 @@ export function validateBSkillSelection(selection, { catalog = createBSkillCatal
   return { valid: errors.length === 0, complete: errors.length === 0 && unresolved.length === 0, errors, unresolved };
 }
 
-export function compileBSkill(selection, { catalog = createBSkillCatalog() } = {}) {
-  const validation = validateBSkillSelection(selection, { catalog });
+function legacycompileBSkill(selection, { catalog = createBSkillCatalog() } = {}) {
+  const validation = legacyvalidateBSkillSelection(selection, { catalog });
   const result = { ...validation, ok: false, bSkills: null };
   if (!validation.complete) return result;
   const definition = selection.type === "trait" ? catalog.traits.find(d => d.id === selection.traitId)
@@ -72,4 +73,24 @@ export function compileBSkill(selection, { catalog = createBSkillCatalog() } = {
     if (range) require(range[0] <= range[1], "random multiplier range");
   }
   return { ...result, ok: true, bSkills };
+}
+
+export function validateBSkillSelection(selection, options = {}) {
+  const catalog = options.catalog ?? createBSkillCatalog();
+  const resolved = resolveSelection("B", selection, catalog);
+  const result = legacyvalidateBSkillSelection(resolved.selection, { ...options, catalog });
+  const merged = withSelectionIssues(result, resolved);
+  return merged;
+}
+
+export function compileBSkill(selection, options = {}) {
+  const catalog = options.catalog ?? createBSkillCatalog();
+  const resolved = resolveSelection("B", selection, catalog);
+  const result = legacycompileBSkill(resolved.selection, { ...options, catalog });
+  const merged = withSelectionIssues(result, resolved);
+  if (resolved.errors.length || resolved.incomplete.length) {
+    merged.bSkills = null;
+
+  }
+  return merged;
 }

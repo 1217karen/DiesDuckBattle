@@ -1,3 +1,4 @@
+import { resolveSelection, withSelectionIssues } from "./selectionNormalization.js";
 import { createBuildRules } from "./buildRules.js";
 import { calculateBuildResources } from "./buildResources.js";
 import { getDiceFrame } from "./diceFrames.js";
@@ -7,7 +8,7 @@ const record = value => value !== null && typeof value === "object"
   && [Object.prototype, null].includes(Object.getPrototypeOf(value));
 
 // selectionはIDのみ。catalog/rulesは信頼済み運営設定。completeは見積完了、readyは予算内。
-export function calculateASkillResources(build, selection, {
+function legacycalculateASkillResources(build, selection, {
   rules = createBuildRules(), catalog = createASkillCatalog(),
 } = {}) {
   const errors = [], unresolved = [], effectBreakdown = [];
@@ -121,4 +122,12 @@ export function calculateASkillResources(build, selection, {
     baseEffectCost, chanceDiscount, effectCost, drawbackPoints, grossCost, netCost, remaining,
     knownEffectCost: known("effectCost"), knownDrawbackPoints: known("drawbackPoints"), effectBreakdown,
     complete, ready: complete && remaining >= 0, errors, unresolved };
+}
+
+export function calculateASkillResources(build, selection, options = {}) {
+  const catalog = options.catalog ?? createASkillCatalog();
+  const resolved = resolveSelection("A", selection, catalog);
+  const result = legacycalculateASkillResources(build, resolved.selection, { ...options, catalog });
+  const merged = withSelectionIssues(result, resolved);
+  return merged;
 }
