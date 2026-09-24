@@ -1,11 +1,53 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createBattleResultStorage, BATTLE_RESULT_INDEX_KEY } from "../js/battleResultStorage.js";
+import { createBattleResultStorage, BATTLE_RESULT_INDEX_KEY, BATTLE_RESULT_STORAGE_PREFIX } from "../js/battleResultStorage.js";
+import { buildBattlePresentationSnapshot } from "../js/battlePresentationSnapshot.js";
 
 function memoryStorage() {
   const values = new Map();
   return { getItem: key => values.has(key) ? values.get(key) : null, setItem: (key, value) => values.set(key, String(value)) };
 }
+
+test("save/load retains presentation snapshots including the empty P2 snapshot", () => {
+  const storage = createBattleResultStorage(memoryStorage());
+  const presentation = buildBattlePresentationSnapshot({
+    battler: { defaultIconUrl: "default.png", iconSlots: ["", "", "third.png"],
+      quotes: { battleStart: { text: "開始！", iconSlot: 3 } } },
+    ducks: { d1: { iconUrl: "duck.png" } },
+  }, "d1");
+  const record = {
+    battleId: "snapshot", dateISO: "2026-09-24T00:00:00.000Z",
+    p1: { battlerId: "p1", battlerName: "1P", duckId: "d1", duckName: "赤", presentation },
+    p2: { battlerId: "p2", battlerName: "2P", duckId: "d2", duckName: "青",
+      presentation: buildBattlePresentationSnapshot(undefined, "d2") },
+    result: "draw", events: [{ type: "battleEnd", result: "draw" }],
+  };
+  const expected = structuredClone(record);
+  assert.equal(storage.save(record).ok, true);
+  record.p1.presentation.quotes.battleStart.text = "変更";
+  record.p2.presentation.duckIconUrl = "changed.png";
+  const loaded = storage.load("snapshot");
+  assert.equal(loaded.ok, true);
+  assert.deepEqual(loaded.record, expected);
+  loaded.record.p1.presentation.quotes.skill.A.iconUrl = "changed-again.png";
+  assert.deepEqual(storage.load("snapshot").record, expected);
+  assert.deepEqual(storage.list().records[0].p1.presentation, expected.p1.presentation);
+});
+
+test("pre-existing records without presentation load from the unchanged v1 key", () => {
+  const memory = memoryStorage();
+  const record = {
+    battleId: "legacy", dateISO: "2026-09-23T00:00:00.000Z",
+    p1: { battlerId: "p1", battlerName: "1P", duckId: "d1", duckName: "赤" },
+    p2: { battlerId: "p2", battlerName: "2P", duckId: "d2", duckName: "青" },
+    result: "draw", events: [],
+  };
+  memory.setItem(BATTLE_RESULT_STORAGE_PREFIX + record.battleId, JSON.stringify(record));
+  const loaded = createBattleResultStorage(memory).load("legacy");
+  assert.equal(loaded.ok, true);
+  assert.deepEqual(loaded.record, record);
+  assert.equal("presentation" in loaded.record.p1, false);
+});
 
 test("battle result storage saves and loads an independent record", () => {
   const memory = memoryStorage();

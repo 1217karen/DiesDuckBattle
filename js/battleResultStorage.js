@@ -4,6 +4,7 @@ export const BATTLE_RESULT_INDEX_KEY = "diesDuckBattle:battle-result-index:v1";
 const targetStorage = storage => storage ?? globalThis.localStorage;
 
 function isSide(value) {
+  // presentation is an optional snapshot: legacy records without it remain readable.
   return value && typeof value === "object"
     && ["battlerId", "battlerName", "duckId", "duckName"].every(key => typeof value[key] === "string");
 }

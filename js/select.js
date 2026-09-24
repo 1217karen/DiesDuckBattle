@@ -3,6 +3,8 @@ import { createSelectState, duckChoices, selectOwnDuck, battleStartStatus, battl
 import { listOpponents, getOpponent } from "./opponentSource.js";
 import { startSelectedBattle } from "./selectBattle.js";
 import { createBattleId, createBattleResultStorage } from "./battleResultStorage.js";
+import { createPlayerPresentationStorage } from "./playerPresentationStorage.js";
+import { buildBattlePresentationSnapshot } from "./battlePresentationSnapshot.js";
 let state = createSelectState(createPlayerBuildStorage().load());
 const el = id => document.getElementById(id);
 const tray = el("tray");
@@ -87,6 +89,10 @@ el("vsButton").addEventListener("click", () => {
   if (!battleStartStatus(state).canStart) return;
   el("vsButton").disabled = true;
   try {
+    const p1Presentation = buildBattlePresentationSnapshot(
+      createPlayerPresentationStorage().load().presentation, state.selectedDuckId);
+    // Development opponents have no presentation yet. The builder also accepts future P2 data.
+    const p2Presentation = buildBattlePresentationSnapshot(undefined, state.opponentDuckId);
     const battle = startSelectedBattle(state);
     if (!battle.ok) {
       el("battle-result").textContent = battle.message;
@@ -99,8 +105,8 @@ el("vsButton").addEventListener("click", () => {
     const saved = createBattleResultStorage().save({
       battleId,
       dateISO: new Date().toISOString(),
-      p1: side(battle.p1),
-      p2: side(battle.p2),
+      p1: { ...side(battle.p1), presentation: p1Presentation },
+      p2: { ...side(battle.p2), presentation: p2Presentation },
       result: battle.result,
       events: battle.events,
     });
