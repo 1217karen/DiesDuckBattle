@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>バトル履歴 | DiesDuckBattle</title>
+  <link rel="stylesheet" href="css/storage.css">
+</head>
+<body>
+  <details class="nav">
+    <summary class="nav__btn" aria-label="メニューを開く"><span></span><span></span><span></span></summary>
+    <nav class="nav__panel" aria-label="メインメニュー">
+      <a class="nav__link" href="select.html">ゲーム画面</a>
+    </nav>
+  </details>
+
+  <main class="wrap">
+    <header class="head">
+      <h1 class="title">💥バトル履歴💥</h1>
+      <p class="hint">保存済みの戦闘結果を30件ずつ表示します。</p>
+      <div class="tools">
+        <label for="order">表示順</label>
+        <select id="order" class="orderSelect">
+          <option value="desc">新しい順</option>
+          <option value="asc">古い順</option>
+        </select>
+      </div>
+    </header>
+
+    <div id="list" class="list" aria-live="polite"></div>
+    <div id="empty" class="empty" hidden>履歴がありません。</div>
+    <div id="error" class="empty error" hidden>履歴を読み込めませんでした。</div>
+
+    <nav class="pager" aria-label="履歴ページ">
+      <button id="prev" class="btn" type="button">≪ 前の30件</button>
+      <span id="pageInfo" class="pageInfo">1 / 1</span>
+      <button id="next" class="btn" type="button">次の30件 ≫</button>
+    </nav>
+  </main>
+
+  <script type="module" src="js/storagePage.js"></script>
+</body>
+</html>

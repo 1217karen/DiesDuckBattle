@@ -60,7 +60,45 @@ export function createBattleResultStorage(storage) {
     }
   }
 
-  return { save, load };
+  function list({ page = 1, pageSize = 30, order = "desc" } = {}) {
+    const normalizedPage = Number.isInteger(page) && page > 0 ? page : 1;
+    const normalizedPageSize = Number.isInteger(pageSize) && pageSize > 0 ? pageSize : 30;
+    const normalizedOrder = order === "asc" ? "asc" : "desc";
+    let index;
+    try {
+      const raw = getStorage().getItem(BATTLE_RESULT_INDEX_KEY);
+      if (raw === null) index = [];
+      else {
+        const parsed = JSON.parse(raw);
+        index = Array.isArray(parsed) ? parsed : [];
+      }
+    } catch (error) {
+      if (error instanceof SyntaxError) index = [];
+      else return { ok: false, status: "storage-error", records: [], page: normalizedPage,
+        pageSize: normalizedPageSize, total: 0, totalPages: 0 };
+    }
+
+    const records = [];
+    const seen = new Set();
+    for (const id of index) {
+      if (typeof id !== "string" || !id || seen.has(id)) continue;
+      seen.add(id);
+      const loaded = load(id);
+      if (!loaded.ok) continue;
+      const { events: _events, ...summary } = loaded.record;
+      records.push(summary);
+    }
+    if (normalizedOrder === "asc") records.reverse();
+
+    const total = records.length;
+    const totalPages = total === 0 ? 0 : Math.ceil(total / normalizedPageSize);
+    const actualPage = totalPages === 0 ? 1 : Math.min(normalizedPage, totalPages);
+    const start = (actualPage - 1) * normalizedPageSize;
+    return { ok: true, status: "listed", records: records.slice(start, start + normalizedPageSize),
+      page: actualPage, pageSize: normalizedPageSize, total, totalPages };
+  }
+
+  return { save, load, list };
 }
 
 export function createBattleId() {

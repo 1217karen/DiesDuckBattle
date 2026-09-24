@@ -11,7 +11,7 @@ test("ローカルserverはsetting・A/B/C/Dと依存JS/CSSを配信しwhitelist
   const child = spawn(process.execPath, [fileURLToPath(new URL("../scripts/serve-a-skill-test.mjs", import.meta.url)), String(port)], { windowsHide: true });
   t.after(() => { child.kill(); });
   await Promise.race([once(child.stdout, "data"), once(child, "exit").then(([code]) => { throw new Error(`server exit ${code}`); })]);
-  const base = `http://127.0.0.1:${port}`, queue = ["/select.html", "/result.html", "/setting.html", "/a-skill-test.html", "/b-skill-test.html", "/c-skill-test.html", "/d-skill-test.html"], visited = new Set();
+  const base = `http://127.0.0.1:${port}`, queue = ["/select.html", "/result.html", "/storage.html", "/setting.html", "/a-skill-test.html", "/b-skill-test.html", "/c-skill-test.html", "/d-skill-test.html"], visited = new Set();
   while (queue.length) {
     const path = queue.shift(); if (visited.has(path)) continue; visited.add(path);
     const response = await fetch(base + path); assert.equal(response.status, 200, path);
@@ -24,7 +24,7 @@ test("ローカルserverはsetting・A/B/C/Dと依存JS/CSSを配信しwhitelist
     }
   }
   assert.ok(visited.has("/js/bSkillTestHarness.js") && visited.has("/js/battleEngine.js") && visited.has("/css/b-skill-test.css"));
-  for (const path of ["/js/select.js", "/js/selectState.js", "/css/select.css", "/js/result.js", "/js/battleResultStorage.js", "/css/result.css", "/js/settingPage.js", "/js/settingState.js", "/js/playerBuildStorage.js", "/css/setting.css"]) assert.ok(visited.has(path), path);
+  for (const path of ["/js/select.js", "/js/selectState.js", "/css/select.css", "/js/result.js", "/js/storagePage.js", "/js/battleResultStorage.js", "/css/result.css", "/css/storage.css", "/js/settingPage.js", "/js/settingState.js", "/js/playerBuildStorage.js", "/css/setting.css"]) assert.ok(visited.has(path), path);
   for (const path of ["/js/dSkillCatalog.js", "/js/dSkillCompiler.js", "/js/dSkillTestHarness.js", "/css/d-skill-test.css"]) assert.ok(visited.has(path), path);
   for (const path of ["/.git/config", "/docs/b-skill-building.md", "/package.json", "/js/%2e%2e%2fREADME.md"])
     assert.equal((await fetch(base + path)).status, 404, path);
