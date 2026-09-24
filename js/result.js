@@ -195,9 +195,20 @@ function eventToLines(event, context) {
       const summaries = { 1: "自分のAP+1", 2: "通常攻撃2回", 3: "自分のHP3回復", 4: "自分に反撃+1", 5: "相手のAP-1", 6: "DF無視攻撃＋反動3ダメージ" };
       return [{ kind: "soft rollLine", text: `<span class="logDuckIcon" aria-hidden="true">🦆</span><span><span class="rollMain">ダイス結果 → ${amount("buff", event.diceValue)}！</span><br><span class="rollSub">${summaries[event.diceValue] ?? "特殊効果なし"}</span></span>` }];
     }
-    case "normalDamage": return [{ kind: "soft", text: `${target}に ${amount("damage", event.value)} ダメージ！` }];
-    case "fixedDamage": return [{ kind: "soft", text: `${target}に固定 ${amount("damage", event.value)} ダメージ！` }];
-    case "recoil": return [{ kind: "soft", text: `${target}は反動で ${amount("damage", event.value)} ダメージ！` }];
+    case "normalDamage":
+      return [{ kind: "soft", text: `${target}に ${amount("damage", event.value)} ダメージ！` }];
+
+    case "fixedDamage":
+      return [{ kind: "soft", text: `${target}に固定 ${amount("damage", event.value)} ダメージ！` }];
+
+    case "statusDamage":
+      return [{
+        kind: "soft",
+        text: `${target}は${escapeHTML(statusName(event.status))}で ${amount("damage", event.value)} ダメージ！`
+      }];
+
+    case "recoil":
+      return [{ kind: "soft", text: `${target}は反動で ${amount("damage", event.value)} ダメージ！` }];
     case "counterDamage": return [{ kind: "soft", text: `${target}に🛡️反撃で ${amount("damage", event.value)} ダメージ！${hint(event.counterBefore, event.counterAfter, "反撃 ")}` }];
     case "heal": return event.value ? [{ kind: "soft", text: `${target}のHPが ${amount("heal", event.value)} 回復！` }] : [];
     case "valueChanged": {
@@ -244,8 +255,10 @@ function decorateSkillLines(event, lines) {
 function applyEventToState(state, event) {
   if (event.state) Object.assign(state, cloneState(event.state));
   const side = event.target;
-  if (["normalDamage", "fixedDamage", "counterDamage", "recoil", "heal", "revived"].includes(event.type)
-    && (side === "P1" || side === "P2") && Number.isFinite(Number(event.hpAfter))) state.hp[side] = Number(event.hpAfter);
+if (["normalDamage", "fixedDamage", "statusDamage", "counterDamage", "recoil", "heal", "revived"].includes(event.type)
+  && (side === "P1" || side === "P2") && Number.isFinite(Number(event.hpAfter))) {
+  state.hp[side] = Number(event.hpAfter);
+}
   if (event.type === "valueChanged" && (side === "P1" || side === "P2")) {
     if (event.key === "hp" && Number.isFinite(Number(event.after))) state.hp[side] = Number(event.after);
     if (event.key === "ap" && Number.isFinite(Number(event.after))) state.ap[side] = Number(event.after);
