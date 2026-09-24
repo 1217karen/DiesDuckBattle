@@ -49,6 +49,8 @@ body {
 .battlerIcon { width: var(--battler-size); height: var(--battler-size); grid-column: 1; grid-row: 1 / span 2; }
 .duckIcon { width: var(--duck-size); height: var(--duck-size); }
 .placeholderIcon { display: grid; place-items: center; font-weight: 900; color: #777; }
+.placeholderIcon { overflow: hidden; }
+.placeholderIcon > img { display: block; width: 100%; height: 100%; object-fit: cover; min-width: 0; min-height: 0; }
 .nameBlock { grid-column: 2; grid-row: 1; min-width: 0; }
 .nameLine { font-weight: 900; overflow-wrap: anywhere; line-height: 1.15; }
 .duckIcon.underName { grid-column: 2; grid-row: 2; margin-top: 6px; }
@@ -87,6 +89,16 @@ body {
 .line.rollLine { display: flex; align-items: center; gap: 10px; }
 .logDuckIcon { width: 60px; height: 60px; flex: 0 0 60px; display: grid; place-items: center; border-radius: 50%; background: rgba(0,0,0,.06); font-size: 28px; }
 .rollMain { font-size: var(--fs-16); font-weight: 900; }
+img.logDuckIcon { object-fit: cover; }
+/* Adapted from base result: one row per speaker, mirrored P2 cells and bubbles. */
+.quoteRow { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+.quoteCell { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; }
+.quoteCell.p1 { justify-self: start; text-align: left; }
+.quoteCell.p2 { justify-self: end; flex-direction: row-reverse; text-align: right; }
+.quoteIcon { width: 120px; height: 120px; flex: 0 0 120px; display: block; object-fit: cover; border-radius: 10px; background: #f0f0f0; border: 2px solid #cfcfcf; box-sizing: border-box; }
+.quoteBubble { padding: 8px 5px; background: rgba(0,0,0,.035); border-radius: 10px; box-sizing: border-box; overflow-wrap: anywhere; word-break: normal; line-break: strict; flex: 1; min-width: 0; }
+.quoteBubble.p1 { border-left: 6px solid rgba(227,91,91,.55); }
+.quoteBubble.p2 { border-right: 6px solid rgba(74,134,232,.55); }
 .rollSub { font-size: var(--fs-12); opacity: .55; }
 .miniHint { font-size: .85em; opacity: .65; }
 .num { font-size: 1.5em; font-weight: 900; }
@@ -117,6 +129,7 @@ body {
 .btn:disabled { cursor: default; opacity: .45; }
 
 @media (max-width: 700px) {
+  .quoteIcon { width: 60px; height: 60px; flex-basis: 60px; }
   :root { --header-h: 150px; --battler-size: 72px; --duck-size: 36px; }
   .phaseBlock { width: 92%; max-width: 92%; }
   .turnRow { display: flex; flex-direction: column; }
@@ -130,6 +143,10 @@ body {
 }
 
 @media (max-width: 420px) {
-  :root { --battler-size: 66px; --duck-size: 34px; }
+  :root { --battler-size: 44px; --duck-size: 24px; }
+  .headerInner { gap: 4px; }
+  .side, .side.right { column-gap: 4px; }
+  .centerTable { gap: 4px; font-size: 10px; }
+  .nameLine { font-size: 12px; }
   .btn { min-width: 96px; padding: 13px 12px; }
 }
