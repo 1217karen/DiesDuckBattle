@@ -1,7 +1,8 @@
 import { effectSelectionFields } from "./effectSelectionCatalog.js";
 import { selectionRows } from "./selectionNormalization.js";
 import { createPlayerBuildStorage } from "./playerBuildStorage.js";
-import { createSettingState, changeSetting, selectedDuck, SP_OPTIONS, cBranches, createCStructure, duckSummary } from "./settingState.js";
+import { createPlayerPublicSettingsStorage } from "./playerPublicSettingsStorage.js";
+import { createSettingState, changeSetting, selectedDuck, selectedPublicDuckId, SP_OPTIONS, cBranches, createCStructure, duckSummary } from "./settingState.js";
 import { inspectBuildForSave, saveSectionSummary, saveInspectedBuild } from "./buildSaveInspection.js";
 import { getDiceFrame } from "./diceFrames.js";
 import { createBuildRules } from "./buildRules.js";
@@ -13,7 +14,9 @@ import { D_SKILL_OPTIONS } from "./dSkillCatalog.js";
 
 const repository = createPlayerBuildStorage();
 const loaded = repository.load();
-let state = createSettingState(loaded);
+const publicRepository = createPlayerPublicSettingsStorage();
+const publicLoaded = publicRepository.load();
+let state = createSettingState(loaded, publicLoaded);
 const rules = createBuildRules(), aCatalog = createASkillCatalog(), bCatalog = createBSkillCatalog();
 const cCatalog = createCSkillCatalog(), cRules = createCSkillRules();
 const $ = id => document.getElementById(id);
@@ -275,8 +278,17 @@ function renderDuck() {
   const meta = el("div", null, "duck-meta"), name = el("input"); name.id = "duck-name"; name.value = duck.name; name.placeholder = "例：基本型";
   name.addEventListener("input", () => patchDuck({ name: name.value }, false));
   const actions = el("div", null, "actions");
-  actions.append(button("複製", () => commit({ type: "duplicate" })), button("削除", () => {
-    confirmChange(`「${selectedDuck(state).name || "名前未設定のアヒル"}」を削除しますか？保存するまで確定しません。`, () => commit({ type: "delete" }));
+  const isPublic = selectedPublicDuckId(state) === duck.id;
+  const publicButton = button(isPublic ? "公開中" : "公開用に設定", () => commit({ type: "set-public", id: duck.id }), isPublic ? "public-active" : "");
+  publicButton.disabled = isPublic || !state.publicSettings;
+  if (!state.publicSettings) publicButton.title = "公開用設定を読み込めないため変更できません";
+  actions.append(publicButton, button("複製", () => commit({ type: "duplicate" })), button("削除", () => {
+    const current = selectedDuck(state), displayName = current.name || "名前未設定のアヒル";
+    if (selectedPublicDuckId(state) === current.id) {
+      showDialog({ title: "公開中のアヒルを削除", confirmLabel: "削除する", message:
+        `「${displayName}」は現在、公開用アヒルに設定されています。\n\n削除すると公開用アヒルが未設定になり、他のプレイヤーから対戦相手として選択されなくなります。\n\n削除しますか？ 保存するまで確定しません。`,
+      onConfirm: () => commit({ type: "delete" }) });
+    } else confirmChange(`「${displayName}」を削除しますか？保存するまで確定しません。`, () => commit({ type: "delete" }));
   }, "danger"));
   meta.append(labeled("設定名", name), actions); box.append(meta);
   renderStats(duck, box); renderA(duck, box); renderC(duck, box);
@@ -326,13 +338,27 @@ function saveSettings(approveIncomplete = false) {
     showDialog({ title: "未完成の設定があります", issues: result.inspection.incomplete,
       message: "この設定は保存できますが、完成するまで戦闘には使用できません。",
       cancelLabel: "キャンセル", confirmLabel: "このまま保存", onConfirm: () => saveSettings(true) });
-  } else if (result.status === "saved") $("save-message").textContent = "保存しました";
+  } else if (result.status === "saved") {
+    if (state.publicSettings) {
+      const publicSaved = publicRepository.save(state.publicSettings);
+      if (!publicSaved.ok) {
+        state = { ...state, dirty: true };
+        $("save-message").textContent = storageMessages[publicSaved.status] ?? "公開用設定を保存できませんでした。";
+        return;
+      }
+    }
+    $("save-message").textContent = "保存しました";
+  }
   else $("save-message").textContent = storageMessages[result.status] ?? "保存できませんでした。";
 }
 $("save").addEventListener("click", () => saveSettings());
 window.addEventListener("beforeunload", event => { if (state.dirty) { event.preventDefault(); event.returnValue = ""; } });
 if (state.build) {
   $("editor").hidden = false; $("load-message").hidden = true; render();
+  if (!state.publicSettings) {
+    $("public-settings-message").hidden = false;
+    $("public-settings-message").textContent = storageMessages[state.publicLoadStatus] ?? "公開用設定を読み込めませんでした。既存データを保護しています。";
+  }
   if (loaded.migratedFrom) $("save-message").textContent = "v1データをv2へ移行して読み込みました。保存するまで元データは変更されません。";
 } else {
   $("load-message").textContent = storageMessages[state.loadStatus] ?? "保存データを読み込めませんでした。";

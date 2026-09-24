@@ -27,6 +27,7 @@ button { color:var(--text); background:#233336; border:1px solid #506568; border
 button:hover { background:#324649; }button:disabled { opacity:.4; cursor:not-allowed; }
 button.primary { background:var(--accent); color:#1c2b19; border-color:var(--accent); font-weight:750; padding:13px 28px; }
 button.danger { color:var(--warn); background:transparent; }
+button.public-active { color:#152515; background:var(--accent); border-color:var(--accent); opacity:1; }
 :focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
 .controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(185px,1fr)); gap:14px; margin-bottom:14px; }
 .battler-grid .controls { grid-template-columns:1fr; }
@@ -51,8 +52,10 @@ button.danger { color:var(--warn); background:transparent; }
 .save-bar { position:sticky; bottom:0; display:flex; justify-content:space-between; align-items:center; gap:18px; padding:18px 22px; margin-top:28px; border:1px solid var(--line); border-radius:10px; background:#1c292cf5; box-shadow:0 -8px 32px #0003; }
 .save-bar p { margin:2px 0 0; font-size:.75rem; }.save-bar strong { font-size:.85rem; }.save-bar button { flex-shrink:0; }
 #load-message { color:var(--warn); }[hidden] { display:none !important; }
+.public-settings-error { color:var(--warn); border:1px solid var(--line); border-radius:8px; padding:10px 14px; }
 .confirm-dialog { color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:26px; width:min(460px,90vw); }
 .confirm-dialog::backdrop { background:#0009; }.confirm-dialog .actions { justify-content:flex-end; margin-top:22px; }
+.confirm-dialog>p { white-space:pre-line; }
 .badge.invalid,.issues .invalid,.metrics.invalid { color:#ff8d96; }
 .issues .warning { color:var(--warn); }
 button.primary.save-invalid { color:#c1c8c9; background:#3a4244; border-color:#667174; cursor:help; }

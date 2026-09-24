@@ -9,18 +9,26 @@ import { compileBSkill } from "./bSkillCompiler.js";
 import { calculateCSkillResources } from "./cSkillResources.js";
 import { compileCSkill } from "./cSkillCompiler.js";
 import { compileDSkill } from "./dSkillCompiler.js";
+import { createEmptyPlayerPublicSettings, clonePlayerPublicSettings, resolvePublicDuckId } from "./playerPublicSettingsModel.js";
 
 export const SP_OPTIONS = Object.entries(DICE_FRAMES).map(([id, frame]) => ({ id, SP: frame.SP }))
   .sort((a, b) => a.SP - b.SP);
 
-export function createSettingState(result) {
+export function createSettingState(result, publicResult = {
+  ok: true, status: "empty", settings: createEmptyPlayerPublicSettings()
+}) {
   const editable = result.ok && ["empty", "loaded"].includes(result.status);
   const build = editable ? clonePlayerBuild(result.build) : null;
-  return { build, selectedDuckId: build?.ducks[0]?.id ?? null, loadStatus: result.status, dirty: false };
+  const publicEditable = publicResult.ok && ["empty", "loaded"].includes(publicResult.status);
+  const publicSettings = publicEditable ? clonePlayerPublicSettings(publicResult.settings) : null;
+  return { build, publicSettings, selectedDuckId: build?.ducks[0]?.id ?? null,
+    loadStatus: result.status, publicLoadStatus: publicResult.status, dirty: false };
 }
 export const selectedDuck = state => state.build?.ducks.find(d => d.id === state.selectedDuckId) ?? null;
+export const selectedPublicDuckId = state => state.publicSettings && state.build
+  ? resolvePublicDuckId(state.publicSettings, state.build) : null;
 
-/** Page state is transient. Only state.build is ever sent to storage. */
+/** Page state is transient. Build and public settings go to their own storage adapters. */
 export function changeSetting(state, action, { idFactory } = {}) {
   if (!state.build) throw new Error("保存データを読み込めないため編集できません。");
   let build = state.build, selectedDuckId = state.selectedDuckId;
@@ -36,8 +44,15 @@ export function changeSetting(state, action, { idFactory } = {}) {
     case "delete": {
       const index = build.ducks.findIndex(d => d.id === selectedDuckId);
       build = deleteDuck(build, selectedDuckId);
+      if (state.publicSettings?.publicDuckId === selectedDuckId) {
+        state = { ...state, publicSettings: { ...state.publicSettings, publicDuckId: null } };
+      }
       selectedDuckId = build.ducks[Math.min(index, build.ducks.length - 1)]?.id ?? null; break;
     }
+    case "set-public":
+      if (!state.publicSettings) throw new Error("公開用設定を読み込めないため編集できません。");
+      if (!build.ducks.some(duck => duck.id === action.id)) throw new RangeError("Unknown Duck ID");
+      return { ...state, publicSettings: { ...state.publicSettings, publicDuckId: action.id }, dirty: true };
     case "duck": build = updateDuck(build, selectedDuckId, action.patch); break;
     case "battler": build = updateBattler(build, action.patch); break;
     case "sp": {

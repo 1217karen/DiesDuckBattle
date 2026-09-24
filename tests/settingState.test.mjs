@@ -2,7 +2,7 @@ import { migrateSelection } from "../js/selectionNormalization.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createPlayerBuildStorage, PLAYER_BUILD_STORAGE_KEY } from "../js/playerBuildStorage.js";
-import { createSettingState, changeSetting, selectedDuck, SP_OPTIONS, cBranches, createCStructure, duckSummary, battlerSummary } from "../js/settingState.js";
+import { createSettingState, changeSetting, selectedDuck, selectedPublicDuckId, SP_OPTIONS, cBranches, createCStructure, duckSummary, battlerSummary } from "../js/settingState.js";
 import { calcMaxHPFromStats } from "../js/statsUtil.js";
 import { createASkillCatalog } from "../js/aSkillCatalog.js";
 import { createCSkillCatalog } from "../js/cSkillCatalog.js";
@@ -62,6 +62,48 @@ test("duplicate selects fresh ID, delete preserves other Ducks and Battler, zero
   state = apply(state, { type: "delete" });
   assert.equal(state.selectedDuckId, null); assert.deepEqual(state.build.ducks, []);
   assert.deepEqual(state.build.battler.dSelection, { optionId: "add-self-0" });
+});
+test("公開Duckは1体だけ切替でき、削除と複製が公開設定へ正しく連動する", () => {
+  let state = patch(add(setup().state), { name: "A" });
+  const a = state.selectedDuckId;
+  state = patch(add(state), { name: "B" });
+  const b = state.selectedDuckId;
+  state = apply(state, { type: "set-public", id: a });
+  assert.equal(selectedPublicDuckId(state), a);
+  state = apply(state, { type: "set-public", id: b });
+  assert.equal(selectedPublicDuckId(state), b);
+  state = apply(state, { type: "select", id: a });
+  state = apply(state, { type: "delete" });
+  assert.equal(selectedPublicDuckId(state), b);
+  state = apply(state, { type: "duplicate" });
+  assert.equal(selectedPublicDuckId(state), b);
+  assert.notEqual(state.selectedDuckId, b);
+  state = apply(state, { type: "select", id: b });
+  state = apply(state, { type: "delete" });
+  assert.equal(state.publicSettings.publicDuckId, null);
+  assert.equal(selectedPublicDuckId(state), null);
+});
+
+test("存在しない保存済み公開IDは画面上で未設定になり、公開変更はdirtyにする", () => {
+  let state = createSettingState(setup().storage.load(), {
+    ok: true, status: "loaded", settings: { schemaVersion: 1, publicDuckId: "missing" }
+  });
+  state = add(state);
+  assert.equal(selectedPublicDuckId(state), null);
+  state = { ...state, dirty: false };
+  state = apply(state, { type: "set-public", id: state.selectedDuckId });
+  assert.equal(state.dirty, true);
+  assert.equal(selectedPublicDuckId(state), state.selectedDuckId);
+});
+test("公開設定storageが壊れていてもbuild編集stateはクラッシュせず、公開操作だけを止める", () => {
+  let state = createSettingState(setup().storage.load(), {
+    ok: false, status: "corrupt", settings: null
+  });
+  state = add(state);
+  assert.equal(state.build.ducks.length, 1);
+  assert.equal(state.publicSettings, null);
+  assert.equal(state.publicLoadStatus, "corrupt");
+  assert.throws(() => apply(state, { type: "set-public", id: state.selectedDuckId }));
 });
 test("SP mapping follows frames and does not rewrite invalid dice or A trigger", () => {
   assert.deepEqual(SP_OPTIONS, [{ id: "heavy", SP: 1 }, { id: "basic", SP: 2 }, { id: "light", SP: 3 }]);

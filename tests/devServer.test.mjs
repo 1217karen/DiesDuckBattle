@@ -25,6 +25,7 @@ test("ローカルserverはsetting・character・A/B/C/Dと依存JS/CSSを配信
   }
   assert.ok(visited.has("/js/bSkillTestHarness.js") && visited.has("/js/battleEngine.js") && visited.has("/css/b-skill-test.css"));
   for (const path of ["/js/select.js", "/js/selectState.js", "/css/select.css", "/js/result.js", "/js/storagePage.js", "/js/battleResultStorage.js", "/css/result.css", "/css/storage.css", "/js/settingPage.js", "/js/settingState.js", "/js/playerBuildStorage.js", "/css/setting.css"]) assert.ok(visited.has(path), path);
+  for (const path of ["/js/playerPublicSettingsModel.js", "/js/playerPublicSettingsStorage.js"]) assert.ok(visited.has(path), path);
   for (const path of ["/js/characterPage.js", "/js/playerPresentationModel.js", "/js/playerPresentationStorage.js", "/js/iconPicker.js", "/css/character.css"]) assert.ok(visited.has(path), path);
   for (const path of ["/js/dSkillCatalog.js", "/js/dSkillCompiler.js", "/js/dSkillTestHarness.js", "/css/d-skill-test.css"]) assert.ok(visited.has(path), path);
   for (const path of ["/.git/config", "/docs/b-skill-building.md", "/package.json", "/js/%2e%2e%2fREADME.md"])
