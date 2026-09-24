@@ -89,6 +89,7 @@ test("VS reads current P1 presentation before battle and saves both snapshots wi
   // Execute the real click handler with storage and engine; only browser elements are stubbed.
   vm.runInNewContext(ui.replace(/^import .*;\r?\n/gm, ""), {
     ...selectState, document, listOpponents, getOpponent,
+    createSelectPresentation: () => () => {},
     createSelectState: () => state,
     createPlayerBuildStorage: () => ({ load: () => ({}) }),
     createPlayerPresentationStorage: () => presentationStorage,

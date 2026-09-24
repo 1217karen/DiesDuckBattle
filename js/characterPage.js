@@ -2,6 +2,7 @@ import { createPlayerBuildStorage } from "./playerBuildStorage.js";
 import { createEmptyPlayerPresentation, normalizePlayerPresentation } from "./playerPresentationModel.js";
 import { createPlayerPresentationStorage } from "./playerPresentationStorage.js";
 import { createIconPicker } from "./iconPicker.js";
+import { IMAGE_LIMITS, createImageValidation, imageValidationSummary } from "./characterImageValidation.js";
 
 const quoteGroups = [
   { title: "戦闘開始", rows: [["戦闘開始", ["battleStart"]]] },
@@ -18,6 +19,16 @@ const picker = createIconPicker({ dialog: document.querySelector("#icon-picker")
 let presentation = createEmptyPlayerPresentation();
 let ducks = [];
 let selectedDuckId = "";
+const imageStates = new Map();
+const duckEditors = new Map();
+const saveButton = document.querySelector("#save");
+const validationMessage = document.querySelector("#image-validation-message");
+
+function updateValidation() {
+  const summary = imageValidationSummary(imageStates.values());
+  saveButton.disabled = !summary.canSave;
+  validationMessage.textContent = summary.message;
+}
 
 function setDirty() { saveMessage.textContent = "未保存の変更があります"; }
 function quoteAt(path) { return path.reduce((value, key) => value[key], presentation.battler.quotes); }
@@ -26,34 +37,55 @@ function pickerLabel(slot) {
   return presentation.battler.iconSlots[slot - 1]?.trim() ? `追加 ${slot}` : `追加 ${slot}（未登録）`;
 }
 
-function makePreview(url, className = "") {
+function makePreview(kind, onValidation, className = "") {
   const box = document.createElement("div"); box.className = `preview ${className}`.trim();
-  const image = document.createElement("img"); image.alt = "画像プレビュー";
+  let image;
   const placeholder = document.createElement("span"); placeholder.textContent = "NO IMAGE";
-  box.append(image, placeholder);
+  box.append(placeholder);
+  const beginValidation = createImageValidation(kind, onValidation);
   const update = value => {
-    image.hidden = true; placeholder.hidden = false; placeholder.textContent = value.trim() ? "読込中…" : "NO IMAGE";
-    if (!value.trim()) { image.removeAttribute("src"); return; }
-    image.onload = () => { image.hidden = false; placeholder.hidden = true; };
-    image.onerror = () => { image.hidden = true; placeholder.hidden = false; placeholder.textContent = "プレビュー不可"; };
-    image.src = value;
+    const request = beginValidation(value);
+    image?.remove();
+    placeholder.hidden = false; placeholder.textContent = value.trim() ? "読込中…" : "NO IMAGE";
+    if (!value.trim()) return;
+    // This is the preview itself, not a second validation-only Image request.
+    const nextImage = document.createElement("img"); nextImage.alt = "画像プレビュー"; nextImage.hidden = true;
+    nextImage.onload = () => {
+      if (!request.active()) return;
+      nextImage.hidden = false; placeholder.hidden = true;
+      request.load(nextImage.naturalWidth, nextImage.naturalHeight);
+    };
+    nextImage.onerror = () => {
+      if (!request.active()) return;
+      nextImage.hidden = true; placeholder.hidden = false; placeholder.textContent = "プレビュー不可";
+      request.error();
+    };
+    image = nextImage; box.prepend(image); image.src = value;
   };
   return { box, update };
 }
 
-function makeImageField({ label, value, previewClass = "", compact = false, onInput }) {
+function makeImageField({ label, value, kind = "icon", previewClass = "", compact = false, onInput }) {
   const root = document.createElement("div"); root.className = `image-field${compact ? " compact" : ""}`;
-  const preview = makePreview(value, previewClass); preview.update(value);
   const field = document.createElement("label"); field.append(document.createTextNode(label));
   const input = document.createElement("input"); input.type = "url"; input.value = value; input.placeholder = "https://example.com/image.png";
+  const limit = IMAGE_LIMITS[kind];
+  const hint = document.createElement("span"); hint.textContent = `最大${limit.width}×${limit.height}px（縦横比自由）`;
+  const status = document.createElement("span"); status.className = "image-validation"; status.setAttribute("role", "status");
+  const preview = makePreview(kind, result => {
+    imageStates.set(root, result); root.dataset.validation = result.status;
+    status.textContent = result.message; input.setAttribute("aria-invalid", String(result.status === "invalid"));
+    updateValidation();
+  }, previewClass);
+  preview.update(value);
   input.addEventListener("input", () => { preview.update(input.value); onInput(input.value); setDirty(); });
-  field.append(input); root.append(preview.box, field); return root;
+  field.append(hint, input, status); root.append(preview.box, field); return root;
 }
 
 function renderBattlerImages() {
   const target = document.querySelector("#battler-images"); target.replaceChildren();
   const standingCard = document.createElement("div"); standingCard.className = "card"; standingCard.innerHTML = "<h3>立ち絵</h3>";
-  standingCard.append(makeImageField({ label:"URL", value:presentation.battler.standingImageUrl, previewClass:"standing", onInput:value => { presentation.battler.standingImageUrl = value; } }));
+  standingCard.append(makeImageField({ label:"URL", value:presentation.battler.standingImageUrl, kind:"standing", previewClass:"standing", onInput:value => { presentation.battler.standingImageUrl = value; } }));
   const defaultCard = document.createElement("div"); defaultCard.className = "card"; defaultCard.innerHTML = "<h3>デフォルトアイコン</h3>";
   defaultCard.append(makeImageField({ label:"URL", value:presentation.battler.defaultIconUrl, onInput:value => { presentation.battler.defaultIconUrl = value; refreshPickerLabels(); } }));
   const slotsCard = document.createElement("div"); slotsCard.className = "card additional-icons"; slotsCard.innerHTML = "<h3>追加アイコン</h3><p class=\"muted\">セリフから参照する固定10枠です。</p>";
@@ -88,16 +120,23 @@ function renderQuotes() {
 }
 
 function renderDuckEditor() {
-  const target = document.querySelector("#duck-icon-editor"); target.replaceChildren();
   const message = document.querySelector("#duck-message");
-  if (!selectedDuckId) { message.textContent = "戦闘設定に保存済みのDuckがありません。"; return; }
-  message.textContent = "";
-  presentation.ducks[selectedDuckId] ??= { iconUrl:"" };
-  target.append(makeImageField({ label:"アイコンURL", value:presentation.ducks[selectedDuckId].iconUrl, onInput:value => { presentation.ducks[selectedDuckId].iconUrl = value; } }));
+  message.textContent = selectedDuckId ? "" : "戦闘設定に保存済みのDuckがありません。";
+  for (const [id, field] of duckEditors) field.hidden = id !== selectedDuckId;
 }
 
 function renderDuckSelect() {
   const select = document.querySelector("#duck-select"); select.replaceChildren();
+  // Validate every saved URL, including Ducks no longer present in the build, without deleting data.
+  const known = new Set(ducks.map(duck => duck.id));
+  for (const id of Object.keys(presentation.ducks)) if (!known.has(id)) ducks.push({ id, name: `${id}（戦闘設定なし）` });
+  const target = document.querySelector("#duck-icon-editor");
+  for (const duck of ducks) {
+    const id = duck.id;
+    const field = makeImageField({ label:`${duck.name || "名前未設定のDuck"} アイコンURL`, value:presentation.ducks[id]?.iconUrl ?? "",
+      onInput:value => { presentation.ducks[id] = { iconUrl:value }; } });
+    duckEditors.set(id, field); target.append(field);
+  }
   if (!ducks.length) { const option = new Option("Duck未登録", ""); select.append(option); select.disabled = true; selectedDuckId = ""; }
   else {
     ducks.forEach(duck => select.append(new Option(duck.name.trim() || "名前未設定のDuck", duck.id)));
@@ -120,6 +159,7 @@ function initialize() {
 }
 
 document.querySelector("#save").addEventListener("click", () => {
+  if (!imageValidationSummary(imageStates.values()).canSave) { updateValidation(); return; }
   const saved = presentationStorage.save(presentation);
   if (!saved.ok) { saveMessage.textContent = "保存できませんでした。ブラウザの保存設定を確認してください。"; return; }
   presentation = saved.presentation; saveMessage.textContent = "表示設定を保存しました";

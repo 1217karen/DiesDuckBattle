@@ -5,7 +5,10 @@ import { startSelectedBattle } from "./selectBattle.js";
 import { createBattleId, createBattleResultStorage } from "./battleResultStorage.js";
 import { createPlayerPresentationStorage } from "./playerPresentationStorage.js";
 import { buildBattlePresentationSnapshot } from "./battlePresentationSnapshot.js";
+import { createSelectPresentation } from "./selectPresentation.js";
 let state = createSelectState(createPlayerBuildStorage().load());
+const ownPresentation = createPlayerPresentationStorage().load().presentation;
+const renderPresentation = createSelectPresentation();
 const el = id => document.getElementById(id);
 const tray = el("tray");
 function renderSelf() {
@@ -19,6 +22,9 @@ function renderSelf() {
   el("duck-name").textContent = name ?? "選択する";
 }
 function renderScreen() {
+  renderPresentation("p1", ownPresentation, state.selectedDuckId);
+  // Fixture opponents currently have no presentation; the renderer accepts future source data.
+  renderPresentation("p2", undefined, state.opponentDuckId);
   const start = battleStartStatus(state);
   el("vsButton").disabled = !start.canStart;
   el("vs-reason").textContent = start.reason;

@@ -5,11 +5,16 @@ body { margin:0; color:var(--text); background:#222; font-family:system-ui,sans-
 #bg { position:fixed; inset:0; z-index:-1; background:linear-gradient(90deg,#ff000033,transparent 38%,transparent 62%,#0078ff33),radial-gradient(circle at 50% 20%,#ffffff14,transparent 45%),linear-gradient(180deg,#0000001a,#0000008c); }
 .screen { position:relative; height:100dvh; min-height:780px; padding:0 15px 15px; }
 .selectTitle { position:absolute; top:8px; left:0; width:100%; text-align:center; margin:0; font-size:clamp(32px,7vw,70px); line-height:1; letter-spacing:.08em; font-weight:900; font-family:Impact,system-ui,sans-serif; pointer-events:none; }
-.selectGrid { max-width:1400px; margin:auto; height:100%; display:grid; grid-template-columns:minmax(0,1fr) var(--midW) minmax(0,1fr); grid-template-rows:73% 1fr; grid-template-areas:'p1Top midTop p2Top' 'p1Info midInfo p2Info'; gap:5px; }
+.selectGrid { max-width:1400px; margin:auto; height:100%; display:grid; grid-template-columns:minmax(0,1fr) var(--midW) minmax(0,1fr); grid-template-rows:var(--topH, 73%) 1fr; grid-template-areas:'p1Top midTop p2Top' 'p1Info midInfo p2Info'; gap:5px; }
 .cell { min-width:0; min-height:0; position:relative; }
 .cell--p1Top { grid-area:p1Top; } .cell--p2Top { grid-area:p2Top; } .cell--midTop { grid-area:midTop; display:grid; align-items:end; justify-items:center; padding-bottom:10px; }
 .cell--p1Info { grid-area:p1Info; } .cell--p2Info { grid-area:p2Info; } .cell--midInfo { grid-area:midInfo; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; font-size:12px; padding:8px; }
 .silhouette { position:relative; height:100%; padding-top:165px; display:flex; flex-direction:column; align-items:center; justify-content:end; overflow:hidden; }
+/* base's bottom-centered contain layout; natural size is never enlarged. */
+.silhouette__img { position:absolute; left:50%; bottom:0; transform:translateX(-50%) scale(var(--battlerScale,1)); transform-origin:bottom center; width:auto; height:auto; max-width:100%; max-height:min(calc((100dvh - 36px)*.75), calc(85dvh - 180px)); object-fit:contain; object-position:bottom center; display:block; }
+.silhouette:has(.silhouette__img:not([hidden])) .playerLabel { position:absolute; top:140px; max-width:100%; text-align:center; overflow-wrap:anywhere; }
+.duckPick__img { width:auto; height:auto; max-width:100%; max-height:60px; object-fit:contain; }
+[hidden] { display:none !important; }
 .playerLabel { font-weight:900; font-size:clamp(20px,4vw,44px); color:var(--p1); z-index:1; }
 .cell--p2Top .playerLabel { color:var(--p2); }
 .figure { position:relative; flex:1; width:100%; max-width:330px; min-height:160px; max-height:370px; opacity:.65; background:linear-gradient(#111,#080808); clip-path:polygon(38% 0,62% 0,70% 10%,68% 28%,61% 35%,82% 42%,100% 90%,95% 100%,5% 100%,0 90%,18% 42%,39% 35%,32% 28%,30% 10%); }
@@ -38,7 +43,7 @@ button.duckPick { cursor:pointer; } .duckPick>span:first-child { font-size:26px;
 .trayItem button { width:100%; text-align:left; min-height:64px; font-size:15px; } .trayItem button[aria-pressed=true] { border-color:#ffcf60; }
 .trayItem button:disabled { color:#ccc; background:#333; cursor:not-allowed; } .trayItem summary { cursor:pointer; margin-top:10px; color:#ffd296; } .trayItem ul { padding-left:20px; font-size:13px; line-height:1.6; }
 @keyframes trayUp { from { transform:translateY(100%); opacity:0; } to { transform:translateY(0); opacity:1; } }
-@media(max-width:600px) { .screen { padding:0 8px 8px; min-height:780px; } .selectGrid { grid-template-columns:minmax(0,1fr) 96px minmax(0,1fr); grid-template-rows:57% 1fr; } .silhouette { padding-top:140px; } .infoPanel { padding:8px; } .infoPanel__body { font-size:12px; } .infoPanel h2 { font-size:13px; } }
+@media(max-width:600px) { .screen { padding:0 8px 8px; min-height:780px; } .selectGrid { grid-template-columns:minmax(0,1fr) 96px minmax(0,1fr); grid-template-rows:var(--topH, 57%) 1fr; } .silhouette { padding-top:140px; } .infoPanel { padding:8px; } .infoPanel__body { font-size:12px; } .infoPanel h2 { font-size:13px; } }
 @media(prefers-reduced-motion:reduce) { .tray[open] { animation:none; } }
 
 button.silhouette { width:100%; border:0; background:transparent; color:inherit; font:inherit; cursor:pointer; }

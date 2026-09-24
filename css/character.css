@@ -18,6 +18,9 @@ h2,h3,p { margin:0 0 12px; } h2 { font-size:1.45rem; letter-spacing:.06em; }
 .preview { width:96px; height:96px; border:1px dashed #4a6063; border-radius:8px; display:grid; place-items:center; overflow:hidden; color:var(--muted); font-size:.7rem; text-align:center; background:#101a1d; }
 .compact .preview { width:68px; height:68px; }.preview.standing { height:150px; }
 .preview img { width:100%; height:100%; object-fit:contain; }.preview img[hidden] { display:none; }
+.image-field[data-validation="invalid"] .image-validation, #image-validation-message { color:var(--warn); }
+.image-field[data-validation="invalid"] input { border-color:var(--warn); }
+.image-validation { font-size:.78rem; overflow-wrap:anywhere; }
 label { display:flex; flex-direction:column; gap:6px; font-size:.82rem; color:var(--muted); min-width:0; }
 input,select,textarea,button { font:inherit; }
 input,select,textarea { color:var(--text); background:#101a1d; border:1px solid #4a6063; border-radius:6px; min-height:42px; padding:8px 10px; width:100%; max-width:100%; }
