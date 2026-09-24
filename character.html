@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>表示設定 | DiesDuckBattle</title>
+  <link rel="stylesheet" href="css/character.css">
+</head>
+<body>
+  <main class="character-shell">
+    <header class="page-header">
+      <p class="eyebrow">DIES DUCK BATTLE</p>
+      <h1>CHARACTER SETTING</h1>
+      <p>立ち絵・アイコン・戦闘セリフを登録します。</p>
+      <p class="muted">戦闘性能とは別に、このブラウザへ表示設定を保存します。</p>
+      <a class="back-link" href="setting.html">← 戦闘設定へ</a>
+    </header>
+    <p id="load-message" role="status">表示設定を読み込んでいます…</p>
+    <noscript>表示設定ページを使用するにはJavaScriptを有効にしてください。</noscript>
+    <div id="editor" hidden>
+      <section aria-labelledby="battler-heading">
+        <div class="section-heading"><span>01</span><div><h2 id="battler-heading">BATTLER</h2><p>立ち絵とアイコン</p></div></div>
+        <div id="battler-images" class="image-settings"></div>
+      </section>
+
+      <section aria-labelledby="quotes-heading">
+        <div class="section-heading"><span>02</span><div><h2 id="quotes-heading">BATTLE QUOTES</h2><p>セリフが空の項目は表示されません</p></div></div>
+        <div id="quotes"></div>
+      </section>
+
+      <section aria-labelledby="duck-heading">
+        <div class="section-heading"><span>03</span><div><h2 id="duck-heading">DUCK</h2><p>保存済みのDuckごとのアイコン</p></div></div>
+        <div class="card duck-card">
+          <label>対象Duck<select id="duck-select"></select></label>
+          <div id="duck-icon-editor"></div>
+          <p id="duck-message" class="muted"></p>
+        </div>
+      </section>
+
+      <footer class="save-bar"><div><strong id="save-message" role="status">変更はありません</strong><p class="muted">表示設定だけを独立して保存します。</p></div><button id="save" class="primary" type="button">表示設定を保存</button></footer>
+    </div>
+  </main>
+
+  <dialog id="icon-picker" class="icon-picker">
+    <div class="picker-header"><div><strong>セリフのアイコン</strong><p>未登録の追加枠は選択できません。</p></div><button id="picker-close" type="button">閉じる</button></div>
+    <div id="picker-list" class="picker-list"></div>
+  </dialog>
+  <script type="module" src="js/characterPage.js"></script>
+</body>
+</html>

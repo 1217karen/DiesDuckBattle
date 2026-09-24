@@ -8,6 +8,7 @@ h2,h3,h4,p { margin:0 0 12px; }
 h2 { font-size:1.45rem; letter-spacing:.06em; }
 h3 { font-size:1rem; letter-spacing:.045em; }
 .muted,.section-heading p { color:var(--muted); font-size:.85rem; }
+.page-link { display:inline-block; color:var(--accent); margin-top:7px; }
 .section-heading { display:flex; gap:18px; align-items:baseline; border-top:1px solid var(--line); margin-top:38px; padding-top:25px; }
 .section-heading>span { color:var(--accent); font-size:.8rem; }
 .section-heading p { margin-top:-6px; }
