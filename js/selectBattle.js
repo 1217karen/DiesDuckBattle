@@ -7,7 +7,7 @@ export function startSelectedBattle(state, { rng = Math.random, maxTurns = 50 } 
   const status = battleStartStatus(state);
   if (!status.canStart) return { ok: false, message: status.reason };
   const p1 = compileBattleLoadout(state.build, { duckId: state.selectedDuckId, battlerId: state.self.id, battlerName: state.self.name });
-  const p2 = compileBattleLoadout(state.opponent.build, { duckId: state.opponentDuckId, battlerId: state.opponent.id, battlerName: state.opponent.name });
+  const p2 = compileBattleLoadout(state.opponent.build, { duckId: state.opponent.publicDuckId, battlerId: state.opponent.id, battlerName: state.opponent.name });
   if (!p1.ok || !p2.ok) return { ok: false, message: "設定を戦闘用に生成できませんでした。", inspections: { p1: p1.inspection, p2: p2.inspection } };
   // Engine indexes by ID: reject collisions instead of silently replacing one side.
   if (p1.battler.id === p2.battler.id || p1.duck.id === p2.duck.id)

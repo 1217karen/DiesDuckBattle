@@ -15,12 +15,12 @@
     <div class="cell cell--p1Top"><div class="silhouette" id="p1-battler-slot" aria-label="1P 自分 固定"><span class="playerLabel">1P <span id="self-name">自分</span></span><div class="figure" aria-hidden="true"></div></div></div>
     <div class="cell cell--midTop"><div class="midStack">
       <button class="duckPick" id="p1-duck-slot" type="button" aria-haspopup="dialog" aria-controls="tray"><span class="duckPlaceholder" aria-hidden="true">🦆</span><strong>1P DUCK</strong><span id="duck-name">選択する</span></button>
-      <button id="vsButton" class="vs vs--disabled" type="button" disabled aria-label="戦闘開始：相手データ未接続"><span class="vs__inner"><span class="vs__text">VS</span></span></button>
-      <button type="button" class="duckPick opponent" id="p2-duck-slot" aria-haspopup="dialog" aria-controls="tray"><span class="duckPlaceholder" aria-hidden="true">?</span><strong>2P DUCK</strong><span id="p2-duck-name">選択する</span></button>
+      <button id="vsButton" class="vs vs--disabled" type="button" disabled aria-label="戦闘開始：自分のDuckと相手を選択してください"><span class="vs__inner"><span class="vs__text">VS</span></span></button>
+      <div class="duckPick opponent" id="p2-duck-slot" aria-label="2P 公開Duck"><span class="duckPlaceholder" aria-hidden="true">?</span><strong>2P DUCK</strong><span id="p2-duck-name">公開Duck</span></div>
     </div></div>
     <div class="cell cell--p2Top"><button type="button" id="p2-battler-slot" class="silhouette" aria-label="2P 相手を選択" aria-haspopup="dialog" aria-controls="tray"><span class="playerLabel">2P</span><div class="figure" aria-hidden="true"></div><span class="opponentLabel" id="opponent-name">相手を選択</span></button></div>
     <div class="cell cell--p1Info"><section class="infoPanel" aria-label="1P情報"><h2>1P — 自分</h2><p id="load-status" role="status"></p><p class="infoPanel__body" id="p1-battler-info"></p><p class="infoPanel__body infoPanel__body--sub" id="p1-duck-info" aria-live="polite"></p></section></div>
-    <div class="cell cell--midInfo"><a class="midAction" href="setting.html">設定を編集</a><p id="vs-reason">両者のDuckを選択してください。</p><p id="battle-result" role="status" aria-live="polite"></p></div>
+    <div class="cell cell--midInfo"><a class="midAction" href="setting.html">設定を編集</a><p id="vs-reason">自分のDuckと相手を選択してください。</p><p id="battle-result" role="status" aria-live="polite"></p></div>
     <div class="cell cell--p2Info"><section class="infoPanel" aria-label="2P情報"><h2>2P — OPPONENT</h2><p class="infoPanel__body" id="p2-battler-info"></p><p class="infoPanel__body infoPanel__body--sub" id="p2-duck-info"></p></section></div>
   </section>
 </main>

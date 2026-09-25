@@ -50,7 +50,7 @@ body {
 .duckIcon { width: var(--duck-size); height: var(--duck-size); }
 .placeholderIcon { display: grid; place-items: center; font-weight: 900; color: #777; }
 .placeholderIcon { overflow: hidden; }
-.placeholderIcon > img { display: block; width: 100%; height: 100%; object-fit: cover; min-width: 0; min-height: 0; }
+.placeholderIcon > img { display: block; width: 100%; height: 100%; object-fit: contain; min-width: 0; min-height: 0; }
 .nameBlock { grid-column: 2; grid-row: 1; min-width: 0; }
 .nameLine { font-weight: 900; overflow-wrap: anywhere; line-height: 1.15; }
 .duckIcon.underName { grid-column: 2; grid-row: 2; margin-top: 6px; }
@@ -89,13 +89,13 @@ body {
 .line.rollLine { display: flex; align-items: center; gap: 10px; }
 .logDuckIcon { width: 60px; height: 60px; flex: 0 0 60px; display: grid; place-items: center; border-radius: 50%; background: rgba(0,0,0,.06); font-size: 28px; }
 .rollMain { font-size: var(--fs-16); font-weight: 900; }
-img.logDuckIcon { object-fit: cover; }
+img.logDuckIcon { object-fit: contain; }
 /* Adapted from base result: one row per speaker, mirrored P2 cells and bubbles. */
 .quoteRow { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
 .quoteCell { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; }
 .quoteCell.p1 { justify-self: start; text-align: left; }
 .quoteCell.p2 { justify-self: end; flex-direction: row-reverse; text-align: right; }
-.quoteIcon { width: 120px; height: 120px; flex: 0 0 120px; display: block; object-fit: cover; border-radius: 10px; background: #f0f0f0; border: 2px solid #cfcfcf; box-sizing: border-box; }
+.quoteIcon { width: 120px; height: 120px; flex: 0 0 120px; display: block; object-fit: contain; border-radius: 10px; background: #f0f0f0; border: 2px solid #cfcfcf; box-sizing: border-box; }
 .quoteBubble { padding: 8px 5px; background: rgba(0,0,0,.035); border-radius: 10px; box-sizing: border-box; overflow-wrap: anywhere; word-break: normal; line-break: strict; flex: 1; min-width: 0; }
 .quoteBubble.p1 { border-left: 6px solid rgba(227,91,91,.55); }
 .quoteBubble.p2 { border-right: 6px solid rgba(74,134,232,.55); }

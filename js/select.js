@@ -1,5 +1,5 @@
 import { createPlayerBuildStorage } from "./playerBuildStorage.js";
-import { createSelectState, duckChoices, selectOwnDuck, battleStartStatus, battlerSummary, duckSummary, selectOpponent, selectOpponentDuck, opponentDuckChoices } from "./selectState.js";
+import { createSelectState, duckChoices, selectOwnDuck, battleStartStatus, battlerSummary, duckSummary, selectOpponent } from "./selectState.js";
 import { listOpponents, getOpponent } from "./opponentSource.js";
 import { startSelectedBattle } from "./selectBattle.js";
 import { createBattleId, createBattleResultStorage } from "./battleResultStorage.js";
@@ -23,8 +23,7 @@ function renderSelf() {
 }
 function renderScreen() {
   renderPresentation("p1", ownPresentation, state.selectedDuckId);
-  // Fixture opponents currently have no presentation; the renderer accepts future source data.
-  renderPresentation("p2", undefined, state.opponentDuckId);
+  renderPresentation("p2", state.opponent?.presentation, state.opponent?.publicDuckId);
   const start = battleStartStatus(state);
   el("vsButton").disabled = !start.canStart;
   el("vs-reason").textContent = start.reason;
@@ -33,10 +32,10 @@ function renderScreen() {
   renderSelf();
   el("opponent-name").textContent = state.opponent?.name ?? "相手を選択";
   el("p2-battler-info").textContent = state.opponent ? `${state.opponent.name}\n${battlerSummary(state.opponent.build.battler)}` : "右側の2P枠から相手を選択してください。";
-  const duck = state.opponent?.build.ducks.find(d => d.id === state.opponentDuckId);
-  const name = opponentDuckChoices(state).find(d => d.id === duck?.id)?.name;
-  el("p2-duck-name").textContent = name ?? "選択する";
-  el("p2-duck-info").textContent = duck ? duckSummary(duck, name) : "相手を選択後、2P DUCKからアヒルを選択してください。";
+  const duck = state.opponent?.build.ducks.find(d => d.id === state.opponent.publicDuckId);
+  const name = duck?.name || (duck ? `アヒル ${state.opponent.build.ducks.indexOf(duck) + 1}` : null);
+  el("p2-duck-name").textContent = name ?? "公開Duck";
+  el("p2-duck-info").textContent = duck ? duckSummary(duck, name) : state.opponent ? "この相手は現在対戦できません。" : "相手を選択してください。";
 }
 let requestVersion = 0, returnFocus = "p1-duck-slot";
 function showMessage(message) { const p = document.createElement("p"); p.textContent = message; el("trayGrid").replaceChildren(p); }
@@ -61,7 +60,7 @@ function selectionChanged() { el("battle-result").textContent = ""; renderScreen
 async function openTray(kind, opener) {
   returnFocus = opener;
   const version = ++requestVersion;
-  el("trayTitle").textContent = kind === "self" ? "1P：アヒルを選択" : kind === "opponents" ? "2P：相手を選択" : "2P：アヒルを選択";
+  el("trayTitle").textContent = kind === "self" ? "1P：アヒルを選択" : "2P：相手を選択";
   tray.classList.toggle("tray--p2", kind !== "self");
   showMessage("読み込み中…"); tray.showModal();
   if (kind === "opponents") {
@@ -74,20 +73,20 @@ async function openTray(kind, opener) {
         try {
           const opponent = await getOpponent(id);
           if (pickVersion !== requestVersion || !tray.open) return;
-          if (!opponent) { showMessage("相手が見つかりません。閉じて選び直してください。"); return; }
+          if (!opponent) { showMessage("この相手は現在対戦できません。閉じて選び直してください。"); return; }
           state = selectOpponent(state, opponent); selectionChanged();
         } catch { if (pickVersion === requestVersion && tray.open) showMessage("相手を読み込めませんでした。閉じて再試行してください。"); }
       });
     } catch { if (version === requestVersion && tray.open) showMessage("相手一覧を取得できませんでした。閉じて再試行してください。"); }
   } else {
-    const choices = kind === "self" ? duckChoices(state) : opponentDuckChoices(state);
-    if (!choices.length) { showMessage(kind === "self" ? state.message || "アヒル設定はまだありません。設定を編集して追加してください。" : state.opponent ? "この相手にはアヒル設定がありません。" : "先に右側の2P枠から相手を選択してください。"); return; }
-    renderChoices(choices, kind === "self" ? state.selectedDuckId : state.opponentDuckId, id => {
-      state = kind === "self" ? selectOwnDuck(state,id) : selectOpponentDuck(state,id); selectionChanged();
+    const choices = duckChoices(state);
+    if (!choices.length) { showMessage(state.message || "アヒル設定はまだありません。設定を編集して追加してください。"); return; }
+    renderChoices(choices, state.selectedDuckId, id => {
+      state = selectOwnDuck(state,id); selectionChanged();
     });
   }
 }
-for (const [id,kind] of [["p1-duck-slot","self"],["p2-battler-slot","opponents"],["p2-duck-slot","opponentDuck"]])
+for (const [id,kind] of [["p1-duck-slot","self"],["p2-battler-slot","opponents"]])
   el(id).addEventListener("click", () => openTray(kind,id));
 el("trayClose").addEventListener("click", () => tray.close());
 tray.addEventListener("close", () => { requestVersion++; el(returnFocus).focus(); });
@@ -97,8 +96,7 @@ el("vsButton").addEventListener("click", () => {
   try {
     const p1Presentation = buildBattlePresentationSnapshot(
       createPlayerPresentationStorage().load().presentation, state.selectedDuckId);
-    // Development opponents have no presentation yet. The builder also accepts future P2 data.
-    const p2Presentation = buildBattlePresentationSnapshot(undefined, state.opponentDuckId);
+    const p2Presentation = buildBattlePresentationSnapshot(state.opponent.presentation, state.opponent.publicDuckId);
     const battle = startSelectedBattle(state);
     if (!battle.ok) {
       el("battle-result").textContent = battle.message;

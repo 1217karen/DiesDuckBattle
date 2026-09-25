@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { listOpponents, getOpponent } from "../js/opponentSource.js";
 import { inspectBattleLoadout, compileBattleLoadout } from "../js/battleLoadoutCompiler.js";
-import { createSelectState, selectOwnDuck, selectOpponent, selectOpponentDuck, opponentDuckChoices, battleStartStatus } from "../js/selectState.js";
+import { createSelectState, selectOwnDuck, selectOpponent, battleStartStatus } from "../js/selectState.js";
 import { startSelectedBattle } from "../js/selectBattle.js";
 import { runBattle } from "../js/battleEngine.js";
 import vm from "node:vm";
@@ -26,36 +26,39 @@ test("async source has exactly two detached production-ready selection builds", 
   }
   assert.equal(await getOpponent("missing"),null);
 });
-test("VS gates each choice; opponent changes reset only opponent Duck", async () => {
+test("opponent selection immediately uses its public Duck, preserves P1 and detaches data", async () => {
   let {state,opponent}=await setup();
+  state=selectOpponent(state,opponent);
   assert.equal(battleStartStatus(state).canStart,false);
-  state=selectOpponent(state,opponent); state=selectOpponentDuck(state,opponent.build.ducks[0].id);
+  state=selectOwnDuck(state,"self-duck");
+  assert.equal(battleStartStatus(state).canStart,true);
+  assert.equal(state.opponent.publicDuckId,opponent.publicDuckId);
+  opponent.build.ducks[0].stats.AT=999;
+  opponent.presentation.battler.quotes.battleStart.text="mutated";
+  assert.notEqual(state.opponent.build.ducks[0].stats.AT,999);
+  assert.notEqual(state.opponent.presentation.battler.quotes.battleStart.text,"mutated");
+  const next=await getOpponent((await listOpponents())[0].id);
+  state=selectOpponent(state,next);
+  assert.equal(state.opponent.publicDuckId,next.publicDuckId);
+  assert.equal(state.selectedDuckId,"self-duck");
+  assert.equal(battleStartStatus(state).canStart,true);
+  assert.equal("opponentDuckId" in state,false);
+  assert.equal("opponentDuckChoices" in selectState,false);
+  assert.equal("selectOpponentDuck" in selectState,false);
+  state=selectOpponent(state,null);
   assert.equal(battleStartStatus(state).canStart,false);
-  state=selectOwnDuck(state,"self-duck"); assert.equal(battleStartStatus(state).canStart,true);
-  state=selectOpponent(state,null); assert.equal(battleStartStatus(state).canStart,false);
-  state=selectOpponent(state,opponent); assert.equal(state.opponentDuckId,null); assert.equal(battleStartStatus(state).canStart,false);
-  state=selectOpponentDuck(state,opponent.build.ducks[0].id);
-  const next=await getOpponent((await listOpponents())[0].id); state=selectOpponent(state,next);
-  assert.equal(state.opponentDuckId,null); assert.equal(state.selectedDuckId,"self-duck");
 });
-test("unready opponent Ducks stay listed but cannot be selected",async()=>{
-  let {state,opponent}=await setup();
-  const draft=structuredClone(opponent.build.ducks[0]); draft.id="draft"; draft.aSelection=null;
-  const bad=structuredClone(draft); bad.id="bad"; bad.stats.AT=999;
-  opponent.build.ducks.push(draft,bad); state=selectOpponent(state,opponent);
-  assert.deepEqual(opponentDuckChoices(state).map(d=>d.status),["選択可能","未完成","使用不可"]);
-  for(const id of ["draft","bad","missing"]) assert.equal(selectOpponentDuck(state,id),state);
-});
+
 test("both compiled outputs finish engine battle and UI runner returns same summary",async()=>{
   let {state,opponent}=await setup(); state=selectOwnDuck(state,"self-duck");
-  state=selectOpponentDuck(selectOpponent(state,opponent),opponent.build.ducks[0].id);
+  state = selectOpponent(state, opponent);
   const before=JSON.stringify(state);
   const p1=compileBattleLoadout(state.build,{duckId:state.selectedDuckId,battlerId:state.self.id,battlerName:state.self.name});
-  const p2=compileBattleLoadout(opponent.build,{duckId:state.opponentDuckId,battlerId:opponent.id,battlerName:opponent.name});
+  const p2=compileBattleLoadout(opponent.build,{duckId:state.opponent.publicDuckId,battlerId:opponent.id,battlerName:opponent.name});
   assert.equal(p1.ok && p2.ok,true);
   const battle=runBattle({p1:{battlerId:p1.battler.id,duckId:p1.duck.id},p2:{battlerId:p2.battler.id,duckId:p2.duck.id},data:{BATTLERS:[p1.battler,p2.battler],DUCKS:[p1.duck,p2.duck]},rng:()=>.5});
   assert.equal(battle.events.at(-1).type,"battleEnd");
-  const result=startSelectedBattle(state,{rng:()=>.5}); assert.equal(result.ok,true); assert.equal(result.result,battle.result);
+  const result=startSelectedBattle(state,{rng:()=>.5}); assert.equal(result.ok,true); assert.equal(result.result,battle.result); assert.deepEqual(result.events,battle.events); assert.equal(result.p2.duckId,opponent.publicDuckId);
   assert.ok(["P1 WIN","P2 WIN","DRAW"].includes(result.label)); assert.ok(result.turns>0);
   assert.equal(JSON.stringify(state),before);
   state.opponent.build.battler.dSelection=null; assert.equal(startSelectedBattle(state).ok,false);
@@ -71,7 +74,13 @@ test("UI consumes source contract, not fixture data; runner invokes compiler for
 test("VS reads current P1 presentation before battle and saves both snapshots without changing events", async () => {
   let { state, opponent } = await setup();
   state = selectOwnDuck(state, "self-duck");
-  state = selectOpponentDuck(selectOpponent(state, opponent), opponent.build.ducks[0].id);
+  state = selectOpponent(state, opponent);
+  state.opponent.presentation = {
+    battler: { standingImageUrl: "p2-standing.png", defaultIconUrl: "p2-default.png",
+      iconSlots: ["p2-quote.png"], quotes: { battleStart: { text: "相手の開始", iconSlot: 1 } } },
+    ducks: { [opponent.publicDuckId]: { iconUrl: "p2-public.png" }, private: { iconUrl: "private.png" } },
+  };
+  const expectedP2 = buildBattlePresentationSnapshot(state.opponent.presentation, opponent.publicDuckId);
   const values = new Map();
   const backend = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
   const presentationStorage = createPlayerPresentationStorage(backend);
@@ -116,7 +125,7 @@ test("VS reads current P1 presentation before battle and saves both snapshots wi
   const loaded = resultStorage.load("vs-1");
   assert.equal(loaded.ok, true);
   assert.deepEqual(loaded.record.p1.presentation, buildBattlePresentationSnapshot(current, "self-duck"));
-  assert.deepEqual(loaded.record.p2.presentation, buildBattlePresentationSnapshot());
+  assert.deepEqual(loaded.record.p2.presentation, expectedP2);
   assert.deepEqual(loaded.record.events, latestBattle.events);
   values.clear();
   document.getElementById("vsButton").handlers.click();
