@@ -59,7 +59,7 @@ function legacycompileBSkill(selection, { catalog = createBSkillCatalog() } = {}
     if (Object.hasOwn(value, "statusOption")) {
       const group = value.statusOption;
       const option = catalog.optionSets[group]?.find(o => o.id === selection.options.statusId);
-      require(STATUS_GROUPS[group]?.includes(option?.value), "status group");
+      require(STATUS_GROUPS[group]?.includes(option?.value) || (option?.id === "random" && option.value === `@${group}`), "status group");
       return option.value;
     }
     if (Object.hasOwn(value, "negate")) return -resolve(value.negate);

@@ -7,6 +7,7 @@ import { evaluateCondition } from "../js/conditionEvaluator.js";
 import { applyEffect } from "../js/effects.js";
 import { STATUS_GROUPS } from "../js/statusGroups.js";
 import { evaluateBModifier } from "../js/bPassiveModifiers.js";
+import { migrateSelection } from "../js/selectionNormalization.js";
 
 const catalog = createBDevCatalog();
 const event = (triggerId, conditionId, effectId, statusId) => ({ type: "event", triggerId, conditionId, effectId,
@@ -16,6 +17,44 @@ const compile = selection => {
   const result = compileBSkill(selection, { catalog }); assert.equal(result.ok, true, JSON.stringify(result)); return result.bSkills;
 };
 const chosen = d => d.triggerId ? event(d.triggerId, d.conditionId, d.effectId, d.optionAxes.statusId ? catalog.optionSets[d.optionAxes.statusId][0].id : undefined) : trait(d.id);
+
+test("productionの指定/ランダム状態はv2でもtrustedに解決、raw @groupは拒否", () => {
+  const production = createBSkillCatalog();
+  for (const [trigger, effect, group, specific] of [["after-hit", "enemy-debuff", "debuff", "crack"], ["after-take-hit", "self-buff", "buff", "focus"]]) {
+    for (const status of [specific, "random"]) {
+      const s = event(trigger, "always", effect, status);
+      for (const selection of [s, migrateSelection("B", s, production)]) {
+        const r = compileBSkill(selection); assert.equal(r.ok, true);
+        assert.equal(r.bSkills[0].effect.status, status === "random" ? `@${group}` : specific);
+      }
+    }
+    assert.equal(compileBSkill(event(trigger, "always", effect, `@${group}`)).ok, false);
+  }
+});
+
+test("削除済み4selectionはvalidation error、別効果へ変換しない", () => {
+  for (const s of [event("after-hit", "always", "enemy-next-at-down"),
+    event("after-take-hit", "damage-medium", "enemy-next-at-down"), event("after-take-hit", "damage-high", "enemy-next-at-down"),
+    event("after-take-hit", "damage-high", "damage-by-enemy-ap"),
+    { type: "event", triggerId: "after-hit", conditionId: "always", effectId: "change-next-at", targetId: "enemy", options: { direction: "decrease" } },
+    { type: "event", triggerId: "after-take-hit", conditionId: "damage-high", effectId: "damage-by-ap", targetId: "enemy", options: {} },
+  ]) {
+    const snapshot = structuredClone(s), result = compileBSkill(s);
+    assert.equal(result.ok, false); assert.equal(result.bSkills, null); assert.ok(result.errors.length);
+    assert.deepEqual(s, snapshot);
+  }
+});
+
+test("新first phase-endとAP逆補正のtrusted値をcompile", () => {
+  const r = compileBSkill(event("phase-end", "first-action", "damage-by-debuff"));
+  assert.equal(r.ok, true); assert.equal(r.bSkills[0].trigger, "phaseEnd");
+  assert.deepEqual(r.bSkills[0].when, { left: "self.actionsThisTurn", op: "==", right: 1 });
+  assert.deepEqual(r.bSkills[0].effect.byStatusCount, { source: "self", statuses: STATUS_GROUPS.debuff, n: 4 });
+  for (const stat of ["AT", "DF"]) {
+    const result = compileBSkill(trait(`ap-inverse-${stat.toLowerCase()}`)); assert.equal(result.ok, true);
+    assert.deepEqual(result.bSkills[0].modifier, { kind: "scaled", source: "self.ap", targetStat: stat, scale: -1, offset: 5, min: 0, max: 5 });
+  }
+});
 function harness() {
   const fighter = side => ({ side, hp: 40, maxHP: 100, ap: 5, actionsThisTurn: 1,
     nextAttackATPlus: 0, temp: { attackTimesAdd: 0 }, status: Object.fromEntries(STATUS_GROUPS.all.map(k => [k, 0])) });
@@ -55,10 +94,7 @@ test("DTOはIDのみ、raw・未知・違法組合せ・status別groupを拒否"
   for (const selection of [trait("unknown"), { ...trait("ap-at"), effect: {} },
     event("phase-start", "always", "both-buff", "focus"),
     event("before-attack", "self-has-buff", "attack-at-up"),
-    event("after-take-hit", "always", "self-next-at-up"),
     event("after-take-hit", "always", "heal-by-ap"),
-    event("after-take-hit", "damage-medium", "heal-by-ap"),
-    event("after-take-hit", "damage-medium", "ap-cost-heal"),
     event("after-take-hit", "damage-medium", "damage-by-enemy-ap"),
     event("phase-end", "always", "enemy-buff-remove")])
     assert.equal(validateBSkillSelection(selection).valid, false, JSON.stringify(selection));
@@ -104,13 +140,12 @@ test("afterDamageの確定damage閾値・counter条件・付与中buff解除", (
   h.ctx.attack.isCounter = true; assert.equal(evaluateCondition(counter.when, h.ctx), true);
 });
 
-test("AP参照回復、AP不足不発、AP消費後回復、相手AP固定damage", () => {
+test("AP参照回復、AP不足不発、AP消費後回復", () => {
   const h = harness(); h.run(event("after-take-hit", "damage-high", "heal-by-ap")); assert.equal(h.actor.hp, 45);
   h.actor.ap = 2; h.run(event("after-take-hit", "damage-high", "ap-cost-heal"));
   assert.equal(h.actor.ap, 2); assert.equal(h.actor.hp, 45);
   h.actor.ap = 3; h.run(event("after-take-hit", "damage-high", "ap-cost-heal"));
   assert.equal(h.actor.ap, 0); assert.equal(h.actor.hp, 65); assert.equal(h.logs.at(-1).ap, 0);
-  h.run(event("after-take-hit", "damage-high", "damage-by-enemy-ap")); assert.equal(h.enemy.hp, 35);
 });
 
 test("healTargetへbuff/AP/nextAT/解除、actual=0は不発、緊急複合", () => {

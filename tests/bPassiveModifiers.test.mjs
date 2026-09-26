@@ -5,6 +5,7 @@ import { STATUS_GROUPS } from "../js/statusGroups.js";
 import { applyEffect } from "../js/effects.js";
 import { runBattle } from "../js/battleEngine.js";
 import { Triggers, compileAllRulesForFighter } from "../js/ruleEngine.js";
+import { compileBSkill } from "../js/bSkillCompiler.js";
 
 const cond = (left, op = ">=", right = 1, bonus = { AT: 2 }) =>
   ({ kind: "conditional", when: { left, op, right }, bonus });
@@ -192,4 +193,27 @@ test("不明source・不正係数は補正なし、凍結入力の純粋評価",
   assert.equal(evaluateBModifier(modifier, ctx).AT, 2);
   for (const extra of [{ source: "self.hp" }, { scale: NaN }, { min: 4, max: 2 }])
     assert.equal(evaluateBModifier(scaled("self.ap", extra), { actor: { ap: 3 } }).AT, 0);
+});
+
+test("production HP75以上/50以上/50以下/25以下は境界とHP変動でON/OFF再評価", () => {
+  for (const [level, hp, delta, bonus] of [["high",75,-1,6],["mid-high",50,-1,4],["mid-low",50,1,4],["low",25,1,6]]) {
+    for (const stat of ["AT", "DF"]) {
+      const result = compileBSkill({ type: "trait", traitId: `hp-${level}-${stat.toLowerCase()}`, options: {} });
+      assert.equal(result.ok, true); const h = harness(result.bSkills);
+      h.apply(value("hp", hp)); assert.equal(h.actor.runtime.passive[stat], bonus);
+      h.apply(value("hp", hp + delta)); assert.equal(h.actor.runtime.passive[stat], 0);
+      h.apply(value("hp", hp)); assert.equal(h.actor.runtime.passive[stat], bonus);
+    }
+  }
+});
+
+test("production AP/5-APのAT/DFは上限5・下限0、AP変動へ追従", () => {
+  for (const stat of ["AT", "DF"]) for (const inverse of [false,true]) {
+    const result = compileBSkill({ type: "trait", traitId: `ap-${inverse ? "inverse-" : ""}${stat.toLowerCase()}`, options: {} });
+    assert.equal(result.ok, true); const h = harness(result.bSkills);
+    for (const ap of [0,1,3,5,8,2,0]) {
+      h.apply(value("ap", ap));
+      assert.equal(h.actor.runtime.passive[stat], inverse ? Math.max(0,5-ap) : Math.min(5,ap));
+    }
+  }
 });

@@ -7,7 +7,9 @@ import { inspectBuildForSave, saveSectionSummary, saveInspectedBuild } from "./b
 import { getDiceFrame } from "./diceFrames.js";
 import { createBuildRules } from "./buildRules.js";
 import { createASkillCatalog, getATriggerOptions } from "./aSkillCatalog.js";
-import { createBSkillCatalog, getBTriggerOptions, getBConditionOptions, getBTraitOptions, getBSelectionDefinition } from "./bSkillCatalog.js";
+import { createBSkillCatalog, getBTriggerOptions, getBConditionOptions, getBEffectOptions } from "./bSkillCatalog.js";
+import { bEffectText, bSentence } from "./bSkillPresentation.js";
+import { bEventEditorSelection, bEventEditorDefinition, changeBEvent } from "./bSkillSentenceEditor.js";
 import { createCSkillCatalog } from "./cSkillCatalog.js";
 import { createCSkillRules } from "./cSkillRules.js";
 import { D_SKILL_OPTIONS } from "./dSkillCatalog.js";
@@ -119,35 +121,67 @@ function renderEffectControls(box, category, chosen, replace, id, context = {}) 
     f.key.startsWith("options.")?chosen.options?.[f.key.slice(8)]:chosen[f.key]??(f.key==="chanceOptionId"?"100":""),
     value=>put(f.key,value),f.key==="chanceOptionId"?f.placeholder:undefined);
   if(view.variants.length && !view.chanceEnabled && category!=="B") box.append(el("p","成功率100%固定", "description"));
-  if(category==="B" && view.variants.length===1) {
-    const d=view.variants[0].definition;
-    box.append(el("p",Object.entries(d.tuning).map(([key,value])=>`${d.tuningLabels[key]}：${value===false?"上限なし":value}`).join(" / "),"description"));
+}
+
+let bTraitPath = { category: "", condition: "" };
+function sentenceChoice(box, id, items, current, onChange, ariaLabel) {
+  if (items.length === 1 && items[0].id === current) box.append(el("span", items[0].label, "b-fixed-clause"));
+  else {
+    const input = select(id, items, items.some(o => o.id === current) ? current : "", onChange);
+    input.setAttribute("aria-label", ariaLabel); box.append(input);
   }
+}
+function renderBSentence(controls, b) {
+  const sentence = el("div", null, "b-sentence-controls");
+  let definition, statusId;
+  if (b.type === "event") {
+    const chosen = bEventEditorSelection(b, bCatalog);
+    const change = (key, value) => patchBattler({ bSelection: changeBEvent(b, key, value, bCatalog) });
+    sentenceChoice(sentence, "b-trigger", getBTriggerOptions(bCatalog), chosen.triggerId, value => change("triggerId", value), "発動タイミング");
+    if (bCatalog.triggers.some(t => t.id === chosen.triggerId)) {
+      sentence.append(el("span", "、"));
+      sentenceChoice(sentence, "b-condition", getBConditionOptions(chosen.triggerId, bCatalog), chosen.conditionId, value => change("conditionId", value), "発動条件");
+      const effects = getBEffectOptions(chosen.triggerId, chosen.conditionId, bCatalog);
+      if (effects.length) {
+        sentence.append(el("span", "、"));
+        sentenceChoice(sentence, "b-effect", effects.map(d => ({ id: d.effectId, label: bEffectText(d) })), chosen.effectId, value => change("effectId", value), "効果の文章");
+      }
+    }
+    definition = bEventEditorDefinition(chosen, bCatalog);
+    statusId = chosen.options?.statusId;
+    if (definition?.optionAxes.statusId) sentenceChoice(sentence, "b-status-option", bCatalog.optionSets[definition.optionAxes.statusId], statusId, value => change("statusId", value), "付与する状態");
+  } else {
+    definition = bCatalog.traits.find(d => d.id === b.traitId);
+    const path = definition ? { category: definition.presentation.category, condition: definition.presentation.conditionLabel } : bTraitPath;
+    const unique = values => [...new Set(values)].map(id => ({ id, label: id }));
+    sentenceChoice(sentence, "b-category", unique(bCatalog.traits.map(d => d.presentation.category)), path.category, category => {
+      bTraitPath = { category, condition: "" }; patchBattler({ bSelection: { type: "trait", traitId: "", options: {} } });
+    }, "パッシブの分類");
+    let rows = bCatalog.traits.filter(d => d.presentation.category === path.category);
+    const conditions = unique(rows.map(d => d.presentation.conditionLabel).filter(Boolean));
+    if (conditions.length) {
+      sentenceChoice(sentence, "b-hp-condition", conditions, path.condition, condition => {
+        bTraitPath = { category: path.category, condition }; patchBattler({ bSelection: { type: "trait", traitId: "", options: {} } });
+      }, "HP条件");
+      rows = rows.filter(d => d.presentation.conditionLabel === path.condition);
+    }
+    if (rows.length) sentenceChoice(sentence, "b-trait", rows.map(d => ({ id: d.id, label: d.presentation.effectLabel })), b.traitId,
+      traitId => patchBattler({ bSelection: { type: "trait", traitId, options: {} } }), "パッシブの効果");
+  }
+  controls.append(sentence);
+  if (definition) controls.append(el("p", bSentence(definition, statusId), "b-completed-sentence"));
 }
 
 function renderBattler() {
   const { bSelection: b, dSelection: d } = state.build.battler;
   const bBox = card("B SKILL / Bスキル", "b"), controls = el("div", null, "controls");
   const incomplete = [{ id: "incomplete", label: "未完了（選択してください）", disabled: true }];
-  field(controls, "Bスキルの種類", "b-type", [{ id: "event", label: "イベント型" }, { id: "trait", label: "特性型" },
+  field(controls, "Bスキルの種類", "b-type", [{ id: "event", label: "トリガー型" }, { id: "trait", label: "パッシブ型" },
     ...(b !== null && !b.type ? incomplete : [])], b === null ? "" : b.type || "incomplete",
     type => patchBattler({ bSelection: !type ? null : type === "event"
       ? { type, triggerId: "", conditionId: "", effectId: "", options: {} } : { type, traitId: "", options: {} } }), "未設定");
-  const setB = patch => patchBattler({ bSelection: { ...b, ...patch } });
-  if (b?.type === "event") {
-    field(controls, "発動タイミング", "b-trigger", getBTriggerOptions(bCatalog), b.triggerId, triggerId => setB({ triggerId }));
-    field(controls, "条件", "b-condition", getBConditionOptions(b.triggerId, bCatalog), b.conditionId, conditionId => setB({ conditionId }));
-    renderEffectControls(controls,"B",b,leaf => patchBattler({bSelection:{type:b.type,triggerId:b.triggerId,conditionId:b.conditionId,...leaf}}),"b-effect",b);
-  } else if (b?.type === "trait") field(controls, "特性", "b-trait", getBTraitOptions(bCatalog), b.traitId, traitId => setB({ traitId, options: {} }));
-  const definition = b?.type === "trait" ? getBSelectionDefinition(b, bCatalog) : null;
-  for (const [axis, group] of Object.entries(definition?.optionAxes ?? {})) field(controls, "指定する状態", `b-${axis}`, bCatalog.optionSets[group],
-    b.options?.[axis], value => setB({ options: { ...b.options, [axis]: value } }));
+  if (b?.type === "event" || b?.type === "trait") renderBSentence(controls, b);
   bBox.append(controls);
-  if (definition) {
-    const description = [labelText(definition.effectLabel ?? definition.label), ...Object.entries(definition.tuning)
-      .map(([key, value]) => `${definition.tuningLabels[key]}：${value === false ? "上限なし" : value}`)].join(" / ");
-    bBox.append(el("p", description, "description"));
-  }
   feedback(bBox, "b");
   const dBox = card("D SKILL / Dスキル", "d");
   dBox.append(el("p", "戦闘開始時に1回、選んだダイスを1個追加します。", "description"));

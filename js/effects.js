@@ -603,7 +603,9 @@ function effFixedDamage(eff, ctx, emit) {
     const n = Number(eff.byStatusCount.n ?? 0);
     if (!Number.isFinite(n)) return;
 
-    const st = tgt.status ?? {};
+    // 未指定なら従来どおりダメージ対象の状態を数える。
+    const countTarget = eff.byStatusCount.source === undefined ? tgt : pickTarget(eff.byStatusCount.source, ctx);
+    const st = countTarget?.status ?? {};
     const keys = Array.isArray(eff.byStatusCount.statuses)
       ? eff.byStatusCount.statuses.map(String)
       : Object.keys(st);
@@ -754,7 +756,14 @@ if (eff.amount !== undefined) {
   amount = Math.max(0, Math.trunc(n));
 }
 
-// byStatusCount 対応（←追加）
+// trusted B: 与ダメージ割合を切り捨て、既存のmaxで上限を適用する。
+else if (eff.byAttackDamagePct !== undefined) {
+  const pct = Number(eff.byAttackDamagePct), damage = Number(ctx.attack?.damage);
+  if (!Number.isFinite(pct) || !Number.isFinite(damage)) return;
+  amount = Math.max(0, Math.floor(damage * pct));
+}
+
+// byStatusCount 対応
 else if (eff.byStatusCount && typeof eff.byStatusCount === "object") {
 
   const n = Number(eff.byStatusCount.n ?? 0);

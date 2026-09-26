@@ -63,7 +63,7 @@ export function normalizedBCatalog(catalog) {
       if(id==="ap-with-hp") fixed.preset=d.effectId;
     } else if(s.type==="removeRandomStatusStack") { [id,label]=["remove-random-status","状態をランダム解除"];statusIds=[`@${s.group}`]; }
     else if(s.type==="heal") [id,label]=s.byStatusCount?["heal-by-status","状態数に応じてHPを回復"]:s.amount?.read?["heal-by-ap","APに応じてHPを回復"]:["heal","HPを回復"];
-    else if(s.type==="fixedDamage") [id,label]=["damage-by-ap","APに応じた固定ダメージ"];
+    else if(s.type==="fixedDamage") [id,label]=s.byStatusCount?["damage-by-status","状態数に応じた固定ダメージ"]:["damage-by-ap","APに応じた固定ダメージ"];
     else { [id,label]=s.key==="ap"?["change-ap","APを変更"]:s.value?.read?["change-at-by-status","状態数に応じて次回攻撃ATを変更"]:["change-next-at","次回攻撃ATを変更"]; fixed.direction=s.value?.negate?"decrease":"increase"; }
     for(const statusId of statusIds) rows.push({effectId:id,label,targetId,...(statusId?{statusId}:{}),fixedOptions:fixed,optionAxes:{},legacyId:d.effectId,definition:d,chanceEnabled:false});
   }

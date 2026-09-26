@@ -24,13 +24,13 @@ test("表示metadata、queryの合法絞り込み、status group、trait一覧",
         assert.ok(e.triggerLabel && e.conditionLabel && e.effectLabel); rows.push(e);
         assert.equal(e.triggerId, trigger.id); assert.equal(e.conditionId, condition.id);
         for (const key of Object.keys(e.tuning)) assert.ok(e.tuningLabels[key]);
-        for (const group of Object.values(e.optionAxes)) assert.deepEqual(c.optionSets[group].map(o => o.id), [...STATUS_GROUPS[group]]);
+        for (const group of Object.values(e.optionAxes)) assert.deepEqual(c.optionSets[group].map(o => o.id), [...STATUS_GROUPS[group], "random"]);
       }
     }
   }
   assert.deepEqual(new Set(rows.map(e => e.id)), new Set(c.events.map(e => e.id)));
   assert.equal(rows.length, c.events.length);
-  assert.deepEqual(getBEffectOptions("after-take-hit", "always", c).map(e => e.effectId), ["self-buff", "enemy-debuff"]);
+  assert.deepEqual(getBEffectOptions("after-take-hit", "always", c).map(e => e.effectId), ["self-buff", "enemy-debuff", "self-next-at-up"]);
   assert.deepEqual(getBConditionOptions("unknown", c), []);
   assert.deepEqual(getBEffectOptions("phase-start", "damage-high", c), []);
   assert.ok(c.events.filter(e => e.triggerId === "phase-start").every(e => !Object.keys(e.optionAxes).length));

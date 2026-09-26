@@ -90,7 +90,7 @@ export function createCStructure(kind) {
 // Presentation only: legality stays with production resources/compilers.
 const messages = {
   INVALID_SELECTION: "設定項目を選択してください。", INVALID_SELECTION_FIELDS: "選択形式を確認してください。",
-  INVALID_SELECTION_TYPE: "イベント型または特性型を選択してください。", INVALID_ID: "選択項目が未入力です。",
+  INVALID_SELECTION_TYPE: "トリガー型またはパッシブ型を選択してください。", INVALID_ID: "選択項目が未入力です。",
   UNKNOWN_OR_ILLEGAL_OPTION: "発動タイミング・条件・効果の組合せを確認してください。",
   INVALID_OPTION_FIELDS: "必要な追加項目を選択してください。", UNKNOWN_OPTION: "選択項目を確認してください。",
   OPTION_UNSELECTED: "効果量・状態・HP条件などの選択が未完了です。", AMOUNT_UNSELECTED: "効果量を選択してください。",

@@ -876,6 +876,8 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
       attackInfo.damage = baseDmg;
     }
 
+    // afterHitは実命中限定ではなく命中判定後hook。MISS/回避でも呼ばれる経路がある。
+    // Bの「攻撃命中後」はafterDamageを使用する。
     // afterHitCtx をここで作る（miss/回避/afterHit/beforeTakeDamage で共有）
     const afterHitCtx = makeCtx(state, rng, push, atk, def, getRules);
     afterHitCtx.diceValue = diceValue;

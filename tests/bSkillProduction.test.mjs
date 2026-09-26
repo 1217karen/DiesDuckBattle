@@ -30,10 +30,10 @@ function context() {
   } };
 }
 
-test("production event56/trait14、重複なし、全status optionでcompile、未解決tuningなし", () => {
-  assert.equal(catalog.events.length, 56); assert.equal(catalog.traits.length, 14);
+test("production event67/trait30、重複なし、全status optionでcompile、未解決tuningなし", () => {
+  assert.equal(catalog.events.length, 67); assert.equal(catalog.traits.length, 30);
   const definitions = [...catalog.events, ...catalog.traits];
-  assert.equal(new Set(definitions.map(d => d.id)).size, 70);
+  assert.equal(new Set(definitions.map(d => d.id)).size, 97);
   for (const d of definitions) {
     assert.ok(Object.values(d.tuning).every(Number.isFinite), d.id);
     const choices = d.optionAxes.statusId ? catalog.optionSets[d.optionAxes.statusId].map(o => o.id) : [undefined];
@@ -43,16 +43,16 @@ test("production event56/trait14、重複なし、全status optionでcompile、�
       assert.ok(r.bSkills.length);
     }
   }
-  for (const s of [event("after-take-hit", "damage-medium", "heal-by-ap"),
+  for (const s of [event("after-take-hit", "damage-high", "damage-by-enemy-ap"),
     ...["ap-up", "self-buff", "self-debuff-remove"].map(id => event("phase-end", "hp-high", id))])
     assert.equal(compileBSkill(s).ok, false);
 });
 
-test("phaseStart 全9候補: 通常1、確率50%、first強型2、first-action条件", () => {
+test("phaseStart 全11候補: 通常1、確率50%、first強型2、first-action条件", () => {
   for (const d of catalog.events.filter(d => d.triggerId === "phase-start")) {
     const r = compile(event(d.triggerId, d.conditionId, d.effectId))[0];
     for (const e of [r.effect].flat()) {
-      assert.equal(e.value, d.effectId.includes("strong") ? 2 : 1);
+      assert.equal(e.value, d.conditionId === "first-action" && (d.effectId.includes("strong") || d.effectId.startsWith("both-")) ? 2 : 1);
       assert.equal(e.chance, d.effectId.startsWith("chance") ? .5 : undefined);
     }
     const h = context(); assert.equal(evaluateCondition(r.when, h.ctx), true);
@@ -61,13 +61,13 @@ test("phaseStart 全9候補: 通常1、確率50%、first強型2、first-action�
   }
 });
 
-test("beforeAttack: debuff存在AT+3、総stack4以上で現在総量、counter除外", () => {
+test("beforeAttack: debuff存在AT+2、総stack4以上で現在総量、counter除外", () => {
   for (const side of ["self", "enemy"]) {
     const h = context(), s = event("before-attack", `${side}-has-debuff`, "attack-at-up");
     h.run(s); assert.equal(h.actor.nextAttackATPlus, 0);
     (side === "self" ? h.actor : h.enemy).status.crack = 1;
-    h.run(s); assert.equal(h.actor.nextAttackATPlus, 3);
-    h.ctx.attack.isCounter = true; h.run(s); assert.equal(h.actor.nextAttackATPlus, 3);
+    h.run(s); assert.equal(h.actor.nextAttackATPlus, 2);
+    h.ctx.attack.isCounter = true; h.run(s); assert.equal(h.actor.nextAttackATPlus, 2);
   }
   for (const total of [3, 4, 7]) {
     const h = context(); h.actor.status.crack = 3; h.actor.status.steam = total - 3;
@@ -77,10 +77,10 @@ test("beforeAttack: debuff存在AT+3、総stack4以上で現在総量、counter�
 });
 
 for (const [condition, threshold, stacks, repeat, amount] of [
-  ["always", 0, 1, 1, 2], ["damage-medium", 5, 1, 2, 4], ["damage-high", 8, 2, 3, 6], ["counter", 0, 1, 2, 3],
+  ["always", 0, 1, 1, 0], ["damage-medium", 7, 2, 2, 2], ["damage-high", 10, 3, 3, 4], ["counter", 0, 2, 2, 3],
 ]) test(`afterDamage ${condition}: 3系統と境界`, () => {
   for (const [id, key, value, status] of [["enemy-debuff", "value", stacks, "steam"],
-    ["enemy-buff-remove", "repeat", repeat], ["enemy-next-at-down", "value", -amount]]) {
+    ["enemy-buff-remove", "repeat", repeat], ...(condition === "always" ? [] : [["enemy-next-at-down", "value", -amount]])]) {
     const r = compile(event("after-hit", condition, id, status))[0]; assert.equal(r.effect[key], value);
     const h = context(); h.ctx.attack.damage = threshold; h.ctx.attack.isCounter = condition === "counter";
     assert.equal(evaluateCondition(r.when, h.ctx), true);
@@ -89,10 +89,10 @@ for (const [condition, threshold, stacks, repeat, amount] of [
   }
 });
 
-test("afterTakeDamage: status/AT量、damage5/8境界、常時1stack", () => {
-  for (const [condition, threshold, stacks, amount] of [["always", 0, 1], ["damage-medium", 5, 2, 4], ["damage-high", 8, 3, 6]]) {
+test("afterTakeDamage: status/AT量、damage7/10境界、常時1stack", () => {
+  for (const [condition, threshold, stacks, amount] of [["always", 0, 1, 1], ["damage-medium", 7, 2, 3], ["damage-high", 10, 3, 5]]) {
     const rows = [["self-buff", stacks, "focus"], ["enemy-debuff", stacks, "steam"]];
-    if (amount) rows.push(["self-next-at-up", amount], ["enemy-next-at-down", -amount]);
+    if (amount) rows.push(["self-next-at-up", amount]);
     for (const [id, value, status] of rows) {
       const r = compile(event("after-take-hit", condition, id, status))[0]; assert.equal(r.effect.value, value);
       const h = context(); h.ctx.attack.damage = threshold; assert.equal(evaluateCondition(r.when, h.ctx), true);
@@ -101,20 +101,19 @@ test("afterTakeDamage: status/AT量、damage5/8境界、常時1stack", () => {
   }
 });
 
-test("受damage8: AP比例heal cap10、AP1消費→heal15、敵APdamage無上限", () => {
+test("受damage10: AP比例heal cap10、AP1消費→heal15", () => {
   for (const [ap, expected] of [[3, 3], [8, 8], [15, 10]]) {
     const h = context(); h.actor.ap = ap;
     h.ctx.attack.damage = 5; h.run(event("after-take-hit", "damage-high", "heal-by-ap")); assert.equal(h.actor.hp, 20);
-    h.ctx.attack.damage = 8; h.run(event("after-take-hit", "damage-high", "heal-by-ap")); assert.equal(h.actor.hp, 20 + expected);
+    h.ctx.attack.damage = 10; h.run(event("after-take-hit", "damage-high", "heal-by-ap")); assert.equal(h.actor.hp, 20 + expected);
   }
-  const h = context(), s = event("after-take-hit", "damage-high", "ap-cost-heal");
+  const h = context(), s = event("after-take-hit", "damage-high", "ap-cost-heal"); h.ctx.attack.damage = 10;
   h.run(s); assert.equal(h.actor.hp, 20);
   h.actor.ap = 1; h.run(s); assert.equal(h.actor.ap, 0); assert.equal(h.actor.hp, 35); assert.equal(h.log.at(-1).ap, 0);
-  h.enemy.ap = 123; h.run(event("after-take-hit", "damage-high", "damage-by-enemy-ap")); assert.equal(h.enemy.hp, -103);
 });
 
 for (const [condition, hp, stacks, repeat, at, heal, ap] of [
-  ["always", 1, 1, 1, 3, 5], ["hp-medium", .5, 2, 2, 5, 8, 1], ["hp-low", .25, 3, 3, 8, 10, 2],
+  ["always", 1, 1, 1, 2, 5], ["hp-medium", .5, 2, 2, 4, 10, 1], ["hp-low", .25, 3, 3, 6, 15, 2],
 ]) test(`afterHeal ${condition}: 全候補の値・actual・HP境界`, () => {
   const rows = [["target-buff", "value", stacks, "focus"], ["target-debuff-remove", "repeat", repeat],
     ["target-next-at-up", "value", at], ["target-heal", "amount", heal]];
@@ -130,9 +129,9 @@ for (const [condition, hp, stacks, repeat, at, heal, ap] of [
   }
 });
 
-test("HP25%緊急回復は解除2+buff2、AP+1/+2は別候補で重複しない", () => {
+test("HP25%緊急回復は解除1+buff2、AP+1/+2は別候補で重複しない", () => {
   const r = compile(event("after-heal", "hp-low", "emergency", "focus"))[0];
-  assert.equal(r.effect[0].repeat, 2); assert.equal(r.effect[1].value, 2);
+  assert.equal(r.effect[0].repeat, 1); assert.equal(r.effect[1].value, 2);
   for (const [condition, expected] of [["hp-medium", 1], ["hp-low", 2]]) {
     const h = context(); h.ctx.heal = { target: h.enemy, actual: 1, hpPctAfter: .25 };
     const s = event("after-heal", condition, "target-ap-up"); assert.equal(compile(s).length, 1);
@@ -140,10 +139,10 @@ test("HP25%緊急回復は解除2+buff2、AP+1/+2は別候補で重複しない"
   }
 });
 
-test("phaseEnd: buff総stack×3、HP条件なし最大HPコスト→AP、致死・負HPも実行", () => {
+test("phaseEnd: buff総stack×2、HP条件なし最大HPコスト→AP、致死・負HPも実行", () => {
   const h = context(); h.actor.status.focus = 2; h.actor.status.clean = 1;
-  h.run(event("phase-end", "always", "heal-by-buff")); assert.equal(h.actor.hp, 29);
-  for (const [cost, ap] of [[5, 2], [8, 3], [10, 4]]) {
+  h.run(event("phase-end", "always", "heal-by-buff")); assert.equal(h.actor.hp, 26);
+  for (const [cost, ap] of [[5, 1], [8, 2], [10, 3]]) {
     const s = event("phase-end", "always", `ap-up-cost-${cost}`), r = compile(s)[0]; assert.equal(r.when, null);
     for (const hp of [1, 0, -10]) {
       const h = context(); h.actor.hp = hp; h.run(s);
@@ -154,8 +153,8 @@ test("phaseEnd: buff総stack×3、HP条件なし最大HPコスト→AP、致死�
 });
 
 test("HP/AP trait全境界と倍率6候補の値、counter除外", () => {
-  for (const [level, threshold, attackThreshold] of [["high", .6, .75], ["low", .4, .25]]) {
-    for (const [suffix, expected] of [["at", { AT: 4, DF: 0 }], ["df", { AT: 0, DF: 4 }], ["at-df", { AT: 2, DF: 2 }]]) {
+  for (const [level, threshold, attackThreshold] of [["high", .75, .75], ["low", .25, .25]]) {
+    for (const [suffix, expected] of [["at", { AT: 6, DF: 0 }], ["df", { AT: 0, DF: 6 }], ["at-df", { AT: 3, DF: 3 }]]) {
       const r = compile(trait(`hp-${level}-${suffix}`))[0], h = context(); h.actor.hp = threshold * 100;
       assert.deepEqual(evaluateBModifier(r.modifier, h.ctx), { active: true, ...expected });
       h.actor.hp += level === "high" ? -1 : 1;
@@ -172,7 +171,7 @@ test("HP/AP trait全境界と倍率6候補の値、counter除外", () => {
   }
   for (const id of ["outgoing-random", "incoming-random", "damage-both-up", "damage-both-down"]) {
     for (const r of compile(trait(id))) {
-      if (id.endsWith("random")) assert.deepEqual(r.effect.value.randUniform, [0, 2]);
+      if (id.endsWith("random")) assert.deepEqual(r.effect.value.randUniform, [0, id === "outgoing-random" ? 2.5 : 1.5]);
       else assert.equal(r.effect.value, id.endsWith("up") ? 2 : .5);
       const h = context(); h.ctx.attack.isCounter = true; assert.equal(evaluateCondition(r.when, h.ctx), false);
     }
@@ -194,7 +193,7 @@ test("production phaseEnd自傷後も残りphaseで行動・AP獲得→ターン
   const costs = r.events.filter(e => e.type === "fixedDamage" && e.target === "P1");
   assert.deepEqual(costs.map(e => e.hpAfter), [-49, -99, -149]);
   assert.equal(r.events.filter(e => e.type === "roll" && e.actor === "P1").length, 3);
-  assert.equal(r.events.filter(e => e.type === "valueChanged" && e.key === "ap" && e.delta === 2).length, 3);
+  assert.equal(r.events.filter(e => e.type === "valueChanged" && e.key === "ap" && e.delta === 1).length, 3);
   assert.ok(r.events.findIndex(e => e.type === "revived") > r.events.indexOf(costs.at(-1)));
 });
 test("production afterHeal追加回復は再帰しない", () => {
@@ -202,11 +201,11 @@ test("production afterHeal追加回復は再帰しない", () => {
     effect: { type: "heal", amount: 1 } }] });
   assert.equal(r.events.filter(e => e.type === "heal" && e.source === "afterHealBonus").length, 1);
 });
-test("production命中Bは0damage/counterでも発火し、MISS・回避では発火しない", () => {
-  const always = event("after-hit", "always", "enemy-next-at-down");
+test("production通常命中Bは0damageでも発火し、MISS・回避では発火しない", () => {
+  const always = event("after-hit", "always", "enemy-debuff", "steam");
   const hit = battle(always);
   assert.ok(hit.events.some(e => e.type === "normalDamage" && e.actor === "P1" && e.value === 0));
-  assert.ok(hit.events.some(e => e.key === "nextAttackATPlus" && e.delta === -2));
+  assert.ok(hit.events.some(e => e.type === "statusChange" && e.target === "P2" && e.status === "steam" && e.delta === 1));
   const taken = battle(event("after-take-hit", "always", "self-buff", "focus"));
   assert.ok(taken.events.some(e => e.type === "normalDamage" && e.actor === "P2" && e.value === 0));
   assert.ok(taken.events.some(e => e.type === "statusChange" && e.target === "P1" && e.status === "focus"));
@@ -217,7 +216,62 @@ test("production命中Bは0damage/counterでも発火し、MISS・回避では�
   for (const settings of [{ helper: [{ id: "miss", trigger: "beforeAttack", effect: { type: "changeAttack", op: "miss" } }] },
     { enemyStatus: [{ type: "changeStatus", target: "self", status: "tailwind", op: "set", value: 3 }] }]) {
     const r = battle(always, settings);
-    assert.equal(r.events.some(e => e.key === "nextAttackATPlus"), false);
+    assert.equal(r.events.some(e => e.type === "skillTriggered" && e.skill?.skillId?.startsWith("B:after-hit/always")), false);
+  }
+});
+
+test("合法event組合せは仕様の67種だけ（削除4種を含まない）", () => {
+  const expected = {
+    "phase-start": { always: ["both-buff", "both-debuff", "self-buff-debuff", "chance-enemy-debuff", "chance-self-buff"],
+      "first-action": ["self-buff", "chance-strong-self-buff", "enemy-debuff", "chance-strong-enemy-debuff", "both-buff", "both-debuff"] },
+    "before-attack": { "self-has-debuff": ["attack-at-up"], "enemy-has-debuff": ["attack-at-up"], "self-debuff-total": ["attack-at-by-debuff"] },
+    "after-hit": { always: ["enemy-debuff", "enemy-buff-remove"],
+      "damage-medium": ["enemy-debuff", "enemy-buff-remove", "enemy-next-at-down", "self-heal"],
+      "damage-high": ["enemy-debuff", "enemy-buff-remove", "enemy-next-at-down", "self-heal"],
+      counter: ["enemy-debuff", "enemy-buff-remove", "enemy-next-at-down", "self-heal"] },
+    "after-take-hit": { always: ["self-buff", "enemy-debuff", "self-next-at-up"],
+      "damage-medium": ["self-buff", "enemy-debuff", "self-next-at-up", "ap-cost-heal", "heal-by-ap"],
+      "damage-high": ["self-buff", "enemy-debuff", "self-next-at-up", "ap-cost-heal", "heal-by-ap"] },
+    "after-heal": { always: ["target-buff", "target-next-at-up", "target-debuff-remove", "target-heal"],
+      "hp-medium": ["target-buff", "target-next-at-up", "target-debuff-remove", "emergency", "target-heal", "target-ap-up"],
+      "hp-low": ["target-buff", "target-next-at-up", "target-debuff-remove", "emergency", "target-heal", "target-ap-up"] },
+    "phase-end": { always: ["heal-by-buff", "damage-by-debuff", "ap-up-cost-5", "ap-up-cost-8", "ap-up-cost-10"],
+      "first-action": ["heal-by-buff", "damage-by-debuff", "ap-up-cost-5", "ap-up-cost-8", "ap-up-cost-10"] },
+  };
+  assert.deepEqual(catalog.events.map(d => d.id).sort(), Object.entries(expected).flatMap(([trigger, conditions]) =>
+    Object.entries(conditions).flatMap(([condition, effects]) => effects.map(effect => `${trigger}/${condition}/${effect}`))).sort());
+});
+
+test("新phaseEndの倍率2/4とHPコスト/AP、emergencyは解除1固定", () => {
+  for (const [condition, multiplier, bonus] of [["always", 2, 0], ["first-action", 4, 1]]) {
+    for (const id of ["heal-by-buff", "damage-by-debuff"]) {
+      const r = compile(event("phase-end", condition, id))[0];
+      assert.equal(r.effect.byStatusCount.n, multiplier);
+      if (id === "damage-by-debuff") assert.equal(r.effect.byStatusCount.source, "self");
+    }
+    for (const [cost, amount] of [[5,1], [8,2], [10,3]]) {
+      const r = compile(event("phase-end", condition, `ap-up-cost-${cost}`))[0];
+      assert.equal(r.effect[0].amountMaxHpPct, cost / 100); assert.equal(r.effect[1].value, amount + bonus);
+    }
+  }
+  for (const [condition, stacks] of [["hp-medium", 1], ["hp-low", 2]]) {
+    const r = compile(event("after-heal", condition, "emergency", "random"))[0];
+    assert.equal(r.effect[0].repeat, 1); assert.equal(r.effect[1].value, stacks); assert.equal(r.effect[1].status, "@buff");
+  }
+});
+
+test("HP75/50/50/25の全22パッシブは指定の配分のみ", () => {
+  for (const [level, threshold, op, pairs] of [
+    ["high", .75, ">=", [[6,0],[4,2],[3,3],[2,4],[0,6]]],
+    ["mid-high", .5, ">=", [[4,0],[3,1],[2,2],[1,3],[0,4]]],
+    ["mid-low", .5, "<=", [[4,0],[3,1],[2,2],[1,3],[0,4]]],
+    ["low", .25, "<=", [[6,0],[4,2],[3,3],[2,4],[0,6]]],
+  ]) {
+    const rows = catalog.traits.filter(d => d.id.startsWith(`hp-${level}-`));
+    const rules = rows.flatMap(d => compile(trait(d.id)));
+    assert.deepEqual(rules.filter(r => r.modifier).map(r => [r.modifier.bonus.AT ?? 0, r.modifier.bonus.DF ?? 0]), pairs);
+    assert.equal(rules.filter(r => r.trigger === "beforeRoll").length, level.startsWith("mid-") ? 0 : 1);
+    for (const r of rules) assert.deepEqual(r.modifier?.when ?? r.when, { left: "self.hpPct", op, right: threshold });
   }
 });
 test("production HP追加攻撃はAの通常攻撃0回を復活させない", () => {

@@ -13,6 +13,10 @@ const compiled = (triggerId, conditionId, effectId, statusId) => compileBSkill({
   options: statusId ? { statusId } : {} }, { catalog }).bSkills;
 const trait = traitId => compileBSkill({ type: "trait", traitId, options: {} }, { catalog }).bSkills;
 const atom = (left, op, right) => ({ left, op, right });
+const production = (triggerId, conditionId, effectId, statusId) => {
+  const result = compileBSkill({ type: "event", triggerId, conditionId, effectId, options: statusId ? { statusId } : {} });
+  assert.equal(result.ok, true, JSON.stringify(result)); return result.bSkills;
+};
 const first = { all: [atom("turn", "==", 1), atom("phase", "==", 1)] };
 const change = (target, key, value, op = "set") => ({ type: "changeValue", target, key, value, op });
 const status = (target, status, value) => ({ type: "changeStatus", target, status, value, op: "set" });
@@ -106,7 +110,7 @@ for (const canceled of [false, true]) test(`phaseEndは1回、buff失効・statu
 });
 
 for (const mode of ["hit", "miss", "avoid", "counter"]) test(`after-hit compilerは実命中のみ ${mode}`, () => {
-  const skills = compiled("after-hit", mode === "counter" ? "counter" : "always", "enemy-next-at-down");
+  const skills = compiled("after-hit", mode === "counter" ? "counter" : "always", "enemy-debuff", "steam");
   const events = battle([
     ...skills, ...(mode === "miss" ? [rule("miss", "beforeAttack", { type: "changeAttack", op: "miss" })] : []),
   ], { dice: mode === "counter" ? 0 : 1, enemyDice: mode === "counter" ? 1 : 0,
@@ -157,4 +161,99 @@ test("被命中回復後も確定attack contextを保持し後続のdamage条件
     enemySkills: [rule("heal", "afterTakeDamage", { type: "heal", target: "self", amount: 1 }),
       rule("damage-probe", "afterTakeDamage", change("self", "ap", 2, "add"), atom("attack.damage", ">=", 1))] });
   assert.ok(events.some(e => e.type === "skillTriggered" && e.skill.skillId === "damage-probe"));
+});
+
+function productionContext({ damage = 10, counter = false, actions = 1, ap = 0 } = {}) {
+  const fighter = side => ({ side, hp: 10, maxHP: 100, ap, actionsThisTurn: actions,
+    status: Object.fromEntries(STATUS_GROUPS.all.map(key => [key, 0])), nextAttackATPlus: 0 });
+  const actor = fighter("P1"), enemy = fighter("P2"), heals = [], damages = [];
+  const ctx = { actor, enemy, rng: () => 0, attack: { kind: "normalAttack", isCounter: counter, damage }, helpers: {
+    heal: (target, amount) => { heals.push({ side: target.side, amount, ap: target.ap }); target.hp += amount; },
+    dealDamage: (target, amount) => { damages.push({ side: target.side, amount }); target.hp -= amount; },
+  } };
+  return { actor, enemy, ctx, heals, damages, run: rules => {
+    for (const r of rules) if (evaluateCondition(r.when, ctx)) applyEffect(r.effect, ctx);
+  } };
+}
+
+test("production通常命中/被命中の全variantは反撃と非通常攻撃を除外、反撃専用は発動", async () => {
+  const { createBSkillCatalog } = await import("../js/bSkillCatalog.js");
+  for (const d of createBSkillCatalog().events.filter(d => ["after-hit", "after-take-hit"].includes(d.triggerId))) {
+    const rules = production(d.triggerId, d.conditionId, d.effectId, d.optionAxes.statusId ? "random" : undefined);
+    const h = productionContext({ damage: 100, counter: true, ap: 10 });
+    assert.equal(evaluateCondition(rules[0].when, h.ctx), d.conditionId === "counter", d.id);
+    h.ctx.attack.isCounter = false; assert.equal(evaluateCondition(rules[0].when, h.ctx), d.conditionId !== "counter", d.id);
+    h.ctx.attack.kind = "fixedDamage"; assert.equal(evaluateCondition(rules[0].when, h.ctx), false, d.id);
+  }
+  const h = productionContext({ counter: true }); h.run(production("after-hit", "counter", "self-heal"));
+  assert.equal(h.actor.hp, 13);
+});
+
+test("実battleで通常Bは反撃に反応せず、反撃Bだけ発動", () => {
+  const outgoing = production("after-hit", "always", "enemy-buff-remove");
+  const counter = production("after-hit", "counter", "self-heal");
+  const incoming = production("after-take-hit", "always", "self-next-at-up");
+  const events = battle([...outgoing, ...counter], { setup: [status("self", "counter", 3)], enemySkills: incoming, enemyDice: 1, rng: () => 0 });
+  assert.ok(events.some(e => e.type === "counterDamage"));
+  const count = rules => events.filter(e => e.type === "skillTriggered" && e.skill?.skillId === rules[0].id).length;
+  assert.equal(count(outgoing), events.filter(e => e.type === "normalDamage" && e.actor === "P1").length);
+  assert.equal(count(incoming), events.filter(e => e.type === "normalDamage" && e.actor === "P1").length);
+  assert.equal(count(counter), events.filter(e => e.type === "counterDamage" && e.actor === "P1").length);
+  assert.ok(count(counter) > 0);
+});
+
+test("damage7/10境界と50%回復の切り捨て・cap5/cap10", () => {
+  for (const [condition, cases] of [["damage-medium", [[6,0],[7,3],[9,4],[10,5],[99,5]]],
+    ["damage-high", [[9,0],[10,5],[11,5],[19,9],[20,10],[99,10]]]]) {
+    for (const [damage, expected] of cases) {
+      const h = productionContext({ damage }); h.run(production("after-hit", condition, "self-heal"));
+      assert.equal(h.actor.hp, 10 + expected, `${condition}/${damage}`);
+    }
+  }
+  for (const [condition, threshold, stacks] of [["damage-medium", 7, 2], ["damage-high", 10, 3]]) {
+    for (const damage of [threshold - 1, threshold]) {
+      const h = productionContext({ damage }); h.run(production("after-take-hit", condition, "self-buff", "focus"));
+      assert.equal(h.actor.status.focus ?? 0, damage >= threshold ? stacks : 0);
+    }
+  }
+});
+
+test("状態異常合計の参照元self→enemy×2/×4、未指定の従来target参照も維持", () => {
+  for (const [condition, n] of [["always", 2], ["first-action", 4]]) for (const actions of [1,2]) {
+    const h = productionContext({ actions }); Object.assign(h.actor.status, { crack: 2, steam: 3, focus: 99, unknown: 99 });
+    h.enemy.status.crack = 40;
+    h.run(production("phase-end", condition, "damage-by-debuff"));
+    assert.equal(h.enemy.hp, 10 - (condition === "always" || actions === 1 ? 5 * n : 0));
+    assert.equal(h.actor.hp, 10);
+  }
+  const h = productionContext(); h.actor.status.crack = 99; h.enemy.status.crack = 3;
+  applyEffect({ type: "fixedDamage", target: "enemy", byStatusCount: { statuses: ["crack"], n: 2 } }, h.ctx);
+  assert.equal(h.enemy.hp, 4);
+});
+
+test("first phase-end全5variantは2回目の自分フェイズでは発動しない", () => {
+  for (const id of ["heal-by-buff", "damage-by-debuff", "ap-up-cost-5", "ap-up-cost-8", "ap-up-cost-10"]) {
+    const rules = production("phase-end", "first-action", id);
+    const h = productionContext({ actions: 2 }); h.actor.status.focus = 3; h.actor.status.crack = 2; h.run(rules);
+    assert.deepEqual([h.actor.hp,h.enemy.hp,h.actor.ap], [10,10,0]);
+    const events = battle(rules);
+    assert.equal(events.filter(e => e.type === "skillTriggered" && e.skill?.skillId === rules[0].id).length, 1);
+  }
+  const h = productionContext(); Object.assign(h.actor.status, { focus: 2, counter: 1, crack: 100 });
+  h.run(production("phase-end", "first-action", "heal-by-buff")); assert.equal(h.actor.hp, 22);
+});
+
+test("被通常damage7/10のAP1消費は所持時だけ、AP回復量はcap7/10", () => {
+  for (const [condition, threshold, heal, cap] of [["damage-medium",7,10,7],["damage-high",10,15,10]]) {
+    for (const ap of [0,1,2]) for (const damage of [threshold-1,threshold]) {
+      const h = productionContext({ ap, damage }); h.run(production("after-take-hit", condition, "ap-cost-heal"));
+      const active = ap >= 1 && damage >= threshold;
+      assert.equal(h.actor.ap, ap - (active ? 1 : 0)); assert.equal(h.actor.hp, 10 + (active ? heal : 0));
+      if (active) assert.equal(h.heals[0].ap, ap-1);
+    }
+    for (const ap of [0,3,7,10,99]) {
+      const h = productionContext({ ap, damage: threshold }); h.run(production("after-take-hit", condition, "heal-by-ap"));
+      assert.equal(h.actor.hp, 10 + Math.min(ap,cap)); assert.equal(h.actor.ap, ap);
+    }
+  }
 });
