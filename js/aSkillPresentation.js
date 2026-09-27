@@ -37,3 +37,45 @@ export function aTargetParticle(row) {
   if (!row || row.definition.exactFace != null) return "：";
   return ["damage", "grant-status", "add-recoil"].includes(row.effectId) ? "に" : "の";
 }
+
+// Format resource results only. Never derive prices from effect IDs or quantities.
+export function aPointText(value, signed = false) {
+  return value == null ? "未確定" : `${signed && value > 0 ? "+" : ""}${value}pt`;
+}
+const pointIssues = resources => [...resources.errors, ...resources.unresolved];
+const hasEffectIssue = (resources, index) => pointIssues(resources).some(issue =>
+  issue.path === `effects.${index}` || issue.path?.startsWith(`effects.${index}.`));
+export function aEffectPointText(resources, index) {
+  const row = resources.effectBreakdown.find(row => row.index === index);
+  // Normalization may resolve an unfinished leaf to a provisional trusted variant.
+  // Its price is not a confirmed quote while that leaf has validation issues.
+  if (!row || hasEffectIssue(resources, index)) return aPointText(null);
+  return row.polarity === "drawback" ? aPointText(row.drawbackPoints, true) : aPointText(row.effectCost);
+}
+export function aCancelPointText(resources) {
+  return aPointText(resources.frequencyRank == null ? null : resources.cancelDrawbackPoints, true);
+}
+export function aPointSections(resources, slots, cancelled) {
+  const invalidDice = resources.errors.some(issue => issue.code === "INVALID_DICE_RESOURCES");
+  const unsettledEffects = pointIssues(resources).some(issue => issue.path === "effects" || issue.path?.startsWith("effects."));
+  const row = (id, label, value, signed = false) => ({ id, label, text: aPointText(value, signed) });
+  return [
+    { label: "ポイント源", rows: [
+      row("base", "基本pt", resources.basePoints),
+      row("dice", "ダイスpt", invalidDice ? null : resources.dicePoints, true),
+      row("available", "使用可能", invalidDice ? null : resources.availablePoints),
+    ] },
+    { label: "使用・還元内訳", rows: [
+      row("trigger", "発動条件", resources.triggerCost),
+      ...slots.map(({ index }, slot) => ({ id: `effect-${slot + 1}`, label: `効果${slot + 1}`, text: aEffectPointText(resources, index) })),
+      ...(cancelled ? [{ id: "cancel", label: "通常攻撃キャンセル", text: aCancelPointText(resources) }] : []),
+      row("benefit-slots", "追加メリット枠", unsettledEffects ? null : resources.benefitSlotCost),
+    ] },
+    { label: "合計", rows: [
+      row("gross", "消費", resources.grossCost),
+      row("drawback", "還元", unsettledEffects ? null : resources.drawbackPoints),
+      row("net", "差引消費", resources.netCost),
+      row("remaining", "残り", resources.remaining),
+    ] },
+  ];
+}

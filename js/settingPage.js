@@ -8,7 +8,7 @@ import { DICE_FRAMES, getDiceFrame } from "./diceFrames.js";
 import { createBuildRules } from "./buildRules.js";
 import { createASkillCatalog, getATriggerOptions } from "./aSkillCatalog.js";
 import { aEditorLeaf, aNormalSlots, aEditorCatalog, aCancelAvailable, isACancel, setAAttackCancel, addANormalEffect, removeANormalEffect, changeAClause, changeATrigger } from "./aSkillSentenceEditor.js";
-import { aTriggerText, aContentText, aClauseText, aEnding, aDrawbackText, aStatusText, aTargetParticle } from "./aSkillPresentation.js";
+import { aTriggerText, aContentText, aClauseText, aEnding, aDrawbackText, aStatusText, aTargetParticle, aEffectPointText, aCancelPointText, aPointSections } from "./aSkillPresentation.js";
 import { calculateASkillResources } from "./aSkillResources.js";
 import { createBSkillCatalog, getBTriggerOptions, getBConditionOptions, getBEffectOptions } from "./bSkillCatalog.js";
 import { bEffectText, bSentence } from "./bSkillPresentation.js";
@@ -258,7 +258,7 @@ function renderA(duck, box) {
     cancelInput.children[0].disabled = true;
     panel.append(cancel);
     const resources = calculateASkillResources(duck, a, { catalog: aCatalog });
-    if (cancelled && resources.frequencyRank != null) cancel.append(el("span", ` +${resources.cancelDrawbackPoints}pt`, "a-price"));
+    if (cancelled) cancel.append(el("span", aCancelPointText(resources), "a-price"));
     const slots = aNormalSlots(a, aCatalog);
     slots.forEach(({ leaf, index }, slot) => {
       const chosen = aEditorLeaf(leaf, aCatalog), definitions = aEditorCatalog(duck, a, aCatalog, index);
@@ -302,8 +302,7 @@ function renderA(duck, box) {
         const text = definition.definition.exactFace != null ? aClauseText(definition)
           : `${target}${aClauseText(definition)}${status}${amount}${aEnding(definition)}`;
         row.append(el("p", text + aDrawbackText(definition), "a-completed-sentence"));
-        const price = resources.effectBreakdown.find(r => r.index === index);
-        if (price) head.append(el("span", price.polarity === "drawback" ? `+${price.drawbackPoints}pt` : `${price.effectCost}pt`, "a-price"));
+        head.append(el("span", aEffectPointText(resources, index), "a-price"));
       }
       panel.append(row);
     });
@@ -311,7 +310,31 @@ function renderA(duck, box) {
     add.disabled = slots.length >= aCatalog.maxEffects; panel.append(add);
     panel.append(el("p", `通常効果は1～${aCatalog.maxEffects}個。通常攻撃キャンセルはこの枠に含みません。`, "description"));
   }
-  const metrics = el("div", null, "metrics"); metrics.id = "a-metrics"; panel.append(metrics); feedback(panel, "a"); box.append(panel);
+  if (a !== null) {
+    const metrics = el("section", null, "a-point-breakdown"); metrics.id = "a-metrics";
+    metrics.setAttribute("aria-label", "A POINT / ポイント内訳"); panel.append(metrics);
+  }
+  feedback(panel, "a"); box.append(panel);
+}
+
+function renderAPoints(selection, resources) {
+  const box = $("a-metrics"); if (!box || selection === null) return;
+  const groups = aPointSections(resources, aNormalSlots(selection, aCatalog), (selection.effects ?? []).some(e => isACancel(e, aCatalog)));
+  box.replaceChildren(el("h4", "A POINT / ポイント内訳"));
+  for (const group of groups) {
+    const section = el("div", null, "a-point-group"), list = el("dl");
+    section.append(el("h5", group.label));
+    for (const row of group.rows) {
+      const value = el("dd", row.text); value.id = `a-point-${row.id}`;
+      if (row.id === "remaining" && resources.remaining < 0) value.className = "a-point-shortage";
+      list.append(el("dt", row.label), value);
+    }
+    section.append(list); box.append(section);
+  }
+  if (resources.remaining != null && resources.remaining < 0) {
+    const warning = el("p", `${Math.abs(resources.remaining)}pt不足しています`, "a-point-shortage");
+    warning.id = "a-point-shortage"; box.append(warning);
+  }
 }
 
 function renderC(duck, box) {
@@ -415,8 +438,7 @@ function renderSummaries() {
   $("stat-metrics").textContent = `AT/DF使用可能：合計${num(budget)}pt　使用中：${num(used)}pt / 残り${num(budget !== null && used !== null ? budget-used : null)}pt　HP ${num(summary.stats.hp)}`;
   const dice = summary.dice.resources;
   $("dice-metrics").textContent = `ダイス資源　獲得 ${num(dice?.earned)}pt / 消費 ${num(dice?.spent)}pt / 残り ${num(dice?.remaining)}pt`;
-  const a = summary.A.resources;
-  $("a-metrics").textContent = `利用可能 ${num(a.availablePoints)}pt / 消費（還元後）${num(a.netCost)}pt / 残り ${num(a.remaining)}pt`;
+  renderAPoints(duck.aSelection, summary.A.resources);
   $("c-metrics").textContent = `必要AP ${num(summary.C.resources.requiredAP)}`;
 }
 function render() {
