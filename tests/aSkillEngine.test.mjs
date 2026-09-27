@@ -105,7 +105,10 @@ test("追加反動はphaseにつき一度、dice6と独立、通常攻撃終了�
 test("キャンセル/効果MISS/湯気MISSでは追加反動なし、回避は旧反動同様に成立",()=>{
   const additional=choose("additional-recoil",2);
   for(const mode of ["cancel","miss","steam","avoid"]) {
-    const r=battle({aSkill:compiled([additional,...(mode==="cancel"?[choose("cancel-self-attack")]:[])]),
+    const aSkill=compiled([additional]);
+    // 現行selectionでは併用不可。旧canonicalデータのengine挙動は直接fixtureで検証する。
+    if(mode==="cancel") aSkill.effect.push(change("attackTimesOverride",0));
+    const r=battle({aSkill,
       bSkills:mode==="miss"?[{id:"miss",trigger:"beforeAttack",effect:{type:"changeAttack",op:"miss"}}]:[],
       setup:mode==="steam"?[status("steam",3)]:[],enemySetup:mode==="avoid"?[status("tailwind",1)]:[],rng:()=>0});
     assert.equal(phase(r).some(e=>e.source==="aAdditionalRecoil"),mode==="avoid",mode);

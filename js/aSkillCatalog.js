@@ -1,3 +1,4 @@
+import { resolveSelection } from "./selectionNormalization.js";
 import { normalizedACatalog } from "./effectSelectionCatalog.js";
 import { statusLabel } from "./statusMetadata.js";
 import { getDiceFrame } from "./diceFrames.js";
@@ -49,13 +50,13 @@ export function createASkillCatalog() {
   for (const [target, stat] of [["self", "AT"], ["enemy", "DF"]]) {
     for (const sign of [target === "self" ? 1 : -1]) add(`phase-${stat.toLowerCase()}-${target}-${sign === 1 ? "increase" : "decrease"}`,
       "phase", `${target} 現在phase ${stat}${sign === 1 ? "+" : "−"}`, target,
-      (target === "self") === (sign === -1), { type: "addBuff", stat, sign });
+      (target === "self") === (sign === -1), { type: "addBuff", stat, sign }, { conflictsWithAttackCancel: true });
   }
   add("cancel-self-attack", "cancelAttack", "自分の通常攻撃を0回にする", "self", true,
     { type: "changeValue", key: "attackTimesOverride", op: "set", value: 0 },
-    { requiresAmount: false, allowDuplicate: false });
-  add("increase-attacks", "cancelAttack", "現在phaseの通常攻撃回数 +N", "self", false, change("attackTimesAdd"));
-  add("additional-recoil", "recoil", "通常攻撃成立phaseの終了時に追加反動", "self", true, change("additionalRecoil"));
+    { requiresAmount: false, allowDuplicate: false, cancelsNormalAttack: true });
+  add("increase-attacks", "cancelAttack", "現在phaseの通常攻撃回数 +N", "self", false, change("attackTimesAdd"), { conflictsWithAttackCancel: true });
+  add("additional-recoil", "recoil", "通常攻撃成立phaseの終了時に追加反動", "self", true, change("additionalRecoil"), { conflictsWithAttackCancel: true });
   for (const [face, id, label] of [
     [1, "cancel-dice1-ap", "AP+1キャンセル"], [3, "cancel-dice3-heal", "HP回復キャンセル"],
     [4, "cancel-dice4-counter", "反撃+1キャンセル"], [5, "cancel-dice5-ap", "相手AP-1キャンセル"],
@@ -64,9 +65,9 @@ export function createASkillCatalog() {
     { exactFace: face, requiresAmount: false, allowDuplicate: false });
   add("reduce-dice2-attacks", "diceOnly", "[出目2] 通常攻撃2回→1回", "self", true,
     { ...change("attackTimesAdd"), value: -1 },
-    { exactFace: 2, requiresAmount: false, allowDuplicate: false });
+    { exactFace: 2, requiresAmount: false, allowDuplicate: false, conflictsWithAttackCancel: true });
   add("reduce-dice6-recoil", "diceOnly", "[出目6] 反動軽減", "self", false, change("recoilMinus"),
-    { exactFace: 6, allowDuplicate: false });
+    { exactFace: 6, allowDuplicate: false, conflictsWithAttackCancel: true });
   // [効果量, pt絶対値]。指定/ランダムstatusで同じ表を使用する。
   // option IDはこのtrusted定義から作り、ユーザーのIDを数値として解釈しない。
   const amounts = {
@@ -152,7 +153,11 @@ export function getAEffectAvailability(effectId, build, triggerId, catalog = cre
     return { selectable: false, reason: { code: "EXACT_FACE_REQUIRED", requiredFace: effect.exactFace,
       message: `「出目${effect.exactFace}の時」専用です。` } };
   }
-  if ([2, 6].includes(effect.exactFace) && effects.some(item => ["cancel-self-attack", "cancel-attack"].includes(item?.effectId))) {
+  // v1/v2の選択を既存のtrusted variantへ解決し、追加する側を問わず検査する。
+  const selected = resolveSelection("A", { triggerId, effects }, catalog).selection.effects
+    .map(item => catalog.effects.find(definition => definition.id === item?.effectId));
+  if ((effect.conflictsWithAttackCancel && selected.some(item => item?.cancelsNormalAttack))
+    || (effect.cancelsNormalAttack && selected.some(item => item?.conflictsWithAttackCancel))) {
     return { selectable: false, reason: { code: "CANCEL_ATTACK_CONFLICT", message: "通常攻撃キャンセルとは併用できません。" } };
   }
   return { selectable: true, reason: null };

@@ -190,3 +190,55 @@ test("旧v2 diceActionはexactと一致するときだけ互換受理し、異�
     assert.equal(r.ok,diceAction==="1");assert.deepEqual(s,before);
   }
 });
+
+const cancelConflicts = ["phase-at-self-increase", "phase-df-enemy-decrease", "increase-attacks",
+  "additional-recoil", "reduce-dice2-attacks", "reduce-dice6-recoil"];
+
+test("キャンセル併用禁止6効果はtrusted metadataで定義", () => {
+  assert.deepEqual(catalog.effects.filter(e => e.conflictsWithAttackCancel).map(e => e.id).sort(), [...cancelConflicts].sort());
+  assert.deepEqual(catalog.effects.filter(e => e.cancelsNormalAttack).map(e => e.id), ["cancel-self-attack"]);
+});
+
+for (const id of cancelConflicts) test(`${id}: キャンセルとの双方向availability・v1/v2 resource/compiler拒否・入力保持`, () => {
+  const definition = catalog.effects.find(e => e.id === id);
+  const b = definition.exactFace ? build([definition.exactFace,0,0,0,3,4], definition.exactFace > 4 ? "heavy" : "light") : build();
+  const triggerId = definition.exactFace ? `exact:${definition.exactFace}` : "exact:0";
+  const leaf = chosen(id, definition.amountOptions[0]?.value);
+  assert.equal(compile(selection([leaf],triggerId),b).ok,true, "対象効果単独は合法");
+  for (const normalized of [false,true]) {
+    const rows = normalized ? migrateSelection("A",selection([cancel,leaf],triggerId),catalog).effects : [cancel,leaf];
+    const before = structuredClone(rows);
+    for (const [candidate,existing] of [[id,[rows[0]]],["cancel-self-attack",[rows[1]]]]) {
+      const availability = getAEffectAvailability(candidate,b,triggerId,catalog,existing);
+      assert.equal(availability.selectable,false);
+      assert.equal(availability.reason.code,"CANCEL_ATTACK_CONFLICT");
+      const option = getAEffectOptions(b,triggerId,catalog,existing).flatMap(group=>group.effects).find(e=>e.id===candidate);
+      assert.equal(option.selectable,false); assert.equal(option.reason.code,"CANCEL_ATTACK_CONFLICT");
+    }
+    for (const effects of [rows,[...rows].reverse()]) {
+      const s=selection(effects,triggerId),snapshot=structuredClone(s);
+      const r=calc(s,b),compiled=compile(s,b);
+      assert.equal(r.complete,false);assert.equal(r.ready,false);
+      assert.equal(r.errors.filter(e=>e.code==="CANCEL_ATTACK_CONFLICT").length,2);
+      assert.equal(compiled.ok,false);assert.equal(compiled.skill,null);
+      assert.ok(compiled.errors.some(e=>e.code==="CANCEL_ATTACK_CONFLICT"));
+      assert.deepEqual(s,snapshot);
+    }
+    assert.deepEqual(rows,before);
+  }
+});
+
+test("キャンセルと残りの公開効果は併用可能、出目1/3/4/5も双方向v1/v2で維持", () => {
+  for (const definition of catalog.effects.filter(e=>e.id!=="cancel-self-attack" && !cancelConflicts.includes(e.id))) {
+    const b=definition.exactFace ? build([definition.exactFace,0,0,0,3,4],definition.exactFace>4?"heavy":"light") : build();
+    const triggerId=definition.exactFace?`exact:${definition.exactFace}`:"exact:0";
+    const leaf=chosen(definition.id,definition.amountOptions[0]?.value);
+    for(const normalized of [false,true]) {
+      const s=selection([cancel,leaf],triggerId),value=normalized?migrateSelection("A",s,catalog):s;
+      assert.equal(getAEffectAvailability(definition.id,b,triggerId,catalog,[value.effects[0]]).selectable,true,definition.id);
+      assert.equal(getAEffectAvailability("cancel-self-attack",b,triggerId,catalog,[value.effects[1]]).selectable,true,definition.id);
+      assert.equal(calc(value,b).ready,true,definition.id);
+      assert.equal(compile(value,b).ok,true,definition.id);
+    }
+  }
+});
