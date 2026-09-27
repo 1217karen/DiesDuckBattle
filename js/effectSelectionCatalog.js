@@ -13,18 +13,19 @@ export function normalizedACatalog(catalog) {
     const s=d.semantics, fixed={}, axes={}; let id,label,statusId;
     if(s.type==="fixedDamage") {id="damage";label="固定ダメージ";}
     else if(s.type==="heal") {id="heal";label="HPを回復";}
+    else if(s.type==="removeRandomStatusStack") {id="remove-random-status";label="状態をランダム解除";statusId=`@${s.group}`;}
     else if(s.type==="changeStatus") {id=s.value===-1?"remove-status":"grant-status";label=s.value===-1?"状態を解除":"状態を付与";statusId=s.status;}
     else if(s.type==="addBuff") {id=`change-${s.stat.toLowerCase()}`;label=`${s.stat}を変更`;fixed.direction=direction(s.sign);}
     else {
       const definitions={ ap:["change-ap","APを変更"], nextAttackATPlus:["change-next-at","次回攻撃ATを変更"], attackTimesOverride:["cancel-attack","通常攻撃を中止"], attackTimesAdd:["change-attacks","攻撃回数を変更"], additionalRecoil:["add-recoil","追加反動"], recoilMinus:["reduce-recoil","反動を軽減"] };
       [id,label]=definitions[s.key] ?? ["cancel-dice-effect","出目効果を無効化"];
       if(["ap","nextAttackATPlus"].includes(s.key)) fixed.direction=direction(s.sign);
-      if(d.exactFace!=null) fixed.diceAction=String(d.exactFace);
+      // Aの出目専用効果はtriggerから確定する。
       if(s.key==="attackTimesAdd" && s.value===-1) {id="reduce-dice-attacks";label="出目の攻撃回数を減少";}
     }
     if(d.requiresAmount) axes.amount=d.amountOptions;
     return {effectId:id,label,targetId:s.target,...(statusId?{statusId}:{}),fixedOptions:fixed,optionAxes:axes,legacyId:d.id,definition:d,
-      chanceEnabled:d.polarity==="benefit"};
+      chanceEnabled:false};
   });
   return groupRows(rows);
 }

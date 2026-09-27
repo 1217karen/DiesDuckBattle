@@ -50,7 +50,7 @@ const partialCases = [
   ["D null option", b => { b.battler.dSelection = { optionId: null }; }],
   ["D missing option", b => { b.battler.dSelection = {}; }],
   ["AT DF missing", b => { b.ducks[0].stats.AT = null; b.ducks[0].stats.DF = null; }],
-  ["SP unset with existing dice", b => { b.ducks[0].stats.SP = null; b.ducks[0].diceFrame = null; b.ducks[0].dice = [1,1,2,2,3,4]; }],
+  ["SP unset with existing dice", b => { b.ducks[0].stats.SP = null; b.ducks[0].diceFrame = null; b.ducks[0].dice = [1,1,2,2,3,4]; b.ducks[0].aSelection.triggerId = "exact:1"; }],
   ["A trigger blank", b => { b.ducks[0].aSelection.triggerId = ""; }],
   ["A trigger only", b => { b.ducks[0].aSelection = { triggerId: "exact:0", effects: [] }; }],
   ["A amount missing", b => { delete b.ducks[0].aSelection.effects[0].amountOptionId; }],
@@ -74,11 +74,11 @@ const invalidCases = [
   ["outside frame", "dice", b => { b.ducks[0].dice[0] = 6; }],
   ["too many copies", "dice", b => { b.ducks[0].dice = [1,1,1,1,0,0]; }],
   ["dice resource deficit", "dice", b => { b.ducks[0].dice = [1,1,1,2,2,2]; }],
-  ["A overspent", "A", b => { b.ducks[0].dice = [1,1,2,2,3,4]; b.ducks[0].aSelection.effects = Array.from({length:ac.maxEffects},()=>aLeaf("damage-enemy")); }],
+  ["A overspent", "A", b => { b.ducks[0].dice = [1,1,2,2,3,4]; b.ducks[0].aSelection.triggerId = "exact:1"; b.ducks[0].aSelection.effects = Array.from({length:ac.maxEffects},()=>aLeaf("damage-enemy")); }],
   ["A too many effects", "A", b => { b.ducks[0].aSelection.effects = Array.from({length:ac.maxEffects+1},()=>aLeaf("damage-enemy")); }],
   ["A exact-only effect", "A", b => { const e = ac.effects.find(e => e.exactFace != null); b.ducks[0].aSelection.effects = [aLeaf(e.id)]; }],
   ["A forbidden duplicate", "A", b => { const e = ac.effects.find(e => !e.allowDuplicate); b.ducks[0].aSelection.effects = [aLeaf(e.id),aLeaf(e.id)]; }],
-  ["A drawback chance", "A", b => { b.ducks[0].aSelection.effects = [{ ...aLeaf("damage-self"), chanceOptionId: "50" }]; }],
+  ["A drawback chance", "A", b => { b.ducks[0].aSelection.effects = [{ ...aLeaf("heal-enemy"), chanceOptionId: "50" }]; }],
   ["A unknown ID while trigger blank", "A", b => { b.ducks[0].aSelection = { triggerId: "", effects: [{effectId:"unknown"}] }; }],
   ["B illegal filled combination", "B", b => { b.battler.bSelection = { type:"event", triggerId:event.triggerId, conditionId:event.conditionId, effectId:"unknown", options:{} }; }],
   ["B unknown ID while effect blank", "B", b => { b.battler.bSelection = { type:"event", triggerId:"unknown", conditionId:"", effectId:"", options:{} }; }],
@@ -101,7 +101,7 @@ for (const [name, section, change] of invalidCases) test(`${name}: invalid block
   assert.ok(r.invalid.some(i => i.section === section), JSON.stringify(r));
 });
 test("overspent A includes numeric deficit and unnamed Duck identity", () => {
-  const b = complete(); b.ducks[0].dice = [1,1,2,2,3,4]; b.ducks[0].aSelection.effects = Array.from({length:3},()=>aLeaf("damage-enemy"));
+  const b = complete(); b.ducks[0].dice = [1,1,2,2,3,4]; b.ducks[0].aSelection.triggerId = "exact:1"; b.ducks[0].aSelection.effects = Array.from({length:3},()=>aLeaf("damage-enemy"));
   const i = check(b,"invalid").invalid.find(i=>i.code === "INSUFFICIENT_A_POINTS");
   assert.match(i.message,/Aポイントが\d+pt不足/); assert.equal(i.duckId,"duck-1"); assert.equal(i.ownerName,"アヒル 1");
 });
@@ -169,4 +169,23 @@ test("blank effect/type cannot hide unknown option IDs or unnecessary option axe
     b => { b.ducks[0].cSelection.structure.effects = [{effectId:"",options:{constructor:"unknown"}}]; },
     b => { b.ducks[0].cSelection.structure.effects = [{effectId:"",options:{},chanceOptionId:"unknown"}]; },
   ]) { const b = complete(); change(b); check(b,"invalid"); }
+});
+
+test("A cancel plus four normal effects survives schema v2 migration and save inspection", () => {
+  const b = complete();
+  b.ducks[0].aSelection.effects = [{effectId:"cancel-self-attack"}, ...Array.from({length:4},()=>aLeaf("heal-enemy"))];
+  const migrated = migratePlayerBuild(b);
+  assert.equal(migrated.ok,true);
+  assert.equal(migrated.build.ducks[0].aSelection.effects.length,5);
+  check(migrated.build,"complete");
+});
+
+test("obsolete A choices remain invalid without replacement in save inspection", () => {
+  for (const leaf of [{effectId:"damage-enemy",amountOptionId:"amount-3",chanceOptionId:"50"},
+    {effectId:"ap-self-decrease",amountOptionId:"amount-1"}, {effectId:"ap-enemy-increase",amountOptionId:"amount-1"},
+    {effectId:"remove-crack-self"}]) {
+    const b=complete();b.ducks[0].aSelection.effects=[leaf];
+    check(b,"invalid");
+    assert.deepEqual(b.ducks[0].aSelection.effects,[leaf]);
+  }
 });

@@ -59,7 +59,7 @@ export function battlerSummary(battler) {
 export function duckSummary(duck, displayName = duck?.name) {
   if (!duck) return "中央の1P DUCKからアヒルを選択してください。";
   const a = resolveSelection("A", duck.aSelection, ac).selection, c = resolveSelection("C", duck.cSelection, cc).selection;
-  const aText = !a ? "未設定" : [label(getATriggerOptions(duck.diceFrame), a.triggerId), ...(a.effects ?? []).map(leaf => {
+  const aText = !a ? "未設定" : [label(getATriggerOptions(duck), a.triggerId), ...(a.effects ?? []).map(leaf => {
     const effect = ac.effects.find(e => e.id === leaf.effectId);
     return [effect?.label ?? "不明な効果", effect?.requiresAmount ? label(effect.amountOptions, leaf.amountOptionId) : "",
       leaf.chanceOptionId ? label(ac.chanceOptions, leaf.chanceOptionId) : ""].filter(Boolean).join(" / ");

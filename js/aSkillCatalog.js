@@ -3,12 +3,12 @@ import { statusLabel } from "./statusMetadata.js";
 import { getDiceFrame } from "./diceFrames.js";
 import { STATUS_GROUPS } from "./statusGroups.js";
 
-// 信頼済み運営定義（balance v0）。各呼出しは独立した設定を返す。
+// 信頼済み運営定義（A第1段階）。各呼出しは独立した設定を返す。
 export function createASkillCatalog() {
   const categories = [
     ["damage", "固定ダメージ"], ["healing", "固定HP回復"], ["ap", "AP操作"],
     ["ailment", "debuff付与"], ["enhancement", "buff付与"],
-    ["removeStatus", "指定status 1stack解除"], ["nextAttack", "次回通常攻撃AT"],
+    ["removeStatus", "ランダム状態解除"], ["nextAttack", "次回通常攻撃AT"],
     ["phase", "現在phase AT/DF"], ["cancelAttack", "通常攻撃回数"],
     ["recoil", "追加反動"], ["diceOnly", "出目専用効果"],
   ].map(([id, label]) => ({ id, label }));
@@ -20,11 +20,12 @@ export function createASkillCatalog() {
   });
   const change = (key, sign = 1) => ({ type: "changeValue", key, op: "add", sign });
   for (const target of ["self", "enemy"]) {
-    add(`damage-${target}`, "damage", `${target}へ固定ダメージ`, target, target === "self", { type: "fixedDamage" });
+    if (target === "enemy") add(`damage-${target}`, "damage", `${target}へ固定ダメージ`, target, target === "self", { type: "fixedDamage" });
     add(`heal-${target}`, "healing", `${target}を固定回復`, target, target === "enemy", { type: "heal" });
     for (const direction of ["increase", "decrease"]) {
       const sign = direction === "increase" ? 1 : -1;
       const drawback = (target === "enemy") === (sign === 1);
+      if (drawback) continue;
       add(`ap-${target}-${direction}`, "ap", `${target} AP${sign === 1 ? "+" : "−"}`, target, drawback, change("ap", sign));
       add(`next-at-${target}-${direction}`, "nextAttack", `${target} 次回通常攻撃AT${sign === 1 ? "+" : "−"}`, target, drawback, change("nextAttackATPlus", sign));
     }
@@ -40,13 +41,13 @@ export function createASkillCatalog() {
         add(`grant-${random ? `random-${group}` : status}-${target}`, categoryId,
           `${target}に${statusLabel(status)}付与`, target, drawback,
           { type: "changeStatus", status, op: "add", sign: 1 }, random ? {} : { statusId: status });
-        if (!random) add(`remove-${status}-${target}`, "removeStatus", `${target}の${statusLabel(status)}を1stack解除`, target, !drawback,
-          { type: "changeStatus", status, op: "add", value: -1 }, { requiresAmount: false, statusId: status });
       }
+      add(`remove-random-${group}-${target}`, "removeStatus", `${target}の${statusLabel(`@${group}`)}をランダム解除`, target, !drawback,
+        { type: "removeRandomStatusStack", group });
     }
   }
   for (const [target, stat] of [["self", "AT"], ["enemy", "DF"]]) {
-    for (const sign of [1, -1]) add(`phase-${stat.toLowerCase()}-${target}-${sign === 1 ? "increase" : "decrease"}`,
+    for (const sign of [target === "self" ? 1 : -1]) add(`phase-${stat.toLowerCase()}-${target}-${sign === 1 ? "increase" : "decrease"}`,
       "phase", `${target} 現在phase ${stat}${sign === 1 ? "+" : "−"}`, target,
       (target === "self") === (sign === -1), { type: "addBuff", stat, sign });
   }
@@ -66,13 +67,14 @@ export function createASkillCatalog() {
     { exactFace: 2, requiresAmount: false, allowDuplicate: false });
   add("reduce-dice6-recoil", "diceOnly", "[出目6] 反動軽減", "self", false, change("recoilMinus"),
     { exactFace: 6, allowDuplicate: false });
-  // [効果量, pt絶対値]。反転効果・指定/ランダムstatusで同じ表を使用する。
+  // [効果量, pt絶対値]。指定/ランダムstatusで同じ表を使用する。
   // option IDはこのtrusted定義から作り、ユーザーのIDを数値として解釈しない。
   const amounts = {
     damage: [[3, 2], [5, 3]],
     healing: [[5, 2], [10, 4]],
-    ap: [[1, 2], [2, 4]],
+    ap: [[1, 3], [2, 5]],
     ailment: [[1, 1], [2, 2], [3, 3]],
+    removeStatus: [[1, 1], [2, 2], [3, 3]],
     enhancement: [[1, 1], [2, 2], [3, 3]],
     nextAttack: [[2, 1], [3, 2], [5, 3]],
     phase: [[2, 1], [3, 2], [5, 3]],
@@ -80,7 +82,8 @@ export function createASkillCatalog() {
     recoil: [[2, 1], [4, 2]],
     diceOnly: [[3, 2]], // reduce-dice6-recoilだけが数量を持つ。
   };
-  const fixedPoints = { removeStatus: 1, cancelAttack: 1, diceOnly: 2 };
+  // キャンセル還元は固定値を持たずresourcesでfrequencyRankから求める。
+  const fixedPoints = { cancelAttack: null, diceOnly: 2 };
   for (const effect of effects) {
     const drawback = effect.polarity === "drawback";
     const points = effect.requiresAmount ? 0 : fixedPoints[effect.categoryId];
@@ -96,8 +99,8 @@ export function createASkillCatalog() {
     categories, effects, statuses, basePoints: 3, maxEffects: 4,
     targets: [{ id: "self", label: "自分" }, { id: "enemy", label: "相手" }],
     triggerCosts: { exact: 0, rangeByCount: { 1: 0, 2: 1, 3: 2 }, all: 2 },
-    chanceOptions: [[100, 0], [50, 1], [25, 2], [10, 3]].map(([percent, discount]) => ({ id: String(percent), label: `${percent}%`,
-      value: percent / 100, discount })),
+    // 旧selectionの100指定を受けるためだけの互換ID。Aに確率選択はない。
+    chanceOptions: [{ id: "100", label: "100%", value: 1 }],
     maxDrawbackPoints: null,
   };
   catalog.selectionEffects = normalizedACatalog(catalog);
@@ -115,18 +118,19 @@ export function matchesATrigger(trigger, value) {
     default: return false;
   }
 }
-// コストは素体の元の非0出目だけで計算。装着数や将来のDスキルは参照しない。
-export function getATriggerOptions(diceFrame, catalog = createASkillCatalog()) {
-  const frame = getDiceFrame(diceFrame);
-  if (!frame) return [];
-  const faces = frame.faces;
-  const out = [0, ...faces].map(value => ({
+// 候補は現在の初期6枠のみ。range価格は従来の素体非0出目数を維持する。
+export function getATriggerOptions(build, catalog = createASkillCatalog()) {
+  const frame = getDiceFrame(build?.diceFrame);
+  if (!frame || !Array.isArray(build?.dice) || build.dice.length !== 6) return [];
+  const current = [...new Set(build.dice.filter(value => value === 0 || frame.faces.includes(value)))].sort((a, b) => a - b);
+  const faces = current.filter(value => value !== 0);
+  const out = current.map(value => ({
     id: `exact:${value}`, kind: "exact", value, label: `出目${value}の時`,
     baseFaces: [value], pointCost: catalog.triggerCosts.exact,
   }));
   for (const kind of ["lte", "gte"]) {
     for (const value of kind === "lte" ? faces.slice(0, -1) : faces.slice(1)) {
-      const baseFaces = faces.filter(face => kind === "lte" ? face <= value : face >= value);
+      const baseFaces = frame.faces.filter(face => kind === "lte" ? face <= value : face >= value);
       out.push({ id: `${kind}:${value}`, kind, value,
         label: `出目${value}${kind === "lte" ? "以下" : "以上"}`,
         baseFaces, pointCost: catalog.triggerCosts.rangeByCount[baseFaces.length] ?? null });
@@ -136,21 +140,24 @@ export function getATriggerOptions(diceFrame, catalog = createASkillCatalog()) {
   return out;
 }
 
-export function getAEffectAvailability(effectId, diceFrame, triggerId, catalog = createASkillCatalog()) {
+export function getAEffectAvailability(effectId, build, triggerId, catalog = createASkillCatalog(), effects = []) {
   const effect = typeof effectId === "string" && catalog.effects.find(item => item.id === effectId);
-  const trigger = getATriggerOptions(diceFrame, catalog).find(item => item.id === triggerId);
+  const trigger = getATriggerOptions(build, catalog).find(item => item.id === triggerId);
   if (!effect) return { selectable: false, reason: { code: "UNKNOWN_EFFECT", message: "未登録のA効果です。" } };
-  if (!trigger) return { selectable: false, reason: { code: "INVALID_TRIGGER", message: "この素体で発動条件を選択してください。" } };
+  if (!trigger) return { selectable: false, reason: { code: "INVALID_TRIGGER", message: "現在のダイスで有効な発動条件を選択してください。" } };
   if (effect.exactFace != null && (trigger.kind !== "exact" || trigger.value !== effect.exactFace)) {
     return { selectable: false, reason: { code: "EXACT_FACE_REQUIRED", requiredFace: effect.exactFace,
       message: `「出目${effect.exactFace}の時」専用です。` } };
+  }
+  if ([2, 6].includes(effect.exactFace) && effects.some(item => ["cancel-self-attack", "cancel-attack"].includes(item?.effectId))) {
+    return { selectable: false, reason: { code: "CANCEL_ATTACK_CONFLICT", message: "通常攻撃キャンセルとは併用できません。" } };
   }
   return { selectable: true, reason: null };
 }
 
 // 常に全効果を返す。専用効果も除外せずselectable/reasonを添える。
 // 対象/状態/方向はeffectIdに組み込み済み。UIでその組合せを再判定する必要はない。
-export function getAEffectOptions(diceFrame, triggerId, catalog = createASkillCatalog()) {
+export function getAEffectOptions(build, triggerId, catalog = createASkillCatalog(), selectedEffects = []) {
   return catalog.categories.map(category => {
     const effects = catalog.effects.filter(effect => effect.categoryId === category.id);
     return {
@@ -158,7 +165,7 @@ export function getAEffectOptions(diceFrame, triggerId, catalog = createASkillCa
       targets: catalog.targets.filter(target => effects.some(effect => effect.targetId === target.id)),
       statuses: catalog.statuses.filter(status => effects.some(effect => effect.statusId === status.id)),
       effects: effects.map(effect => ({ ...effect,
-        ...getAEffectAvailability(effect.id, diceFrame, triggerId, catalog) })),
+        ...getAEffectAvailability(effect.id, build, triggerId, catalog, selectedEffects) })),
     };
   });
 }

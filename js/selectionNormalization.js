@@ -38,6 +38,11 @@ export function resolveSelection(category, selection, catalog, { force = false }
     if(!definition) { add(blank(leaf.effectId),blank(leaf.effectId)?"SELECTION_UNSELECTED":"UNKNOWN_EFFECT","effectId","効果が未選択、または現在の条件では使えません。"); return category==="B" ? {type:leaf.type,triggerId:leaf.triggerId??"",conditionId:leaf.conditionId??"",effectId:"",options:{}} : category==="A" ? {effectId:""} : {effectId:"",options:{}}; }
     const pendingStart=incomplete.length;
     let candidates=definition.variants;
+    if (category === "A" && candidates.some(r => r.definition.exactFace != null)) {
+      const matching = candidates.filter(r => r.definition.exactFace == null || selection.triggerId === `exact:${r.definition.exactFace}`);
+      if (matching.length) candidates = matching;
+      else add(false,"EXACT_FACE_REQUIRED","effectId","対応する出目のexact条件が必要です。");
+    }
     const choose=(key,value,read,required=true)=>{
       if(blank(value)) {if(required) add(true,"SELECTION_UNSELECTED",key,`${key==="targetId"?"対象":key==="statusId"?"状態の種類":"追加項目"}を選択してください。`); return;}
       const matches=candidates.filter(r=>read(r)===value);
@@ -58,7 +63,11 @@ export function resolveSelection(category, selection, catalog, { force = false }
       if(candidates.some(r=>r.definition.exactFace==null || selection.triggerId===`exact:${r.definition.exactFace}`)) deferred.push({code:"EXACT_FACE_REQUIRED",path});
     }
     const row=candidates[0];
+    // 旧v2の出目指定は対応するexactと一致する場合だけ互換受理する。
+    const legacyDiceAction = category === "A" && row.definition.exactFace != null && Object.hasOwn(options,"diceAction");
+    if (legacyDiceAction && options.diceAction !== String(row.definition.exactFace)) add(false,"ILLEGAL_COMBINATION","options.diceAction","発動条件と出目指定が一致しません。");
     const allowedOptions=new Set(candidates.flatMap(r=>[...Object.keys(r.fixedOptions),...Object.keys(r.optionAxes)]));
+    if (legacyDiceAction) allowedOptions.add("diceAction");
     for(const axis of Object.keys(options)) if(!allowedOptions.has(axis)) add(false,"UNKNOWN_FIELD",`options.${axis}`,"この効果には不要な追加項目です。");
     const next={ ...leaf, effectId:row.legacyId };
     delete next.targetId; delete next.statusId;

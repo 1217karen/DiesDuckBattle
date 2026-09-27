@@ -10,7 +10,7 @@ import { runASkillTestBattle } from "../js/aSkillTestHarness.js";
 const catalog=createADevCatalog();
 const choose=(effectId,value,chanceOptionId)=>({effectId,...(value==null?{}:{amountOptionId:`dev-${value}`}),...(chanceOptionId?{chanceOptionId}:{})});
 function compiled(effects,triggerId="all",diceFrame="light") {
-  const r=compileASkill({diceFrame,dice:[0,0,0,0,0,0]},{triggerId,effects},{catalog});
+  const r=compileASkill({diceFrame,dice:triggerId.startsWith("exact:") ? [Number(triggerId.split(":")[1]),0,0,0,0,0] : diceFrame === "light" ? [0,0,1,2,3,4] : [0,0,3,4,5,6]},{triggerId,effects},{catalog});
   assert.ok(r.ok,JSON.stringify(r)); return {id:"A_TEST",...r.skill};
 }
 const change=(key,value,op="set")=>({type:"changeValue",target:"self",key,op,value});
@@ -48,23 +48,18 @@ test("全公開effectがcompilerからtrusted engineへ到達（unsupportedな�
   for(const definition of catalog.effects) {
     const face=definition.exactFace??1, frame=face>4?"heavy":"light";
     const amount=definition.requiresAmount?definition.amountOptions[0].value:undefined;
-    const aSkill=compiled([choose(definition.id,amount)],definition.exactFace?`exact:${face}`:"all",frame);
+    const aSkill=compiled([choose(definition.id,amount), ...(definition.id === "cancel-self-attack" ? [choose("heal-enemy",5)] : [])],definition.exactFace?`exact:${face}`:"all",frame);
     const r=battle({aSkill,dice:face,setup:[change("hp",900),change("ap",5)],enemySetup:[change("hp",900),change("ap",5)]});
     assert.ok(aEvents(r).length,definition.id);
     assert.equal(r.events.some(e=>String(e.code).includes("UNSUPPORTED")),false,definition.id);
   }
 });
-test("順序は実動作でも保持、重複effectは独立chance抽選",()=>{
-  const heal=choose("heal-self",10),hurt=choose("damage-self",5);
-  const first=phase(battle({aSkill:compiled([heal,hurt])})).filter(e=>e.originSkill?.skillId==="A_TEST");
-  const second=phase(battle({aSkill:compiled([hurt,heal])})).filter(e=>e.originSkill?.skillId==="A_TEST");
-  assert.notDeepEqual(first.map(e=>e.hpAfter),second.map(e=>e.hpAfter));
-  const skill=compiled([choose("grant-random-debuff-enemy",2,"50"),choose("grant-random-debuff-enemy",2,"50")]);
-  const values=[.9,.1,.75]; let calls=0;
-  const ctx={actor:{side:"P1",status:emptyStatus()},enemy:{side:"P2",status:emptyStatus()},rng:()=>{calls++;return values.shift();},push:()=>{},helpers:{}};
+test("重複random付与は確定発動し、status選択だけ乱数を使用",()=>{
+  const skill=compiled([choose("grant-random-debuff-enemy",2),choose("grant-random-debuff-enemy",2)],"exact:0");
+  let calls=0;
+  const ctx={actor:{side:"P1",status:emptyStatus()},enemy:{side:"P2",status:emptyStatus()},rng:()=>{calls++;return calls===1?0:.9;},push:()=>{},helpers:{}};
   applyEffect(skill.effect,ctx);
-  assert.equal(calls,3); // 失敗chance、成功chance、成功時だけstatus乱数
-  assert.equal(Object.values(ctx.enemy.status).reduce((a,b)=>a+b,0),2);
+  assert.equal(calls,2); assert.equal(Object.values(ctx.enemy.status).reduce((a,b)=>a+b,0),4);
 });
 test("random buff/debuffは各group内、status解除は1stackかつ0 clamp",()=>{
   for(const group of ["buff","debuff"]) {
@@ -78,11 +73,11 @@ test("random buff/debuffは各group内、status解除は1stackかつ0 clamp",()=
   }
   for(const target of ["self","enemy"]) for(const key of STATUS_GROUPS.all) for(const start of [0,2]) {
     const actor={side:"P1",status:{[key]:start}},enemy={side:"P2",status:{[key]:start}};
-    applyEffect(compiled([choose(`remove-${key}-${target}`)]).effect,{actor,enemy,rng:()=>.9,push:()=>{},helpers:{}});
+    applyEffect(compiled([choose(`remove-random-${STATUS_GROUPS.buff.includes(key)?"buff":"debuff"}-${target}`,1)]).effect,{actor,enemy,rng:()=>.9,push:()=>{},helpers:{}});
     assert.equal((target==="self"?actor:enemy).status[key],Math.max(0,start-1));
   }
 });
-for(const [id,delta] of [["phase-at-self-increase",1],["phase-at-self-decrease",-1],["phase-df-enemy-increase",-1],["phase-df-enemy-decrease",1]]) {
+for(const [id,delta] of [["phase-at-self-increase",1],["phase-df-enemy-decrease",1]]) {
   test(`${id}は現在phaseだけ通常ダメージへ反映`,()=>{
     const base=normals(phase(battle()))[0].value;
     const r=battle({aSkill:compiled([choose(id,1)],"exact:1")});

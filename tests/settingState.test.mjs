@@ -4,7 +4,8 @@ import assert from "node:assert/strict";
 import { createPlayerBuildStorage, PLAYER_BUILD_STORAGE_KEY } from "../js/playerBuildStorage.js";
 import { createSettingState, changeSetting, selectedDuck, selectedPublicDuckId, SP_OPTIONS, cBranches, createCStructure, duckSummary, battlerSummary } from "../js/settingState.js";
 import { calcMaxHPFromStats } from "../js/statsUtil.js";
-import { createASkillCatalog } from "../js/aSkillCatalog.js";
+import { compileASkill } from "../js/aSkillCompiler.js";
+import { createASkillCatalog, getATriggerOptions } from "../js/aSkillCatalog.js";
 import { createCSkillCatalog } from "../js/cSkillCatalog.js";
 
 function setup(raw = null) {
@@ -182,4 +183,18 @@ test("loaded incomplete selections are readable without mutation", () => {
     assert.equal(duckSummary(selectedDuck(state)).C.ok, false);
     assert.equal(JSON.stringify(state.build), before);
   }
+});
+
+
+test("A trigger candidates track unsaved dice changes without replacing the selected trigger", () => {
+  const initial = setup();
+  let state = sp(add(initial.state), "light");
+  const aSelection = { triggerId: "exact:2", effects: [{effectId:"damage",targetId:"enemy",options:{amount:"amount-3"}}] };
+  state = patch(state, {dice:[0,0,1,2,3,4],aSelection});
+  assert.equal(compileASkill(selectedDuck(state), selectedDuck(state).aSelection).ok,true);
+  state = patch(state, {dice:[0,0,0,0,0,0]});
+  assert.deepEqual(getATriggerOptions(selectedDuck(state)).map(t=>t.id),["exact:0","all"]);
+  assert.deepEqual(selectedDuck(state).aSelection,aSelection);
+  assert.equal(compileASkill(selectedDuck(state), selectedDuck(state).aSelection).ok,false);
+  assert.equal(initial.memory.writes,0);
 });

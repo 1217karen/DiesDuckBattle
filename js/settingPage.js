@@ -226,7 +226,7 @@ function renderA(duck, box) {
   field(panel, "Aスキルの設定", "a-enabled", [{ id: "on", label: "設定する" }], a === null ? "" : "on",
     value => patchDuck({ aSelection: value ? { triggerId: "", effects: [] } : null }), "未設定");
   if (a !== null) {
-    field(panel, "発動条件", "a-trigger", getATriggerOptions(duck.diceFrame, aCatalog).map(o => ({ ...o, label: `${o.label} / ${o.pointCost}pt` })), a.triggerId,
+    field(panel, "発動条件", "a-trigger", getATriggerOptions(duck, aCatalog).map(o => ({ ...o, label: `${o.label} / ${o.pointCost}pt` })), a.triggerId,
       triggerId => patchDuck({ aSelection: { ...a, triggerId } }));
     const effects = a.effects ?? [];
     const setRows = rows => patchDuck({ aSelection: { ...a, effects: rows } });

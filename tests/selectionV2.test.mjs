@@ -26,11 +26,12 @@ function memory(entries={}) {const values=new Map(Object.entries(entries));retur
 test("all production A variants/amounts/chances preserve exact engine semantics and prices",()=>{
   for(const effect of ac.effects) for(const amount of effect.requiresAmount?effect.amountOptions:[null]) for(const chance of effect.polarity==="benefit"?ac.chanceOptions:[ac.chanceOptions[0]]) {
     const frame=effect.exactFace>4?"heavy":"light";
-    const build={...base,diceFrame:frame};
+    const build={...base,diceFrame:frame,dice:[effect.exactFace??0,0,0,0,0,0]};
     const old={triggerId:`exact:${effect.exactFace??0}`,effects:[{effectId:effect.id,...(amount?{amountOptionId:amount.id}:{}),chanceOptionId:chance.id}]};
+    if (effect.id === "cancel-self-attack") old.effects.push({effectId:"heal-enemy",amountOptionId:"amount-5"});
     const next=migrateSelection("A",old,ac);
     const before=compileASkill(build,old),after=compileASkill(build,next);
-    assert.equal(after.ok,before.ok,effect.id);assert.deepEqual(after.skill,before.skill,effect.id);
+    assert.equal(before.ok,true,effect.id);assert.equal(after.ok,before.ok,effect.id);assert.deepEqual(after.skill,before.skill,effect.id);
     for(const key of ["netCost","remaining","drawbackPoints","benefitCount"]) assert.equal(after.resources[key],before.resources[key],`${effect.id}/${key}`);
     assert.deepEqual(resolveSelection("A",next,ac).errors,[]);
   }
@@ -61,8 +62,7 @@ test("A grant is split into effect/target/status/amount; status and polarity are
   assert.equal(compileASkill(base,normalized).skill.effect[0].status,"Headwind");
   const leaf={effectId:"damage",targetId:"enemy",options:{amount:"amount-5"}};
   assert.equal(calculateASkillResources(base,a(leaf)).effectCost,3);
-  assert.equal(calculateASkillResources(base,a({...leaf,targetId:"self"})).drawbackPoints,3);
-  assert.equal(calculateASkillResources(base,a({...leaf,targetId:"self"})).effectCost,0);
+  assert.equal(compileASkill(base,a({...leaf,targetId:"self"})).ok,false);
   assert.equal(compileASkill(base,a({...leaf,targetId:"self",chanceOptionId:"50"})).ok,false);
 });
 test("illegal axes, target/status combinations and unknown fields are rejected",()=>{
@@ -115,11 +115,11 @@ test("unmappable/corrupt/future data never gets repaired or overwritten",async()
 
 test("unfinished axes do not produce a guessed polarity/cost violation",async()=>{
   const b=migratePlayerBuild((await getOpponent("dev-opponent-1")).build).build;
-  b.ducks[0].aSelection=a({effectId:"grant-status",targetId:"self",options:{amount:"amount-1"},chanceOptionId:"50"});
+  b.ducks[0].aSelection=a({effectId:"grant-status",targetId:"self",options:{amount:"amount-1"},chanceOptionId:"100"});
   let r=inspectBuildForSave(b); assert.equal(r.canSave,true,JSON.stringify(r));assert.equal(r.complete,false);
   assert.equal(calculateASkillResources(b.ducks[0],b.ducks[0].aSelection).remaining,null);
   b.ducks[0].dice=[1,1,2,2,3,4];
-  b.ducks[0].aSelection=a({effectId:"heal",options:{amount:"amount-10"}});
+  b.ducks[0].aSelection={...a({effectId:"heal",options:{amount:"amount-10"}}),triggerId:"exact:1"};
   r=inspectBuildForSave(b);assert.equal(r.canSave,true,JSON.stringify(r));
   b.ducks[0].aSelection.effects[0].targetId="self";
   assert.equal(inspectBuildForSave(b).canSave,false);

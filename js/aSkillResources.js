@@ -46,22 +46,23 @@ function legacycalculateASkillResources(build, selection, {
   let triggerCost = null, frequencyCount = null, frequencyRank = null;
   let benefitCount = 0, drawbackCount = 0;
   const effectCount = Array.isArray(selection?.effects) ? selection.effects.length : 0;
+  const normalEffectCount = Array.isArray(selection?.effects) ? selection.effects.filter(item => item?.effectId !== "cancel-self-attack").length : 0;
   if (!record(selection)) error("INVALID_SELECTION", "aSkill", "A選択データが必要です。");
   else {
     keys(selection, ["triggerId", "effects"], "aSkill");
-    const trigger = getATriggerOptions(build?.diceFrame, catalog).find(item => item.id === selection.triggerId);
-    if (!trigger) error("INVALID_TRIGGER", "triggerId", "この素体では選べない発動条件です。");
+    const trigger = getATriggerOptions(build, catalog).find(item => item.id === selection.triggerId);
+    if (!trigger) error("INVALID_TRIGGER", "triggerId", "現在のダイスでは選べない発動条件です。");
     else {
       triggerCost = price(trigger.pointCost, "triggerCost");
       if (validDice) {
         frequencyCount = build.dice.filter(face => matchesATrigger(trigger, face)).length;
-        // 初期0/6の条件も選択可（D追加後に成立し得る）。未定義のランクはnull。
+        // 現在の初期6枠だけからキャンセル還元を決定する。
         frequencyRank = frequencyCount === 0 ? null : Math.ceil(frequencyCount / 2);
       }
     }
     if (!Array.isArray(selection.effects)) error("INVALID_EFFECTS", "effects", "効果配列が必要です。");
     else {
-      if (effectCount < 1 || effectCount > catalog.maxEffects) error("EFFECT_COUNT", "effects", `1～${catalog.maxEffects}effectが必要です。`);
+      if (normalEffectCount < 1 || normalEffectCount > catalog.maxEffects) error("EFFECT_COUNT", "effects", `通常効果1～${catalog.maxEffects}個が必要です。`);
       const selectedEffectCounts = new Map();
       for (const [index, chosen] of selection.effects.entries()) {
         const path = `effects.${index}`;
@@ -78,13 +79,10 @@ function legacycalculateASkillResources(build, selection, {
         const benefit = definition.polarity === "benefit";
         if (!benefit && definition.polarity !== "drawback") throw new TypeError("Invalid A polarity");
         if (benefit) benefitCount++; else drawbackCount++;
-        const availability = getAEffectAvailability(definition.id, build?.diceFrame, selection.triggerId, catalog);
+        const availability = getAEffectAvailability(definition.id, build, selection.triggerId, catalog, selection.effects);
         if (!availability.selectable) error(availability.reason.code, path, availability.reason.message);
         const chanceId = Object.hasOwn(chosen, "chanceOptionId") ? chosen.chanceOptionId : "100";
-        const chance = catalog.chanceOptions.find(option => option.id === chanceId);
-        if (!chance) error("UNKNOWN_CHANCE_OPTION", `${path}.chanceOptionId`, "未登録の成功率IDです。");
-        if (!benefit && chanceId !== "100") error("DRAWBACK_CHANCE", `${path}.chanceOptionId`, "drawbackの成功率は変更できません。");
-        if (chance && (![1, .5, .25, .1].includes(chance.value) || (chanceId === "100" && chance.value !== 1))) throw new TypeError("Invalid A chance definition");
+        if (chanceId !== "100") error("UNKNOWN_CHANCE_OPTION", `${path}.chanceOptionId`, "Aの旧成功率は使用できません。再選択してください。");
         let option = null, selected = !definition.requiresAmount;
         if (definition.requiresAmount) {
           if (!Object.hasOwn(chosen, "amountOptionId")) pending("AMOUNT_UNSELECTED", `${path}.amountOptionId`);
@@ -98,12 +96,10 @@ function legacycalculateASkillResources(build, selection, {
           }
         } else if (Object.hasOwn(chosen, "amountOptionId")) error("UNEXPECTED_AMOUNT", path, "数量指定不可です。");
         const baseEffectCost = benefit ? (selected ? price(option ? option.pointCost : definition.pointCost, `${path}.pointCost`) : null) : 0;
-        const chanceDiscount = benefit ? (chance ? price(chance.discount, `${path}.chanceDiscount`) : null) : 0;
-        const effectCost = baseEffectCost === null || chanceDiscount === null ? null : Math.max(0, baseEffectCost - chanceDiscount);
-        const appliedChanceDiscount = effectCost === null ? null : baseEffectCost - effectCost;
-        const drawbackPoints = benefit ? 0 : (selected ? price(option && Object.hasOwn(option, "drawbackPoints") ? option.drawbackPoints : definition.drawbackPoints, `${path}.drawbackPoints`) : null);
+        const effectCost = baseEffectCost;
+        const drawbackPoints = definition.id === "cancel-self-attack" ? frequencyRank : benefit ? 0 : (selected ? price(option && Object.hasOwn(option, "drawbackPoints") ? option.drawbackPoints : definition.drawbackPoints, `${path}.drawbackPoints`) : null);
         effectBreakdown.push({ index, effectId: definition.id, polarity: definition.polarity,
-          baseEffectCost, chanceDiscount, appliedChanceDiscount, effectCost, drawbackPoints });
+          baseEffectCost, effectCost, drawbackPoints });
       }
     }
   }
@@ -112,14 +108,15 @@ function legacycalculateASkillResources(build, selection, {
     ? sum(effectBreakdown.map(row => row[key])) : null;
   const known = key => sum(effectBreakdown.map(row => row[key] ?? 0));
   const effectCost = total("effectCost"), drawbackPoints = total("drawbackPoints");
-  const baseEffectCost = total("baseEffectCost"), chanceDiscount = total("appliedChanceDiscount");
+  const baseEffectCost = total("baseEffectCost");
+  const cancelDrawbackPoints = sum(effectBreakdown.filter(row => row.effectId === "cancel-self-attack").map(row => row.drawbackPoints));
   const grossCost = errors.length ? null : sum([triggerCost, benefitSlotCost, effectCost]);
   const netCost = sum([grossCost, drawbackPoints === null ? null : -drawbackPoints]);
   const remaining = sum([availablePoints, netCost === null ? null : -netCost]);
   const complete = errors.length === 0 && unresolved.length === 0 && remaining !== null;
   return { basePoints, dicePoints, availableDicePoints: dicePoints, availablePoints, triggerCost,
-    frequencyCount, frequencyRank, effectCount, benefitCount, drawbackCount, benefitSlotCost,
-    baseEffectCost, chanceDiscount, effectCost, drawbackPoints, grossCost, netCost, remaining,
+    frequencyCount, frequencyRank, effectCount, normalEffectCount, cancelDrawbackPoints, benefitCount, drawbackCount, benefitSlotCost,
+    baseEffectCost, effectCost, drawbackPoints, grossCost, netCost, remaining,
     knownEffectCost: known("effectCost"), knownDrawbackPoints: known("drawbackPoints"), effectBreakdown,
     complete, ready: complete && remaining >= 0, errors, unresolved };
 }

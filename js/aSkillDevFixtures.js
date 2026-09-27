@@ -15,6 +15,5 @@ export function createADevCatalog() {
     effect.pointCost = effect.polarity === "benefit" ? 1 : 0;
     effect.drawbackPoints = effect.polarity === "drawback" ? 1 : 0;
   }
-  catalog.chanceOptions.forEach((option, index) => { option.discount = index; });
   return catalog;
 }

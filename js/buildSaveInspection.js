@@ -158,7 +158,7 @@ function inspectLegacyBuildForSave(build) {
         const value = at(a, issue.path);
         let pending = false;
         switch (issue.code) {
-          case "INVALID_TRIGGER": pending = blank(a.triggerId) || (!frame && Object.keys(DICE_FRAMES).some(id => getATriggerOptions(id, aCatalog).some(t => t.id === a.triggerId))); break;
+          case "INVALID_TRIGGER": pending = blank(a.triggerId) || (!frame && Object.keys(DICE_FRAMES).some(id => getATriggerOptions({ diceFrame: id, dice: duck.dice }, aCatalog).some(t => t.id === a.triggerId))); break;
           case "INVALID_EFFECTS": pending = blank(a.effects); break;
           case "INVALID_EFFECT": pending = value === null; break;
           case "UNKNOWN_EFFECT": pending = blank(value?.effectId); break;

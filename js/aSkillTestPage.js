@@ -50,11 +50,11 @@ function renderInputs() {
     const select = element("select"); select.id = `dice-${index}`;
     for (const value of [0, ...frame.faces]) select.append(option(value, value === 0 ? "0（空き）" : String(value)));
     select.value = face;
-    select.addEventListener("change", () => { state.dice[index] = Number(select.value); renderResult(); });
+    select.addEventListener("change", () => { state.dice[index] = Number(select.value); renderInputs(); });
     $("dice").append(labelled(`枠${index + 1}`, select));
   });
-  const triggers = getATriggerOptions(state.frame, catalog);
-  if (!triggers.some(item => item.id === state.triggerId)) state.triggerId = triggers[0].id;
+  const triggers = getATriggerOptions({ diceFrame: state.frame, dice: state.dice }, catalog);
+  if (!triggers.some(item => item.id === state.triggerId)) triggers.unshift({ id: state.triggerId, label: "現在は使用不可", pointCost: null });
   $("trigger").replaceChildren(...triggers.map(item => option(item.id, `${item.label} / ${points(item.pointCost)}`)));
   $("trigger").value = state.triggerId;
   renderRows(); renderResult();
@@ -62,7 +62,7 @@ function renderInputs() {
 
 function renderRows() {
   $("add-effect").disabled = state.rows.length >= catalog.maxEffects;
-  const groups = getAEffectOptions(state.frame, state.triggerId, catalog);
+  const groups = getAEffectOptions({ diceFrame: state.frame, dice: state.dice }, state.triggerId, catalog, state.rows);
   $("effects").replaceChildren();
   if (!state.rows.length) $("effects").append(element("p", "効果はまだありません。＋効果を追加から追加できます。", "muted"));
   state.rows.forEach((row, index) => {
@@ -124,7 +124,7 @@ function renderRows() {
     if (effect) {
       wrapper.append(element("p", effectLabel(effect), `row-note ${effect.polarity}`));
       if (!effect.requiresAmount) wrapper.append(element("p", `効果コスト：${points(effect.pointCost)}`, "muted"));
-      const availability = getAEffectAvailability(effect.id, state.frame, state.triggerId, catalog);
+      const availability = getAEffectAvailability(effect.id, { diceFrame: state.frame, dice: state.dice }, state.triggerId, catalog, state.rows);
       if (!availability.selectable) wrapper.append(element("p", `現在は選択不可：${availability.reason.message}`, "drawback"));
     }
     const disabled = group.effects.filter(item => !item.selectable);
@@ -158,7 +158,7 @@ function renderResult() {
     ["basePoints", "基礎pt", ""], ["availablePoints", "使用可能pt", ""],
     ["frequencyCount", "初期6枠の該当数", ""], ["frequencyRank", "頻度ランク（0枠は未定義）", ""],
     ["effectCount", "effect数 / 上限4", ""], ["benefitCount", "benefit数", ""], ["drawbackCount", "drawback数", ""],
-    ["benefitSlotCost", "benefit追加枠コスト", ""], ["baseEffectCost", "benefit本体コスト", ""], ["chanceDiscount", "適用chance割引", ""],
+    ["benefitSlotCost", "benefit追加枠コスト", ""], ["baseEffectCost", "benefit本体コスト", ""],
     ["availableDicePoints", "ダイス由来pt", ""], ["triggerCost", "発動条件コスト", "−"],
     ["effectCost", "効果コスト", "−"], ["drawbackPoints", "デメリットpt", "+"],
     ["grossCost", "grossCost（条件＋枠＋効果）", ""], ["netCost", "netCost（還元差引後）", ""],
@@ -199,7 +199,7 @@ $("fixture").addEventListener("change", () => {
 });
 $("add-effect").addEventListener("click", () => {
   if (state.rows.length >= catalog.maxEffects) return;
-  const group = getAEffectOptions(state.frame, state.triggerId, catalog)[0];
+  const group = getAEffectOptions({ diceFrame: state.frame, dice: state.dice }, state.triggerId, catalog, state.rows)[0];
   state.rows.push({ categoryId: group.id, effectId: group.effects.find(item => item.selectable)?.id ?? "" });
   renderRows(); renderResult();
 });
