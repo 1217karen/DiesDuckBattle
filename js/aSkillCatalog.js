@@ -98,7 +98,7 @@ export function createASkillCatalog() {
   const catalog = {
     categories, effects, statuses, basePoints: 3, maxEffects: 4,
     targets: [{ id: "self", label: "自分" }, { id: "enemy", label: "相手" }],
-    triggerCosts: { exact: 0, rangeByCount: { 1: 0, 2: 1, 3: 2 }, all: 2 },
+    triggerCosts: { byFrequency: { 1: 0, 2: 0, 3: 1, 4: 1, 5: 2, 6: 2 } },
     // 旧selectionの100指定を受けるためだけの互換ID。Aに確率選択はない。
     chanceOptions: [{ id: "100", label: "100%", value: 1 }],
     maxDrawbackPoints: null,
@@ -118,7 +118,7 @@ export function matchesATrigger(trigger, value) {
     default: return false;
   }
 }
-// 候補は現在の初期6枠のみ。range価格は従来の素体非0出目数を維持する。
+// 候補も価格も現在の初期6枠のみ。種類数やDの追加出目は価格に使わない。
 export function getATriggerOptions(build, catalog = createASkillCatalog()) {
   const frame = getDiceFrame(build?.diceFrame);
   if (!frame || !Array.isArray(build?.dice) || build.dice.length !== 6) return [];
@@ -126,18 +126,21 @@ export function getATriggerOptions(build, catalog = createASkillCatalog()) {
   const faces = current.filter(value => value !== 0);
   const out = current.map(value => ({
     id: `exact:${value}`, kind: "exact", value, label: `出目${value}の時`,
-    baseFaces: [value], pointCost: catalog.triggerCosts.exact,
+    baseFaces: [value],
   }));
   for (const kind of ["lte", "gte"]) {
     for (const value of kind === "lte" ? faces.slice(0, -1) : faces.slice(1)) {
-      const baseFaces = frame.faces.filter(face => kind === "lte" ? face <= value : face >= value);
+      const baseFaces = faces.filter(face => kind === "lte" ? face <= value : face >= value);
       out.push({ id: `${kind}:${value}`, kind, value,
         label: `出目${value}${kind === "lte" ? "以下" : "以上"}`,
-        baseFaces, pointCost: catalog.triggerCosts.rangeByCount[baseFaces.length] ?? null });
+        baseFaces });
     }
   }
-  out.push({ id: "all", kind: "all", label: "全ての出目", baseFaces: [0, ...faces], pointCost: catalog.triggerCosts.all });
-  return out;
+  out.push({ id: "all", kind: "all", label: "全ての出目", baseFaces: current });
+  return out.map(trigger => {
+    const frequencyCount = build.dice.filter(face => matchesATrigger(trigger, face)).length;
+    return { ...trigger, frequencyCount, pointCost: catalog.triggerCosts.byFrequency[frequencyCount] ?? null };
+  });
 }
 
 export function getAEffectAvailability(effectId, build, triggerId, catalog = createASkillCatalog(), effects = []) {

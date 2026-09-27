@@ -275,7 +275,7 @@ test("HP75/50/50/25の全22パッシブは指定の配分のみ", () => {
   }
 });
 test("production HP追加攻撃はAの通常攻撃0回を復活させない", () => {
-  const a = compileASkill({ diceFrame: "light", dice: [0, 0, 0, 0, 0, 0] },
+  const a = compileASkill({ diceFrame: "void", dice: [0, 0, 0, 0, 0, 0] },
     { triggerId: "all", effects: [{ effectId: "cancel-self-attack" }, { effectId: "heal-enemy", amountOptionId: "amount-5" }] });
   assert.equal(a.ok, true);
   for (const [id, hp] of [["hp-high-extra-attack", 1000], ["hp-low-extra-attack", 200]]) {

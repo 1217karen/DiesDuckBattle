@@ -1,4 +1,5 @@
 // Development-only selection fixtures. Never precompiled engine data.
+import { getDiceFrame } from "./diceFrames.js";
 import { clonePlayerBuild } from "./playerBuildModel.js";
 import { clonePlayerPresentation } from "./playerPresentationModel.js";
 import { inspectBattleLoadout } from "./battleLoadoutCompiler.js";
@@ -11,7 +12,7 @@ opponents[0].build.ducks.unshift(makeBuild("dev-private-duck", "非公開型", {
 function makeBuild(id, name, stats, diceFrame) {
   return { schemaVersion: 1,
     battler: { bSelection: { type: "trait", traitId: "ap-at", options: {} }, dSelection: { optionId: "add-self-0" } },
-    ducks: [{ id, name, stats, diceFrame, dice: [0,0,0,0,0,0],
+    ducks: [{ id, name, stats, diceFrame, dice: [...getDiceFrame(diceFrame).initialDice],
       aSelection: { triggerId: "exact:0", effects: [{ effectId: "damage-enemy", amountOptionId: "amount-5" }] },
       cSelection: { mode: "normal", structure: { kind: "flat", effects: [{ effectId: "damage-enemy", options: { amount: "damageAmount-50" } }] } } }] };
 }

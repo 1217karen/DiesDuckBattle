@@ -11,7 +11,7 @@ import { calculateASkillResources } from "./aSkillResources.js";
 const $ = id => document.getElementById(id);
 const rules = createBuildRules();
 const state = {
-  frame: "light", dice: Array(rules.dice.slots).fill(0), triggerId: "exact:0",
+  frame: "light", dice: [...getDiceFrame("light").initialDice], triggerId: "exact:0",
   rows: [{ categoryId: "damage", effectId: "damage-enemy" }],
 };
 let catalog = createPageCatalog(false);
@@ -49,7 +49,7 @@ function renderInputs() {
   state.dice.forEach((face, index) => {
     const select = element("select"); select.id = `dice-${index}`;
     for (const value of [0, ...frame.faces]) select.append(option(value, value === 0 ? "0（空き）" : String(value)));
-    select.value = face;
+    select.value = face; select.disabled = !frame.editable;
     select.addEventListener("change", () => { state.dice[index] = Number(select.value); renderInputs(); });
     $("dice").append(labelled(`枠${index + 1}`, select));
   });
@@ -180,13 +180,12 @@ function renderResult() {
 }
 
 const frameLabels = { light: "ライト", basic: "ベーシック", heavy: "ヘビー" };
-$("frame").append(...Object.keys(DICE_FRAMES).map(id => option(id, frameLabels[id] ?? id)));
+$("frame").append(...Object.keys(DICE_FRAMES).map(id => option(id, DICE_FRAMES[id].label)));
 $("frame").addEventListener("change", () => {
   state.frame = $("frame").value;
-  const allowed = [0, ...getDiceFrame(state.frame).faces];
-  const replaced = state.dice.filter(face => !allowed.includes(face)).length;
-  state.dice = state.dice.map(face => allowed.includes(face) ? face : 0);
-  $("frame-reset").textContent = replaced ? `新しい素体で使えない${replaced}枠を0に戻しました。` : "";
+  const frame = getDiceFrame(state.frame);
+  state.dice = [...(frame.editable ? frame.initialDice : frame.dice)];
+  $("frame-reset").textContent = "選択したダイスタイプの初期値に設定しました。";
   renderInputs();
 });
 $("trigger").addEventListener("change", () => { state.triggerId = $("trigger").value; renderRows(); renderResult(); });

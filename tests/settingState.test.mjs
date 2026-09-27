@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createPlayerBuildStorage, PLAYER_BUILD_STORAGE_KEY } from "../js/playerBuildStorage.js";
 import { createSettingState, changeSetting, selectedDuck, selectedPublicDuckId, SP_OPTIONS, cBranches, createCStructure, duckSummary, battlerSummary } from "../js/settingState.js";
+import { getDiceFrame } from "../js/diceFrames.js";
 import { calcMaxHPFromStats } from "../js/statsUtil.js";
 import { compileASkill } from "../js/aSkillCompiler.js";
 import { createASkillCatalog, getATriggerOptions } from "../js/aSkillCatalog.js";
@@ -106,17 +107,17 @@ test("公開設定storageが壊れていてもbuild編集stateはクラッシュ
   assert.equal(state.publicLoadStatus, "corrupt");
   assert.throws(() => apply(state, { type: "set-public", id: state.selectedDuckId }));
 });
-test("SP mapping follows frames and does not rewrite invalid dice or A trigger", () => {
+test("dice type switches reset dice and SP but preserve A trigger", () => {
   assert.deepEqual(SP_OPTIONS, [{ id: "heavy", SP: 1 }, { id: "basic", SP: 2 }, { id: "light", SP: 3 }]);
   let state = patch(add(setup().state), { dice: [1, 1, 2, 2, 3, 4], aSelection: { triggerId: "exact:1", effects: [] } });
   for (const { id, SP } of SP_OPTIONS) {
     state = sp(state, id);
     assert.equal(selectedDuck(state).stats.SP, SP); assert.equal(selectedDuck(state).diceFrame, id);
-    assert.deepEqual(selectedDuck(state).dice, [1, 1, 2, 2, 3, 4]);
+    assert.deepEqual(selectedDuck(state).dice, [...getDiceFrame(id).initialDice]);
     assert.equal(selectedDuck(state).aSelection.triggerId, "exact:1");
   }
   state = sp(state, "heavy");
-  assert.equal(duckSummary(selectedDuck(state)).dice.label, "設定に問題あり");
+  assert.equal(duckSummary(selectedDuck(state)).dice.label, "設定完了");
   state = sp(state, null);
   assert.equal(selectedDuck(state).stats.SP, null); assert.equal(selectedDuck(state).diceFrame, null);
 });

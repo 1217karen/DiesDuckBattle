@@ -11,7 +11,7 @@ import { compileCSkill } from "./cSkillCompiler.js";
 import { compileDSkill } from "./dSkillCompiler.js";
 import { createEmptyPlayerPublicSettings, clonePlayerPublicSettings, resolvePublicDuckId } from "./playerPublicSettingsModel.js";
 
-export const SP_OPTIONS = Object.entries(DICE_FRAMES).map(([id, frame]) => ({ id, SP: frame.SP }))
+export const SP_OPTIONS = Object.entries(DICE_FRAMES).filter(([, frame]) => frame.kind === "standard").map(([id, frame]) => ({ id, SP: frame.SP }))
   .sort((a, b) => a.SP - b.SP);
 
 export function createSettingState(result, publicResult = {
@@ -55,11 +55,13 @@ export function changeSetting(state, action, { idFactory } = {}) {
       return { ...state, publicSettings: { ...state.publicSettings, publicDuckId: action.id }, dirty: true };
     case "duck": build = updateDuck(build, selectedDuckId, action.patch); break;
     case "battler": build = updateBattler(build, action.patch); break;
+    case "dice-type":
     case "sp": {
       const frame = action.frame === null ? null : getDiceFrame(action.frame);
       if (action.frame !== null && !frame) throw new RangeError("Unknown dice frame");
       build = updateDuck(build, selectedDuckId, { diceFrame: action.frame,
-        stats: { ...current.stats, SP: frame?.SP ?? null } }); break;
+        stats: { ...current.stats, SP: frame?.SP ?? null },
+        ...(frame ? { dice: [...(frame.editable ? frame.initialDice : frame.dice)] } : {}) }); break;
     }
     default: throw new TypeError("Unknown setting action");
   }
@@ -125,7 +127,7 @@ export function duckSummary(duck) {
     if (v !== null && (!Number.isSafeInteger(v) || v < limit.min || v > limit.max))
       statMessages.push(`${key}は${limit.min}～${limit.max}の整数で設定してください。`);
   }
-  if ((duck.diceFrame !== null && !frame) || duck.stats.SP !== (frame?.SP ?? null)) statMessages.push("SPを選択し直してください。");
+  if ((duck.diceFrame !== null && !frame) || duck.stats.SP !== (frame?.SP ?? null)) statMessages.push("ダイスタイプを選択し直してください。");
   if (resources.stats?.remaining < 0) statMessages.push(`AT・DF・SPの合計は${rules.stats.totalMax}以下にしてください。`);
   // Reuse A's existing dice validation even when A itself is unset.
   const aResources = calculateASkillResources(duck, duck.aSelection);
@@ -134,7 +136,7 @@ export function duckSummary(duck) {
     stats: { label: statMessages.length ? "設定に問題あり" : missing ? "未設定" : "設定完了", messages: statMessages,
       hp: Object.values(duck.stats).every(Number.isFinite) ? calcMaxHPFromStats(duck.stats) : null,
       total: resources.stats?.used ?? null },
-    dice: { label: !frame ? "SP未設定／不正" : diceErrors.length ? "設定に問題あり" : "設定完了",
+    dice: { label: !frame ? "ダイスタイプ未設定／不正" : diceErrors.length ? "設定に問題あり" : "設定完了",
       messages: diceErrors.map(e => e.message), resources: resources.dice },
     A: { ...skillStatus(duck.aSelection, () => compileASkill(duck, duck.aSelection)), resources: aResources },
     C: { ...skillStatus(duck.cSelection, () => compileCSkill(duck.cSelection)), resources: calculateCSkillResources(duck.cSelection) },

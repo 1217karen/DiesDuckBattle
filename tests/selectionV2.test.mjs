@@ -18,7 +18,7 @@ import { getOpponent } from "../js/opponentSource.js";
 import { STATUS_METADATA, statusLabel } from "../js/statusMetadata.js";
 import { effectSelectionFields } from "../js/effectSelectionCatalog.js";
 const ac=createASkillCatalog(),bc=createBSkillCatalog(),cc=createCSkillCatalog();
-const base={stats:{AT:2,DF:2,SP:3},diceFrame:"light",dice:[0,0,0,0,0,0]};
+const base={stats:{AT:2,DF:2,SP:3},diceFrame:"light",dice:[1,2,3,4,0,0]};
 const a=(leaf)=>({triggerId:"exact:0",effects:[leaf]});
 const c=(leaf,mode="normal")=>({mode,structure:{kind:"flat",effects:[leaf]}});
 function memory(entries={}) {const values=new Map(Object.entries(entries));return {values,writes:0,getItem:key=>values.get(key)??null,setItem(key,value){this.writes++;values.set(key,value);}};}
@@ -26,7 +26,7 @@ function memory(entries={}) {const values=new Map(Object.entries(entries));retur
 test("all production A variants/amounts/chances preserve exact engine semantics and prices",()=>{
   for(const effect of ac.effects) for(const amount of effect.requiresAmount?effect.amountOptions:[null]) for(const chance of effect.polarity==="benefit"?ac.chanceOptions:[ac.chanceOptions[0]]) {
     const frame=effect.exactFace>4?"heavy":"light";
-    const build={...base,diceFrame:frame,dice:[effect.exactFace??0,0,0,0,0,0]};
+    const build={...base,stats:{...base.stats,SP:frame==="heavy"?1:3},diceFrame:frame,dice:effect.exactFace?[effect.exactFace,0,0,0,3,4]:[1,2,3,4,0,0]};
     const old={triggerId:`exact:${effect.exactFace??0}`,effects:[{effectId:effect.id,...(amount?{amountOptionId:amount.id}:{}),chanceOptionId:chance.id}]};
     if (effect.id === "cancel-self-attack") old.effects.push({effectId:"heal-enemy",amountOptionId:"amount-5"});
     const next=migrateSelection("A",old,ac);

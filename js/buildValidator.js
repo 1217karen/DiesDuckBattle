@@ -1,5 +1,5 @@
 import { createBuildRules } from "./buildRules.js";
-import { getDiceFrame } from "./diceFrames.js";
+import { getDiceFrame, matchesPresetDice } from "./diceFrames.js";
 import { calculateBuildResources } from "./buildResources.js";
 import { createSkillCatalog, getCatalogChoice } from "./skillCatalog.js";
 
@@ -72,21 +72,23 @@ export function validateBuild(build, {
     issue("INVALID_DICE", "dice", "ダイス配列が必要です。");
   } else {
     if (build.dice.length !== rules.dice.slots) issue("DICE_SLOTS", "dice", `${rules.dice.slots}枠が必要です。`);
-    const maxSameFace = build.dice.includes(0)
-      ? rules.dice.maxSameFaceWithEmpty : rules.dice.maxSameFace;
-    const counts = new Map();
-    // entries()で疎配列の穴も検査する。
-    for (const [index, face] of build.dice.entries()) {
-      if (!Number.isSafeInteger(face)) {
-        issue("INVALID_FACE", `dice.${index}`, "安全な整数が必要です。");
-        continue;
+    if (frame?.kind === "preset") {
+      if (!matchesPresetDice(frame, build.dice)) issue("PRESET_DICE_MISMATCH", "dice", "プリセットのダイスと一致しません。");
+    } else {
+      const maxSameFace = build.dice.includes(0)
+        ? rules.dice.maxSameFaceWithEmpty : rules.dice.maxSameFace;
+      const counts = new Map();
+      // entries()で疎配列の穴も検査する。
+      for (const [index, face] of build.dice.entries()) {
+        if (!Number.isSafeInteger(face)) {
+          issue("INVALID_FACE", `dice.${index}`, "安全な整数が必要です。");
+          continue;
+        }
+        if (face !== 0 && frame && !frame.faces.includes(face)) issue("FACE_NOT_ALLOWED", `dice.${index}`, "この素体では選択できません。");
+        counts.set(face, (counts.get(face) ?? 0) + 1);
       }
-      // 空き枠は全素体で使用でき、同一出目数にも数えない。
-      if (face === 0) continue;
-      if (frame && !frame.faces.includes(face)) issue("FACE_NOT_ALLOWED", `dice.${index}`, "この素体では選択できません。");
-      counts.set(face, (counts.get(face) ?? 0) + 1);
+      for (const [face, count] of counts) bound(count, face === 0 ? rules.dice.maxEmpty : maxSameFace, `dice.count.${face}`);
     }
-    for (const [face, count] of counts) bound(count, maxSameFace, `dice.count.${face}`);
     if (resources.dice === null) {
       issue("INVALID_DICE_RESOURCES", "dice", "ダイス資源を安全に計算できません。");
     } else if (resources.dice.remaining < 0) {

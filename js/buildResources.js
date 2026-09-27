@@ -25,17 +25,19 @@ export function calculateBuildResources(build, rules = createBuildRules()) {
       stats = { sp: frame.SP, used, remaining };
     }
   }
-  if (Array.isArray(build?.dice)) {
+  if (frame?.kind === "preset") {
+    dice = { emptyCount: frame.dice.filter(face => face === 0).length, tripleCount: 0, earned: frame.dicePoints, spent: 0, remaining: frame.dicePoints };
+  } else if (frame && Array.isArray(build?.dice)) {
     let emptyCount = 0;
     const counts = new Map();
     let validNumbers = true;
     for (const face of build.dice) {
       if (!Number.isSafeInteger(face)) { validNumbers = false; break; }
       if (face === 0) emptyCount++;
-      else counts.set(face, (counts.get(face) ?? 0) + 1);
+      counts.set(face, (counts.get(face) ?? 0) + 1);
     }
     if (validNumbers) {
-      // 3個以上の非0出目は種類ごとに課金。4個以上は別途validatorが拒否する。
+      // 0を含む3個以上の出目は種類ごとに課金。4個以上は別途validatorが拒否する。
       const tripleCount = [...counts.values()].filter(count => count >= 3).length;
       const earned = emptyCount * dicePointsPerEmpty;
       const spent = tripleCount * dicePointsPerTriple;

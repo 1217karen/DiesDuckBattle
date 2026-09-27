@@ -11,6 +11,7 @@ export function createBuildRules() {
     },
     dice: {
       slots: 6,
+      maxEmpty: 3,
       maxSameFace: 2,
       maxSameFaceWithEmpty: 3,
     },

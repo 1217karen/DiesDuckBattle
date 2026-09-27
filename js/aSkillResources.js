@@ -1,7 +1,7 @@
 import { resolveSelection, withSelectionIssues } from "./selectionNormalization.js";
 import { createBuildRules } from "./buildRules.js";
 import { calculateBuildResources } from "./buildResources.js";
-import { getDiceFrame } from "./diceFrames.js";
+import { getDiceFrame, matchesPresetDice } from "./diceFrames.js";
 import { createASkillCatalog, getATriggerOptions, getAEffectAvailability, matchesATrigger } from "./aSkillCatalog.js";
 
 const record = value => value !== null && typeof value === "object"
@@ -32,13 +32,16 @@ function legacycalculateASkillResources(build, selection, {
   const dicePoints = calculateBuildResources(build, rules).dice?.remaining ?? null;
   const frame = getDiceFrame(build?.diceFrame);
   let validDice = !!frame && Array.isArray(build?.dice) && build.dice.length === rules.dice.slots && dicePoints !== null;
-  if (validDice) {
+  if (validDice && build?.stats && build.stats.SP !== frame.SP) validDice = false;
+  if (validDice && frame.kind === "preset") validDice = matchesPresetDice(frame, build.dice);
+  else if (validDice) {
     const counts = new Map();
     for (const face of build.dice) {
       if (!Number.isSafeInteger(face) || (face !== 0 && !frame.faces.includes(face))) validDice = false;
-      if (face !== 0) counts.set(face, (counts.get(face) ?? 0) + 1);
+      counts.set(face, (counts.get(face) ?? 0) + 1);
     }
     const max = build.dice.includes(0) ? rules.dice.maxSameFaceWithEmpty : rules.dice.maxSameFace;
+    if ((counts.get(0) ?? 0) > rules.dice.maxEmpty) validDice = false;
     if ([...counts.values()].some(count => count > max) || dicePoints < 0) validDice = false;
   }
   if (!validDice) error("INVALID_DICE_RESOURCES", "build.dice", "初期6枠・素体出目・重複数・ダイス資源を確認してください。");

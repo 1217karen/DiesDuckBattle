@@ -1,12 +1,22 @@
-// 運営側の信頼済み素体定義。validatorと将来のbuildCompilerは同じ定義を参照する。
-// 0は出目アイテムではなく空き枠なので、非0出目の一覧には含めない。
-export const DICE_FRAMES = Object.freeze({
-  light: Object.freeze({ SP: 3, faces: Object.freeze([1, 2, 3, 4]) }),
-  basic: Object.freeze({ SP: 2, faces: Object.freeze([2, 3, 4, 5]) }),
-  heavy: Object.freeze({ SP: 1, faces: Object.freeze([3, 4, 5, 6]) }),
+// 運営側のtrustedダイスタイプ定義。保存するのはID・dice・stats.SPのみ。
+const standard = (id, label, SP, faces, initialDice) => Object.freeze({
+  id, kind: "standard", label, SP, faces: Object.freeze(faces), initialDice: Object.freeze(initialDice), editable: true,
 });
-
+const preset = (id, label, SP, dice, dicePoints) => Object.freeze({
+  id, kind: "preset", label, SP, dice: Object.freeze(dice), dicePoints, editable: false,
+  faces: Object.freeze([...new Set(dice.filter(face => face !== 0))].sort((a,b)=>a-b)),
+});
+export const DICE_FRAMES = Object.freeze({
+  light: standard("light", "ライト", 3, [1,2,3,4], [1,2,3,4,0,0]),
+  basic: standard("basic", "ベーシック", 2, [2,3,4,5], [0,2,3,4,5,0]),
+  heavy: standard("heavy", "ヘビー", 1, [3,4,5,6], [0,0,3,4,5,6]),
+  normal: preset("normal", "ノーマルダイス", 2, [1,2,3,4,5,6], 0),
+  void: preset("void", "ヴォイドダイス", 2, [0,0,0,0,0,0], 4),
+});
 export function getDiceFrame(id) {
-  return typeof id === "string" && Object.hasOwn(DICE_FRAMES, id)
-    ? DICE_FRAMES[id] : undefined;
+  return typeof id === "string" && Object.hasOwn(DICE_FRAMES, id) ? DICE_FRAMES[id] : undefined;
+}
+export function matchesPresetDice(frame, dice) {
+  return frame?.kind === "preset" && Array.isArray(dice) && dice.length === frame.dice.length
+    && frame.dice.every((face, index) => dice[index] === face);
 }

@@ -13,7 +13,7 @@ function complete(id = "duck-1") {
   return { schemaVersion: 1,
     battler: { bSelection: { type: "trait", traitId: createBSkillCatalog().traits[0].id, options: {} },
       dSelection: { optionId: "add-self-0" } },
-    ducks: [{ ...createEmptyDuck({ idFactory: () => id }), name: "基本型", stats: { AT: 2, DF: 2, SP: 3 }, diceFrame: "light",
+    ducks: [{ ...createEmptyDuck({ idFactory: () => id }), name: "基本型", stats: { AT: 2, DF: 2, SP: 3 }, diceFrame: "light", dice: [1,2,3,4,0,0],
       aSelection: { triggerId: "exact:0", effects: [{ effectId: a.id, amountOptionId: a.amountOptions.at(-1).id }] },
       cSelection: { mode: "normal", structure: { kind: "flat", effects: [{ effectId: c.id,
         options: Object.fromEntries(Object.entries(c.optionAxes).map(([axis, set]) => [axis, cCatalog.optionSets[set][0].id])) }] } } }] };

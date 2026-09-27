@@ -4,8 +4,8 @@ import { calculateBuildResources } from "../js/buildResources.js";
 import { validateBuild } from "../js/buildValidator.js";
 import { createBuildRules } from "../js/buildRules.js";
 
-const build = (dice = [0, 0, 0, 0, 0, 0], diceFrame = "heavy", stats = { AT: 1, DF: 1 }) => ({
-  schemaVersion: 1, diceFrame, stats, dice, skills: [],
+const build = (dice, diceFrame = "heavy", stats = { AT: 1, DF: 1 }) => ({
+  schemaVersion: 1, diceFrame, stats, dice: dice ?? (diceFrame === "light" ? [1,2,3,4,0,0] : diceFrame === "basic" ? [0,2,3,4,5,0] : [0,0,3,4,5,6]), skills: [],
 });
 for (const frame of ["light", "basic", "heavy"]) {
   test(`${frame}: AT/DF最低1を許可、0と6は拒否`, () => {
@@ -30,9 +30,9 @@ test("ステータス使用済み・未使用ポイントの例と負の残高",
 for (const [dice, earned, spent, remaining] of [
   [[3, 3, 4, 4, 5, 6], 0, 0, 0],
   [[0, 3, 3, 4, 5, 6], 1, 0, 1],
-  [[0, 0, 0, 0, 0, 0], 6, 0, 6],
+  [[0, 0, 0, 3, 4, 5], 3, 1, 2],
   [[0, 3, 3, 3, 4, 5], 1, 1, 0],
-  [[0, 0, 0, 3, 3, 3], 3, 1, 2],
+  [[0, 0, 0, 3, 3, 3], 3, 2, 1],
 ]) {
   test(`${dice}: 獲得${earned}・使用${spent}・残り${remaining}`, () => {
     const input = build(dice);
@@ -86,7 +86,7 @@ test("ポイント単価は信頼済み設定から取得し、不正設定は�
   const rules = createBuildRules();
   rules.resources.dicePointsPerEmpty = 2;
   rules.resources.dicePointsPerTriple = 3;
-  assert.equal(calculateBuildResources(build([0, 0, 0, 3, 3, 3]), rules).dice.remaining, 3);
+  assert.equal(calculateBuildResources(build([0, 0, 0, 3, 3, 3]), rules).dice.remaining, 0);
   rules.resources.dicePointsPerTriple = -1;
   assert.throws(() => calculateBuildResources(build(), rules), TypeError);
   assert.equal(createBuildRules().resources.aUpgradeDicePointCost, 2);

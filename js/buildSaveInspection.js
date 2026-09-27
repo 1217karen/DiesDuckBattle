@@ -130,16 +130,16 @@ function inspectLegacyBuildForSave(build) {
       else if (!Number.isSafeInteger(value) || value < limit.min || value > limit.max)
         add(statOwner, "invalid", "STAT_RANGE", key, `${key}は${limit.min}～${limit.max}の整数にしてください。`);
     }
-    if (blank(duck.diceFrame) || blank(duck.stats.SP)) add(statOwner, "incomplete", "SP_UNSET", "SP", "SPが未設定です。");
+    if (blank(duck.diceFrame) || blank(duck.stats.SP)) add(statOwner, "incomplete", "SP_UNSET", "SP", "ダイスタイプが未設定です。");
     if ((!blank(duck.diceFrame) && !frame) || (!blank(duck.stats.SP) && !Object.values(DICE_FRAMES).some(f => f.SP === duck.stats.SP))
       || (frame && !blank(duck.stats.SP) && frame.SP !== duck.stats.SP))
-      add(statOwner, "invalid", "SP_FRAME_MISMATCH", "SP", "SPとダイス素体が矛盾しています。SPを選択し直してください。");
+      add(statOwner, "invalid", "SP_FRAME_MISMATCH", "SP", "SPとダイスタイプが矛盾しています。ダイスタイプを選択し直してください。");
     if (resources.stats?.remaining < 0) add(statOwner, "invalid", "STATS_TOTAL", "stats", `能力合計が上限${rules.stats.totalMax}を超えています。`);
 
     const aShape = selectionShape(duck.aSelection, "A", owner("A"));
     const aResult = compileASkill(duck, aShape ? duck.aSelection : null, { catalog: aCatalog, rules });
     const diceOwner = owner("dice");
-    if (!frame) add(diceOwner, "incomplete", "DICE_FRAME_UNSET", "dice", "SPを設定するとダイスの合法性を確認できます。");
+    if (!frame) add(diceOwner, "incomplete", "DICE_FRAME_UNSET", "dice", "ダイスタイプを選択するとダイスの合法性を確認できます。");
     else for (const issue of aResult.errors.filter(e => e.code === "INVALID_DICE_RESOURCES"))
       add(diceOwner, "invalid", issue.code, "dice", "使用可能な出目・同じ出目の個数・ダイス資源を確認してください。");
     if (aShape) {

@@ -10,7 +10,7 @@ import { runASkillTestBattle } from "../js/aSkillTestHarness.js";
 const catalog=createADevCatalog();
 const choose=(effectId,value,chanceOptionId)=>({effectId,...(value==null?{}:{amountOptionId:`dev-${value}`}),...(chanceOptionId?{chanceOptionId}:{})});
 function compiled(effects,triggerId="all",diceFrame="light") {
-  const r=compileASkill({diceFrame,dice:triggerId.startsWith("exact:") ? [Number(triggerId.split(":")[1]),0,0,0,0,0] : diceFrame === "light" ? [0,0,1,2,3,4] : [0,0,3,4,5,6]},{triggerId,effects},{catalog});
+  const r=compileASkill({diceFrame,dice:triggerId.startsWith("exact:") ? [Number(triggerId.split(":")[1]),0,0,3,4,4] : diceFrame === "light" ? [0,0,1,2,3,4] : [0,0,3,4,5,6]},{triggerId,effects},{catalog});
   assert.ok(r.ok,JSON.stringify(r)); return {id:"A_TEST",...r.skill};
 }
 const change=(key,value,op="set")=>({type:"changeValue",target:"self",key,op,value});
@@ -55,7 +55,7 @@ test("全公開effectがcompilerからtrusted engineへ到達（unsupportedな�
   }
 });
 test("重複random付与は確定発動し、status選択だけ乱数を使用",()=>{
-  const skill=compiled([choose("grant-random-debuff-enemy",2),choose("grant-random-debuff-enemy",2)],"exact:0");
+  const skill=compiled([choose("grant-random-debuff-enemy",2),choose("grant-random-debuff-enemy",2)],"exact:3");
   let calls=0;
   const ctx={actor:{side:"P1",status:emptyStatus()},enemy:{side:"P2",status:emptyStatus()},rng:()=>{calls++;return calls===1?0:.9;},push:()=>{},helpers:{}};
   applyEffect(skill.effect,ctx);
@@ -138,7 +138,7 @@ test("skip/追加反動は次phaseへ漏れない",()=>{
   assert.equal(aEvents(r).length,1);
 });
 test("開発harness: DTO→resources→compiler→P1 duck A→battle logs",()=>{
-  const result=runASkillTestBattle({diceFrame:"light",dice:[0,0,0,0,0,0]},
+  const result=runASkillTestBattle({diceFrame:"void",dice:[0,0,0,0,0,0]},
     {triggerId:"exact:0",effects:[choose("damage-enemy",5)]},{catalog,rng:()=>.9});
   assert.ok(result.compilation.ok); assert.ok(result.battle.events.some(e=>e.originSkill?.skillId==="A_DEV"));
 });

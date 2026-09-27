@@ -8,18 +8,18 @@ import { createBuildRules } from "../js/buildRules.js";
 import { STATUS_GROUPS } from "../js/statusGroups.js";
 import { applyEffect } from "../js/effects.js";
 const catalog = createASkillCatalog();
-const build = (dice = [0,0,0,0,0,0], diceFrame = "light") => ({diceFrame,dice});
+const build = (dice = [0,0,0,0,0,0], diceFrame = dice.every(face=>face===0) ? "void" : "light") => ({diceFrame,dice});
 const chosen = (effectId, amount) => ({effectId,...(amount === undefined ? {} : {amountOptionId:`amount-${amount}`})});
 const benefit = chosen("damage-enemy",3), cancel = chosen("cancel-self-attack");
 const selection = (effects=[benefit],triggerId="exact:0") => ({effects,triggerId});
 const compile = (s=selection(),b=build(),options) => compileASkill(b,s,options);
 const calc = (s=selection(),b=build(),options) => calculateASkillResources(b,s,options);
 
-test("現在6枠のunique exact、非0の有意なthreshold、従来のrange価格",()=>{
+test("現在6枠のunique exact、非0の有意なthreshold、一致枠数による価格",()=>{
   const b=build([0,2,2,3,4,4]);
   const options=getATriggerOptions(b);
   assert.deepEqual(options.map(t=>t.id),["exact:0","exact:2","exact:3","exact:4","lte:2","lte:3","gte:3","gte:4","all"]);
-  assert.deepEqual(options.map(t=>t.pointCost),[0,0,0,0,1,2,1,0,2]);
+  assert.deepEqual(options.map(t=>t.pointCost),[0,0,0,0,0,1,1,0,2]);
   assert.equal(compile(selection(undefined,"exact:1"),b).ok,false);
   assert.equal(compile(selection(undefined,"exact:0"),build([1,1,2,2,3,4])).ok,false);
   assert.deepEqual(getATriggerOptions(build()).map(t=>t.id),["exact:0","all"]);
@@ -102,8 +102,10 @@ test("ランダム解除4方向のpolarityとtrusted repeat、毎回異なるsta
 
 test("キャンセル還元は現在6枠の一致数1/2=1、3/4=2、5/6=3",()=>{
   for(let n=1;n<=6;n++) {
-    const dice=Array.from({length:6},(_,i)=>i<n?0:[1,2,3,4,1,2][i]);
-    const r=calc(selection([cancel,benefit]),build(dice));assert.equal(r.complete,true);
+    const dice=[0,0,1,2,3,4];
+    const trigger=["exact:1","exact:0","lte:3","gte:1","all","all"][n-1];
+    const current=n===5?[1,1,2,2,3,4]:dice;
+    const r=calc(selection([cancel,benefit],n===4?"lte:3":n===5?"lte:3":trigger), n===4?build([0,1,2,3,3,4]):build(current));assert.equal(r.complete,true);
     assert.equal(r.frequencyCount,n);assert.equal(r.cancelDrawbackPoints,Math.ceil(n/2));
     assert.equal(r.effectBreakdown[0].drawbackPoints,Math.ceil(n/2));
     assert.equal(r.remaining,r.basePoints+r.dicePoints-r.triggerCost-r.effectCost-r.benefitSlotCost+r.drawbackPoints);
@@ -124,7 +126,7 @@ test("通常効果1～4必須、キャンセルは枠外で重複不可、合計
 
 test("出目専用は対応exactのみ。キャンセル併用は2/6のみ禁止、catalogとcompilerで保証",()=>{
   for(const d of catalog.effects.filter(d=>d.exactFace)) {
-    const b=build([d.exactFace,0,0,0,0,0],d.exactFace>4?"heavy":"light"),trigger=`exact:${d.exactFace}`;
+    const b=build([d.exactFace,0,0,0,3,4],d.exactFace>4?"heavy":"light"),trigger=`exact:${d.exactFace}`;
     const leaf=chosen(d.id,d.requiresAmount?3:undefined);
     assert.equal(compile(selection([leaf],trigger),b).ok,true);
     for(const other of ["all","exact:0","lte:3","gte:3"]) assert.equal(compile(selection([leaf],other),b).ok,false);
@@ -139,7 +141,7 @@ test("出目専用は対応exactのみ。キャンセル併用は2/6のみ禁止
 test("v2出目無効はtriggerから決まり別途diceAction指定を要求しない",()=>{
   for(const face of [1,3,4,5]) {
     const s=selection([{effectId:"cancel-dice-effect",targetId:"self",options:{}}],`exact:${face}`);
-    const r=compile(s,build([face,0,0,0,0,0],face>4?"heavy":"light"));
+    const r=compile(s,build([face,0,0,0,3,4],face>4?"heavy":"light"));
     assert.equal(r.ok,true);assert.equal(r.skill.effect[0].key,`skipDice${face}`);
   }
 });
@@ -181,7 +183,7 @@ test("予算超過・未確定価格・順序/重複維持・入力不変",()=>{
 
 
 test("旧v2 diceActionはexactと一致するときだけ互換受理し、異なる出目へ補正しない",()=>{
-  const b=build([1,0,0,0,0,0]);
+  const b=build([1,0,0,0,3,4]);
   for(const diceAction of ["1","3","6",1,""]) {
     const s=selection([{effectId:"cancel-dice-effect",targetId:"self",options:{diceAction}}],"exact:1");
     const before=structuredClone(s),r=compile(s,b);

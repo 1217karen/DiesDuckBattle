@@ -2,9 +2,9 @@ import { effectSelectionFields } from "./effectSelectionCatalog.js";
 import { selectionRows } from "./selectionNormalization.js";
 import { createPlayerBuildStorage } from "./playerBuildStorage.js";
 import { createPlayerPublicSettingsStorage } from "./playerPublicSettingsStorage.js";
-import { createSettingState, changeSetting, selectedDuck, selectedPublicDuckId, SP_OPTIONS, cBranches, createCStructure, duckSummary } from "./settingState.js";
+import { createSettingState, changeSetting, selectedDuck, selectedPublicDuckId, cBranches, createCStructure, duckSummary } from "./settingState.js";
 import { inspectBuildForSave, saveSectionSummary, saveInspectedBuild } from "./buildSaveInspection.js";
-import { getDiceFrame } from "./diceFrames.js";
+import { DICE_FRAMES, getDiceFrame } from "./diceFrames.js";
 import { createBuildRules } from "./buildRules.js";
 import { createASkillCatalog, getATriggerOptions } from "./aSkillCatalog.js";
 import { createBSkillCatalog, getBTriggerOptions, getBConditionOptions, getBEffectOptions } from "./bSkillCatalog.js";
@@ -207,18 +207,27 @@ function renderStats(duck, box) {
       [key]: Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : null } }, false));
     grid.append(labeled(key, input));
   }
-  field(grid, "SP", "stat-SP", SP_OPTIONS.map(o => ({ id: o.id, label: `SP ${o.SP}` })), duck.diceFrame,
-    frame => commit({ type: "sp", frame: frame || null }), "未設定");
+
   const metrics = el("div", null, "metrics"); metrics.id = "stat-metrics";
   statBox.append(grid, metrics, el("p", `ATは${rules.stats.AT.min}～${rules.stats.AT.max}、DFは${rules.stats.DF.min}～${rules.stats.DF.max}。SPを含む合計上限は${rules.stats.totalMax}。HPは能力から計算します。`, "description"));
-  feedback(statBox, "stats"); box.append(statBox);
+  feedback(statBox, "stats");
   const diceBox = card("DICE / ダイス", "dice"), diceGrid = el("div", null, "dice-grid"), frame = getDiceFrame(duck.diceFrame);
-  duck.dice.forEach((face, index) => field(diceGrid, `枠 ${index + 1}`, `dice-${index}`,
-    [0, ...(frame?.faces ?? [])].map(value => ({ id: String(value), label: value === 0 ? "0（空き）" : String(value) })), face,
-    value => { const dice = [...selectedDuck(state).dice]; dice[index] = Number(value); patchDuck({ dice }); }, null));
-  diceBox.append(diceGrid, el("p", `${rules.dice.slots}枠。同じ非0出目は${rules.dice.maxSameFace}個まで。0がある場合は${rules.dice.maxSameFaceWithEmpty}個まで。空き1枠で${rules.resources.dicePointsPerEmpty}pt獲得、3個積み1種類につき${rules.resources.dicePointsPerTriple}pt消費。`, "description"));
+  const presets = Object.values(DICE_FRAMES).filter(item => item.kind === "preset");
+  const type = frame?.kind === "preset" ? "preset" : duck.diceFrame;
+  field(diceBox, "ダイスタイプ", "dice-type", [...Object.values(DICE_FRAMES).filter(item => item.kind === "standard").map(item => ({id:item.id,label:item.label})), {id:"preset",label:"プリセット"}], type,
+    value => commit({type:"dice-type",frame:value === "preset" ? presets[0].id : value || null}), "未設定");
+  if (frame?.kind === "preset") field(diceBox, "プリセット種類", "dice-preset", presets.map(item => ({id:item.id,label:item.label})), frame.id,
+    value => commit({type:"dice-type",frame:value}), null);
+  duck.dice.forEach((face, index) => {
+    const input = select(`dice-${index}`, [0, ...(frame?.faces ?? [])].map(value => ({id:String(value),label:String(value)})), face,
+      value => { const dice = [...selectedDuck(state).dice]; dice[index] = Number(value); patchDuck({dice}); }, null);
+    input.disabled = !frame?.editable;
+    diceGrid.append(labeled(`枠 ${index+1}`, input));
+  });
+  diceBox.append(diceGrid, el("p", `SP ${frame?.SP ?? "未設定"}`, "description"));
+  diceBox.append(el("p", frame?.kind === "preset" ? "プリセットダイスは固定です。" : "6枠。同じ非0出目は通常2個、0を含む場合は3個まで。0は最大3個。0ごとに+1pt、0を含む3個積み1種類ごとに−1pt。", "description"));
   const diceMetrics = el("div", null, "metrics"); diceMetrics.id = "dice-metrics"; diceBox.append(diceMetrics);
-  feedback(diceBox, "dice"); box.append(diceBox);
+  feedback(diceBox, "dice"); box.append(diceBox, statBox);
 }
 
 function renderA(duck, box) {
@@ -341,7 +350,9 @@ function renderSummaries() {
     const metricId = key === "stats" ? "stat" : key.toLowerCase();
     $(`${metricId}-metrics`)?.classList.toggle("invalid", status.invalid.length > 0);
   }
-  $("stat-metrics").textContent = `合計 ${num(summary.stats.total)} / ${rules.stats.totalMax}　　HP ${num(summary.stats.hp)}`;
+  const frame = getDiceFrame(duck.diceFrame), budget = frame ? rules.stats.totalMax - frame.SP : null;
+  const used = duck.stats.AT !== null && duck.stats.DF !== null ? duck.stats.AT + duck.stats.DF : null;
+  $("stat-metrics").textContent = `AT/DF使用可能：合計${num(budget)}pt　使用中：${num(used)}pt / 残り${num(budget !== null && used !== null ? budget-used : null)}pt　HP ${num(summary.stats.hp)}`;
   const dice = summary.dice.resources;
   $("dice-metrics").textContent = `ダイス資源　獲得 ${num(dice?.earned)}pt / 消費 ${num(dice?.spent)}pt / 残り ${num(dice?.remaining)}pt`;
   const a = summary.A.resources;
