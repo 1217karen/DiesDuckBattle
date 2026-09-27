@@ -7,6 +7,9 @@ import { inspectBuildForSave, saveSectionSummary, saveInspectedBuild } from "./b
 import { DICE_FRAMES, getDiceFrame } from "./diceFrames.js";
 import { createBuildRules } from "./buildRules.js";
 import { createASkillCatalog, getATriggerOptions } from "./aSkillCatalog.js";
+import { aEditorLeaf, aNormalSlots, aEditorCatalog, aCancelAvailable, isACancel, setAAttackCancel, addANormalEffect, removeANormalEffect, changeAClause, changeATrigger } from "./aSkillSentenceEditor.js";
+import { aTriggerText, aContentText, aClauseText, aEnding, aDrawbackText, aStatusText, aTargetParticle } from "./aSkillPresentation.js";
+import { calculateASkillResources } from "./aSkillResources.js";
 import { createBSkillCatalog, getBTriggerOptions, getBConditionOptions, getBEffectOptions } from "./bSkillCatalog.js";
 import { bEffectText, bSentence } from "./bSkillPresentation.js";
 import { bEventEditorSelection, bEventEditorDefinition, changeBEvent } from "./bSkillSentenceEditor.js";
@@ -230,26 +233,83 @@ function renderStats(duck, box) {
   feedback(diceBox, "dice"); box.append(diceBox, statBox);
 }
 
+// A alone retains unavailable saved clauses as disabled options.
+function aChoice(box, id, items, current, onChange, label, savedLabel = current) {
+  const options = [...items];
+  if (current && !options.some(o => o.id === current)) options.push({ id: current, label: `現在は使用不可：${savedLabel}（再選択してください）`, disabled: true });
+  const input = select(id, options, current, onChange);
+  input.setAttribute("aria-label", label); box.append(input); return input;
+}
 function renderA(duck, box) {
   const panel = card("A SKILL / Aスキル", "a"), a = duck.aSelection;
   field(panel, "Aスキルの設定", "a-enabled", [{ id: "on", label: "設定する" }], a === null ? "" : "on",
     value => patchDuck({ aSelection: value ? { triggerId: "", effects: [] } : null }), "未設定");
   if (a !== null) {
-    field(panel, "発動条件", "a-trigger", getATriggerOptions(duck, aCatalog).map(o => ({ ...o, label: `${o.label} / ${o.pointCost}pt` })), a.triggerId,
-      triggerId => patchDuck({ aSelection: { ...a, triggerId } }));
-    const effects = a.effects ?? [];
-    const setRows = rows => patchDuck({ aSelection: { ...a, effects: rows } });
-    effects.forEach((chosen, index) => {
-      const row = el("div", null, "effect-row"), head = el("div", null, "row-heading"), controls = el("div", null, "controls");
-      head.append(el("strong", `効果 ${index + 1}`), button("削除", () => setRows(effects.filter((_, i) => i !== index))));
-      const replace = value => setRows(effects.map((old, i) => i === index ? value : old));
-      renderEffectControls(controls,"A",chosen,replace,`a-effect-${index}`);
-      row.append(head, controls);
+    const update = aSelection => patchDuck({ aSelection });
+    const trigger = el("label", "発動条件");
+    aChoice(trigger, "a-trigger", getATriggerOptions(duck, aCatalog).map(o => ({ ...o, label: `${aTriggerText(o.id)} / ${o.pointCost}pt` })),
+      a.triggerId, triggerId => update(changeATrigger(a, triggerId, duck, aCatalog)), "発動条件", aTriggerText(a.triggerId));
+    panel.append(trigger);
+    const cancelled = (a.effects ?? []).some(e => isACancel(e, aCatalog));
+    const cancel = el("label", "通常攻撃");
+    const cancelInput = aChoice(cancel, "a-cancel", [{ id: "off", label: "キャンセルしない" },
+      { id: "on", label: "キャンセルする", disabled: !aCancelAvailable(duck, a, aCatalog) }], cancelled ? "on" : "off",
+      value => update(setAAttackCancel(a, value === "on", duck, aCatalog)), "通常攻撃キャンセル");
+    cancelInput.children[0].disabled = true;
+    panel.append(cancel);
+    const resources = calculateASkillResources(duck, a, { catalog: aCatalog });
+    if (cancelled && resources.frequencyRank != null) cancel.append(el("span", ` +${resources.cancelDrawbackPoints}pt`, "a-price"));
+    const slots = aNormalSlots(a, aCatalog);
+    slots.forEach(({ leaf, index }, slot) => {
+      const chosen = aEditorLeaf(leaf, aCatalog), definitions = aEditorCatalog(duck, a, aCatalog, index);
+      const allRows = aCatalog.selectionEffects.flatMap(d => d.variants);
+      const targetRows = definitions.flatMap(d => d.variants);
+      const unique = rows => [...new Map(rows.map(o => [o.id, o])).values()];
+      const row = el("div", null, "effect-row a-effect-row"), head = el("div", null, "row-heading"), sentence = el("div", null, "a-sentence-controls");
+      const change = (key, value) => update(changeAClause(a, index, key, value, duck, aCatalog));
+      head.append(el("strong", `効果 ${slot + 1}`), button("削除", () => update(removeANormalEffect(a, index, aCatalog))));
+      aChoice(sentence, `a-effect-${slot}-targetId`, unique(targetRows.map(r => ({ id: r.targetId, label: aCatalog.targets.find(t => t.id === r.targetId)?.label ?? r.targetId }))),
+        chosen.targetId, value => change("targetId", value), `効果${slot + 1}の対象`);
+      sentence.append(el("span", aTargetParticle(allRows.find(r => r.effectId === chosen.effectId))));
+      const staleFace = chosen.options?.diceAction && a.triggerId !== `exact:${chosen.options.diceAction}`;
+      const contents = definitions.flatMap(d => {
+        if (staleFace && d.id === chosen.effectId) return [];
+        const variant = d.variants.find(r => r.targetId === chosen.targetId);
+        return variant ? [{ id: d.id, label: aContentText(variant) }] : [];
+      });
+      const saved = allRows.find(r => r.effectId === chosen.effectId && r.targetId === chosen.targetId && (!chosen.options?.diceAction || String(r.definition.exactFace) === chosen.options.diceAction));
+      aChoice(sentence, `a-effect-${slot}`, contents, chosen.effectId, value => change("effectId", value), `効果${slot + 1}の内容`, saved ? aContentText(saved) : chosen.effectId);
+      const view = effectSelectionFields(definitions, chosen);
+      const candidates = view.variants.filter(r => r.targetId === chosen.targetId && (!r.statusId || r.statusId === chosen.statusId));
+      const definition = !staleFace && candidates.length === 1 ? candidates[0] : null;
+      for (const f of view.fields.filter(f => f.key === "statusId" || f.key === "options.amount")) {
+        const current = f.key === "statusId" ? chosen.statusId : chosen.options?.amount;
+        if (definition?.definition.exactFace != null && f.options.length === 1 && current === f.options[0].id) continue;
+        if (f.key === "options.amount") sentence.append(el("span", "を"));
+        aChoice(sentence, `a-effect-${slot}-${f.key}`, f.key === "statusId" ? f.options.map(o => ({ ...o, label: aStatusText(o.id) })) : f.options,
+          current, value => change(f.key, value), f.label);
+      }
+      if (!view.fields.some(f => f.key === "statusId") && chosen.statusId) aChoice(sentence, `a-effect-${slot}-statusId`, [], chosen.statusId, () => {}, "保存済みの状態", aStatusText(chosen.statusId));
+      if (!view.fields.some(f => f.key === "options.amount") && chosen.options?.amount) aChoice(sentence, `a-effect-${slot}-options.amount`, [], chosen.options.amount, () => {}, "保存済みの数量");
+      if (definition) sentence.append(el("span", aEnding(definition) + aDrawbackText(definition)));
+      const issues = [...resources.errors, ...resources.unresolved].filter(i => i.path === `effects.${index}` || i.path?.startsWith(`effects.${index}.`));
+      row.append(head, sentence);
+      if (issues.length) row.append(el("p", "現在の設定では使用不可、または未選択です。再選択してください。", "warning"));
+      if (definition && !issues.length) {
+        const amount = definition.optionAxes.amount?.find(o => o.id === chosen.options?.amount)?.label ?? "";
+        const target = aCatalog.targets.find(t => t.id === definition.targetId)?.label ?? "";
+        const status = chosen.statusId ? `${aStatusText(chosen.statusId)}を` : "";
+        const text = definition.definition.exactFace != null ? aClauseText(definition)
+          : `${target}${aClauseText(definition)}${status}${amount}${aEnding(definition)}`;
+        row.append(el("p", text + aDrawbackText(definition), "a-completed-sentence"));
+        const price = resources.effectBreakdown.find(r => r.index === index);
+        if (price) head.append(el("span", price.polarity === "drawback" ? `+${price.drawbackPoints}pt` : `${price.effectCost}pt`, "a-price"));
+      }
       panel.append(row);
     });
-    const add = button("＋ A効果を追加", () => setRows([...effects, { effectId: "" }]));
-    add.disabled = effects.length >= aCatalog.maxEffects; panel.append(add);
-    panel.append(el("p", `効果は最大${aCatalog.maxEffects}件。上から順に実行します。`, "description"));
+    const add = button("＋ 効果を追加", () => update(addANormalEffect(a, aCatalog))); add.id = "a-add-effect";
+    add.disabled = slots.length >= aCatalog.maxEffects; panel.append(add);
+    panel.append(el("p", `通常効果は1～${aCatalog.maxEffects}個。通常攻撃キャンセルはこの枠に含みません。`, "description"));
   }
   const metrics = el("div", null, "metrics"); metrics.id = "a-metrics"; panel.append(metrics); feedback(panel, "a"); box.append(panel);
 }
