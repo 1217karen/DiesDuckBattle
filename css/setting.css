@@ -73,8 +73,6 @@ button.primary.save-invalid:hover { background:#495356; }
 .battler-grid > .card:first-child { grid-column:1 / -1; }
 
 /* A clauses use the same reading direction without changing the other editors. */
-.a-sentence-controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; min-width:0; }
-.a-sentence-controls select { width:auto; flex:0 1 auto; min-width:0; max-width:100%; }
 .a-completed-sentence { color:var(--accent); border-left:2px solid var(--accent); padding-left:12px; overflow-wrap:anywhere; }
 .a-price { color:var(--accent); font-size:.88rem; }
 .a-effect-row .warning { color:var(--warn); font-size:.84rem; }

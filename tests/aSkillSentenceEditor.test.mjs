@@ -15,7 +15,7 @@ function edit(s, index, key, value, build=duck) { return changeAClause(s,index,k
 test("cancel is independent, idempotent, retains four normal slots and their order",()=>{
   let s=start();
   for(let i=0;i<4;i++) {
-    s=addANormalEffect(s,catalog);s=edit(s,i,"targetId","enemy");s=edit(s,i,"effectId","heal");s=edit(s,i,"options.amount","amount-5");
+    s=addANormalEffect(s,catalog);s=edit(s,i,"effectId","heal");s=edit(s,i,"targetId","enemy");s=edit(s,i,"options.amount","amount-5");
   }
   assert.equal(addANormalEffect(s,catalog),s);
   const original=structuredClone(s);
@@ -32,7 +32,7 @@ test("all production variants can be built through normalized clauses; no remove
   for(const group of catalog.selectionEffects) for(const r of group.variants) {
     if(r.definition.cancelsNormalAttack) continue;
     let s=addANormalEffect(start(r.definition.exactFace ? `exact:${r.definition.exactFace}` : "exact:1"),catalog);
-    s=edit(s,0,"targetId",r.targetId);s=edit(s,0,"effectId",r.effectId);
+    s=edit(s,0,"effectId",r.effectId);s=edit(s,0,"targetId",r.targetId);
     if(r.statusId) s=edit(s,0,"statusId",r.statusId);
     for(const amount of r.optionAxes.amount ?? [null]) {
       const next=amount?edit(s,0,"options.amount",amount.id):s;
@@ -73,7 +73,7 @@ test("dice-only candidates follow exact and skips 1/3/4/5 survive cancel",()=>{
   for(const face of [1,3,4,5]) {
     let s=setAAttackCancel(start(`exact:${face}`),true,duck,catalog);
     const r=rows(s).find(r=>r.definition.exactFace===face);
-    assert.ok(r);s=addANormalEffect(s,catalog);s=edit(s,1,"targetId","self");s=edit(s,1,"effectId",r.effectId);
+    assert.ok(r);s=addANormalEffect(s,catalog);s=edit(s,1,"effectId",r.effectId);s=edit(s,1,"targetId","self");
     assert.equal(compileASkill(duck,s).ok,true);
   }
 });
@@ -106,7 +106,7 @@ test("legacy compatibility and cancel rebates use existing resource calculation"
 test("trigger edits retain exact variant identity without changing compiler or normalized schema",()=>{
   for(const oldFace of [1,3,4,5]) for(const newFace of [1,2,3,4,5,6]) {
     let s=addANormalEffect(start(`exact:${oldFace}`),catalog);
-    s=edit(s,0,"targetId","self");s=edit(s,0,"effectId","cancel-dice-effect");
+    s=edit(s,0,"effectId","cancel-dice-effect");s=edit(s,0,"targetId","self");
     const before=structuredClone(s), changed=changeATrigger(s,`exact:${newFace}`,duck,catalog);
     assert.deepEqual(s,before);
     assert.equal(changed.effects[0].options.diceAction,String(oldFace));

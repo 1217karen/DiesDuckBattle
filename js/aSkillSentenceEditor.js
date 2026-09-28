@@ -69,11 +69,11 @@ export function changeAClause(selection, index, key, value, duck, catalog) {
   const old = aEditorLeaf(selection.effects[index], catalog);
   let next = { ...old, options: { ...old.options } };
   if (key === "targetId") {
-    if (!definitions.some(d => d.variants.some(r => r.targetId === value))) return selection;
-    next = { effectId: definitions.some(d => d.id === old.effectId && d.variants.some(r => r.targetId === value)) ? old.effectId : "", targetId: value, options: {} };
+    if (!definitions.some(d => d.id === old.effectId && d.variants.some(r => r.targetId === value))) return selection;
+    next = { effectId: old.effectId, targetId: value, options: {} };
   } else if (key === "effectId") {
-    if (!definitions.some(d => d.id === value && d.variants.some(r => r.targetId === old.targetId))) return selection;
-    next = { effectId: value, targetId: old.targetId, options: {} };
+    if (!definitions.some(d => d.id === value)) return selection;
+    next = { effectId: value, targetId: "", options: {} };
   } else {
     const fields = effectSelectionFields(definitions, old).fields;
     if (!fields.find(f => f.key === key)?.options.some(o => o.id === value)) return selection;

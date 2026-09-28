@@ -8,7 +8,7 @@ import { DICE_FRAMES, getDiceFrame } from "./diceFrames.js";
 import { createBuildRules } from "./buildRules.js";
 import { createASkillCatalog, getATriggerOptions } from "./aSkillCatalog.js";
 import { aEditorLeaf, aNormalSlots, aEditorCatalog, aCancelAvailable, isACancel, setAAttackCancel, addANormalEffect, removeANormalEffect, changeAClause, changeATrigger } from "./aSkillSentenceEditor.js";
-import { aTriggerText, aContentText, aClauseText, aEnding, aDrawbackText, aStatusText, aTargetParticle, aEffectPointText, aCancelPointText, aPointSections } from "./aSkillPresentation.js";
+import { aTriggerText, aContentText, aClauseText, aEnding, aDrawbackText, aStatusText, aEffectPointText, aCancelPointText, aPointSections } from "./aSkillPresentation.js";
 import { calculateASkillResources } from "./aSkillResources.js";
 import { createBSkillCatalog, getBTriggerOptions, getBConditionOptions, getBEffectOptions } from "./bSkillCatalog.js";
 import { bEffectText, bSentence } from "./bSkillPresentation.js";
@@ -250,10 +250,10 @@ function renderStats(duck, box) {
 }
 
 // A alone retains unavailable saved clauses as disabled options.
-function aChoice(box, id, items, current, onChange, label, savedLabel = current) {
+function aChoice(box, id, items, current, onChange, label, savedLabel = current, placeholder) {
   const options = [...items];
   if (current && !options.some(o => o.id === current)) options.push({ id: current, label: `現在は使用不可：${savedLabel}（再選択してください）`, disabled: true });
-  const input = select(id, options, current, onChange);
+  const input = select(id, options, current, onChange, placeholder);
   input.setAttribute("aria-label", label); box.append(input); return input;
 }
 function renderA(duck, box) {
@@ -279,37 +279,34 @@ function renderA(duck, box) {
     slots.forEach(({ leaf, index }, slot) => {
       const chosen = aEditorLeaf(leaf, aCatalog), definitions = aEditorCatalog(duck, a, aCatalog, index);
       const allRows = aCatalog.selectionEffects.flatMap(d => d.variants);
-      const targetRows = definitions.flatMap(d => d.variants);
-      const unique = rows => [...new Map(rows.map(o => [o.id, o])).values()];
-      const row = el("div", null, "effect-row a-effect-row"), head = el("div", null, "row-heading"), sentence = el("div", null, "a-sentence-controls");
+      const row = el("div", null, "effect-row a-effect-row"), head = el("div", null, "row-heading"), controls = el("div", null, "controls");
       const change = (key, value) => update(changeAClause(a, index, key, value, duck, aCatalog));
+      const formField = (key, label, options, current, savedLabel = current) => {
+        const wrapper = el("label", label);
+        aChoice(wrapper, key === "effectId" ? `a-effect-${slot}` : `a-effect-${slot}-${key}`, options, current,
+          value => change(key, value), label, savedLabel, label);
+        controls.append(wrapper);
+      };
       head.append(el("strong", `効果 ${slot + 1}`), button("削除", () => update(removeANormalEffect(a, index, aCatalog))));
-      aChoice(sentence, `a-effect-${slot}-targetId`, unique(targetRows.map(r => ({ id: r.targetId, label: aCatalog.targets.find(t => t.id === r.targetId)?.label ?? r.targetId }))),
-        chosen.targetId, value => change("targetId", value), `効果${slot + 1}の対象`);
-      sentence.append(el("span", aTargetParticle(allRows.find(r => r.effectId === chosen.effectId))));
       const staleFace = chosen.options?.diceAction && a.triggerId !== `exact:${chosen.options.diceAction}`;
-      const contents = definitions.flatMap(d => {
-        if (staleFace && d.id === chosen.effectId) return [];
-        const variant = d.variants.find(r => r.targetId === chosen.targetId);
-        return variant ? [{ id: d.id, label: aContentText(variant) }] : [];
-      });
-      const saved = allRows.find(r => r.effectId === chosen.effectId && r.targetId === chosen.targetId && (!chosen.options?.diceAction || String(r.definition.exactFace) === chosen.options.diceAction));
-      aChoice(sentence, `a-effect-${slot}`, contents, chosen.effectId, value => change("effectId", value), `効果${slot + 1}の内容`, saved ? aContentText(saved) : chosen.effectId);
+      const contents = definitions.filter(d => !(staleFace && d.id === chosen.effectId))
+        .map(d => ({ id: d.id, label: d.variants[0].definition.exactFace != null ? aContentText(d.variants[0]) : d.label }));
+      const saved = allRows.find(r => r.effectId === chosen.effectId && (!chosen.options?.diceAction || String(r.definition.exactFace) === chosen.options.diceAction));
+      formField("effectId", "スキル効果", contents, chosen.effectId, saved ? (saved.definition.exactFace != null ? aContentText(saved) : saved.label) : chosen.effectId);
       const view = effectSelectionFields(definitions, chosen);
       const candidates = view.variants.filter(r => r.targetId === chosen.targetId && (!r.statusId || r.statusId === chosen.statusId));
       const definition = !staleFace && candidates.length === 1 ? candidates[0] : null;
-      for (const f of view.fields.filter(f => f.key === "statusId" || f.key === "options.amount")) {
-        const current = f.key === "statusId" ? chosen.statusId : chosen.options?.amount;
-        if (definition?.definition.exactFace != null && f.options.length === 1 && current === f.options[0].id) continue;
-        if (f.key === "options.amount") sentence.append(el("span", "を"));
-        aChoice(sentence, `a-effect-${slot}-${f.key}`, f.key === "statusId" ? f.options.map(o => ({ ...o, label: aStatusText(o.id) })) : f.options,
-          current, value => change(f.key, value), f.label);
+      for (const key of ["targetId", "statusId", "options.amount"]) {
+        const f = view.fields.find(f => f.key === key);
+        const current = key === "options.amount" ? chosen.options?.amount : chosen[key];
+        if (!f && !current) continue;
+        const label = { targetId: "対象", statusId: "状態種別", "options.amount": "効果量" }[key];
+        const options = f?.options ?? [];
+        formField(key, label, key === "statusId" ? options.map(o => ({ ...o, label: aStatusText(o.id) })) : options,
+          current, key === "statusId" ? aStatusText(current) : current);
       }
-      if (!view.fields.some(f => f.key === "statusId") && chosen.statusId) aChoice(sentence, `a-effect-${slot}-statusId`, [], chosen.statusId, () => {}, "保存済みの状態", aStatusText(chosen.statusId));
-      if (!view.fields.some(f => f.key === "options.amount") && chosen.options?.amount) aChoice(sentence, `a-effect-${slot}-options.amount`, [], chosen.options.amount, () => {}, "保存済みの数量");
-      if (definition) sentence.append(el("span", aEnding(definition) + aDrawbackText(definition)));
       const issues = [...resources.errors, ...resources.unresolved].filter(i => i.path === `effects.${index}` || i.path?.startsWith(`effects.${index}.`));
-      row.append(head, sentence);
+      row.append(head, controls);
       if (issues.length) row.append(el("p", "現在の設定では使用不可、または未選択です。再選択してください。", "warning"));
       if (definition && !issues.length) {
         const amount = definition.optionAxes.amount?.find(o => o.id === chosen.options?.amount)?.label ?? "";

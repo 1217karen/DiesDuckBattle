@@ -49,7 +49,7 @@ test("A setting UI: enable, current trigger prices, independent cancel plus four
   assert.match(p.get("a-trigger").textContent,/出目5以下の時 \/ 2pt/);
   p.choose("a-trigger","exact:1");p.choose("a-cancel","on");
   for(let i=0;i<4;i++) {
-    p.get("a-add-effect").handlers.click();p.choose(`a-effect-${i}-targetId`,"enemy");p.choose(`a-effect-${i}`,"heal");p.choose(`a-effect-${i}-options.amount`,"amount-5");
+    p.get("a-add-effect").handlers.click();p.choose(`a-effect-${i}`,"heal");p.choose(`a-effect-${i}-targetId`,"enemy");p.choose(`a-effect-${i}-options.amount`,"amount-5");
   }
   assert.equal(p.get("a-add-effect").disabled,true);
   assert.match(p.get("duck-editor").textContent,/相手のHPを5回復する（デメリット）/);
@@ -195,4 +195,27 @@ test("A POINT: overspending shows negative remaining plus shortage and keeps exi
   assert.equal(p.get("a-point-shortage").textContent,`${Math.abs(r.remaining)}pt不足しています`);
   assert.equal(p.get("a-point-remaining").className,"a-point-shortage");
   assert.match(p.get("a-issues").textContent,/ポイント.*不足/);
+});
+
+test("A form: effect first, catalog targets, placeholders, downstream reset and completed previews",async()=>{
+  const p=await page(initial({triggerId:"exact:1",effects:[]}));p.get("a-add-effect").handlers.click();
+  assert.equal(p.get("a-effect-0-targetId"),undefined);
+  assert.equal(p.get("a-effect-0").children[0].textContent,"スキル効果");
+  assert.ok(!p.get("a-effect-0").children.some(o=>o.value==="cancel-attack"));
+  const previews=()=>p.all().filter(e=>e.className==="a-completed-sentence").map(e=>e.textContent);
+  p.choose("a-effect-0","damage");
+  assert.deepEqual(p.get("a-effect-0-targetId").children.map(o=>o.value),["","enemy"]);
+  assert.equal(p.get("a-effect-0-targetId").value,"enemy");
+  assert.equal(p.get("a-effect-0-statusId"),undefined);assert.deepEqual(previews(),[]);
+  assert.equal(p.get("a-effect-0-options.amount").children[0].textContent,"効果量");
+  p.choose("a-effect-0-options.amount","amount-3");assert.match(previews()[0],/相手に固定ダメージを3与える/);
+  p.choose("a-effect-0","heal");assert.equal(p.get("a-effect-0-targetId").value,"");assert.equal(p.get("a-effect-0-options.amount").value,"");assert.deepEqual(previews(),[]);
+  p.choose("a-effect-0-targetId","self");p.choose("a-effect-0-options.amount","amount-10");assert.equal(previews()[0],"自分のHPを10回復する");
+  p.choose("a-effect-0","grant-status");assert.equal(p.get("a-effect-0-targetId").value,"");assert.equal(p.get("a-effect-0-statusId").children[0].textContent,"状態種別");
+  p.choose("a-effect-0-targetId","enemy");p.choose("a-effect-0-statusId","crack");p.choose("a-effect-0-options.amount","amount-2");
+  assert.equal(previews()[0],"相手に亀裂を2stack付与する");
+  const fields=p.get("a-effect-0").parent.parent.children.map(e=>e.children[0]?.id);
+  assert.deepEqual(fields,["a-effect-0","a-effect-0-targetId","a-effect-0-statusId","a-effect-0-options.amount"]);
+  p.choose("a-effect-0","cancel-dice-effect");assert.equal(p.get("a-effect-0-statusId"),undefined);assert.equal(p.get("a-effect-0-options.amount"),undefined);
+  assert.match(previews()[0],/出目1のAP/);
 });
