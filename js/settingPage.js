@@ -15,6 +15,7 @@ import { bEffectText, bSentence } from "./bSkillPresentation.js";
 import { bEventEditorSelection, bEventEditorDefinition, changeBEvent } from "./bSkillSentenceEditor.js";
 import { createCSkillCatalog } from "./cSkillCatalog.js";
 import { createCSkillRules } from "./cSkillRules.js";
+import { cControlDefinitions, changeCControl } from "./cSkillControlEditor.js";
 import { D_SKILL_OPTIONS } from "./dSkillCatalog.js";
 
 const repository = createPlayerBuildStorage();
@@ -103,13 +104,28 @@ const patchDuck = (patch, redraw = true) => commit({ type: "duck", patch }, redr
 const patchBattler = patch => commit({ type: "battler", patch });
 
 // Catalog-driven normalized leaf editor: parameters stay separate from effect labels.
+function cField(box, text, id, items, current, onChange, placeholder) {
+  const legal = items.filter(item => !item.disabled);
+  if (legal.length !== 1) { field(box, text, id, items, current, onChange, placeholder); return; }
+  const only = legal[0], valid = current === only.id;
+  const value = el("span", valid ? labelText(only.label)
+    : `${current ? `現在は使用不可：${current}` : "未選択"}（固定値：${labelText(only.label)}）`, "c-fixed-value");
+  value.id = id;
+  const control = el("div", null, "c-fixed-control");
+  control.append(el("span", text), value);
+  if (!valid) control.append(button(`${labelText(only.label)}に設定`, () => onChange(only.id)));
+  box.append(control);
+}
 function renderEffectControls(box, category, chosen, replace, id, context = {}) {
   chosen ??= {effectId:"",options:{}};
   const catalog = category === "A" ? aCatalog : category === "B" ? bCatalog : cCatalog;
-  const definitions = selectionRows(category,catalog,context);
-  field(box,"効果",id,definitions,chosen.effectId,effectId => replace({effectId,options:{}}));
+  const definitions = category === "C" ? cControlDefinitions(catalog, context) : selectionRows(category,catalog,context);
+  const controlField = category === "C" ? cField : field;
+  controlField(box,"効果",id,definitions,chosen.effectId,effectId => replace(category === "C"
+    ? changeCControl(chosen, "effectId", effectId, catalog, context) : {effectId,options:{}}));
   const view = effectSelectionFields(definitions,chosen);
   const put = (key,value) => {
+    if (category === "C") { replace(changeCControl(chosen, key, value, catalog, context)); return; }
     const next = {...chosen};
     if(key.startsWith("options.")) next.options={...chosen.options,[key.slice(8)]:value};
     else if(key==="chanceOptionId" && !value) delete next[key];
@@ -120,7 +136,7 @@ function renderEffectControls(box, category, chosen, replace, id, context = {}) 
   const fields = [...view.fields];
   if(view.chanceEnabled || Object.hasOwn(chosen,"chanceOptionId")) fields.push({key:"chanceOptionId",label:"成功率",options:view.chanceEnabled?catalog.chanceOptions:category==="A"?[catalog.chanceOptions[0]]:[],placeholder:view.chanceEnabled?null:"指定を解除"});
   fields.sort((a,b)=>(a.key==="chanceOptionId"?4:order(a.key))-(b.key==="chanceOptionId"?4:order(b.key)));
-  for(const f of fields) field(box,f.label,id+"-"+f.key,f.options,
+  for(const f of fields) controlField(box,f.label,id+"-"+f.key,f.options,
     f.key.startsWith("options.")?chosen.options?.[f.key.slice(8)]:chosen[f.key]??(f.key==="chanceOptionId"?"100":""),
     value=>put(f.key,value),f.key==="chanceOptionId"?f.placeholder:undefined);
   if(view.variants.length && !view.chanceEnabled && category!=="B") box.append(el("p","成功率100%固定", "description"));
@@ -356,13 +372,13 @@ function renderC(duck, box) {
     const kind = structure?.kind === "random" ? `random${structure.branches?.length}` : structure?.kind;
     const structures = [{ id: "flat", label: "分岐なし" }, ...Object.keys(cRules.branchAPDelta).filter(key => key !== "flat")
       .map(id => ({ id, label: id === "hpCondition" ? "HP条件" : `ランダム ${id.at(-1)}分岐` }))];
-    field(panel, "分岐方式", "c-structure", c.mode === "special" ? structures.filter(o => o.id === "flat") : structures, kind,
+    cField(panel, "分岐方式", "c-structure", c.mode === "special" ? structures.filter(o => o.id === "flat") : structures, kind,
         value => {
           const change = () => patchDuck({ cSelection: { ...c, structure: createCStructure(value) } });
           if (hasEffects) confirmChange("分岐方式を変更すると、現在のC効果をクリアします。変更しますか？", change);
           else change();
       }, null);
-    if (structure?.kind === "hpCondition") field(panel, "自分のHP割合", "c-threshold", cCatalog.optionSets.hpThreshold,
+    if (structure?.kind === "hpCondition") cField(panel, "自分のHP割合", "c-threshold", cCatalog.optionSets.hpThreshold,
       structure.thresholdOptionId, value => {
         const next = { ...structure }; if (value) next.thresholdOptionId = value; else delete next.thresholdOptionId;
         patchDuck({ cSelection: { ...c, structure: next } });

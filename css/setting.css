@@ -85,3 +85,5 @@ button.primary.save-invalid:hover { background:#495356; }
 .a-point-group dl { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 20px; margin:0; }
 .a-point-group dd { margin:0; text-align:right; font-variant-numeric:tabular-nums; }
 .a-point-shortage { color:#ff8d96; font-weight:700; }
+.c-fixed-control { display:flex; flex-direction:column; gap:6px; }
+.c-fixed-value { display:block; padding:10px 12px; border:1px solid var(--line); border-radius:6px; }
