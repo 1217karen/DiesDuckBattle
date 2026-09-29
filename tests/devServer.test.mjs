@@ -28,7 +28,10 @@ test("ローカルserverはsetting・character・A/B/C/Dと依存JS/CSSを配信
   for (const path of ["/js/playerPublicSettingsModel.js", "/js/playerPublicSettingsStorage.js"]) assert.ok(visited.has(path), path);
   for (const path of ["/js/characterPage.js", "/js/playerPresentationModel.js", "/js/playerPresentationStorage.js", "/js/iconPicker.js", "/css/character.css"]) assert.ok(visited.has(path), path);
   for (const path of ["/js/dSkillCatalog.js", "/js/dSkillCompiler.js", "/js/dSkillTestHarness.js", "/css/d-skill-test.css"]) assert.ok(visited.has(path), path);
-  for (const path of ["/.git/config", "/docs/b-skill-building.md", "/package.json", "/js/%2e%2e%2fREADME.md"])
+  for (const path of ["/index.html", "/auth.html", "/js/authPage.js", "/css/auth.css", "/supabase/functions/_shared/internal-email.mjs"])
+    assert.equal((await fetch(base + path)).status, 200, path);
+  assert.match((await fetch(base + "/supabase/functions/_shared/internal-email.mjs")).headers.get("content-type"), /javascript/);
+  for (const path of ["/.git/config", "/docs/b-skill-building.md", "/package.json", "/js/%2e%2e%2fREADME.md", "/supabase/functions/_shared/admin-client.mjs", "/supabase/functions/_shared/registration.mjs"])
     assert.equal((await fetch(base + path)).status, 404, path);
   assert.equal((await fetch(base + "/b-skill-test.html", { method: "POST" })).status, 405);
   const head = await fetch(base + "/b-skill-test.html", { method: "HEAD" }); assert.equal(head.status, 200); assert.equal(await head.text(), "");

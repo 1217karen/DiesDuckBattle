@@ -1,8 +1,11 @@
 # 初回オンラインDB骨格
 
 このディレクトリには初回migrationと第2段階の登録Edge Functionがあります。
-remoteへの適用・deploy、Auth設定変更は行っていません。
-Storage、browser用JS client、ログイン・リンク処理は実装していません。
+2026-09-30時点で、プロジェクト ibuqntqzkqnwyhzdxskn の初回migration適用履歴
+（remote version: 20260929231111）と register-account のACTIVE状態を読み取り確認済みです。
+4 tableとRLSの適用済み状態はユーザー確認によります。
+今回の画面実装ではremote DB・Function・Auth設定を変更していません。
+browser用認証clientと auth.html は追加済みです。Storage・account linkは未実装です。
 
 ## データ構造
 
@@ -112,8 +115,9 @@ psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 54322 -U postgres -d postgres -f supa
 
 ## 第2段階：新規ゲームアカウント登録
 
-登録バックエンドのコードを追加しました。remote migration適用、Edge Function deploy、
-remote Auth user作成や設定変更は行っていません。追加migrationは不要で、
+登録バックエンドのコードを追加した第2段階ではremoteへの適用は行いませんでした。
+その後、上記のとおり初回migration適用とEdge Function deployが完了しています。
+今回もremote Auth user作成や設定変更は行っていません。追加migrationは不要で、
 既存migration・RLS・many-to-many構造を変更していません。
 
 ### 入口とファイル構成
@@ -203,10 +207,11 @@ envファイルはsupabase/.gitignoreで除外します。
 
 ### 未実装
 
-登録UI、login UI／処理、logout、SETTINGオンライン保存、account link／switch、
+第3段階で登録UI、login UI／処理、session復元、logoutを追加しました。
+SETTINGオンライン保存、account link／switch、
 password recovery、CAPTCHA、rate limit、IP制限、bot対策は未実装です。
 複数アカウントは禁止しません。将来のabuse対策はこの登録入口へ追加できます。
-remoteには未deployです。
+register-accountは現在remoteでACTIVEです。第3段階では再deployしていません。
 
 ### 第2段階の検証
 
@@ -226,7 +231,8 @@ Denoテストにはネットワーク権限を付けていません。
 テスト用Denoはrepo外の作業用ディレクトリに置き、アプリの依存には追加していません。
 入力・処理順・初期名・Duck未作成・password非加工・内部email・各段階失敗・cleanup
 失敗・secret設定・HTTP/CORSを確認しています。
-実際のlocal Supabase／hosted Authへの結合テストとFunction deployは未実施です。
+実際のlocal Supabase／hosted Authへの登録・ログイン結合テストは未実施です。
+Functionはその後deploy済みであることを第3段階で読み取り確認しました。
 初回migrationと既存ゲームJSに差分がないことはGitで確認しています。
 
 参考：

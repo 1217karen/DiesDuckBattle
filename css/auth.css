@@ -1,0 +1,24 @@
+@import url("./index.css");
+.auth { max-width: 620px; margin: auto; padding: 32px 20px 64px; min-height: 100svh; }
+header { margin-bottom: 28px; }
+a { color: #ffcf60; }
+.brand { font-family: Impact, system-ui, sans-serif; letter-spacing: .08em; margin-top: 28px; }
+h1 { font-size: clamp(1.5rem, 6vw, 2rem); } h2 { font-size: 1.15rem; }
+p { line-height: 1.7; }
+.panel { border: 1px solid #ffffff40; border-radius: 12px; padding: 24px; margin-bottom: 20px; background: #ffffff08; }
+.success { border-color: #ffcf60; }
+.eno { font-size: clamp(1.4rem, 6vw, 2.6rem); font-weight: 800; color: #ffcf60; overflow-wrap: anywhere; }
+fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+legend { font-weight: 700; margin: 18px 0; }
+label { display: block; margin-top: 16px; margin-bottom: 8px; }
+input { width: 100%; padding: 12px; border: 1px solid #777; border-radius: 6px; color: #eee; background: #111; font: inherit; }
+button { font: inherit; font-weight: 700; border: 1px solid #888; border-radius: 7px; background: #303030; color: #eee; padding: 12px 18px; cursor: pointer; }
+button[type="submit"] { width: 100%; background: #ffcf60; color: #171717; margin-top: 24px; }
+button:disabled { opacity: .5; cursor: wait; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid #ffcf60; outline-offset: 3px; }
+.switch { display: flex; gap: 10px; } .switch button { flex: 1; }
+.switch [aria-pressed="true"] { border-color: #ffcf60; color: #ffcf60; }
+.hint { color: #bbb; font-size: .875rem; }
+#form-message:empty, #copy-status:empty { display: none; }
+#form-message { border-left: 3px solid #ffcf60; padding-left: 12px; }
+[hidden] { display: none !important; }
