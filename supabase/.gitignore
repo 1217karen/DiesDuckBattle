@@ -1,0 +1,7 @@
+.env
+.env.*
+functions/.env
+functions/.env.*
+.temp/
+.branches/
+node_modules/

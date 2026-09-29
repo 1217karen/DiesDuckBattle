@@ -1,7 +1,8 @@
 # 初回オンラインDB骨格
 
-このディレクトリはmigrationのコードのみです。remoteへの適用、Auth設定、
-Storage、JS client、登録・ログイン・リンクRPCは実装していません。
+このディレクトリには初回migrationと第2段階の登録Edge Functionがあります。
+remoteへの適用・deploy、Auth設定変更は行っていません。
+Storage、browser用JS client、ログイン・リンク処理は実装していません。
 
 ## データ構造
 
@@ -108,3 +109,127 @@ psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 54322 -U postgres -d postgres -f supa
 参考：
 [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security)、
 [PostgreSQL constraints](https://www.postgresql.org/docs/current/ddl-constraints.html)。
+
+## 第2段階：新規ゲームアカウント登録
+
+登録バックエンドのコードを追加しました。remote migration適用、Edge Function deploy、
+remote Auth user作成や設定変更は行っていません。追加migrationは不要で、
+既存migration・RLS・many-to-many構造を変更していません。
+
+### 入口とファイル構成
+
+- `functions/register-account/index.ts`：Deno.serveの入口。server専用admin clientを生成
+- `functions/register-account/deno.json` / `deno.lock`：SDK 2.117.2と依存の固定
+- `functions/_shared/registration-handler.mjs`：HTTP、入力、CORS、固定エラーresponse
+- `functions/_shared/registration.mjs`：登録順序とbest-effort cleanup
+- `functions/_shared/internal-email.mjs`：ENoから内部emailへの依存なしES module
+- `functions/_shared/admin-client.mjs`：server環境変数からadmin clientを生成
+- `config.toml`：register-accountのみ `verify_jwt = false`。登録前なのでログイン不要
+
+POST JSONの入力は `{"characterName":"名前","password":"入力したパスワード"}` です。
+名前はstringかつtrim後に非空のみを検査し、trimした名前を保存します。
+重複を許可し、文字数や禁止文字を新設していません。
+passwordはstringのみを確認し、trimしません。強度要件はSupabase Authに委ねます。
+
+成功はHTTP 201、`{"ok":true,"eno":"123"}` です。
+DBのbigint全域をJavaScriptで丸めないため、ENoは十進文字列で返します。
+内部email、gameAccountId、authUserId、passwordは返しません。
+GET等は405、非JSON Content-Typeは415、JSON不正・入力不正は400です。
+Authのweak_passwordは固定文言の400、それ以外の作成失敗は段階別の固定コードと502、
+環境設定等の失敗は固定コードと500です。上流APIの生エラーを返しません。
+
+OPTIONSは204。全responseにCORSとCache-Control: no-storeを付けます。
+originは `*`、methodはPOST/OPTIONS、headerはauthorization/x-client-info/apikey/content-typeです。
+cookie credentialsは許可しません。production domainは固定していません。
+CORSは認証やabuse対策の代わりではありません。
+
+### 登録順序と初期データ
+
+1. 入力検証
+2. serverで内部UUIDを作りgame_accountsへINSERT。ENoを指定せずDB identityに任せる
+3. `select("eno::text")` で採番結果を正確な文字列として取得
+4. helperで `eno-123@auth.diesduck.invalid` のような内部emailを作る
+5. `auth.admin.createUser({email, password, email_confirm:true})`
+6. 作成したAuth user IDとgame account IDをgame_account_accessへINSERT
+7. battlersに `presentation: {name: trim済みの名前}` をINSERT。buildはDB defaultの `{}`
+8. ENoのみを成功responseへ返す
+
+ENoは再利用せず、失敗による欠番を許容します。max(eno)+1やアプリ採番はありません。
+登録直後はBattler 1件、Duck 0件、public_duck_idはNULLです。
+キャラ名はlogin IDではなく、後から通常のpresentation編集で変更できます。
+
+admin createUserを使いemail_confirm:trueで作成するため確認mailは送りません。
+signUp、inviteUserByEmail、メール送信処理は呼びません。
+user_metadataに権限やENoを入れず、既存のauth.uid()+game_account_accessで認可します。
+内部emailは実メールではなく、ユーザー向けUIへ表示しません。
+helperは秘密を含まず、将来browserから同じモジュールをimport／bundleして利用できます。
+ログイン実装時も式を複製しないでください。内部emailは秘密の認証要素ではありません。
+
+### Cleanupと運用上の限界
+
+各作成処理がエラーを返す／例外を投げると、対象のgame_accountをDELETEし、
+Auth user IDを受け取れていればAuth userもDELETEします。
+DB削除でaccess/Battlerはcascadeします。DB cleanupが失敗してもAuth cleanupは試行します。
+identity衝突でも新しいENoでretryせず、既存Auth userへの紐づけ／削除もしません。
+
+accountのUUIDをINSERT前に確保するため、INSERT responseが失われた場合も
+そのUUIDを使ってcleanupを試行できます。ENo自体は必ずDB採番です。
+ただしAuth APIとDBは単一transactionではありません。実行プロセスの強制終了、
+通信の成否不明、cleanup失敗では孤立データが残る可能性があります。
+特にAuth createUserが成功してもIDを受け取れなければ安全に削除対象を特定できません。
+emailで既存userを探して削除する回復処理は追加していません。
+配備後は障害時ログとDB/Authの照合による管理者の確認が必要です。
+成功responseの消失を含め、再送のidempotency保証も今回の範囲外です。
+
+元の失敗段階をresponse/logに残し、cleanupのエラーで上書きしません。
+ログは固定event・段階・server生成UUIDだけです。
+password、キャラ名、内部email、request body、上流error message/details、
+secretをログへ渡しません。logger自体の例外でもcleanupを続行します。
+passwordの保存先はSupabase Authのみで、public tableやmetadataへは保存しません。
+
+### Secretと公開範囲
+
+Supabase提供の `SUPABASE_URL` と `SUPABASE_SECRET_KEYS` JSONの `default` を使います。
+default secretがないlocal環境等では `SUPABASE_SERVICE_ROLE_KEY` へ明示的にfallbackします。
+不正JSONはエラーとし、キー値をログへ出しません。ソースには秘密値を含めません。
+admin clientのsession永続化・自動refresh・URL session検出は無効です。
+requestのAuthorizationをadmin clientへ転送しません。
+server専用モジュールをbrowserへimportしないでください。
+
+登録のserver入口に限定してadmin操作を行い、browserへaccess INSERT権限を追加しません。
+auth userとgame accountは別entityのまま、登録時はaccess 1件を作ります。
+既存RLSの弱体化や、Auth設定変更はありません。
+envファイルはsupabase/.gitignoreで除外します。
+
+### 未実装
+
+登録UI、login UI／処理、logout、SETTINGオンライン保存、account link／switch、
+password recovery、CAPTCHA、rate limit、IP制限、bot対策は未実装です。
+複数アカウントは禁止しません。将来のabuse対策はこの登録入口へ追加できます。
+remoteには未deployです。
+
+### 第2段階の検証
+
+```sh
+node --test tests/registration.test.mjs
+node --test tests/*.test.mjs
+deno check --config supabase/functions/register-account/deno.json supabase/functions/register-account/index.ts
+deno test --config supabase/functions/register-account/deno.json supabase/functions/register-account/register-account.test.ts
+```
+
+Node v24.21.0で新規31件、既存753件、計784件成功／0件失敗。
+Deno 2.9.6とSupabase互換のDeno 2.1.14で型チェック成功。
+固定SDKをmock fetchと組み合わせた4テストも両バージョンで成功。
+lockfileはDeno 2.1.14が生成したversion 4を採用しています。
+依存を更新せず確認する場合はDeno 2.1で上記コマンドに --frozen を付けてください。
+Denoテストにはネットワーク権限を付けていません。
+テスト用Denoはrepo外の作業用ディレクトリに置き、アプリの依存には追加していません。
+入力・処理順・初期名・Duck未作成・password非加工・内部email・各段階失敗・cleanup
+失敗・secret設定・HTTP/CORSを確認しています。
+実際のlocal Supabase／hosted Authへの結合テストとFunction deployは未実施です。
+初回migrationと既存ゲームJSに差分がないことはGitで確認しています。
+
+参考：
+[Auth admin createUser](https://supabase.com/docs/reference/javascript/auth-admin-createuser)、
+[Edge Function secrets](https://supabase.com/docs/guides/functions/secrets)、
+[Edge Function認証](https://supabase.com/docs/guides/functions/auth)。

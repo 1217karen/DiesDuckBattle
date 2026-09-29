@@ -1,0 +1,4 @@
+# Registration precedes login, so this one endpoint accepts unauthenticated callers.
+# This does not grant any browser database access or weaken table RLS.
+[functions.register-account]
+verify_jwt = false
