@@ -1,8 +1,10 @@
 import { canonicalEno, internalEmailForEno } from "../supabase/functions/_shared/internal-email.mjs";
+import { isRegistrationPasswordLongEnough } from "../supabase/functions/_shared/registration-password.mjs";
 
 export const authMessages = Object.freeze({
   invalid_input: "キャラ名とパスワードを入力してください。",
   password_mismatch: "パスワード確認が一致しません。",
+  password_too_short: "パスワードは6文字以上で入力してください。",
   password_rejected: "パスワードが認証サービスの要件を満たしていません。別のパスワードを指定してください。",
   unknown: "登録結果を確認できませんでした。登録が成功している可能性があります。再登録する前に状況を確認してください。自動再送は行いません。",
   server: "サーバー側で登録に失敗しました。時間をおいて、状況を確認してください。",
@@ -14,7 +16,8 @@ const serverCodes = new Set(["game_account_creation_failed", "auth_user_creation
 
 export function registrationInput({ characterName, password, confirmation }) {
   if (typeof characterName !== "string" || !characterName.trim()
-    || typeof password !== "string" || !password) return fail(authMessages.invalid_input);
+    || typeof password !== "string") return fail(authMessages.invalid_input);
+  if (!isRegistrationPasswordLongEnough(password)) return fail(authMessages.password_too_short);
   if (password !== confirmation) return fail(authMessages.password_mismatch);
   return { ok: true, body: { characterName: characterName.trim(), password } };
 }
@@ -37,7 +40,7 @@ export function createAuthService({ client, config, fetchImpl = fetch }) {
           return { ok: true, eno: canonicalEno(body.eno) };
         }
         if (!response.ok && body.ok === false) {
-          if (body.error === "invalid_input" || body.error === "password_rejected") {
+          if (["invalid_input", "password_rejected", "password_too_short"].includes(body.error)) {
             return fail(authMessages[body.error]);
           }
           if (serverCodes.has(body.error)) return fail(authMessages.server);
@@ -70,12 +73,15 @@ export function createAuthService({ client, config, fetchImpl = fetch }) {
     },
     async accounts(session) {
       const { data, error } = await client.from("game_account_access")
-        .select("game_account_id,game_accounts!inner(eno::text)")
+        .select("game_account_id,game_accounts!inner(eno::text,battlers(presentation))")
         .eq("auth_user_id", session.user.id);
       if (error || !Array.isArray(data)) throw new Error("Access unavailable");
       // Do not infer the game-account UUID from Auth, or choose the first account.
-      return [...new Set(data.map(row => canonicalEno(row.game_accounts.eno)))]
-        .sort((a, b) => BigInt(a) < BigInt(b) ? -1 : BigInt(a) > BigInt(b) ? 1 : 0);
+      return data.map(row => ({
+        eno: canonicalEno(row.game_accounts.eno),
+        name: typeof row.game_accounts.battlers?.presentation?.name === "string"
+          ? row.game_accounts.battlers.presentation.name : null,
+      })).sort((a, b) => BigInt(a.eno) < BigInt(b.eno) ? -1 : BigInt(a.eno) > BigInt(b.eno) ? 1 : 0);
     },
     async logout() {
       const { error } = await client.auth.signOut({ scope: "local" });

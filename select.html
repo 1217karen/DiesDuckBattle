@@ -6,8 +6,10 @@
   <meta name="robots" content="noindex, nofollow">
   <title>CHARACTER SELECT | DiesDuckBattle</title>
   <link rel="stylesheet" href="css/select.css">
+  <link rel="stylesheet" href="css/common-menu.css">
 </head>
-<body>
+<body class="has-common-menu page-select">
+<header id="common-menu" class="common-menu"><span>ログイン状態を確認中…</span></header>
 <div id="bg" aria-hidden="true"></div>
 <main class="screen">
   <h1 class="selectTitle">CHARACTER<br>SELECT</h1>
@@ -26,5 +28,6 @@
 </main>
 <dialog id="tray" class="tray" aria-labelledby="trayTitle"><div class="tray__header"><h2 id="trayTitle">1P：アヒルを選択</h2><button id="trayClose" type="button" autofocus>閉じる</button></div><div id="trayGrid" class="tray__grid"></div></dialog>
 <script type="module" src="js/select.js"></script>
+<script type="module" src="js/commonMenu.js"></script>
 </body>
 </html>

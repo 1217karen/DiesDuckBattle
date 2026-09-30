@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createAuthService, registrationInput, authMessages } from "../js/authService.js";
 import { createAuthController } from "../js/authController.js";
+import { authMarkup } from "../js/authMarkup.js";
 import { internalEmailForEno } from "../supabase/functions/_shared/internal-email.mjs";
 
 const config = { url: "https://example.invalid", publishableKey: "public-test-key" };
@@ -90,8 +91,8 @@ test("Auth errors and thrown errors use identical login message", async () => {
   }
 });
 test("access lookup uses Auth ID predicate and joined game account ENo cast", async () => {
-  const f = setup(); assert.deepEqual(await f.service.accounts(session), ["123"]);
-  assert.deepEqual(f.calls[0], ["query", "game_account_access", "game_account_id,game_accounts!inner(eno::text)", "auth_user_id", "auth-uuid"]);
+  const f = setup(); assert.deepEqual(await f.service.accounts(session), [{ eno: "123", name: null }]);
+  assert.deepEqual(f.calls[0], ["query", "game_account_access", "game_account_id,game_accounts!inner(eno::text,battlers(presentation))", "auth_user_id", "auth-uuid"]);
 });
 for (const enos of [[], ["123"], ["9223372036854775807", "2"]]) {
   test("restored access count: " + enos.length, async () => {
@@ -135,14 +136,14 @@ test("late account lookup cannot restore an ENo after signout", async () => {
   f.service.accounts = () => new Promise(r => { resolve = r; });
   f.fire(session); await new Promise(r => setTimeout(r, 10));
   f.fire(null); await new Promise(r => setTimeout(r, 10));
-  resolve(["999"]); await new Promise(r => setTimeout(r, 0));
+  resolve([{ eno: "999", name: "late" }]); await new Promise(r => setTimeout(r, 0));
   assert.equal(state.signedIn, false); assert.deepEqual(state.enos, []);
   controller.stop();
 });
 test("HTML/password handling and browser dependency boundary", async () => {
   const root = new URL("../", import.meta.url);
-  const html = await readFile(new URL("auth.html", root), "utf8");
-  const page = await readFile(new URL("js/authPage.js", root), "utf8");
+  const html = authMarkup;
+  const page = await readFile(new URL("js/authView.js", root), "utf8");
   const service = await readFile(new URL("js/authService.js", root), "utf8");
   const controller = await readFile(new URL("js/authController.js", root), "utf8");
   for (const source of [page, service, controller]) {

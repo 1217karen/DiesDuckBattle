@@ -1,4 +1,5 @@
 import { registerAccount, validateRegistration } from "./registration.mjs";
+import { isRegistrationPasswordLongEnough } from "./registration-password.mjs";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -28,6 +29,9 @@ export function createRegistrationHandler({ createAdminClient, log = () => {}, u
       return json({ ok: false, error: "invalid_json" }, 400);
     }
     if (!validateRegistration(input)) return json({ ok: false, error: "invalid_input" }, 400);
+    if (!isRegistrationPasswordLongEnough(input.password)) {
+      return json({ ok: false, error: "password_too_short" }, 400);
+    }
     try {
       const result = await registerAccount(input, { client: createAdminClient(), log, uuid });
       return json(result.body, result.status);

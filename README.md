@@ -4,7 +4,8 @@
 
 ## 新規登録・ログイン（auth.html）
 
-INDEXの「新規登録・ログイン」から開きます。HTTP(S)で配信してください。
+INDEXの「ログイン」「新規登録」で共通フォームのオーバーレイを開きます。
+`auth.html` は単独でも利用できます。閉じるボタン／Escで閉じ、元のボタンへフォーカスを戻します。HTTP(S)で配信してください。
 ローカル確認には `node scripts/serve-a-skill-test.mjs` を起動し、
 `http://127.0.0.1:4173/auth.html` を開けます。
 この通常ページは実プロジェクトへ接続します。テストアカウントを作らず、
@@ -46,8 +47,8 @@ SDKのsession token等は専用storage key `diesduck-auth-session` に保存さ�
 SDKは `https://esm.sh/@supabase/supabase-js@2.117.2?bundle` から
 固定バージョンのbrowser ESMとして読み込みます。ビルド工程はありません。
 CDNへ接続できない場合はフォームを有効化せず、読み込み失敗を表示します。
-`auth.html`、`js/`、`css/`に加え、内部email helperの.mjsもJavaScript MIMEで配信してください。
-server専用moduleはbrowserへimportしません。開発serverも内部email helper以外の
+`auth.html`、`js/`、`css/`に加え、内部email／password長検証helperの.mjsもJavaScript MIMEで配信してください。
+server専用moduleはbrowserへimportしません。開発serverも公開用の上記2 helper以外の
 Supabase moduleを公開しません。
 
 ## 検証と現在の実環境
@@ -56,7 +57,7 @@ Supabase moduleを公開しません。
 読み取り確認しました。今回の作業では実Supabaseへの新規登録・ログインは行っていません。
 DB、Edge Function、Auth設定の変更も行っていません。
 
-`node --test tests/*.test.mjs`：819件成功（既存784＋認証35）、0件失敗。
+`node --test tests/*.test.mjs`：835件成功、0件失敗。
 モックで入力、登録payload、ENoの精度、失敗文言、再送なし、ログイン、
 session復元、logout、access 0/1/複数、二重送信防止、非同期応答の競合を確認しています。
 開発serverの.mjs配信とserver専用module拒否も確認しています。
@@ -66,5 +67,23 @@ session復元、logout、access 0/1/複数、二重送信防止、非同期応�
 配信環境の設定は、本人による動作確認時に確認してください。
 
 SETTINGオンライン保存、キャラクター一覧、ENo切り替え・リンク、recovery、
-CAPTCHA／rate limit、INDEX全体の完成は未実装です。
+CAPTCHA／rate limitは未実装です。
 DB・登録バックエンドの詳細は [supabase/README.md](supabase/README.md) を参照してください。
+
+## 共通メニューとINDEX
+
+result以外のindex/auth/select/setting/character/storageに共通メニューを設置しました。
+セッション確認中はログイン前後のメニューを表示せず、確認後に切り替えます。
+閉じた状態でもENoとDBのbattlers.presentation.nameを表示します。取得失敗時にローカル名は使用しません。
+複数アクセス時はENo一覧を表示し、先頭アカウントを選択しません。
+未ログイン時はキャラクター選択・戦闘設定・表示設定・ログアウトを非表示にします。
+これはURL直打ち制限ではありません。ルールブック／キャラリストはリンクのない未実装表示です。
+
+登録passwordは6文字以上と確認用一致を送信前に検証します。空白はtrimしません。
+Edge Function側にもINSERT／ENo採番前の6文字検証を追加しましたが、この変更は本番未デプロイです。
+本番の既存Function／DB／Auth設定は変更していません。
+Node 835件、Deno 2.1.14の型チェックとモック4件が成功しています。
+実アカウントでの登録・ログイン結合テストは今回も未実施です。
+
+今回のモックブラウザ検証では390px幅のSELECT／INDEXオーバーレイ、Escとフォーカス復帰、
+DB名表示、再読み込み復元、ログアウト後のメニュー切り替えを確認しました。

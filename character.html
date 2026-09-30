@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>表示設定 | DiesDuckBattle</title>
   <link rel="stylesheet" href="css/character.css">
+  <link rel="stylesheet" href="css/common-menu.css">
 </head>
-<body>
+<body class="has-common-menu">
+<header id="common-menu" class="common-menu"><span>ログイン状態を確認中…</span></header>
   <main class="character-shell">
     <header class="page-header">
       <p class="eyebrow">DIES DUCK BATTLE</p>
@@ -46,5 +48,6 @@
     <div id="picker-list" class="picker-list"></div>
   </dialog>
   <script type="module" src="js/characterPage.js"></script>
+<script type="module" src="js/commonMenu.js"></script>
 </body>
 </html>

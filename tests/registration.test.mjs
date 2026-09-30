@@ -78,11 +78,11 @@ for (const invalid of [null, [], {}, { characterName: "", password: "" },
     assert.deepEqual(f.calls, []);
   });
 }
-test("empty password is passed unmodified for Auth validation; duplicate names allowed", async () => {
+test("six-character password is passed unmodified; duplicate names allowed", async () => {
   for (let i = 0; i < 2; i++) {
     const f = fixture();
-    assert.equal((await registerAccount({ ...input, password: "" }, f)).status, 201);
-    assert.equal(f.calls[1][1].password, "");
+    assert.equal((await registerAccount({ ...input, password: "      " }, f)).status, 201);
+    assert.equal(f.calls[1][1].password, "      ");
   }
 });
 test("deterministic internal email, canonical decimal ENo, exact bigint range", () => {

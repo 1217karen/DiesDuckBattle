@@ -133,7 +133,9 @@ psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 54322 -U postgres -d postgres -f supa
 POST JSONの入力は `{"characterName":"名前","password":"入力したパスワード"}` です。
 名前はstringかつtrim後に非空のみを検査し、trimした名前を保存します。
 重複を許可し、文字数や禁止文字を新設していません。
-passwordはstringのみを確認し、trimしません。強度要件はSupabase Authに委ねます。
+passwordはstringかつ6文字以上（Unicodeコードポイント数）を確認し、trimしません。
+6文字未満はINSERT／ENo採番前に400 password_too_shortで拒否します。追加の強度要件は設けません。
+この6文字検証のFunction変更は本番未デプロイです。
 
 成功はHTTP 201、`{"ok":true,"eno":"123"}` です。
 DBのbigint全域をJavaScriptで丸めないため、ENoは十進文字列で返します。
@@ -239,3 +241,12 @@ Functionはその後deploy済みであることを第3段階で読み取り確�
 [Auth admin createUser](https://supabase.com/docs/reference/javascript/auth-admin-createuser)、
 [Edge Function secrets](https://supabase.com/docs/guides/functions/secrets)、
 [Edge Function認証](https://supabase.com/docs/guides/functions/auth)。
+
+### INDEX・共通メニュー追加段階
+
+認証フォームをINDEXオーバーレイとauth.htmlで共有し、共通メニューはアクセス関係経由で
+ENoとbattlers.presentation.nameを取得します。複数ENoの自動選択やオンライン保存は行いません。
+公開helper registration-password.mjsをブラウザと登録処理で共有し、6文字未満を採番前に拒否します。
+既存migration・RLSは変更していません。remoteの既存FunctionはACTIVEですが、
+今回の6文字検証コードは未デプロイです。実DB/Auth操作・実登録・実ログインは行っていません。
+Nodeテスト835件成功、Deno 2.1.14型チェック成功、モックHTTPテスト4件成功。

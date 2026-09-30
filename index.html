@@ -4,22 +4,32 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title>DIES DUCK BATTLE | 開発版ホーム</title>
+  <title>DIES DUCK BATTLE</title>
   <link rel="stylesheet" href="css/index.css">
+  <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/common-menu.css">
 </head>
-<body>
+<body class="has-common-menu">
+  <header id="common-menu" class="common-menu"><span>ログイン状態を確認中…</span></header>
   <main class="home">
     <header class="home__header">
       <h1>DIES DUCK BATTLE</h1>
-      <p class="home__notice">開発版ホーム — 現在開発中です。</p>
+      <p class="home__notice">開発版 — 現在開発中です。</p>
+      <p id="home-status" role="status" tabindex="-1">ログイン状態を確認中…</p>
     </header>
-    <nav class="home__menu" aria-label="メインメニュー">
-      <a class="home__link" href="auth.html">新規登録・ログイン</a>
-      <a class="home__link" href="select.html">CHARACTER SELECT</a>
-      <a class="home__link" href="setting.html">戦闘設定</a>
-      <a class="home__link" href="character.html">表示設定</a>
-      <a class="home__link" href="storage.html">バトル履歴</a>
-    </nav>
+    <div id="home-guest" class="home__menu" hidden>
+      <button class="home__link" type="button" data-auth-mode="login">ログイン</button>
+      <button class="home__link" type="button" data-auth-mode="register">新規登録</button>
+    </div>
+    <nav id="home-game" class="home__menu" aria-label="ゲームメニュー" hidden></nav>
+    <p id="home-feedback" role="status"></p>
+    <noscript>認証とメニューの表示にはJavaScriptを有効にしてください。</noscript>
   </main>
+  <dialog id="auth-dialog" class="auth-dialog" aria-labelledby="auth-dialog-title">
+    <div class="auth-dialog__head"><h2 id="auth-dialog-title">新規登録・ログイン</h2><button id="auth-close" type="button">閉じる</button></div>
+    <div id="auth-root" class="auth auth--embedded"></div>
+  </dialog>
+  <script type="module" src="js/commonMenu.js"></script>
+  <script type="module" src="js/indexPage.js"></script>
 </body>
 </html>

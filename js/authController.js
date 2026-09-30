@@ -1,19 +1,25 @@
 // State never contains a password, Auth email, token, or full SDK error.
 export function createAuthController(service, render) {
   let revision = 0, stopped = false, unsubscribe = () => {};
-  const state = { ready: false, busy: "", signedIn: false, enos: [], sessionMessage: "ログイン状態を確認中…",
+  const listeners = new Set([render]);
+  const state = { ready: false, sessionKnown: false, busy: "", signedIn: false, enos: [], accounts: [], sessionMessage: "ログイン状態を確認中…",
     message: "", registeredEno: "" };
-  const emit = () => { if (!stopped) render({ ...state, enos: [...state.enos] }); };
+  const snapshot = () => ({ ...state, enos: [...state.enos], accounts: state.accounts.map(a => ({ ...a })) });
+  const emit = () => { if (!stopped) listeners.forEach(listener => listener(snapshot())); };
   async function applySession(session) {
     const version = ++revision;
     state.signedIn = !!session;
+    state.sessionKnown = true;
     state.enos = [];
+    state.accounts = [];
     state.sessionMessage = session ? "アクセスできるENoを確認中…" : "ログインしていません。";
     emit();
     try {
       if (session) {
-        const enos = await service.accounts(session);
+        const accounts = await service.accounts(session);
         if (version !== revision || stopped) return;
+        const enos = accounts.map(account => account.eno);
+        state.accounts = accounts;
         state.enos = enos;
         state.sessionMessage = enos.length === 0 ? "アクセスできるゲームアカウントがありません。管理者に状況を確認してください。"
           : enos.length === 1 ? "ログイン中" : "複数のENoへアクセスできます。アカウント切り替えは今後実装します。";
@@ -32,6 +38,7 @@ export function createAuthController(service, render) {
     finally { state.busy = ""; emit(); }
   }
   return {
+    subscribe(listener) { listeners.add(listener); listener(snapshot()); return () => listeners.delete(listener); },
     async start() {
       unsubscribe = service.watch(session => { void applySession(session); });
       const version = revision;

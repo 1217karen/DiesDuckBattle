@@ -1,4 +1,5 @@
 import { canonicalEno, internalEmailForEno } from "./internal-email.mjs";
+import { isRegistrationPasswordLongEnough } from "./registration-password.mjs";
 
 export function validateRegistration(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)
@@ -6,7 +7,7 @@ export function validateRegistration(input) {
     || typeof input.password !== "string") {
     return null;
   }
-  // No game-specific password policy; never trim the password.
+  // Never trim the password. Length is checked before any side effect below.
   return { characterName: input.characterName.trim(), password: input.password };
 }
 
@@ -25,6 +26,9 @@ function checked(result) {
 export async function registerAccount(input, { client, log = () => {}, uuid = () => crypto.randomUUID() }) {
   const valid = validateRegistration(input);
   if (!valid) return { status: 400, body: { ok: false, error: "invalid_input" } };
+  if (!isRegistrationPasswordLongEnough(valid.password)) {
+    return { status: 400, body: { ok: false, error: "password_too_short" } };
+  }
 
   // Allocate the UUID, NOT the ENo, before INSERT. It permits targeted cleanup
   // even if the database committed the INSERT but its response was lost.
