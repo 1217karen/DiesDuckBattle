@@ -1,10 +1,11 @@
 import { canonicalEno, internalEmailForEno } from "../supabase/functions/_shared/internal-email.mjs";
-import { isRegistrationPasswordLongEnough } from "../supabase/functions/_shared/registration-password.mjs";
+import { registrationPasswordError } from "../supabase/functions/_shared/registration-password.mjs";
 
 export const authMessages = Object.freeze({
   invalid_input: "キャラ名とパスワードを入力してください。",
   password_mismatch: "パスワード確認が一致しません。",
   password_too_short: "パスワードは6文字以上で入力してください。",
+  password_alphanumeric_required: "パスワードには半角英字と数字をそれぞれ1文字以上含めてください。",
   password_rejected: "パスワードが認証サービスの要件を満たしていません。別のパスワードを指定してください。",
   unknown: "登録結果を確認できませんでした。登録が成功している可能性があります。再登録する前に状況を確認してください。自動再送は行いません。",
   server: "サーバー側で登録に失敗しました。時間をおいて、状況を確認してください。",
@@ -17,7 +18,8 @@ const serverCodes = new Set(["game_account_creation_failed", "auth_user_creation
 export function registrationInput({ characterName, password, confirmation }) {
   if (typeof characterName !== "string" || !characterName.trim()
     || typeof password !== "string") return fail(authMessages.invalid_input);
-  if (!isRegistrationPasswordLongEnough(password)) return fail(authMessages.password_too_short);
+  const passwordError = registrationPasswordError(password);
+  if (passwordError) return fail(authMessages[passwordError]);
   if (password !== confirmation) return fail(authMessages.password_mismatch);
   return { ok: true, body: { characterName: characterName.trim(), password } };
 }
@@ -40,7 +42,7 @@ export function createAuthService({ client, config, fetchImpl = fetch }) {
           return { ok: true, eno: canonicalEno(body.eno) };
         }
         if (!response.ok && body.ok === false) {
-          if (["invalid_input", "password_rejected", "password_too_short"].includes(body.error)) {
+          if (["invalid_input", "password_rejected", "password_too_short", "password_alphanumeric_required"].includes(body.error)) {
             return fail(authMessages[body.error]);
           }
           if (serverCodes.has(body.error)) return fail(authMessages.server);

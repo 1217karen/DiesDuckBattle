@@ -5,7 +5,7 @@ import { registerAccount } from "../supabase/functions/_shared/registration.mjs"
 import { createRegistrationHandler } from "../supabase/functions/_shared/registration-handler.mjs";
 import { createRegistrationAdminClient } from "../supabase/functions/_shared/admin-client.mjs";
 
-const input = { characterName: "  テスト  ", password: "  unchanged-password  " };
+const input = { characterName: "  テスト  ", password: "  unchanged-password1  " };
 const id = "20000000-0000-4000-8000-000000000001";
 const authId = "10000000-0000-4000-8000-000000000001";
 
@@ -81,8 +81,8 @@ for (const invalid of [null, [], {}, { characterName: "", password: "" },
 test("six-character password is passed unmodified; duplicate names allowed", async () => {
   for (let i = 0; i < 2; i++) {
     const f = fixture();
-    assert.equal((await registerAccount({ ...input, password: "      " }, f)).status, 201);
-    assert.equal(f.calls[1][1].password, "      ");
+    assert.equal((await registerAccount({ ...input, password: " a1   " }, f)).status, 201);
+    assert.equal(f.calls[1][1].password, " a1   ");
   }
 });
 test("deterministic internal email, canonical decimal ENo, exact bigint range", () => {

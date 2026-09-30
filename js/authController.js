@@ -33,7 +33,7 @@ export function createAuthController(service, render) {
   async function action(kind, work) {
     if (!state.ready || state.busy || stopped) return;
     state.busy = kind; state.message = ""; emit();
-    try { await work(); }
+    try { return await work(); }
     catch { state.message = "処理を完了できませんでした。通信状況を確認してください。"; }
     finally { state.busy = ""; emit(); }
   }
@@ -58,8 +58,13 @@ export function createAuthController(service, render) {
     }),
     login: (eno, password) => action("login", async () => {
       const result = await service.login(eno, password);
-      if (result.ok) { await applySession(result.session); state.message = "ログインしました。"; }
+      if (result.ok) {
+        state.registeredEno = "";
+        await applySession(result.session);
+        state.message = "ログインしました。";
+      }
       else state.message = result.message;
+      return { ok: result.ok };
     }),
     logout: () => action("logout", async () => {
       try { await service.logout(); await applySession(null); state.message = "ログアウトしました。"; }

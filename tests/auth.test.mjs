@@ -7,7 +7,7 @@ import { authMarkup } from "../js/authMarkup.js";
 import { internalEmailForEno } from "../supabase/functions/_shared/internal-email.mjs";
 
 const config = { url: "https://example.invalid", publishableKey: "public-test-key" };
-const input = { characterName: " 名前 ", password: " password with spaces ", confirmation: " password with spaces " };
+const input = { characterName: " 名前 ", password: " password1 with spaces ", confirmation: " password1 with spaces " };
 const session = { user: { id: "auth-uuid" } };
 function setup({ rows = [{ game_account_id: "different-game-uuid", game_accounts: { eno: "123" } }] } = {}) {
   const calls = [];

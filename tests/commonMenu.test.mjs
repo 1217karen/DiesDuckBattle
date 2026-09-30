@@ -77,7 +77,7 @@ for (const password of ["", "12345", "あいうえお", "😀😀😀😀😀"])
     assert.equal((await response.json()).error, "password_too_short");
   });
 }
-for (const password of ["123456", "      ", "あいうえおか", "😀😀😀😀😀😀"]) {
+for (const password of ["abc123", " a1   ", "a1あいうえ", "a1😀😀😀😀"]) {
   test("six characters accepted without trimming: " + JSON.stringify(password), () => {
     const input = registrationInput({ characterName: "name", password, confirmation: password });
     assert.equal(input.ok, true); assert.equal(input.body.password, password);
@@ -86,7 +86,7 @@ for (const password of ["123456", "      ", "あいうえおか", "😀😀😀�
 test("short password error from deployed server is displayed specifically", async () => {
   const service = createAuthService({ config: { url: "https://example.invalid", publishableKey: "public" },
     fetchImpl: async () => Response.json({ ok: false, error: "password_too_short" }, { status: 400 }) });
-  const result = await service.register({ characterName: "name", password: "123456", confirmation: "123456" });
+  const result = await service.register({ characterName: "name", password: "abc123", confirmation: "abc123" });
   assert.match(result.message, /6文字以上/);
 });
 test("INDEX actual handlers hide pre-restore menus and manage modal close/focus/password clearing", async () => {

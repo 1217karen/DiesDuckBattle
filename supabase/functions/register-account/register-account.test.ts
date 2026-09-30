@@ -40,13 +40,13 @@ for (const failure of [null, "access", "battler", "auth_user"]) {
     const handler = createRegistrationHandler({ createAdminClient: () => client });
     const response = await handler(new Request("https://example.invalid/register-account", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ characterName: " 名前 ", password: " untouched " }),
+      body: JSON.stringify({ characterName: " 名前 ", password: " untouched1 " }),
     }));
     const result = await response.json();
     equal(response.status, failure ? 502 : 201);
     equal(result, failure ? { ok: false, error: failure + "_creation_failed" } : { ok: true, eno: "123" });
     equal(requests[0].select, "eno::text");
-    equal(requests[1].body, { email: "eno-123@auth.diesduck.invalid", password: " untouched ", email_confirm: true });
+    equal(requests[1].body, { email: "eno-123@auth.diesduck.invalid", password: " untouched1 ", email_confirm: true });
     const tablePaths = ["/rest/v1/game_accounts", "/auth/v1/admin/users", "/rest/v1/game_account_access", "/rest/v1/battlers"];
     equal(requests.filter(r => r.method !== "DELETE").map(r => r.path),
       tablePaths.slice(0, failure === "auth_user" ? 2 : failure === "access" ? 3 : 4));

@@ -1,6 +1,6 @@
 import { authMarkup } from "./authMarkup.js";
 
-export function mountAuthView(root, controller) {
+export function mountAuthView(root, controller, { onLoginSuccess = () => {} } = {}) {
   root.innerHTML = authMarkup;
 const byId = id => root.querySelector("#" + id);
 const passwords = () => root.querySelectorAll('input[type="password"]');
@@ -32,8 +32,19 @@ function render(state) {
   }));
   byId("account-list").hidden = state.enos.length <= 1;
   byId("form-message").textContent = state.message;
-  if (state.registeredEno) {
+  if (!state.registeredEno) {
+    // Clear every derivative of the old registration ENo, including handoff input.
+    if (registeredEno && byId("login-eno").value === registeredEno) byId("login-eno").value = "";
+    registeredEno = "";
+    byId("registered").hidden = true;
+    byId("registered-eno").textContent = "";
+    byId("copy-status").textContent = "";
+  } else {
     const newlyRegistered = registeredEno !== state.registeredEno;
+    if (newlyRegistered) {
+      if (registeredEno && byId("login-eno").value === registeredEno) byId("login-eno").value = "";
+      byId("copy-status").textContent = "";
+    }
     registeredEno = state.registeredEno;
     byId("registered").hidden = false;
     byId("registered-eno").textContent = "ENo." + registeredEno;
@@ -60,7 +71,8 @@ byId("login-form").onsubmit = async event => {
   event.preventDefault();
   const password = byId("login-password").value;
   passwords().forEach(el => { el.value = ""; });
-  await controller?.login(byId("login-eno").value, password);
+  const result = await controller?.login(byId("login-eno").value, password);
+  if (result?.ok) onLoginSuccess();
 };
 byId("logout").onclick = () => { passwords().forEach(el => { el.value = ""; }); void controller?.logout(); };
 window.addEventListener("pagehide", () => { passwords().forEach(el => { el.value = ""; }); });

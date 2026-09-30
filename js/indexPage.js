@@ -21,7 +21,12 @@ dialog.addEventListener("close", () => {
 });
 try {
   const controller = await getAuthRuntime();
-  view = mountAuthView(root, controller);
+  view = mountAuthView(root, controller, {
+    onLoginSuccess() {
+      if (dialog.open) dialog.close();
+      document.getElementById("home-status").focus();
+    },
+  });
   let menuBuilt = false;
   controller.subscribe(state => {
     const known = state.ready && state.sessionKnown;

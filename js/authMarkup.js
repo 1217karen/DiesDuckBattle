@@ -25,7 +25,7 @@ export const authMarkup = `  <section class="panel" aria-labelledby="session-tit
         <label for="character-name">キャラ名</label>
         <input id="character-name" type="text" autocomplete="nickname" required>
         <label for="register-password">パスワード</label>
-        <p id="register-password-hint" class="hint">パスワードは6文字以上で入力してください。</p>
+        <p id="register-password-hint" class="hint">パスワードは6文字以上、半角英字と数字をそれぞれ1文字以上含めてください。</p>
         <input aria-describedby="register-password-hint" id="register-password" type="password" autocomplete="new-password" required>
         <label for="confirm-password">パスワード確認</label>
         <input id="confirm-password" type="password" autocomplete="new-password" required>

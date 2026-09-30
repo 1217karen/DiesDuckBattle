@@ -133,9 +133,9 @@ psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 54322 -U postgres -d postgres -f supa
 POST JSONの入力は `{"characterName":"名前","password":"入力したパスワード"}` です。
 名前はstringかつtrim後に非空のみを検査し、trimした名前を保存します。
 重複を許可し、文字数や禁止文字を新設していません。
-passwordはstringかつ6文字以上（Unicodeコードポイント数）を確認し、trimしません。
-6文字未満はINSERT／ENo採番前に400 password_too_shortで拒否します。追加の強度要件は設けません。
-この6文字検証のFunction変更は本番未デプロイです。
+passwordはstringかつ6文字以上（Unicodeコードポイント数）、半角英字と数字を各1文字以上含むことを確認し、trimしません。
+6文字未満は400 password_too_short、英数字混合不足は400 password_alphanumeric_requiredです。
+いずれも管理者client初期化・UUID生成・INSERT／ENo採番前に拒否します。追加文字や記号は禁止しません。
 
 成功はHTTP 201、`{"ok":true,"eno":"123"}` です。
 DBのbigint全域をJavaScriptで丸めないため、ENoは十進文字列で返します。
@@ -248,5 +248,17 @@ Functionはその後deploy済みであることを第3段階で読み取り確�
 ENoとbattlers.presentation.nameを取得します。複数ENoの自動選択やオンライン保存は行いません。
 公開helper registration-password.mjsをブラウザと登録処理で共有し、6文字未満を採番前に拒否します。
 既存migration・RLSは変更していません。remoteの既存FunctionはACTIVEですが、
-今回の6文字検証コードは未デプロイです。実DB/Auth操作・実登録・実ログインは行っていません。
+前工程時点では6文字検証コードは未デプロイでした。実DB/Auth操作・実登録・実ログインは行っていません。
 Nodeテスト835件成功、Deno 2.1.14型チェック成功、モックHTTPテスト4件成功。
+
+### 認証画面仕上げ・登録条件統一
+
+共有helperが長さと英数字混合を検証します。Node 851件、Deno型チェックと4件の関連テストが成功。
+本番Auth設定は未確認です。Dashboardの最小長6・英字＋数字の必須文字設定を確認してください。
+FunctionのデプロイとAuth設定変更は別操作です。今回Auth設定やDB migrationは変更しません。
+
+デプロイする場合はコミット済みのregister-account/index.ts、deno.json、deno.lockと
+同階層の_shared/*.mjsを送信します。entrypointはregister-account/index.ts、
+import mapはregister-account/deno.jsonとし、../_shared/という相対importを維持します。
+以前のDashboard配置（index.tsとその下の_shared）へそのまま貼るとパスが変わるため注意してください。
+既存のverify_jwt=falseを維持し、登録入口以外のRLS・権限は変更しません。
