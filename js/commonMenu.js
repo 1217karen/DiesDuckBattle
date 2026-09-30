@@ -42,7 +42,8 @@ try {
     const logout = root.querySelector("nav button");
     if (logout) logout.disabled = !!state.busy;
     const feedback = root.querySelector("[data-feedback]");
-    feedback.hidden = !state.message; feedback.textContent = state.message;
+    const error = state.messageSource === "logout" ? state.message : "";
+    feedback.hidden = !error; feedback.textContent = error;
   });
 } catch {
   root.querySelector("[data-identity]").textContent = "ログイン状態を確認できません";

@@ -1,3 +1,4 @@
+import { showToast } from "./toast.js";
 import { supabasePublicConfig } from "./supabasePublicConfig.js";
 import { createAuthService } from "./authService.js";
 import { createAuthController } from "./authController.js";
@@ -11,7 +12,7 @@ export function getAuthRuntime() {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false,
         storageKey: "diesduck-auth-session" },
     });
-    const controller = createAuthController(createAuthService({ client, config: supabasePublicConfig }), () => {});
+    const controller = createAuthController(createAuthService({ client, config: supabasePublicConfig }), () => {}, message => showToast({ kind: "success", message }));
     // Return the controller before restore completes, so every subscriber sees loading.
     void controller.start();
     return controller;

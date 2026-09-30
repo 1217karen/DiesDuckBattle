@@ -35,7 +35,7 @@ try {
     document.getElementById("home-status").textContent = !known ? state.sessionMessage
       : state.signedIn ? menuModel(state).identity : "ログイン、または新規登録してはじめましょう。";
     const feedback = document.getElementById("home-feedback");
-    feedback.textContent = state.registeredEno ? "登録済みのENo：" + state.registeredEno + "。ENoを控えてください。" : state.message;
+    feedback.textContent = state.registeredEno ? "登録済みのENo：" + state.registeredEno + "。ENoを控えてください。" : state.messageSource === "logout" ? state.message : "";
     if (!menuBuilt && known && state.signedIn) {
       menuBuilt = true;
       document.getElementById("home-game").replaceChildren(...menuModel(state).items.filter(item => item.href !== "index.html").map(item => {

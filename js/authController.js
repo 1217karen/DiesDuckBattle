@@ -1,9 +1,9 @@
 // State never contains a password, Auth email, token, or full SDK error.
-export function createAuthController(service, render) {
+export function createAuthController(service, render, notifySuccess = () => {}) {
   let revision = 0, stopped = false, unsubscribe = () => {};
   const listeners = new Set([render]);
   const state = { ready: false, sessionKnown: false, busy: "", signedIn: false, enos: [], accounts: [], sessionMessage: "ログイン状態を確認中…",
-    message: "", registeredEno: "" };
+    message: "", messageSource: "", registeredEno: "" };
   const snapshot = () => ({ ...state, enos: [...state.enos], accounts: state.accounts.map(a => ({ ...a })) });
   const emit = () => { if (!stopped) listeners.forEach(listener => listener(snapshot())); };
   async function applySession(session) {
@@ -32,7 +32,7 @@ export function createAuthController(service, render) {
   }
   async function action(kind, work) {
     if (!state.ready || state.busy || stopped) return;
-    state.busy = kind; state.message = ""; emit();
+    state.busy = kind; state.message = ""; state.messageSource = kind; emit();
     try { return await work(); }
     catch { state.message = "処理を完了できませんでした。通信状況を確認してください。"; }
     finally { state.busy = ""; emit(); }
@@ -61,13 +61,13 @@ export function createAuthController(service, render) {
       if (result.ok) {
         state.registeredEno = "";
         await applySession(result.session);
-        state.message = "ログインしました。";
+        try { notifySuccess("ログインしました。"); } catch { /* Notifications cannot change auth outcome. */ }
       }
       else state.message = result.message;
       return { ok: result.ok };
     }),
     logout: () => action("logout", async () => {
-      try { await service.logout(); await applySession(null); state.message = "ログアウトしました。"; }
+      try { await service.logout(); await applySession(null); try { notifySuccess("ログアウトしました。"); } catch { /* Keep logout successful. */ } }
       catch { state.message = "ログアウトできませんでした。通信状況を確認してもう一度お試しください。"; }
     }),
     stop() { stopped = true; revision++; unsubscribe(); },

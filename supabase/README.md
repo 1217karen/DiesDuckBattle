@@ -262,3 +262,9 @@ FunctionのデプロイとAuth設定変更は別操作です。今回Auth設定�
 import mapはregister-account/deno.jsonとし、../_shared/という相対importを維持します。
 以前のDashboard配置（index.tsとその下の_shared）へそのまま貼るとパスが変わるため注意してください。
 既存のverify_jwt=falseを維持し、登録入口以外のRLS・権限は変更しません。
+
+### オンライン保存第1段階
+
+原子的な保存RPC・競合revision用の追加migrationを作成しました。本番未適用です。
+本番初回migrationのtimestamp差異に注意してください。
+SQLの影響、モデル対応、権限、検証、次段階の手順は [ONLINE_STORAGE.md](ONLINE_STORAGE.md) を参照してください。

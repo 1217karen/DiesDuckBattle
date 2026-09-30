@@ -102,3 +102,11 @@ Minimum password lengthを6、Required charactersを英字＋数字（大文字�
 コードをデプロイしてもAuth設定は更新されません。
 本人による確認はENo.2でログイン→ENo・DB名→再読み込み復元→ログアウトして2ボタン表示、
 続いてENo.3で同じ順に行ってください。今回の自動テストはモックのみで、実登録は行いません。
+
+## オンライン保存層（画面未接続）
+
+`js/onlinePlayerDto.js` / `js/onlinePlayerStorage.js` に、アカウント別の保存・復元層を追加しました。
+原子的なRPCとrevision競合検出には追加migrationが必要です。**本番未適用**です。
+setting/characterの保存先は従来どおりで、既存ローカルデータは変更しません。
+ログイン・ログアウト成功は共通トーストへ移し、エラーは自動消去しません。
+SQLの影響、DTO対応、使い方、次段階の作業は [オンライン保存設計](supabase/ONLINE_STORAGE.md) を参照してください。
