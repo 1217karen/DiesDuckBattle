@@ -1,9 +1,8 @@
 import { effectSelectionFields } from "./effectSelectionCatalog.js";
 import { selectionRows } from "./selectionNormalization.js";
-import { createPlayerBuildStorage } from "./playerBuildStorage.js";
-import { createPlayerPublicSettingsStorage } from "./playerPublicSettingsStorage.js";
+import { mountOnlineEditor } from "./onlineEditor.js";
 import { createSettingState, changeSetting, selectedDuck, selectedPublicDuckId, cBranches, createCStructure, duckSummary } from "./settingState.js";
-import { inspectBuildForSave, saveSectionSummary, saveInspectedBuild } from "./buildSaveInspection.js";
+import { inspectBuildForSave, saveSectionSummary } from "./buildSaveInspection.js";
 import { DICE_FRAMES, getDiceFrame } from "./diceFrames.js";
 import { createBuildRules } from "./buildRules.js";
 import { createASkillCatalog, getATriggerOptions } from "./aSkillCatalog.js";
@@ -18,11 +17,9 @@ import { createCSkillRules } from "./cSkillRules.js";
 import { cControlDefinitions, changeCControl } from "./cSkillControlEditor.js";
 import { D_SKILL_OPTIONS } from "./dSkillCatalog.js";
 
-const repository = createPlayerBuildStorage();
-const loaded = repository.load();
-const publicRepository = createPlayerPublicSettingsStorage();
-const publicLoaded = publicRepository.load();
-let state = createSettingState(loaded, publicLoaded);
+let online;
+let state = createSettingState({ ok: false, status: "loading" });
+let dataVersion = 0;
 const rules = createBuildRules(), aCatalog = createASkillCatalog(), bCatalog = createBSkillCatalog();
 const cCatalog = createCSkillCatalog(), cRules = createCSkillRules();
 const $ = id => document.getElementById(id);
@@ -38,13 +35,14 @@ function button(text, onClick, className) {
   const node = el("button", text, className); node.type = "button"; node.addEventListener("click", onClick); return node;
 }
 function showDialog({ title, message, issues = [], onConfirm, confirmLabel = "変更する", cancelLabel = "取り消す" }) {
+  const version = dataVersion;
   const dialog = el("dialog", null, "confirm-dialog");
   dialog.setAttribute("aria-labelledby", "confirm-heading");
   const heading = el("h3", title); heading.id = "confirm-heading";
   const actions = el("div", null, "actions");
   actions.append(button(cancelLabel, () => dialog.close()));
   if (onConfirm) actions.append(button(confirmLabel, () => {
-    dialog.close(); onConfirm();
+    dialog.close(); if (version === dataVersion && online?.snapshot().canEdit) onConfirm();
   }, "primary"));
   const list = el("ul", null, "dialog-issues");
   const sections = { stats: "ステータス", dice: "ダイス", ducks: "アヒル設定", build: "保存形式" };
@@ -96,8 +94,9 @@ function setFeedback(key, summary) {
   }).map(i => el("li", i.message, i.severity)));
 }
 function commit(action, redraw = true) {
+  if (!online?.snapshot().canEdit) return;
   state = changeSetting(state, action);
-  if (action.type !== "select") $("save-message").textContent = "未保存の変更があります";
+  if (action.type !== "select") online.edit({ build: state.build, publicSettings: state.publicSettings });
   if (redraw) render(); else { renderTabs(); renderSummaries(); }
 }
 const patchDuck = (patch, redraw = true) => commit({ type: "duck", patch }, redraw);
@@ -455,52 +454,38 @@ function renderSummaries() {
   $("c-metrics").textContent = `必要AP ${num(summary.C.resources.requiredAP)}`;
 }
 function render() {
+  if (!state.build) return;
   const focused = document.activeElement?.id;
   renderBattler(); renderTabs(); renderDuck(); renderSummaries();
   if (focused) $(focused)?.focus({ preventScroll: true });
 }
-const storageMessages = {
-  "migration-required": "旧保存データを安全に移行できませんでした。元データを保護し、編集・保存を停止しています。",
-  corrupt: "保存データを読み込めませんでした。保存形式が壊れているため、既存データを保護して編集・保存を停止しています。",
-  "unsupported-version": "このページでは対応していないバージョンの保存データです。対応するページで開いてください。",
-  "storage-error": "保存領域にアクセスできませんでした。ブラウザの保存許可・空き容量などを確認してください。",
-  "invalid-build": "保存できない形式が含まれています。設定内容を確認してください。",
-};
 $("add-duck").addEventListener("click", () => commit({ type: "add" }));
-function saveSettings(approveIncomplete = false) {
-  if (!state.build) return;
-  const result = saveInspectedBuild(state, repository, { approveIncomplete });
-  state = result.state;
-  if (result.status === "invalid") {
-    showDialog({ title: "保存できない設定があります", issues: result.inspection.invalid,
+async function saveSettings(approveIncomplete = false) {
+  if (!state.build || !online?.snapshot().canSave) return;
+  const inspection = inspectBuildForSave(state.build);
+  if (!inspection.canSave) {
+    showDialog({ title: "保存できない設定があります", issues: inspection.invalid,
       message: "修正してから保存してください。", cancelLabel: "閉じる" });
-  } else if (result.status === "confirmation-required") {
-    showDialog({ title: "未完成の設定があります", issues: result.inspection.incomplete,
+    return;
+  }
+  if (!inspection.complete && !approveIncomplete) {
+    showDialog({ title: "未完成の設定があります", issues: inspection.incomplete,
       message: "この設定は保存できますが、完成するまで戦闘には使用できません。",
       cancelLabel: "キャンセル", confirmLabel: "このまま保存", onConfirm: () => saveSettings(true) });
-  } else if (result.status === "saved") {
-    if (state.publicSettings) {
-      const publicSaved = publicRepository.save(state.publicSettings);
-      if (!publicSaved.ok) {
-        state = { ...state, dirty: true };
-        $("save-message").textContent = storageMessages[publicSaved.status] ?? "公開用設定を保存できませんでした。";
-        return;
-      }
-    }
-    $("save-message").textContent = "保存しました";
+    return;
   }
-  else $("save-message").textContent = storageMessages[result.status] ?? "保存できませんでした。";
+  await online.save();
 }
 $("save").addEventListener("click", () => saveSettings());
-window.addEventListener("beforeunload", event => { if (state.dirty) { event.preventDefault(); event.returnValue = ""; } });
-if (state.build) {
-  $("editor").hidden = false; $("load-message").hidden = true; render();
-  if (!state.publicSettings) {
-    $("public-settings-message").hidden = false;
-    $("public-settings-message").textContent = storageMessages[state.publicLoadStatus] ?? "公開用設定を読み込めませんでした。既存データを保護しています。";
-  }
-  if (loaded.migratedFrom) $("save-message").textContent = "v1データをv2へ移行して読み込みました。保存するまで元データは変更されません。";
-} else {
-  $("load-message").textContent = storageMessages[state.loadStatus] ?? "保存データを読み込めませんでした。";
-  $("save").disabled = true;
-}
+online = await mountOnlineEditor({
+  sections: ["build", "publicSettings"],
+  hydrate(data) {
+    dataVersion++;
+    state = data ? createSettingState({ ok: true, status: "loaded", build: data.build },
+      { ok: true, status: "loaded", settings: data.publicSettings }) : createSettingState({ ok: false, status: "loading" });
+    bTraitPath = { category: "", condition: "" };
+    if (data) render();
+    else for (const id of ["battler-editor", "duck-tabs", "duck-editor"]) $(id).replaceChildren();
+  },
+  onState(next) { state.dirty = next.dirty; },
+});

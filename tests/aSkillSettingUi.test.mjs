@@ -1,4 +1,6 @@
 import test from "node:test";
+import { loadSettingPage } from "./settingPageHarness.mjs";
+import { migratePlayerBuild } from "../js/playerBuildMigration.js";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { PLAYER_BUILD_STORAGE_KEY } from "../js/playerBuildStorage.js";
@@ -9,7 +11,7 @@ import { aPointSections } from "../js/aSkillPresentation.js";
 import { aNormalSlots } from "../js/aSkillSentenceEditor.js";
 import { createASkillCatalog } from "../js/aSkillCatalog.js";
 
-// Exercise the real settingPage handlers with an in-memory DOM/storage, no browser dependency.
+// Exercise the real settingPage handlers with an in-memory DOM/online adapter, no browser dependency.
 async function page(build = createEmptyPlayerBuild()) {
   class Element {
     constructor(tag) { this.tagName=tag; this.children=[]; this.handlers={}; this.attributes={}; this.value=""; this.classList={toggle(){}}; }
@@ -28,12 +30,12 @@ async function page(build = createEmptyPlayerBuild()) {
   const document={body,createElement:tag=>new Element(tag),getElementById:id=>all().find(e=>e.id===id)};
   const values=new Map([[PLAYER_BUILD_STORAGE_KEY,JSON.stringify(build)]]);
   globalThis.document=document; globalThis.window={addEventListener(){}};
-  globalThis.localStorage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
-  await import(`../js/settingPage.js?ui-test=${crypto.randomUUID()}`);
+  globalThis.localStorage={getItem(){throw Error("local read forbidden");},setItem(){throw Error("local write forbidden");}};
+  await loadSettingPage(build, saved => values.set(PLAYER_BUILD_STORAGE_KEY, JSON.stringify(saved)));
   return { get:id=>document.getElementById(id), all,
     choose(id,value) {const e=this.get(id);assert.ok(e,`missing ${id}`);assert.ok(e.children.some(o=>o.value===value&&!o.disabled),`illegal ${id}/${value}`);e.value=value;e.handlers.change();},
     save() { this.get("save").handlers.click();const confirm=all().find(e=>e.tagName==="button"&&e.textContent==="このまま保存");confirm?.handlers.click();
-      assert.equal(this.get("save-message").textContent,"保存しました");return JSON.parse(values.get(PLAYER_BUILD_STORAGE_KEY)); },
+      assert.equal(this.get("save-message").textContent,"変更はありません");return JSON.parse(values.get(PLAYER_BUILD_STORAGE_KEY)); },
   };
 }
 
@@ -100,10 +102,10 @@ test("A setting UI: both conflict directions, invalid saved leaves and cancellat
   assert.match(p.get("a-issues").textContent,/成功率/);
 });
 
-test("A setting UI: v1 data loads through existing migration and saves the same compiled meaning",async()=>{
+test("A setting UI: explicitly converted legacy fixture keeps compiled meaning (online page does not migrate local data)",async()=>{
   const b=initial({triggerId:"exact:1",effects:[{effectId:"heal-enemy",amountOptionId:"amount-5"}]});b.schemaVersion=1;
   const original=compileASkill(b.ducks[0],b.ducks[0].aSelection);
-  const p=await page(b);assert.equal(p.get("a-effect-0").value,"heal");assert.equal(p.get("a-effect-0-options.amount").value,"amount-5");
+  const p=await page(migratePlayerBuild(b).build);assert.equal(p.get("a-effect-0").value,"heal");assert.equal(p.get("a-effect-0-options.amount").value,"amount-5");
   const saved=p.save();assert.equal(saved.schemaVersion,2);
   assert.deepEqual(compileASkill(saved.ducks[0],saved.ducks[0].aSelection),original);
 });

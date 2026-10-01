@@ -1,0 +1,11 @@
+.online-edit-status { border: 1px solid #716643; border-radius: 8px; padding: 1rem; margin: 1rem 0; overflow-wrap: anywhere; }
+.online-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+.online-edit-status button { margin: .3rem .4rem .3rem 0; }
+.online-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.online-comparison pre { max-height: 28rem; overflow: auto; font-size: .8rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.online-edit-status summary { cursor: pointer; margin: 1rem 0; }
+[inert] { opacity: .6; }
+.online-confirm { max-width: min(34rem, 90vw); border: 1px solid #716643; border-radius: 8px; padding: 1.5rem; background: #22251e; color: #f4ecd9; }
+.online-confirm::backdrop { background: #0009; }
+.online-confirm button { margin: .5rem .5rem 0 0; }
+@media (max-width: 640px) { .online-comparison { grid-template-columns: 1fr; } }

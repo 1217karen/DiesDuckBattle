@@ -2,6 +2,7 @@
 export function createAuthController(service, render, notifySuccess = () => {}) {
   let revision = 0, stopped = false, unsubscribe = () => {};
   const listeners = new Set([render]);
+  const logoutGuards = new Set();
   const state = { ready: false, sessionKnown: false, busy: "", signedIn: false, enos: [], accounts: [], sessionMessage: "ログイン状態を確認中…",
     message: "", messageSource: "", registeredEno: "" };
   const snapshot = () => ({ ...state, enos: [...state.enos], accounts: state.accounts.map(a => ({ ...a })) });
@@ -38,6 +39,7 @@ export function createAuthController(service, render, notifySuccess = () => {}) 
     finally { state.busy = ""; emit(); }
   }
   return {
+    beforeLogout(guard) { logoutGuards.add(guard); return () => logoutGuards.delete(guard); },
     subscribe(listener) { listeners.add(listener); listener(snapshot()); return () => listeners.delete(listener); },
     async start() {
       unsubscribe = service.watch(session => { void applySession(session); });
@@ -67,6 +69,7 @@ export function createAuthController(service, render, notifySuccess = () => {}) 
       return { ok: result.ok };
     }),
     logout: () => action("logout", async () => {
+      for (const guard of logoutGuards) if (!await guard()) return;
       try { await service.logout(); await applySession(null); try { notifySuccess("ログアウトしました。"); } catch { /* Keep logout successful. */ } }
       catch { state.message = "ログアウトできませんでした。通信状況を確認してもう一度お試しください。"; }
     }),

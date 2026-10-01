@@ -1,11 +1,12 @@
 import test from "node:test";
+import { loadSettingPage } from "./settingPageHarness.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { PLAYER_BUILD_STORAGE_KEY } from "../js/playerBuildStorage.js";
 import { createEmptyDuck, createEmptyPlayerBuild } from "../js/playerBuildModel.js";
 import { compileBSkill } from "../js/bSkillCompiler.js";
 
-// Exercise the real settingPage handlers with an in-memory DOM/storage, no browser dependency.
+// Exercise the real settingPage handlers with an in-memory DOM/online adapter, no browser dependency.
 async function page(build = createEmptyPlayerBuild()) {
   class Element {
     constructor(tag) { this.tagName=tag; this.children=[]; this.handlers={}; this.attributes={}; this.value=""; this.classList={toggle(){}}; }
@@ -24,12 +25,12 @@ async function page(build = createEmptyPlayerBuild()) {
   const document={body,createElement:tag=>new Element(tag),getElementById:id=>all().find(e=>e.id===id)};
   const values=new Map([[PLAYER_BUILD_STORAGE_KEY,JSON.stringify(build)]]);
   globalThis.document=document; globalThis.window={addEventListener(){}};
-  globalThis.localStorage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
-  await import(`../js/settingPage.js?ui-test=${crypto.randomUUID()}`);
+  globalThis.localStorage={getItem(){throw Error("local read forbidden");},setItem(){throw Error("local write forbidden");}};
+  await loadSettingPage(build, saved => values.set(PLAYER_BUILD_STORAGE_KEY, JSON.stringify(saved)));
   return { get:id=>document.getElementById(id), all,
     choose(id,value) {const e=this.get(id);assert.ok(e,`missing ${id}`);assert.ok(e.children.some(o=>o.value===value),`illegal ${id}/${value}`);e.value=value;e.handlers.change();},
     save() { this.get("save").handlers.click();const confirm=all().find(e=>e.tagName==="button"&&e.textContent==="このまま保存");confirm?.handlers.click();
-      assert.equal(this.get("save-message").textContent,"保存しました");return JSON.parse(values.get(PLAYER_BUILD_STORAGE_KEY)); },
+      assert.equal(this.get("save-message").textContent,"変更はありません");return JSON.parse(values.get(PLAYER_BUILD_STORAGE_KEY)); },
   };
 }
 

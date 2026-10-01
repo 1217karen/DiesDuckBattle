@@ -210,7 +210,7 @@ envファイルはsupabase/.gitignoreで除外します。
 ### 未実装
 
 第3段階で登録UI、login UI／処理、session復元、logoutを追加しました。
-SETTINGオンライン保存、account link／switch、
+account link／switch、
 password recovery、CAPTCHA、rate limit、IP制限、bot対策は未実装です。
 複数アカウントは禁止しません。将来のabuse対策はこの登録入口へ追加できます。
 register-accountは現在remoteでACTIVEです。第3段階では再deployしていません。
@@ -265,6 +265,10 @@ import mapはregister-account/deno.jsonとし、../_shared/という相対import
 
 ### オンライン保存第1段階
 
-原子的な保存RPC・競合revision用の追加migrationを作成しました。本番未適用です。
+原子的な保存RPC・競合revision用の追加migrationを作成し、その後本番へ適用済みです。
+本番履歴は `20260930223450_online_player_storage`、repoは `20260930165424_online_player_storage.sql` です。
+2026-10-01の画面接続作業では履歴を読み取り確認しただけで、SQL適用・ENo発行・既存アカウントのデータ変更は行っていません。
+setting.html / character.htmlは既存clientとRPCへ接続済み。全体DTOとrevisionを保持して明示的に保存します。
+実アカウントを使った結合テストは未実施です。
 本番初回migrationのtimestamp差異に注意してください。
 SQLの影響、モデル対応、権限、検証、次段階の手順は [ONLINE_STORAGE.md](ONLINE_STORAGE.md) を参照してください。

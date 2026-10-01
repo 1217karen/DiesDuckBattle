@@ -1,8 +1,8 @@
-# オンライン保存層（第1段階）
+# オンライン保存層と戦闘・表示設定の画面接続
 
-画面への接続前の保存APIです。setting.html / character.htmlと既存localStorage層は変更していません。
+setting.html / character.htmlからオンライン保存APIへ接続済みです。既存localStorage層とそのデータは変更しません。
 ブラウザの既存Supabase clientを `createOnlinePlayerStorage(client)` に渡します。publishable key＋sessionのみで動作します。
-この段階ではauthRuntimeがclientを内部保持しているため、次段階で同じclientを保存層にも渡す窓口を追加してください。
+authRuntimeの `getSupabaseClient()` が、認証とオンライン編集に同じclientを渡します。
 新しいclientや別のsession保存キーを作る必要はありません。
 
 ## APIとアカウント選択
@@ -49,7 +49,7 @@ const saved = await storage.save(loaded, editedData);
 アカウント固有のDB名＋空のオンラインモデルへ変換します。読み込みだけではDBへ書き込みません。
 既存ENo.2/3の状態は取得・変更・初期化していません。
 
-## 追加migration（本番未適用）
+## 適用済みmigration
 
 `migrations/20260930165424_online_player_storage.sql` をSupabase CLI 2.118.0のmigration newで作成しました。
 
@@ -63,15 +63,16 @@ const saved = await storage.save(loaded, editedData);
 - すべてSECURITY INVOKER、search_path固定。既存テーブル権限・RLSは維持。RPCはauthenticatedだけに公開します。
 - テーブル作り直し、buildリセット、ENo再採番、sequence reset、アカウント変更はありません。
 
-今回確認した本番migration履歴は `20260929231111_initial_online_schema` で、ローカル初回のtimestampとは異なります。
+2026-10-01に読み取り確認した本番履歴は `20260929231111_initial_online_schema` と
+`20260930223450_online_player_storage` です。いずれもrepoのtimestampとは異なります。
 テーブル定義・RLS・column grantsの整合はcatalogの読み取りで確認済みです。
-**本番へdb pushをそのまま実行しないでください。** 適用工程では履歴の対応を確認して今回の追加SQLだけを対象にします。
+**本番へdb pushをそのまま実行しないでください。** 追加SQLは適用済みなので再適用しません。今回ファイル名変更・履歴修復もしていません。
 この作業ではmigration apply、SQLによるデータ書き込み、Edge Function deployを実行していません。
 
 ## 競合・失敗時
 
 revisionはopaqueな十進文字列で、保存1回につき1増加とは限りません。
-古いrevisionの保存は全体拒否し、自動merge・自動retryしません。次段階のUIは編集中データを保持し、最新データを別途取得して比較できるようにします。
+古いrevisionの保存は全体拒否し、自動merge・自動retryしません。UIは編集中データを保持し、最新データを別途取得して比較します。
 既存の直接DMLを同時に使う場合、Postgresがdeadlockを検出することがあります。その場合もrollbackし、conflictとして再読込を促します。
 RPC送信後の通信断は既にcommitされている可能性があるためsave-unknownです。再送せず、読み込みで結果を確認します。
 クライアントから「失敗したのでDELETEでcleanup」は行いません。
@@ -94,13 +95,36 @@ DBテストは任意の開発用PGlite 0.5.8をrepo外へインストールし�
 PGliteのメモリDBにSupabase相当のauth.uid()/rolesを用意して、両migrationを実行し、実際のRLS/RPC/triggerを検証します。
 本番へ接続するテストではありません。真の複数接続による同時transactionは未検証ですが、古いrevisionの拒否・直接更新による無効化・途中失敗のrollbackを検証しています。
 
-## 次段階
+## 画面の編集状態と競合解決
 
-1. 履歴の対応とSQLをレビューし、別操作として追加migrationを適用。
-2. authRuntimeの既存clientを保存層へ渡す窓口を用意し、アカウント別にload。
-3. setting/characterの編集ドラフトをオンライン用に分離。成功したloadを基準に、3モデルとbattlerName全体をsave。
-4. 失敗時にドラフトを失わないUI、競合時の再読込・比較、結果不明時の確認を接続。
-5. 成功だけトーストへ。ローカルデータの移行・消去、アカウント切り替えUIは別工程。
+`onlineEditController.js` は読込時のaccount/authUserId/revision、全体ドラフト、dirty、busy、最新比較用スナップショットをメモリ内で管理します。
+`onlineEditor.js` が確認ダイアログ、比較表示、認証監視、離脱警告、成功トーストを接続します。
 
-検証実績：Node全883件成功／失敗0／skip0（PGLITE_MODULE指定）。PGliteの実SQL検証9件を含みます。
-モックブラウザでもログイン成功のトースト表示、共通メニューに成功文言が残らないことを確認しました。
+- 戦闘画面が変更できるのはbuild/publicSettings。表示画面はpresentation。Battler名と担当外セクションは保持します。
+- 通常保存は読込時の全体DTO＋revisionで行い、古い別タブのデータはRPCが拒否します。
+- 競合やsave-unknownでは保存を停止。最新データの取得はドラフトを置き換えません。
+- 比較後の明示操作で最新を採用するか、この画面の担当セクション全体を最新へ引き継いで再編集できます。フィールド単位の自動マージはしません。同じセクションの変更を置き換えることを確認ダイアログで案内します。
+- 引継ぎ後は最新の担当外セクションとBattler名を保持し、新revisionを基準に保存します。その間に再更新されていれば再度競合します。
+- 保存成功時だけdirtyを解除し、返されたrevisionを次の保存に使用します。破棄・再読込は確認後にdirtyを解除します。
+- 操作中はエディタと保存操作を無効化。古い非同期結果は世代番号で破棄します。画像検証も画面の世代番号を確認します。
+- 同一ページのログアウトはauthControllerのbeforeLogoutで確認します。別タブからの認証変更・権限喪失は確認で阻止できないため、旧データを非表示・破棄して画面に理由を残します。新しい対象は手動で再読み込みします。
+- フォーカス復帰時もaccessを再確認。0件／複数件／読み込み失敗／未対応形式のまま空データを編集・保存しません。
+- settingのモデル検査、未完成確認、characterの画像寸法検証は既存処理を再利用します。戦闘ルール・コンパイラ・モデルschemaは変更しません。
+
+## ユーザー本人による実環境確認
+
+この実装の検証はモックとローカルメモリDBのみです。本番ENo.2/3の自動書き込みテストは行っていません。
+
+1. 本人がENo.2でログインし、戦闘設定の保存対象ENo・DB名と初期データを確認する。
+2. 必要なアヒルを追加し、未完成確認を含む明示保存→再読み込みを試す。公開選択と、そのDuck削除後の公開解除も確認する。
+3. 表示設定でURL・セリフ・アイコン枠を保存して再読み込み、戦闘設定が保持されることを確認する。
+4. 同じENoを2タブで開き、一方を保存した後に他方を保存して競合表示・ドラフト保持・比較／再編集を確認する。
+5. 未保存で再読込／ログアウトを試し、キャンセルで入力が残ることを確認する。
+6. ログアウト→ENo.3でログインし、ENo.2の設定が混ざらないことを確認する。アカウントやsequenceをリセットしない。
+
+## 未接続の画面と次段階
+
+select.html、battle.html、storage.html、結果画面は今回オンラインへ接続していません。
+既存ローカル版を引き続き参照するため、オンライン設定が戦闘へ自動反映される段階ではありません。
+今後は対戦選択の読込・コンパイル入口を、権限とpublic Duckの公開範囲を守って接続します。
+アカウント切替UI、ローカル移行、キャラ名変更、Storage upload、結果のオンライン保存は対象外です。

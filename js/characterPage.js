@@ -1,6 +1,5 @@
-import { createPlayerBuildStorage } from "./playerBuildStorage.js";
-import { createEmptyPlayerPresentation, normalizePlayerPresentation } from "./playerPresentationModel.js";
-import { createPlayerPresentationStorage } from "./playerPresentationStorage.js";
+import { mountOnlineEditor } from "./onlineEditor.js";
+import { createEmptyPlayerPresentation } from "./playerPresentationModel.js";
 import { createIconPicker } from "./iconPicker.js";
 import { IMAGE_LIMITS, createImageValidation, imageValidationSummary } from "./characterImageValidation.js";
 
@@ -11,10 +10,8 @@ const quoteGroups = [
   { title: "スキル発動", rows: [["A", ["skill", "A"]], ["B", ["skill", "B"]], ["C", ["skill", "C"]], ["D", ["skill", "D"]]] },
   { title: "戦闘終了", rows: [["勝利", ["battleEnd", "win"]], ["敗北", ["battleEnd", "lose"]], ["引分", ["battleEnd", "draw"]]] }
 ];
-const editor = document.querySelector("#editor");
-const loadMessage = document.querySelector("#load-message");
-const saveMessage = document.querySelector("#save-message");
-const presentationStorage = createPlayerPresentationStorage();
+let online, onlineState;
+let dataVersion = 0;
 const picker = createIconPicker({ dialog: document.querySelector("#icon-picker"), list: document.querySelector("#picker-list"), closeButton: document.querySelector("#picker-close") });
 let presentation = createEmptyPlayerPresentation();
 let ducks = [];
@@ -26,11 +23,11 @@ const validationMessage = document.querySelector("#image-validation-message");
 
 function updateValidation() {
   const summary = imageValidationSummary(imageStates.values());
-  saveButton.disabled = !summary.canSave;
+  saveButton.disabled = !summary.canSave || !onlineState?.canSave;
   validationMessage.textContent = summary.message;
 }
 
-function setDirty() { saveMessage.textContent = "未保存の変更があります"; }
+function setDirty() { online?.edit({ presentation }); }
 function quoteAt(path) { return path.reduce((value, key) => value[key], presentation.battler.quotes); }
 function pickerLabel(slot) {
   if (slot === null) return "デフォルト";
@@ -66,6 +63,7 @@ function makePreview(kind, onValidation, className = "") {
 }
 
 function makeImageField({ label, value, kind = "icon", previewClass = "", compact = false, onInput }) {
+  const version = dataVersion;
   const root = document.createElement("div"); root.className = `image-field${compact ? " compact" : ""}`;
   const field = document.createElement("label"); field.append(document.createTextNode(label));
   const input = document.createElement("input"); input.type = "url"; input.value = value; input.placeholder = "https://example.com/image.png";
@@ -73,6 +71,7 @@ function makeImageField({ label, value, kind = "icon", previewClass = "", compac
   const hint = document.createElement("span"); hint.textContent = `最大${limit.width}×${limit.height}px（縦横比自由）`;
   const status = document.createElement("span"); status.className = "image-validation"; status.setAttribute("role", "status");
   const preview = makePreview(kind, result => {
+    if (version !== dataVersion) return;
     imageStates.set(root, result); root.dataset.validation = result.status;
     status.textContent = result.message; input.setAttribute("aria-invalid", String(result.status === "invalid"));
     updateValidation();
@@ -130,7 +129,8 @@ function renderDuckSelect() {
   // Validate every saved URL, including Ducks no longer present in the build, without deleting data.
   const known = new Set(ducks.map(duck => duck.id));
   for (const id of Object.keys(presentation.ducks)) if (!known.has(id)) ducks.push({ id, name: `${id}（戦闘設定なし）` });
-  const target = document.querySelector("#duck-icon-editor");
+  const target = document.querySelector("#duck-icon-editor"); target.replaceChildren();
+  duckEditors.clear(); select.disabled = false;
   for (const duck of ducks) {
     const id = duck.id;
     const field = makeImageField({ label:`${duck.name || "名前未設定のDuck"} アイコンURL`, value:presentation.ducks[id]?.iconUrl ?? "",
@@ -143,26 +143,24 @@ function renderDuckSelect() {
     selectedDuckId = ducks.some(duck => duck.id === selectedDuckId) ? selectedDuckId : ducks[0].id;
     select.value = selectedDuckId;
   }
-  select.addEventListener("change", () => { selectedDuckId = select.value; renderDuckEditor(); });
+  select.onchange = () => { selectedDuckId = select.value; renderDuckEditor(); };
   renderDuckEditor();
 }
 
-function initialize() {
-  const loaded = presentationStorage.load();
-  presentation = normalizePlayerPresentation(loaded.presentation);
-  const buildLoaded = createPlayerBuildStorage().load();
-  ducks = buildLoaded.ok && Array.isArray(buildLoaded.build?.ducks) ? buildLoaded.build.ducks.map(({ id, name }) => ({ id, name })) : [];
-  renderBattlerImages(); renderQuotes(); renderDuckSelect();
-  loadMessage.textContent = loaded.ok ? (loaded.status === "empty" ? "未保存の表示設定です。" : "表示設定を読み込みました。")
-    : loaded.status === "corrupt" ? "保存データを読み取れなかったため、初期値で開きました。保存すると修復されます。" : "保存領域を利用できません。入力内容は保存できない可能性があります。";
-  editor.hidden = false;
-}
-
-document.querySelector("#save").addEventListener("click", () => {
-  if (!imageValidationSummary(imageStates.values()).canSave) { updateValidation(); return; }
-  const saved = presentationStorage.save(presentation);
-  if (!saved.ok) { saveMessage.textContent = "保存できませんでした。ブラウザの保存設定を確認してください。"; return; }
-  presentation = saved.presentation; saveMessage.textContent = "表示設定を保存しました";
+saveButton.addEventListener("click", async () => {
+  if (!online?.snapshot().canSave || !imageValidationSummary(imageStates.values()).canSave) { updateValidation(); return; }
+  await online.save();
 });
 
-initialize();
+online = await mountOnlineEditor({
+  sections: ["presentation"],
+  hydrate(data) {
+    dataVersion++;
+    picker.close(); imageStates.clear(); duckEditors.clear(); selectedDuckId = "";
+    presentation = data ? structuredClone(data.presentation) : createEmptyPlayerPresentation();
+    ducks = data ? data.build.ducks.map(({ id, name }) => ({ id, name })) : [];
+    if (data) { renderBattlerImages(); renderQuotes(); renderDuckSelect(); }
+    else for (const id of ["battler-images", "quotes", "duck-icon-editor", "duck-select"]) document.getElementById(id).replaceChildren();
+  },
+  onState(state) { onlineState = state; if (!state.canEdit) picker.close(); updateValidation(); },
+});

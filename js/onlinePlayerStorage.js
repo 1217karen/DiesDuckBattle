@@ -44,6 +44,12 @@ export function createOnlinePlayerStorage(client) {
     return !error && data?.session?.user?.id === userId;
   }
   return {
+    async resolveAccount() {
+      try {
+        const scope = await access();
+        return scope.ok && !await unchanged(scope.authUserId) ? onlineFailure("session-changed") : scope;
+      } catch { return onlineFailure("load-failed"); }
+    },
     async load({ gameAccountId } = {}) {
       try {
         const scope = await access(gameAccountId); if (!scope.ok) return scope;
