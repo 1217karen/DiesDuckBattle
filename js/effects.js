@@ -305,7 +305,7 @@ function effChangeStatus(eff, ctx, emit) {
   const tgt = pickTarget(eff.target ?? "enemy", ctx);
   if (!tgt) return;
 
-  const status = resolveStatusSpec(eff.status, ctx, emit);
+  const status = resolveStatusSpec(eff.status, ctx, emit, tgt, eff);
   if (!status) return;
 
   const op = String(eff.op ?? "add");
@@ -1055,18 +1055,31 @@ function readValuePath(path, ctx) {
   }
 }
 
-function resolveStatusSpec(rawStatus, ctx, emit) {
+function resolveStatusSpec(rawStatus, ctx, emit, target, effect) {
   const s = String(rawStatus ?? "").trim();
   if (!s) return null;
 
   // グループ指定: "@all" / "@debuff" / "@buff"
   if (s.startsWith("@")) {
     const key = s.slice(1).trim().toLowerCase();
-    const list = STATUS_GROUPS[key];
+    let list = STATUS_GROUPS[key];
 
     if (!Array.isArray(list) || list.length === 0) {
       emit("note", ctx.actor?.side ?? "system", { code: "CHANGE_STATUS_GROUP_UNSUPPORTED", status: s });
       return null;
+    }
+
+    // Random grants choose uniformly among states below the stock limit.
+    // Removal, explicit status changes and @all retain their existing behavior.
+    if ((key === "buff" || key === "debuff") && (effect.op ?? "add") === "add"
+      && readValueNumber(effect.value ?? 1, ctx) > 0) {
+      list = list.filter(status => Number(target.status?.[status] ?? 0) < 3);
+      if (list.length === 0) {
+        emit("randomStatusGrantFailed", ctx.actor?.side ?? "system", {
+          code: "RANDOM_STATUS_GRANT_NO_CANDIDATES", target: target.side, group: key,
+        });
+        return null;
+      }
     }
 
     const rng = typeof ctx?.rng === "function" ? ctx.rng : Math.random;

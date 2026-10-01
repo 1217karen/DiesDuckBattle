@@ -75,7 +75,9 @@ export function buildBlocks(events, result, context) {
     }
 
     applyEventToState(state, event);
-    addLines(event, [...eventToLines(event, context), ...quoteLines(event)]);
+    const lines = eventToLines(event, context).map(line => isDiceEvent(event)
+      ? { ...line, text: `🎲 ${line.text}` } : line);
+    addLines(event, [...lines, ...quoteLines(event)]);
     if (current) current.stateAfter = cloneState(state);
   }
   closeCurrent(state);
@@ -166,6 +168,10 @@ function eventToLines(event, context) {
       if (delta < 0) return [{ kind: "soft", text: `${target}の${escapeHTML(statusName(event.status))}を ${amount("debuff", Math.abs(delta))} 解除！${hint(before, after)}` }];
       return [];
     }
+    case "randomStatusGrantFailed": {
+      const label = { buff: "強化", debuff: "異常" }[event.group];
+      return label ? [{ kind: "soft", text: `${target}に${label}の付与を失敗した……` }] : [];
+    }
     case "statusEffect": return [{ kind: "note status", text: `${target}の${escapeHTML(statusName(event.status ?? event.statusKey))}の効果！` }];
     case "attackMissed": return [{ kind: "soft", text: `<i>${actor}は攻撃を外した！</i>` }];
     case "attackAvoided": return [{ kind: "soft", text: `<i>${target}は攻撃を回避した！</i>` }];
@@ -183,11 +189,20 @@ function eventToLines(event, context) {
     case "phaseBonus": return [{ kind: "meta", text: "初回行動ボーナス！出目威力×2！" }];
     case "passiveSkillStateChanged": {
       const values = [event.bonus?.AT && `AT${event.bonus.AT > 0 ? "+" : ""}${event.bonus.AT}`, event.bonus?.DF && `DF${event.bonus.DF > 0 ? "+" : ""}${event.bonus.DF}`].filter(Boolean).join(" ");
-      return [{ kind: `note ${event.actor?.toLowerCase() ?? ""}`, text: `${actor}の常時スキル！${values ? `<br>${escapeHTML(values)}` : ""}` }];
+      const owner = escapeHTML(context.names[event.actor]?.battler ?? event.actor ?? "-");
+      return [{ kind: `note ${event.actor?.toLowerCase() ?? ""}`, text: `${owner}のバトラースキル！${values ? `<br>${escapeHTML(values)}` : ""}` }];
     }
     case "passiveModifierChanged": return [{ kind: "meta", text: `${actor}の常時効果が変化` }];
     default: return [];
   }
+}
+
+function isDiceEvent(event) {
+  return event.type === "roll" || event.type === "normalDamage"
+    || (event.type === "valueChanged" && event.key === "ap" && ["dice1", "dice5"].includes(event.source))
+    || (event.type === "heal" && event.source === "dice3")
+    || (event.type === "statusChange" && event.source === "dice4")
+    || (event.type === "recoil" && event.source === "dice6");
 }
 
 function decorateSkillLines(event, lines) {
