@@ -10,7 +10,7 @@ const context = { maxHP: { P1: 1000, P2: 1000 }, names: {
   P2: { battler: "バトラー二", duck: "アヒル二" },
 } };
 const linesFor = events => buildBlocks([{ type: "battleStart" }, ...events], "draw", context)
-  .flatMap(block => block.lines).slice(1);
+  .flatMap(block => block.lines).slice(1).filter(line => line.kind !== "spacer");
 
 function harness(roll = 0) {
   const fighter = side => ({ side, ap: 1, status: Object.fromEntries(STATUS_GROUPS.all.map(key => [key, 0])) });
