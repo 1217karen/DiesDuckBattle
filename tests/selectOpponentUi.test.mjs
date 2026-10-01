@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import * as selectState from "../js/selectState.js";
 import { listOpponents, getOpponent } from "../js/opponentSource.js";
+import { createOnlineSelectController } from "../js/onlineSelectController.js";
 
 test("real SELECT handlers switch public names and presentation with no P2 Duck interaction", async () => {
   const opponents = await Promise.all((await listOpponents()).map(o => getOpponent(o.id)));
@@ -20,27 +21,32 @@ test("real SELECT handlers switch public names and presentation with no P2 Duck 
     };
   }
   const elements = new Map();
-  const document = { createElement: element, getElementById(id) {
+  const document = { addEventListener() {}, createElement: element, getElementById(id) {
     if (!elements.has(id)) elements.set(id, element());
     return elements.get(id);
   } };
   const shown = [];
   const ui = await readFile(new URL("../js/select.js", import.meta.url), "utf8");
   vm.runInNewContext(ui.replace(/^import .*;\r?\n/gm, ""), {
-    ...selectState, document,
-    createPlayerBuildStorage: () => ({ load: () => ({ ok:true, status:"loaded", build:opponents[1].build }) }),
-    createPlayerPresentationStorage: () => ({ load: () => ({}) }),
+    ...selectState, document, window:{addEventListener() {}},
+    getSupabaseClient:async()=>({auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}}),
+    createOnlineSelectController,
+    createOnlineSelectService:()=>({loadSelf:async()=>({ok:true,account:{id:'own',eno:'88'},authUserId:'auth',data:{build:opponents[1].build,presentation:{},battlerName:'DB名'}}),
+      listOpponents:async()=>({ok:true,opponents:opponents.map(({id,name})=>({id,name,eno:'89'}))}),
+      getOpponent:async (_base,id)=>({ok:true,opponent:opponents.find(o=>o.id===id)})}),
     createSelectPresentation: () => (side, presentation, id) => shown.push({ side, presentation, id }),
     listOpponents: async () => opponents.map(({ id, name }) => ({ id, name })),
     getOpponent: async id => opponents.find(o => o.id === id),
   });
   assert.equal(document.getElementById("p2-duck-name").textContent, "公開Duck");
   const flush = () => new Promise(resolve => setImmediate(resolve));
+  await flush();
   async function choose(index) {
     document.getElementById("p2-battler-slot").handlers.click();
     await flush();
     assert.equal(document.getElementById("trayGrid").children.length, 2);
     await document.getElementById("trayGrid").children[index].children[0].handlers.click();
+    assert.equal(document.getElementById("tray").open,false,document.getElementById("trayGrid").children[0]?.textContent);
   }
   for (const index of [0, 1]) {
     await choose(index);

@@ -1,5 +1,29 @@
 # DiesDuckBattle
 
+## オンラインSELECT（公開境界migrationの適用待ち）
+
+`select.html` はauthRuntimeの共通clientとonlinePlayerStorageでログイン中ENoを解決します。
+未ログイン・アクセス0件・複数件では開始できません。ローカル仮build/presentationは読みません。
+自分のDuckを選び、他accountの公開Duckを持つ相手を選んでVSを押します。
+VS時に両者を1回のDBスナップショットで再取得し、公開解除／公開Duckの変更や未完成buildを検出します。
+既存compiler・engineで対戦し、開始時のコンパイル済みloadoutと表示スナップショットを既存battleResultStorageへ保存します。
+ログアウト・別ユーザーへの変更・古い非同期応答は無効化します。失敗時は画面内に案内を残し、自動再送しません。
+
+**必要な追加SQL：`supabase/migrations/20261001114619_online_battle_public_boundary.sql`。本番未適用です。**
+現在のBattler全体SELECTでは、未公開Duck用のdetachedDuckPresentationも第三者が読めるため、
+Battler/Duck直接SELECTを所有者に限定し、公開用RPCだけから許可した対戦用フィールドを返します。
+未適用時は相手読込を停止し、旧table SELECTや開発用相手へのfallbackはしません。
+DB変更の詳細・公開対象・適用前確認は `supabase/README.md` を参照してください。
+
+モック検証：`node scripts/serve-online-editor-mock.mjs` の操作ページで「メモリ内に完成buildを用意」→
+「キャラクター選択」。架空ENo.88/89のみを使い、実Supabase通信はCSPで遮断します。
+結果用localStorageだけを許可し、ローカルplayer保存へのアクセスは例外にします。
+本番での結合確認・migration適用・対戦結果のDB保存・アカウント切替UIは別工程です。
+
+SELECT接続の検証：Node全940件成功（失敗0・skip0、PGliteで3本のmigration/RLS/RPCを検証）。
+ブラウザモックで自分／公開相手選択→VS→既存RESULT・セリフ表示、公開解除後の開始拒否と相手表示消去、
+ログアウト時の旧データ消去、再読み込み、390px幅を確認。本番での対戦は未確認です。
+
 開発版の静的HTML/JavaScriptゲームです。
 
 ## 新規登録・ログイン（auth.html）
@@ -116,7 +140,7 @@ Minimum password lengthを6、Required charactersを英字＋数字（大文字�
 - 競合時は「最新データと比較する」でドラフトとサーバーを別々に表示。「編集を破棄して最新を開く」か「この画面の編集を引き継いで再編集」を確認付きで選択します。後者はこの画面の担当セクション全体を引き継ぐため、同じセクションの他の編集との相違も確認してください。採用後も明示的な保存が必要です。
 - 未保存の再読込・ログアウトは確認が必要。ページ離脱はブラウザの未保存警告を使用します。別タブのログアウト等で認証先が変わった場合は旧編集内容を非表示・破棄して案内します。ドラフトの永続保存・別アカウントへの転送はありません。
 
-**select.html、battle.html、storage.html等はローカル版のままです。オンライン設定はまだ戦闘や履歴へ自動反映されません。**
+**select.htmlは保存済みオンライン設定から対戦を開始します（下記の追加migrationが必要）。battle.htmlの旧入口は未接続、result.html・storage.htmlの戦闘結果／履歴はブラウザ内保存のままです。**
 
 保存RPCのSQLは本番へ適用済み（履歴 `20260930223450_online_player_storage`）。repoファイル名は
 `20260930165424_online_player_storage.sql` のままです。今回migration追加・再適用はしていません。

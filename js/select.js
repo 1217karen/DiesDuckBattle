@@ -1,19 +1,17 @@
-import { createPlayerBuildStorage } from "./playerBuildStorage.js";
-import { createSelectState, duckChoices, selectOwnDuck, battleStartStatus, battlerSummary, duckSummary, selectOpponent } from "./selectState.js";
-import { listOpponents, getOpponent } from "./opponentSource.js";
-import { startSelectedBattle } from "./selectBattle.js";
-import { createBattleId, createBattleResultStorage } from "./battleResultStorage.js";
-import { createPlayerPresentationStorage } from "./playerPresentationStorage.js";
-import { buildBattlePresentationSnapshot } from "./battlePresentationSnapshot.js";
+import { duckChoices, battleStartStatus, battlerSummary, duckSummary, createSelectState } from "./selectState.js";
+import { getSupabaseClient } from "./authRuntime.js";
+import { createOnlineSelectService } from "./onlineSelectService.js";
+import { createOnlineSelectController } from "./onlineSelectController.js";
 import { createSelectPresentation } from "./selectPresentation.js";
-let state = createSelectState(createPlayerBuildStorage().load());
-const ownPresentation = createPlayerPresentationStorage().load().presentation;
+let state = createSelectState({ ok: false, status: "loading" });
+let ownPresentation, online;
+let current = { busy: "load", message: "オンライン設定を読み込み中…", canStart: false };
 const renderPresentation = createSelectPresentation();
 const el = id => document.getElementById(id);
 const tray = el("tray");
 function renderSelf() {
-  el("self-name").textContent = state.self.name;
-  el("load-status").textContent = state.message || (state.build.ducks.length ? "" : "アヒル設定はまだありません。設定を編集して追加してください。");
+  el("self-name").textContent = current.eno ? `ENo.${current.eno}｜${state.self.name}` : "自分";
+  el("load-status").textContent = current.message || (state.build?.ducks.length ? "" : "アヒル設定はまだありません。設定を編集して追加してください。");
   el("load-status").classList.toggle("error", !state.build);
   el("p1-battler-info").textContent = battlerSummary(state.build?.battler);
   const duck = state.build?.ducks.find(d => d.id === state.selectedDuckId);
@@ -24,13 +22,16 @@ function renderSelf() {
 function renderScreen() {
   renderPresentation("p1", ownPresentation, state.selectedDuckId);
   renderPresentation("p2", state.opponent?.presentation, state.opponent?.publicDuckId);
-  const start = battleStartStatus(state);
+  const start = { canStart: current.canStart, reason: current.busy ? "オンラインデータを確認中…" : current.message || battleStartStatus(state).reason };
+  el("reload-online").disabled = !!current.busy;
+  el("p1-duck-slot").disabled = !!current.busy || !state.build;
+  el("p2-battler-slot").disabled = !!current.busy || !state.build;
   el("vsButton").disabled = !start.canStart;
   el("vs-reason").textContent = start.reason;
   el("vsButton").classList.toggle("vs--disabled", !start.canStart);
   el("vsButton").setAttribute("aria-label", `戦闘開始：${start.reason}`);
   renderSelf();
-  el("opponent-name").textContent = state.opponent?.name ?? "相手を選択";
+  el("opponent-name").textContent = state.opponent ? `ENo.${state.opponent.eno}｜${state.opponent.name}` : "相手を選択";
   el("p2-battler-info").textContent = state.opponent ? `${state.opponent.name}\n${battlerSummary(state.opponent.build.battler)}` : "右側の2P枠から相手を選択してください。";
   const duck = state.opponent?.build.ducks.find(d => d.id === state.opponent.publicDuckId);
   const name = duck?.name || (duck ? `アヒル ${state.opponent.build.ducks.indexOf(duck) + 1}` : null);
@@ -58,6 +59,7 @@ function renderChoices(choices, selected, onPick) {
 }
 function selectionChanged() { el("battle-result").textContent = ""; renderScreen(); tray.close(); }
 async function openTray(kind, opener) {
+  if (!online || current.busy || !state.build) return;
   returnFocus = opener;
   const version = ++requestVersion;
   el("trayTitle").textContent = kind === "self" ? "1P：アヒルを選択" : "2P：相手を選択";
@@ -65,16 +67,18 @@ async function openTray(kind, opener) {
   showMessage("読み込み中…"); tray.showModal();
   if (kind === "opponents") {
     try {
-      const opponents = await listOpponents();
+      const result = await online.listOpponents();
+      const opponents = result.opponents ?? [];
       if (version !== requestVersion || !tray.open) return;
+      if (!result.ok) { showMessage(result.message ?? "相手一覧を読み込めませんでした。"); return; }
       if (!opponents.length) { showMessage("選択できる相手がいません。"); return; }
-      renderChoices(opponents.map(o => ({ ...o, ready:true, status:"選択", reasons:[] })), state.opponent?.id, async id => {
+      renderChoices(opponents.map(o => ({ ...o, name: `ENo.${o.eno}｜${o.name}`, ready:true, status:"選択", reasons:[] })), state.opponent?.id, async id => {
         const pickVersion = ++requestVersion; showMessage("相手を読み込み中…");
         try {
-          const opponent = await getOpponent(id);
+          const picked = await online.chooseOpponent(id);
           if (pickVersion !== requestVersion || !tray.open) return;
-          if (!opponent) { showMessage("この相手は現在対戦できません。閉じて選び直してください。"); return; }
-          state = selectOpponent(state, opponent); selectionChanged();
+          if (!picked.ok) { showMessage(picked.message ?? "この相手は現在対戦できません。閉じて選び直してください。"); return; }
+          selectionChanged();
         } catch { if (pickVersion === requestVersion && tray.open) showMessage("相手を読み込めませんでした。閉じて再試行してください。"); }
       });
     } catch { if (version === requestVersion && tray.open) showMessage("相手一覧を取得できませんでした。閉じて再試行してください。"); }
@@ -82,47 +86,50 @@ async function openTray(kind, opener) {
     const choices = duckChoices(state);
     if (!choices.length) { showMessage(state.message || "アヒル設定はまだありません。設定を編集して追加してください。"); return; }
     renderChoices(choices, state.selectedDuckId, id => {
-      state = selectOwnDuck(state,id); selectionChanged();
+      online.chooseOwn(id); selectionChanged();
     });
   }
 }
 for (const [id,kind] of [["p1-duck-slot","self"],["p2-battler-slot","opponents"]])
   el(id).addEventListener("click", () => openTray(kind,id));
 el("trayClose").addEventListener("click", () => tray.close());
-tray.addEventListener("close", () => { requestVersion++; el(returnFocus).focus(); });
-el("vsButton").addEventListener("click", () => {
-  if (!battleStartStatus(state).canStart) return;
-  el("vsButton").disabled = true;
-  try {
-    const p1Presentation = buildBattlePresentationSnapshot(
-      createPlayerPresentationStorage().load().presentation, state.selectedDuckId);
-    const p2Presentation = buildBattlePresentationSnapshot(state.opponent.presentation, state.opponent.publicDuckId);
-    const battle = startSelectedBattle(state);
-    if (!battle.ok) {
-      el("battle-result").textContent = battle.message;
-      renderScreen();
-      return;
-    }
-    const battleId = createBattleId();
-    const side = meta => ({ battlerId: String(meta?.battlerId ?? ""), battlerName: String(meta?.battlerName ?? ""),
-      duckId: String(meta?.duckId ?? ""), duckName: String(meta?.duckName ?? "") });
-    const saved = createBattleResultStorage().save({
-      battleId,
-      dateISO: new Date().toISOString(),
-      p1: { ...side(battle.p1), presentation: p1Presentation },
-      p2: { ...side(battle.p2), presentation: p2Presentation },
-      result: battle.result,
-      events: battle.events,
-    });
-    if (!saved.ok) {
-      el("battle-result").textContent = "戦闘結果を保存できませんでした。空き容量やブラウザ設定を確認してください。";
-      renderScreen();
-      return;
-    }
-    location.assign(`result.html?battleId=${encodeURIComponent(battleId)}`);
-  } catch {
-    el("battle-result").textContent = "戦闘を開始できませんでした。設定を確認してください。";
-  }
-  renderScreen();
+tray.addEventListener("close", () => { requestVersion++; online?.cancelSelection(); el(returnFocus).focus(); });
+el("vsButton").addEventListener("click", async () => {
+  const result = await online?.start();
+  if (result?.ok) location.assign(`result.html?battleId=${encodeURIComponent(result.battleId)}`);
 });
+el("reload-online").addEventListener("click", () => { requestVersion++; if (tray.open) tray.close(); void online?.load(); });
 renderScreen();
+
+async function initialize() {
+  try {
+    const client = await getSupabaseClient();
+    online = createOnlineSelectController({ service: createOnlineSelectService(client) });
+    online.subscribe(next => {
+      current = next; state = next.state; ownPresentation = next.ownPresentation;
+      if (!state.build) { requestVersion++; el("trayGrid").replaceChildren(); if (tray.open) tray.close(); }
+      renderScreen();
+    });
+    let knownUser;
+    const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
+      const userId = session?.user?.id ?? null;
+      if (event === "SIGNED_OUT" || (knownUser !== undefined && knownUser !== userId)
+          || (current.authUserId && current.authUserId !== userId)) online.invalidate();
+      knownUser = userId;
+    });
+    const recheck = () => { if (document.visibilityState !== "hidden") void online.checkScope(); };
+    window.addEventListener("focus", recheck);
+    window.addEventListener("pageshow", recheck);
+    document.addEventListener("visibilitychange", recheck);
+    window.addEventListener("pagehide", event => {
+      if (event.persisted) return;
+      subscription.unsubscribe(); online.invalidate();
+      window.removeEventListener("focus", recheck); window.removeEventListener("pageshow", recheck); document.removeEventListener("visibilitychange", recheck);
+    });
+    await online.load();
+  } catch {
+    current = { busy: "", message: "オンライン対戦を準備できませんでした。通信状況を確認し、ページを再読み込みしてください。", canStart: false };
+    renderScreen();
+  }
+}
+void initialize();

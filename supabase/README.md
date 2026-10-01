@@ -1,5 +1,43 @@
 # 初回オンラインDB骨格
 
+## オンラインSELECTの公開境界（追加SQL・本番未適用）
+
+`20261001114619_online_battle_public_boundary.sql` は本番へ適用していません。
+2026-10-01に本番のpg_policies・関数定義／権限・migration履歴を読み取り確認しました。
+現行の `battlers_select_authenticated` はBattler JSON全体を公開しており、
+保存DTOの `presentation.detachedDuckPresentation`（buildに含まれないDuckの表示情報）も取得可能です。
+非公開Duck行自体は既存RLSで保護されていますが、表示情報の公開境界を修正する必要があります。
+
+追加SQLはデータ更新・削除・採番・revision変更を行わず、以下を1transactionで追加／変更します。
+
+- Battler/Duckの直接SELECT policyを、自分のaccessがあるaccountだけに限定。
+  game_accountsとgame_account_access、書き込みpolicy、既存load/save RPCは変更しません。
+- `diesduck_private.public_battle_data(uuid)`：search_pathを空に固定したSECURITY DEFINER。
+  auth.uid()あり・accessがちょうど1件・対象が自分以外・所有者とpublic_duck_idが一致するDuckのみを返します。
+  private schemaはData APIのexposed schemasへ追加しないでください。
+  authenticatedにはschema USAGEとこの関数のEXECUTEだけを許可し、anon/PUBLICの権限を除去します。
+- `list_online_opponents()`：公開Duckを持つ他accountのid/文字列ENo/名前/公開Duck IDのみ。
+- `get_online_opponent(uuid)`：そのaccountのBattler戦闘／表示フィールドと公開Duck1件のみ。
+  B/D、公開Duckのstats・dice・diceFrame・A/C、名前・画像URL・アイコン・セリフが公開対象です。
+  detachedDuckPresentation、非公開Duck行、未知のトップレベルJSONフィールドは返しません。
+- `prepare_online_battle(uuid,uuid,uuid,uuid)`：RLSで許可された自分の最新全体DTOと、
+  選択した相手の最新公開projectionを同一stable statementのDBスナップショットで取得。
+  公開解除・公開Duck差替え・選択Duck削除・所有違反ならNULLで開始不可。
+  3つのpublic RPCはSECURITY INVOKER、authenticatedだけにEXECUTEを許可します。
+
+新規table/indexやJSONゲームルールの複製はありません。既存PK・access複合PK・Duck UUID/FKを利用します。
+公開判定は取得時点のものです。取得完了後の公開解除が、既に開始したブラウザ内戦闘や保存済み結果を撤回するものではありません。
+戦闘結果は現行localStorageへ保存し、サーバーへの結果送信はありません。
+
+適用前にこのSQLをレビューし、private schemaを公開設定に追加しないことを確認してください。
+既存migrationは本番とローカルの番号が異なります。履歴を照合し、既存2本を再適用せず、この追加分だけを別工程で適用します。
+本番未適用の間は既存のBattler全体SELECT権限は残ります。フロントの変更だけで既存RLSの漏れは修正されません。
+SELECTは専用RPCが見つからない場合に相手読込・戦闘開始を停止します。
+
+検証はmockと使い捨てPGliteのみ。変更前の露出再現、変更後の非公開行・detached表示遮断、
+owner読込／編集、公開解除、0/複数access、anon拒否を実行します。
+ENo.2/3を含む本番データの作成・変更・削除、migration適用、sequenceリセットは実施しません。
+
 このディレクトリには初回migrationと第2段階の登録Edge Functionがあります。
 2026-09-30時点で、プロジェクト ibuqntqzkqnwyhzdxskn の初回migration適用履歴
 （remote version: 20260929231111）と register-account のACTIVE状態を読み取り確認済みです。
