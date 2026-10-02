@@ -43,7 +43,7 @@ test("production/devのchance候補は100/70/50/25共通、量候補はchanceと
   assert.deepEqual(prod.chanceOptions.map(o => [o.id, o.value, o.apDiscount]), [["100", 1, 0], ["70", .7, 1], ["50", .5, 2], ["25", .25, 3]]);
   assert.deepEqual(dev.chanceOptions.map(o => [o.id, o.value]), prod.chanceOptions.map(o => [o.id, o.value]));
   assert.ok(dev.chanceOptions.every(o => o.apDiscount === 0 && !Object.hasOwn(o, "apDelta")));
-  assert.deepEqual(prod.effects.filter(e => e.chanceEnabled === true).map(e => e.id), ["damage-enemy", "heal-self"]);
+  assert.deepEqual(prod.effects.filter(e => e.chanceEnabled === true).map(e => e.id), ["damage-enemy"]);
   const before = structuredClone(dev.optionSets);
   for (const effect of dev.effects.filter(e => e.chanceEnabled === true)) for (const chance of dev.chanceOptions) {
     const row = choose(dev, effect.id, chance.id), s = flat([row]); s.mode = "special";
@@ -57,7 +57,7 @@ test("production/devのchance候補は100/70/50/25共通、量候補はchanceと
 });
 test("100%・省略ではchance/onFailなし、chance乱数消費なし", () => {
   const catalog = createCDevCatalog();
-  for (const id of ["damage-enemy", "heal-self"]) for (const explicit of [false, true]) {
+  for (const id of ["damage-enemy"]) for (const explicit of [false, true]) {
     const row = choose(catalog, id, "100"); if (!explicit) delete row.chanceOptionId;
     const result = compile(flat([row]), catalog), effect = result.skill.effect[0];
     assert.equal(Object.hasOwn(effect, "chance"), false); assert.equal(Object.hasOwn(effect, "onFail"), false);
@@ -85,7 +85,7 @@ test("明示許可以外は全effectでchance IDを拒否、省略なら100%固�
   assert.equal(compile(flat([row]), c).ok, true);
   row.chanceOptionId = "50"; assert.equal(compile(flat([row]), c).ok, false);
 });
-for (const [id, type, target] of [["damage-enemy", "fixedDamage", "enemy"], ["heal-self", "heal", "self"]]) {
+for (const [id, type, target] of [["damage-enemy", "fixedDamage", "enemy"]]) {
   test(`${id}: 20%をfloor、最低1なし、成功時は元の量`, () => {
     for (const [amount, failureAmount] of [[50, 10], [70, 14], [7, 1], [4, 0], [1, 0]]) {
       const result = compileOne(id, { amount }); const effect = result.skill.effect[0];
@@ -109,7 +109,7 @@ test("ランダムstatus付与もchanceを拒否", () => {
 test("特殊C: 初回revive確定、再発動は専用判定のみ、固定healは専用判定の対象外", () => {
   for (const id of ["revive-self", "heal-self"]) for (const repeatReviveChance of [0, 1]) {
     const c = createCDevCatalog(), row = choose(c, id, "100");
-    if (id === "revive-self") delete row.chanceOptionId;
+    delete row.chanceOptionId;
     const s = { ...flat([row]), mode: "special" };
     const result = runCSkillTestBattle(s, { catalog: c, rules: { ...createCDevRules(), repeatReviveChance }, rng: () => .99,
       settings: { ...Object.fromEntries(C_TEST_FIELDS.map(f => [f.key, f.value])), p1HP: 0,
@@ -147,6 +147,7 @@ test("chance割引はleaf価格だけ、基礎/枠/分岐/他effectを割り引�
   c.chanceOptions.find(o => o.id === "70").apDiscount = 2;
   c.chanceOptions.find(o => o.id === "50").apDiscount = 100;
   const damage = choose(c, "damage-enemy", "100"), heal = choose(c, "heal-self", "100");
+  delete heal.chanceOptionId;
   const base = compile(flat([damage, heal]), c); assert.equal(base.skill.costAP, 17);
   damage.chanceOptionId = "70"; const discounted = compile(flat([damage, heal]), c);
   assert.equal(discounted.skill.costAP, 15); assert.equal(discounted.resources.effectBreakdown[0].appliedDiscount, 2);

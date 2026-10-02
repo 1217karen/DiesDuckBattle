@@ -28,9 +28,9 @@ for (const [set, expected] of Object.entries(tables)) test('production '+set,()=
   assert.deepEqual(catalog.optionSets[set].map(o=>[o.value,o.apDelta]),expected);
   assert.equal(new Set(catalog.optionSets[set].map(o=>o.id)).size,expected.length);
 });
-test('status種類・randomは0、groupのみ2、全effectがproductionだけでcomplete',()=>{
+test('status種類・random解除は0、全effectがproductionだけでcomplete',()=>{
   for(const [key,options] of Object.entries(catalog.optionSets).filter(([key])=>/^(grant|clear|timed)-/.test(key)))
-    for(const o of options) assert.equal(o.apDelta,key.startsWith('clear-all-')?2:0);
+    for(const o of options) assert.equal(o.apDelta,0);
   for(const e of catalog.effects) {
     const r=compileCSkill(flat([row(e.id)],e.id==='revive-self'?'special':'normal'));
     assert.equal(r.ok,true,e.id);assert.deepEqual(r.unresolved,[]);
@@ -43,12 +43,12 @@ test('status種類・randomは0、groupのみ2、全effectがproductionだけで
 test('production AP: amount+duration、mirror反転、最低5、turnStep全軸',()=>{
   assert.equal(compileCSkill(flat([row('turn-at-self-up',{amount:3,duration:4})])).skill.costAP,8);
   assert.equal(compileCSkill(flat([row('turn-step-damage-enemy',{everyTurns:5,stepAmount:10})])).skill.costAP,8);
-  const r=compileCSkill(flat([row('clear-buff-group-self')]));assert.equal(r.resources.optionDelta,-2);assert.equal(r.skill.costAP,5);
+  const r=compileCSkill(flat([row('remove-random-buff-self')]));assert.equal(r.resources.optionDelta,0);assert.equal(r.skill.costAP,5);
   const mirror=compileCSkill(flat([row('damage-self',{amount:100})]));assert.equal(mirror.resources.optionDelta,-5);assert.equal(mirror.skill.costAP,5);
 });
 test('production chance割引はleafだけ、失敗20%維持',()=>{
   assert.deepEqual(catalog.chanceOptions.map(o=>[o.id,o.apDiscount]),[['100',0],['70',1],['50',2],['25',3]]);
-  for(const [id,amount] of [['damage-enemy',60],['heal-self',40]]) for(const [chance,discount] of [['100',0],['70',1],['50',2],['25',3]]) {
+  for(const [id,amount] of [['damage-enemy',60]]) for(const [chance,discount] of [['100',0],['70',1],['50',2],['25',3]]) {
     const r=compileCSkill(flat([row(id,{amount},chance),row('damage-enemy',{amount:100})]));
     assert.equal(r.skill.costAP,11+Math.max(0,1-discount));
     assert.equal(r.skill.effect[0].onFail?.amount,chance==='100'?undefined:Math.floor(amount*.2));

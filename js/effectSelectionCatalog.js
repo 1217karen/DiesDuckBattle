@@ -37,11 +37,12 @@ export function normalizedCCatalog(catalog) {
     else if(s.type==="heal") [id,label]=["heal","HPを回復"];
     else if(s.type==="changeStatus") [id,label]=["grant-status","状態を付与"];
     else if(s.type==="clearStatus") { [id,label]=["clear-status","状態を解除"];fixed.scope=s.scope; }
-    else if(s.type==="addTimedHitRule") [id,label]=["grant-on-hit","攻撃命中時に状態を付与"];
+    else if(s.type==="removeRandomStatusStack") [id,label]=["remove-random-status","状態をランダム解除"];
+    else if(s.type==="addTimedHitRule") [id,label]=["grant-on-hit","オーラ"];
     else if(s.type==="revive") [id,label]=["revive","復活"];
     else {id=`change-${s.stat.toLowerCase()}`;label=`${s.stat}を変更`;fixed.direction=direction(s.amountSign);}
     for(const [axis,set] of Object.entries(d.optionAxes)) if(axis!=="status" && !(axis==="scope" && s.scope==="group")) axes[axis]=catalog.optionSets[set];
-    const statuses=d.optionAxes.status?catalog.optionSets[d.optionAxes.status].map(o=>({id:o.id,value:o.value})):s.scope==="group"?[{id:`@${s.group}`,value:s.group}]:[null];
+    const statuses=d.optionAxes.status?catalog.optionSets[d.optionAxes.status].map(o=>({id:o.id,value:o.value})):s.scope==="group"||s.type==="removeRandomStatusStack"?[{id:`@${s.group}`,value:s.group}]:[null];
     for(const status of statuses) rows.push({effectId:id,label,targetId:s.statusTarget??s.target,...(status?{statusId:status.id}:{}),fixedOptions:fixed,optionAxes:axes,legacyId:d.id,definition:d,
       legacyStatus:status?.id,groupScope:s.scope==="group"?catalog.optionSets[d.optionAxes.scope][0].id:undefined,chanceEnabled:d.polarity==="benefit"&&d.chanceEnabled===true});
   }

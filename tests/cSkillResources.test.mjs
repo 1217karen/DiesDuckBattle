@@ -49,9 +49,9 @@ test("0枠・6枠を拒否、重複5枠は許可", () => {
   for (const count of [0, rules.maxEffects + 1]) assert.ok(calc(Array.from({ length: count }, () => chosen())).errors.some(e => e.code === "EFFECT_COUNT"));
   assert.equal(calc(Array.from({ length: rules.maxEffects }, () => chosen())).complete, true);
 });
-test("amountとdurationの複数軸を加算しmirrorは全軸の符号反転", () => {
+test("amountとdurationの複数軸を自分増加・相手減少とも加算", () => {
   for (const [amount, duration, delta] of [["zero", "zero", 0], ["one", "zero", 1], ["zero", "one", 1], ["one", "one", 2]]) {
-    for (const [id, sign] of [["turn-at-self-up", 1], ["turn-at-self-down", -1]]) {
+    for (const [id, sign] of [["turn-at-self-up", 1], ["turn-at-enemy-down", 1]]) {
       const r = calc([chosen(id, { amount, duration })]);
       assert.equal(r.optionDelta, sign * delta || 0);
       assert.equal(r.rawAP, rules.baseAP + sign * delta);
@@ -117,9 +117,9 @@ test("公開候補: AP/割合heal/出目操作/addDice/passiveなし、片方向
   for (const group of ["debuff", "buff"]) assert.deepEqual(catalog.optionSets[`grant-${group}`].map(o => o.id), [...STATUS_GROUPS[group], `random-${group}`]);
   assert.equal(getCEffectOptions("normal").find(e => e.id === "revive-self").selectable, false);
 });
-test("clearはstatus/scope、timedはstatus/amount/durationの独立軸", () => {
-  assert.equal(calc([chosen("clear-debuff-single-self", { status: "crack" })]).optionDelta, 1);
-  assert.equal(calc([chosen("clear-debuff-group-self", { scope: "all" })]).optionDelta, 1);
+test("random解除は追加料金なし、timedはstatus/amount/durationの独立軸", () => {
+  assert.equal(calc([chosen("remove-random-debuff-self", {})]).optionDelta, 0);
+  assert.equal(calc([chosen("remove-random-buff-enemy", {})]).optionDelta, 0);
   assert.equal(calc([chosen("timed-hit-debuff-enemy", { status: "crack", amount: "one", duration: "two" })]).optionDelta, 4);
 });
 test("凍結DTO/catalog/rulesを変更せず純粋計算、設定値だけでルール変更", () => {

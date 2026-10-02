@@ -160,10 +160,11 @@ test("v2 invalid data is protected without falling back to readable v1",async()=
   const storage=memory({[PLAYER_BUILD_STORAGE_KEY]:"{",[LEGACY_PLAYER_BUILD_STORAGE_KEY]:JSON.stringify(old)});
   const repo=createPlayerBuildStorage(storage);assert.equal(repo.load().status,"corrupt");assert.equal(repo.save(createEmptyPlayerBuild()).ok,false);assert.equal(storage.writes,0);
 });
-test("missing legacy C scope remains incomplete after migration",async()=>{
+test("retired legacy C clear remains invalid and unchanged after migration",async()=>{
   const old=(await getOpponent("dev-opponent-1")).build;
   old.ducks[0].cSelection=c({effectId:"clear-debuff-group-self",options:{}});
   const migrated=migratePlayerBuild(old);assert.equal(migrated.ok,true);
   const inspection=inspectBuildForSave(migrated.build);
-  assert.equal(inspection.canSave,true,JSON.stringify(inspection));assert.equal(inspection.complete,false);
+  assert.equal(inspection.canSave,false,JSON.stringify(inspection));assert.equal(inspection.complete,false);
+  assert.deepEqual(migrated.build.ducks[0].cSelection,old.ducks[0].cSelection);
 });

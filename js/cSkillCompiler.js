@@ -49,6 +49,9 @@ function legacycompileCSkill(selection, { catalog = createCSkillCatalog(), rules
         return s.amountPctAxis ? { ...base, amountPct: number(s.amountPctAxis, { integer: false, max: 1 }) }
           : { ...base, amount: number(s.amountAxis) };
       case "heal": return { ...base, amount: number(s.amountAxis) };
+      case "removeRandomStatusStack":
+        require(["buff", "debuff"].includes(s.group) && s.repeat === 3, "random removal");
+        return { ...base, group: s.group, repeat: s.repeat };
       case "changeStatus":
         require(s.op === "add", "status op");
         return { ...base, status: status(), op: s.op, value: number(s.amountAxis) };

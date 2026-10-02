@@ -97,6 +97,9 @@ export function migrateSelection(category, selection, catalog) {
     }
     const rows=selectionRows(category,catalog,selection).flatMap(d=>d.variants).filter(r=>r.legacyId===leaf.effectId);
     const row=rows.find(r=>category==="A" || (category==="B" ? !r.definition.optionAxes.statusId || r.statusId===leaf.options?.statusId : !r.definition.optionAxes.status || r.statusId===leaf.options?.status)) ?? rows[0];
+    // Known retired C choices remain editable, invalid saved values. Do not
+    // reinterpret an old clear-all or drawback as a different current effect.
+    if (!row && category === "C" && catalog.retiredEffectIds?.includes(leaf.effectId)) return structuredClone(leaf);
     if(!row) throw new TypeError(`Unmappable ${category} effect: ${leaf.effectId}`);
     if(category==="B" && !record(leaf.options)) throw new TypeError("Unmappable B options");
     for(const key of Object.keys(row.fixedOptions)) {

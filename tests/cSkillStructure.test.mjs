@@ -100,13 +100,13 @@ for (const [id, base, every] of [["CS16", 10, 5], ["CS25", 40, 10]]) test(`${id}
     assert.equal(b.duration.remainingTurns, id === "CS16" ? 2 : 4);
   }
 });
-test("CS21: random statusは付与だけ、trusted IDから@groupを生成", () => {
+test("CS21: random status付与と指定状態オーラ、trusted IDから@groupを生成", () => {
   const effect = compiled(fixtures.CS21);
   assert.deepEqual(effect.slice(1).map(e => e.status), ["@debuff", "@buff"]);
   const h = execute(fixtures.CS21); assert.equal(h.enemy.hp, 960);
   assert.equal(STATUS_GROUPS.debuff.reduce((sum, k) => sum + h.enemy.status[k], 0), 3);
   assert.equal(STATUS_GROUPS.buff.reduce((sum, k) => sum + h.actor.status[k], 0), 3);
-  for (const id of ["clear-debuff-single-self", "timed-hit-debuff-enemy"]) {
+  for (const id of ["timed-hit-debuff-enemy"]) {
     const def = catalog.effects.find(e => e.id === id);
     assert.equal(catalog.optionSets[def.optionAxes.status].some(o => o.value.startsWith("@")), false);
     assert.equal(compile(flat([{ effectId: id, options: { status: "random-debuff" } }])).ok, false);

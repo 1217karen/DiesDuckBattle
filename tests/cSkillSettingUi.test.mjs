@@ -39,6 +39,7 @@ import { compileCSkill } from "../js/cSkillCompiler.js";
 import { calculateCSkillResources } from "../js/cSkillResources.js";
 import { cControlDefinitions, changeCControl } from "../js/cSkillControlEditor.js";
 import { effectSelectionFields } from "../js/effectSelectionCatalog.js";
+import { presentCSkill } from "../js/cSkillPresentation.js";
 
 function initial(cSelection=null) {
   const b=createEmptyPlayerBuild();b.ducks.push({...createEmptyDuck({idFactory:()=>"c-ui"}),stats:{AT:3,DF:3,SP:2},diceFrame:"normal",dice:[1,2,3,4,5,6],cSelection});return b;
@@ -63,13 +64,10 @@ test("C explicit edits: singleton amount becomes fixed, multiple targets/status/
 
 test("C target and status edits clear illegal downstream axes and fill only singletons",async()=>{
   const p=await page(initial(selection([grant])));
-  p.choose(control,"clear-status");p.choose(control+"-targetId","self");
-  assert.equal(p.get(control+"-statusId").value,"");assert.equal(p.get(control+"-options.scope").tagName,"select");
+  p.choose(control,"remove-random-status");p.choose(control+"-targetId","self");
   p.choose(control+"-statusId","@debuff");
-  assert.equal(p.get(control+"-options.scope").tagName,"span");assert.equal(p.get(control+"-options.scope").textContent,"状態グループ");
-  let saved=p.save();assert.equal(saved.ducks[0].cSelection.structure.effects[0].options.scope,"group");
-  p.choose(control+"-statusId","crack");assert.equal(p.get(control+"-options.scope").textContent,"指定状態");
-  saved=p.save();assert.equal(saved.ducks[0].cSelection.structure.effects[0].options.scope,"single");
+  const saved=p.save();assert.deepEqual(saved.ducks[0].cSelection.structure.effects[0],{effectId:"remove-random-status",targetId:"self",statusId:"@debuff",options:{}});
+  assert.equal(p.get(control+"-options.scope"),undefined);
   p.choose(control,"turn-damage");assert.equal(p.get(control+"-targetId").tagName,"span");
   assert.equal(p.get(control+"-options.baseAmount").textContent,"30");
   assert.equal(p.get(control+"-options.everyTurns").tagName,"select");assert.equal(p.get(control+"-options.everyTurns").value,"");
@@ -78,7 +76,7 @@ test("C target and status edits clear illegal downstream axes and fill only sing
 
 test("C special flat is fixed; normal branching and HP threshold remain selectable",async()=>{
   const p=await page(initial());p.choose("c-mode","special");
-  assert.equal(p.get("c-structure").tagName,"span");assert.equal(p.get("c-structure").textContent,"分岐なし");
+  assert.equal(p.get("c-structure"),undefined);
   assert.equal(p.save().ducks[0].cSelection.structure.kind,"flat");
   p.choose("c-mode","normal");assert.equal(p.get("c-structure").tagName,"select");
   p.choose("c-structure","hpCondition");assert.equal(p.get("c-threshold").tagName,"select");
@@ -128,4 +126,55 @@ test("C display and unrelated mode/branch edits preserve existing leaves and com
   const random={mode:"normal",structure:{kind:"random",branches:[{effects:[grant]},{effects:[incomplete]}]}};
   const q=await page(initial(random));q.choose("c-effect-0-0-targetId","self");
   const saved=q.save();assert.deepEqual(saved.ducks[0].cSelection.structure.branches[1].effects[0],incomplete);
+});
+
+const sentenceText = e => e.tagName === "select" ? e.children.find(o => o.value === e.value)?.textContent ?? ""
+  : (e.text ?? "") + e.children.map(sentenceText).join("");
+test("C sentence UI shares formal wording, with singletons as text and no duplicate preview", async () => {
+  const c=selection([grant]),p=await page(initial(c));
+  assert.equal(sentenceText(p.get(control+"-sentence")),presentCSkill(c).branches[0][0]);
+  assert.equal(p.get(control+"-options.amount").tagName,"span");
+  assert.equal(p.get(control+"-targetId").tagName,"select");
+  assert.ok(!p.all().some(e=>e.className==="c-completed-sentence"));
+  p.choose(control,"change-at");
+  assert.equal(p.get(control+"-options.direction").tagName,"span");
+  p.choose(control+"-targetId","self");
+  assert.equal(p.get(control+"-options.direction").tagName,"span");
+  assert.equal(p.get(control+"-options.direction").textContent,"増加する");
+  p.choose(control+"-targetId","enemy");
+  assert.equal(p.get(control+"-options.direction").textContent,"減少する");
+});
+test("aura has no target select, status determines target in explicit edits and survives reload", async () => {
+  let p=await page(initial(selection([grant])));p.choose(control,"grant-on-hit");
+  assert.equal(p.get(control+"-targetId").tagName,"span");
+  p.choose(control+"-statusId","focus");assert.equal(p.get(control+"-targetId").textContent,"自分");
+  p.choose(control+"-options.duration","timedTurns-3");
+  p.choose(control+"-statusId","crack");assert.equal(p.get(control+"-targetId").textContent,"相手");
+  const saved=p.save(), c=saved.ducks[0].cSelection;
+  assert.equal(c.structure.effects[0].targetId,"enemy");
+  p=await page(saved);assert.equal(sentenceText(p.get(control+"-sentence")),presentCSkill(c).branches[0][0]);
+  assert.deepEqual(p.save().ducks[0].cSelection,c);
+});
+test("healing chance is unavailable and preserved until an explicit reselection", async () => {
+  const leaf={effectId:"heal",targetId:"self",options:{amount:"healAmount-30"},chanceOptionId:"50"};
+  const b=initial(selection([leaf])),before=structuredClone(b),p=await page(b);
+  const chance=p.get(control+"-chanceOptionId");
+  assert.ok(chance.children.find(o=>o.value==="50").disabled);
+  assert.ok(!chance.children.some(o=>o.value==="70"));
+  assert.deepEqual(b,before);
+  p.choose(control,"heal");assert.equal(p.get(control+"-chanceOptionId"),undefined);
+  p.choose(control+"-targetId","enemy");p.choose(control+"-options.amount","healAmount-30");
+  assert.ok(!Object.hasOwn(p.save().ducks[0].cSelection.structure.effects[0],"chanceOptionId"));
+});
+test("obsolete C effect IDs and directions remain unavailable saved choices", async () => {
+  for (const leaf of [
+    {effectId:"clear-status",targetId:"self",statusId:"@debuff",options:{scope:"group"}},
+    {effectId:"clear-debuff-group-self",options:{scope:"all"}},
+    {effectId:"change-df",targetId:"enemy",options:{direction:"increase",amount:"turnDFAmount-2",duration:"turnCount-2"}},
+  ]) {
+    const b=initial(selection([leaf])),before=structuredClone(b),p=await page(b);
+    assert.deepEqual(b,before);
+    assert.ok(p.all().some(e=>e.textContent.includes("現在は使用不可")));
+    p.get("save").handlers.click();assert.ok(p.all().some(e=>e.textContent==="保存できない設定があります"));
+  }
 });

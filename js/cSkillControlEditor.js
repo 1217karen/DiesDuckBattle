@@ -7,6 +7,16 @@ export function cControlDefinitions(catalog, context) {
     getCEffectAvailability(r.legacyId, context.mode, catalog).selectable) })).filter(d => d.variants.length);
 }
 
+// Aura status is the parent choice. All candidates still come from trusted rows.
+export function cControlView(definitions, chosen) {
+  if (chosen.effectId !== "grant-on-hit") return effectSelectionFields(definitions, chosen);
+  const view = effectSelectionFields(definitions, { ...chosen, targetId: "" });
+  const targets = [...new Set(view.variants.map(row => row.targetId))];
+  view.fields = view.fields.map(f => f.key === "targetId" ? { ...f,
+    options: f.options.filter(o => targets.includes(o.id)) } : f);
+  return view;
+}
+
 // Only called by explicit edits, never while rendering or loading saved data.
 export function changeCControl(chosen, key, value, catalog, context) {
   const definitions = cControlDefinitions(catalog, context);
@@ -17,17 +27,21 @@ export function changeCControl(chosen, key, value, catalog, context) {
     else next[key] = value;
   };
   put(key, value);
-  const originalFields = effectSelectionFields(definitions, next).fields;
+  if (next.effectId === "grant-on-hit" && ["effectId", "statusId"].includes(key)) {
+    const targets = [...new Set(cControlView(definitions, next).variants.map(row => row.targetId))];
+    next.targetId = targets.length === 1 ? targets[0] : "";
+  }
+  const originalFields = cControlView(definitions, next).fields;
   const parentIndex = key === "effectId" ? -1 : originalFields.findIndex(f => f.key === key);
   if (key !== "chanceOptionId") {
     // Re-evaluate after each parent clause, so status/scope options stay correlated.
     let index = 0;
-    while (index < effectSelectionFields(definitions, next).fields.length) {
-      const f = effectSelectionFields(definitions, next).fields[index++];
+    while (index < cControlView(definitions, next).fields.length) {
+      const f = cControlView(definitions, next).fields[index++];
       if (index - 1 <= parentIndex) continue;
       if (!f.options.some(o => o.id === read(f.key))) put(f.key, f.options.length === 1 ? f.options[0].id : "");
     }
-    const view = effectSelectionFields(definitions, next);
+    const view = cControlView(definitions, next);
     const axes = new Set(view.fields.filter(f => f.key.startsWith("options.")).map(f => f.key.slice(8)));
     next.options = Object.fromEntries(Object.entries(next.options).filter(([axis]) => axes.has(axis)));
     if (!view.fields.some(f => f.key === "statusId")) delete next.statusId;

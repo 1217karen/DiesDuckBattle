@@ -33,10 +33,9 @@ const mapping = [
 ];
 for (const [group, status] of [["debuff", "crack"], ["buff", "focus"]]) for (const target of ["self", "enemy"]) {
   mapping.push([`grant-${group}-${target}`, { status, amount: 2 }, { type: "changeStatus", target, status, op: "add", value: 2 }]);
-  mapping.push([`clear-${group}-single-${target}`, { status }, { type: "clearStatus", target, status }]);
-  mapping.push([`clear-${group}-group-${target}`, {}, { type: "clearStatus", target, group }]);
+  mapping.push([`remove-random-${group}-${target}`, {}, { type: "removeRandomStatusStack", target, group, repeat: 3 }]);
 }
-for (const stat of ["AT", "DF"]) for (const target of ["self", "enemy"]) for (const direction of ["up", "down"]) {
+for (const stat of ["AT", "DF"]) for (const target of ["self", "enemy"]) for (const direction of [target === "self" ? "up" : "down"]) {
   mapping.push([`turn-${stat.toLowerCase()}-${target}-${direction}`, { amount: 2, duration: 3 },
     { type: "addBuff", target, stat, amount: direction === "up" ? 2 : -2, duration: { kind: "turns", count: 3 } }]);
 }
@@ -70,7 +69,7 @@ test("nonzero fixture価格もcalculatorの結果を利用する", () => {
 });
 test("productionの未選択/価格nullではcompile不可、0へ補完しない", () => {
   for (const selection of [{ mode: "normal", effects: [{ effectId: "damage-enemy", options: {} }] },
-    { mode: "normal", effects: [{ effectId: "clear-debuff-single-self", options: {} }] }]) {
+    { mode: "normal", effects: [{ effectId: "heal-self", options: {} }] }]) {
     const r = compileCSkill(selection); assert.equal(r.ok, false); assert.equal(r.skill, null); assert.ok(r.unresolved.length);
   }
   assert.equal(compile([chosen("damage-enemy")]).ok, true);

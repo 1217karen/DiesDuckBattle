@@ -17,11 +17,10 @@ export function createCSkillCatalog() {
     rows.map(([value, apDelta]) => ({ id: key + "-" + value, value, apDelta,
       label: ["currentHpPct", "revivePct", "hpThreshold"].includes(key) ? value * 100 + "%" : String(value) }))]));
   for (const group of ["debuff", "buff"]) {
-    for (const purpose of ["grant", "clear", "timed"]) {
+    for (const purpose of ["grant", "timed"]) {
       optionSets[`${purpose}-${group}`] = STATUS_GROUPS[group].map(id => ({ id, label: statusLabel(id), value: id, apDelta: 0 }));
     }
     optionSets[`grant-${group}`].push({ id: `random-${group}`, label: statusLabel(`@${group}`), value: `@${group}`, apDelta: 0 });
-    optionSets[`clear-all-${group}`] = [{ id: "all", label: `全${group}解除`, value: group, apDelta: 2 }];
   }
   const effects = [];
   const add = (id, category, label, polarity, axes, semantics, modes = ["normal", "special"]) => {
@@ -38,7 +37,7 @@ export function createCSkillCatalog() {
     { id: "damage-enemy", chanceEnabled: true, label: "相手に固定ダメージ", semantics: { type: "fixedDamage", target: "enemy", amountAxis: "amount" } },
     { id: "damage-self", label: "自分に固定ダメージ", semantics: { type: "fixedDamage", target: "self", amountAxis: "amount" } });
   pair("healing", { amount: "healAmount" },
-    { id: "heal-self", chanceEnabled: true, label: "自分を固定値回復", semantics: { type: "heal", target: "self", amountAxis: "amount" } },
+    { id: "heal-self", label: "自分を固定値回復", semantics: { type: "heal", target: "self", amountAxis: "amount" } },
     { id: "heal-enemy", label: "相手を固定値回復", semantics: { type: "heal", target: "enemy", amountAxis: "amount" } });
   add("current-hp-damage-enemy", "percentageDamage", "相手の現在HP割合固定ダメージ", "benefit",
     { amountPct: "currentHpPct" }, { type: "fixedDamage", target: "enemy", amountPctAxis: "amountPct" });
@@ -55,14 +54,11 @@ export function createCSkillCatalog() {
         semantics: { type: "changeStatus", target: benefitTarget, group, statusAxis: "status", amountAxis: "amount", op: "add" } },
       { id: `grant-${group}-${drawbackTarget}`, label: `${drawbackTarget}に${group}付与`,
         semantics: { type: "changeStatus", target: drawbackTarget, group, statusAxis: "status", amountAxis: "amount", op: "add" } });
-    for (const scope of ["single", "group"]) {
-      const axes = scope === "single" ? { status: `clear-${group}` } : { scope: `clear-all-${group}` };
-      pair("statusClear", axes,
-        { id: `clear-${group}-${scope}-${drawbackTarget}`, label: `${drawbackTarget}の${group}全stack解除（${scope}）`,
-          semantics: { type: "clearStatus", target: drawbackTarget, group, scope, statusAxis: scope === "single" ? "status" : null } },
-        { id: `clear-${group}-${scope}-${benefitTarget}`, label: `${benefitTarget}の${group}全stack解除（${scope}）`,
-          semantics: { type: "clearStatus", target: benefitTarget, group, scope, statusAxis: scope === "single" ? "status" : null } });
-    }
+    pair("statusClear", {},
+      { id: `remove-random-${group}-${drawbackTarget}`, label: `${drawbackTarget}の${group}をランダムに3解除`,
+        semantics: { type: "removeRandomStatusStack", target: drawbackTarget, group, repeat: 3 } },
+      { id: `remove-random-${group}-${benefitTarget}`, label: `${benefitTarget}の${group}をランダムに3解除`,
+        semantics: { type: "removeRandomStatusStack", target: benefitTarget, group, repeat: 3 } });
     add(`timed-hit-${group}-${benefitTarget}`, "timedHit", `通常攻撃命中後${benefitTarget}に${group}`, "benefit",
       { status: `timed-${group}`, amount: "timedStacks", duration: "timedTurns" },
       { type: "addTimedHitRule", target: "self", statusTarget: benefitTarget, group,
@@ -73,11 +69,18 @@ export function createCSkillCatalog() {
     const descriptor = sign => ({ id: `turn-${stat.toLowerCase()}-${target}-${sign > 0 ? "up" : "down"}`,
       label: `${target}の${stat}${sign > 0 ? "+" : "-"}（turns）`,
       semantics: { type: "addBuff", target, stat, amountSign: sign, durationKind: "turns", amountAxis: "amount", durationAxis: "duration" } });
-    pair("turnBuff", { amount: `turn${stat}Amount`, duration: "turnCount" }, descriptor(benefitSign), descriptor(-benefitSign));
+    const benefit = descriptor(benefitSign);
+    add(benefit.id, "turnBuff", benefit.label, "benefit", { amount: `turn${stat}Amount`, duration: "turnCount" }, benefit.semantics);
   }
   add("revive-self", "revive", "最大HP割合で復活", "benefit", { maxHpPct: "revivePct" },
     { type: "revive", target: "self", maxHpPctAxis: "maxHpPct" }, ["special"]);
-  const catalog = { effects, optionSets,
+  // Migration retains these IDs verbatim; they are not public definitions.
+  const retiredEffectIds = [
+    ...["buff", "debuff"].flatMap(group => ["single", "group"].flatMap(scope =>
+      ["self", "enemy"].map(target => `clear-${group}-${scope}-${target}`))),
+    ...["at", "df"].flatMap(stat => [`turn-${stat}-self-down`, `turn-${stat}-enemy-up`]),
+  ];
+  const catalog = { effects, optionSets, retiredEffectIds,
     chanceOptions: [100, 70, 50, 25].map((percent, apDiscount) => ({ id: String(percent), label: `${percent}%`,
       value: percent / 100, apDiscount })) };
   catalog.selectionEffects = normalizedCCatalog(catalog);
