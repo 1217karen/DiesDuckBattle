@@ -44,17 +44,20 @@ function initial(aSelection=null) {
   const b=createEmptyPlayerBuild();b.ducks.push({...createEmptyDuck({idFactory:()=>"a-ui"}),stats:{AT:3,DF:3,SP:2},diceFrame:"normal",dice:[1,2,3,4,5,6],aSelection});return b;
 }
 const heal={effectId:"heal",targetId:"enemy",options:{amount:"amount-5"}};
+const sentenceText = element => element.tagName === "select"
+  ? element.children.find(option => option.value === element.value)?.textContent ?? ""
+  : (element.text ?? "") + element.children.map(sentenceText).join("");
 test("A setting UI: enable, current trigger prices, independent cancel plus four slots, v2 save/reload",async()=>{
   let p=await page(initial());assert.equal(p.get("a-trigger"),undefined);
   p.choose("a-enabled","on");assert.equal(p.get("a-effect-0"),undefined);
-  assert.match(p.get("a-trigger").textContent,/出目3以下の時 \/ 1pt/);
-  assert.match(p.get("a-trigger").textContent,/出目5以下の時 \/ 2pt/);
+  assert.match(p.get("a-trigger").textContent,/出目【3以下】が出た時、 \/ 1pt/);
+  assert.match(p.get("a-trigger").textContent,/出目【5以下】が出た時、 \/ 2pt/);
   p.choose("a-trigger","exact:1");p.choose("a-cancel","on");
   for(let i=0;i<4;i++) {
     p.get("a-add-effect").handlers.click();p.choose(`a-effect-${i}`,"heal");p.choose(`a-effect-${i}-targetId`,"enemy");p.choose(`a-effect-${i}-options.amount`,"amount-5");
   }
   assert.equal(p.get("a-add-effect").disabled,true);
-  assert.match(p.get("duck-editor").textContent,/相手のHPを5回復する（デメリット）/);
+  assert.equal(sentenceText(p.get("a-sentence-0")),"相手のHPを5回復する（デメリット）");
   assert.equal(p.all().some(e=>e.tagName==="select" && /成功率|50%|25%|10%/.test(e.textContent)),false);
   const saved=p.save(),selection=saved.ducks[0].aSelection;
   assert.equal(selection.effects.length,5);assert.equal(compileASkill(saved.ducks[0],selection).ok,true);
@@ -67,7 +70,7 @@ test("A setting UI: dice invalidates trigger in place, preserves effect, disable
   const b=initial({triggerId:"exact:6",effects:[heal]});const p=await page(b);
   p.choose("dice-type","light");assert.equal(p.get("a-trigger").value,"exact:6");
   assert.equal(p.get("a-trigger").children.find(e=>e.value==="exact:6").disabled,true);
-  assert.match(p.get("a-trigger").textContent,/現在は使用不可：出目6の時/);
+  assert.match(p.get("a-trigger").textContent,/現在は使用不可：出目【6】が出た時、/);
   assert.equal(p.get("a-effect-0").value,"heal");
   p.choose("dice-0","2");assert.equal(p.get("a-trigger").children.some(e=>e.value==="exact:1"),false);
   p.choose("a-trigger","exact:2");assert.equal(p.get("a-effect-0-options.amount").value,"amount-5");
@@ -82,10 +85,10 @@ test("A setting UI: status/random choices, downstream reset, and exact skip reta
   assert.equal(p.get("a-effect-0-statusId").children.some(e=>e.value==="crack"),false);
   p.choose("a-effect-0-targetId","self");p.choose("a-effect-0","cancel-dice-effect");
   p.choose("a-trigger","exact:3");
-  assert.match(p.get("a-effect-0").textContent,/現在は使用不可：出目1のAP/);
+  assert.match(p.get("a-effect-0").textContent,/現在は使用不可：ダイス効果のAP増加/);
   assert.equal(p.get("a-effect-0").value,"cancel-dice-effect");
   assert.match(p.get("a-issues").textContent,/一致しません/);
-  p.choose("a-trigger","exact:1");assert.match(p.get("duck-editor").textContent,/出目1のAP\+1を無効化する（デメリット）/);
+  p.choose("a-trigger","exact:1");assert.equal(sentenceText(p.get("a-sentence-0")),"ダイス効果のAP増加をキャンセルする（デメリット）");
 });
 
 test("A setting UI: both conflict directions, invalid saved leaves and cancellation OFF preserve normal effects",async()=>{
@@ -95,7 +98,8 @@ test("A setting UI: both conflict directions, invalid saved leaves and cancellat
   p=await page(initial({triggerId:"exact:1",effects:[{effectId:"cancel-attack",targetId:"self",options:{}},conflict]}));
   assert.equal(p.get("a-effect-0").value,"change-attacks");assert.equal(p.get("a-effect-0").children.find(o=>o.value==="change-attacks").disabled,true);
   assert.match(p.get("a-issues").textContent,/併用できません/);
-  p.choose("a-cancel","off");assert.equal(p.get("a-effect-0-options.amount").value,"amount-1");
+  p.choose("a-cancel","off");assert.equal(p.get("a-effect-0-options.amount").tagName,"span");
+  assert.equal(p.get("a-effect-0-options.amount").textContent,"1");
   const bad={effectId:"grant-status",targetId:"self",statusId:"obsolete",options:{amount:"amount-999"},chanceOptionId:"50"};
   p=await page(initial({triggerId:"exact:1",effects:[bad]}));
   assert.equal(p.get("a-effect-0-statusId").value,"obsolete");assert.equal(p.get("a-effect-0-options.amount").value,"amount-999");
@@ -147,7 +151,7 @@ test("A POINT: preset dice, unsaved standard edits and trigger changes refresh i
   const p=await page(initial({triggerId:"exact:1",effects:[damage,cancel]}));
   assert.equal(point(p,"dice"),"0pt");assert.equal(point(p,"trigger"),"0pt");assert.equal(point(p,"benefit-slots"),"0pt");
   assert.equal(point(p,"cancel"),"+1pt");
-  p.choose("a-trigger","lte:3");assert.equal(point(p,"trigger"),"1pt");assert.equal(point(p,"cancel"),"+2pt");
+  p.choose("a-trigger","exact:3");p.choose("a-trigger-comparison","lte:3");assert.equal(point(p,"trigger"),"1pt");assert.equal(point(p,"cancel"),"+2pt");
   p.choose("a-trigger","all");assert.equal(point(p,"trigger"),"2pt");assert.equal(point(p,"cancel"),"+3pt");
   p.choose("dice-preset","void");assert.equal(point(p,"dice"),"+4pt");assert.equal(point(p,"available"),"7pt");
   p.choose("dice-type","light");assert.equal(point(p,"dice"),"+2pt");assert.equal(point(p,"available"),"5pt");
@@ -199,25 +203,71 @@ test("A POINT: overspending shows negative remaining plus shortage and keeps exi
   assert.match(p.get("a-issues").textContent,/ポイント.*不足/);
 });
 
-test("A form: effect first, catalog targets, placeholders, downstream reset and completed previews",async()=>{
+test("A sentence: effect first, only variable clauses are selects, no duplicate preview",async()=>{
   const p=await page(initial({triggerId:"exact:1",effects:[]}));p.get("a-add-effect").handlers.click();
   assert.equal(p.get("a-effect-0-targetId"),undefined);
   assert.equal(p.get("a-effect-0").children[0].textContent,"スキル効果");
   assert.ok(!p.get("a-effect-0").children.some(o=>o.value==="cancel-attack"));
   const previews=()=>p.all().filter(e=>e.className==="a-completed-sentence").map(e=>e.textContent);
   p.choose("a-effect-0","damage");
-  assert.deepEqual(p.get("a-effect-0-targetId").children.map(o=>o.value),["","enemy"]);
-  assert.equal(p.get("a-effect-0-targetId").value,"enemy");
+  assert.equal(p.get("a-effect-0-targetId").tagName,"span");
+  assert.equal(p.get("a-effect-0-targetId").textContent,"相手");
   assert.equal(p.get("a-effect-0-statusId"),undefined);assert.deepEqual(previews(),[]);
   assert.equal(p.get("a-effect-0-options.amount").children[0].textContent,"効果量");
-  p.choose("a-effect-0-options.amount","amount-3");assert.match(previews()[0],/相手に固定ダメージを3与える/);
+  p.choose("a-effect-0-options.amount","amount-3");assert.equal(sentenceText(p.get("a-sentence-0")),"相手に固定3ダメージを与える");
   p.choose("a-effect-0","heal");assert.equal(p.get("a-effect-0-targetId").value,"");assert.equal(p.get("a-effect-0-options.amount").value,"");assert.deepEqual(previews(),[]);
-  p.choose("a-effect-0-targetId","self");p.choose("a-effect-0-options.amount","amount-10");assert.equal(previews()[0],"自分のHPを10回復する");
+  p.choose("a-effect-0-targetId","self");p.choose("a-effect-0-options.amount","amount-10");assert.equal(sentenceText(p.get("a-sentence-0")),"自分のHPを10回復する");
   p.choose("a-effect-0","grant-status");assert.equal(p.get("a-effect-0-targetId").value,"");assert.equal(p.get("a-effect-0-statusId").children[0].textContent,"状態種別");
   p.choose("a-effect-0-targetId","enemy");p.choose("a-effect-0-statusId","crack");p.choose("a-effect-0-options.amount","amount-2");
-  assert.equal(previews()[0],"相手に亀裂を2stack付与する");
-  const fields=p.get("a-effect-0").parent.parent.children.map(e=>e.children[0]?.id);
-  assert.deepEqual(fields,["a-effect-0","a-effect-0-targetId","a-effect-0-statusId","a-effect-0-options.amount"]);
+  assert.equal(sentenceText(p.get("a-sentence-0")),"相手に亀裂を2付与する");
+  const fields=p.get("a-sentence-0").children.filter(e=>e.id).map(e=>e.id);
+  assert.deepEqual(fields,["a-effect-0-targetId","a-effect-0-statusId","a-effect-0-options.amount"]);
   p.choose("a-effect-0","cancel-dice-effect");assert.equal(p.get("a-effect-0-statusId"),undefined);assert.equal(p.get("a-effect-0-options.amount"),undefined);
-  assert.match(previews()[0],/出目1のAP/);
+  assert.equal(sentenceText(p.get("a-sentence-0")),"ダイス効果のAP増加をキャンセルする（デメリット）");
+  assert.deepEqual(previews(),[]);
+});
+
+test("A sentence: direction and single amount use fixed prose; ambiguous direction stays selectable",async()=>{
+  const p=await page(initial({triggerId:"exact:1",effects:[heal]}));
+  p.choose("a-effect-0","change-ap");
+  assert.equal(p.get("a-effect-0-options.direction").tagName,"select");
+  p.choose("a-effect-0-targetId","enemy");
+  assert.equal(p.get("a-effect-0-options.direction").tagName,"span");
+  assert.equal(p.get("a-effect-0-options.direction").textContent,"減少する");
+  for(const [effect,target,direction] of [["change-at","自分","増加する"],["change-df","相手","減少する"]]) {
+    p.choose("a-effect-0",effect);
+    assert.equal(p.get("a-effect-0-targetId").tagName,"span");
+    assert.equal(p.get("a-effect-0-targetId").textContent,target);
+    assert.equal(p.get("a-effect-0-options.direction").tagName,"span");
+    assert.equal(p.get("a-effect-0-options.direction").textContent,direction);
+    assert.equal(p.get("a-effect-0-options.amount").tagName,"select");
+  }
+  p.choose("a-effect-0","change-attacks");
+  assert.equal(p.get("a-sentence-0").children.some(e=>e.tagName==="select"),false);
+  assert.equal(sentenceText(p.get("a-sentence-0")),"自分の通常攻撃回数を現在フェイズ中だけ1増加する");
+});
+
+test("A trigger sentence: only existing legal rows, all hides comparison, stale selection stays disabled",async()=>{
+  const p=await page(initial({triggerId:"exact:1",effects:[heal]}));
+  assert.equal(p.get("a-trigger-comparison").children.some(o=>o.value==="gte:1"),false);
+  p.choose("a-trigger","exact:3");p.choose("a-trigger-comparison","gte:3");
+  assert.equal(p.save().ducks[0].aSelection.triggerId,"gte:3");
+  p.choose("a-trigger","all");assert.equal(p.get("a-trigger-comparison"),undefined);
+  assert.match(sentenceText(p.get("a-trigger")),/^全ての出目で、/);
+});
+
+test("A sentence reads never repair missing singleton, invalid singleton or obsolete fields",async()=>{
+  const leaves=[{effectId:"damage",targetId:"",options:{amount:"amount-3"}},
+    {effectId:"change-attacks",targetId:"self",options:{amount:"amount-999"}},
+    {effectId:"obsolete-effect",targetId:"self",statusId:"obsolete",options:{amount:"bad"}}];
+  for(const leaf of leaves) {
+    const b=initial({triggerId:"exact:1",effects:[leaf]}),original=structuredClone(b.ducks[0].aSelection);
+    const p=await page(b);
+    if(leaf.targetId==="") assert.equal(p.get("a-effect-0-targetId").tagName,"select");
+    if(leaf.options?.amount==="amount-999") {
+      assert.equal(p.get("a-effect-0-options.amount").tagName,"select");
+      assert.equal(p.get("a-effect-0-options.amount").children.find(o=>o.value==="amount-999").disabled,true);
+    }
+    assert.deepEqual(p.save().ducks[0].aSelection,original);
+  }
 });

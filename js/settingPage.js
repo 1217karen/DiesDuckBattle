@@ -7,7 +7,7 @@ import { DICE_FRAMES, getDiceFrame } from "./diceFrames.js";
 import { createBuildRules } from "./buildRules.js";
 import { createASkillCatalog, getATriggerOptions } from "./aSkillCatalog.js";
 import { aEditorLeaf, aNormalSlots, aEditorCatalog, aCancelAvailable, isACancel, setAAttackCancel, addANormalEffect, removeANormalEffect, changeAClause, changeATrigger } from "./aSkillSentenceEditor.js";
-import { aTriggerText, aContentText, aClauseText, aEnding, aDrawbackText, aStatusText, aEffectPointText, aCancelPointText, aPointSections } from "./aSkillPresentation.js";
+import { aTriggerText, aTriggerEditor, aContentText, aEffectParts, aFieldOptionText, aStatusText, aEffectPointText, aCancelPointText, aPointSections } from "./aSkillPresentation.js";
 import { calculateASkillResources } from "./aSkillResources.js";
 import { createBSkillCatalog, getBTriggerOptions, getBConditionOptions, getBEffectOptions } from "./bSkillCatalog.js";
 import { bEffectText, bSentence } from "./bSkillPresentation.js";
@@ -255,16 +255,32 @@ function aChoice(box, id, items, current, onChange, label, savedLabel = current,
   const input = select(id, options, current, onChange, placeholder);
   input.setAttribute("aria-label", label); box.append(input); return input;
 }
+function aSentenceChoice(box, id, items, current, onChange, label, savedLabel = current) {
+  // Reading never fills a missing field or conceals an invalid saved value.
+  if (items.length === 1 && items[0].id === current) {
+    const fixed = el("span", items[0].label, "a-fixed-clause"); fixed.id = id;
+    box.append(fixed);
+  } else aChoice(box, id, items, current, onChange, label, savedLabel, label);
+}
 function renderA(duck, box) {
   const panel = card("A SKILL / Aスキル", "a"), a = duck.aSelection;
   field(panel, "Aスキルの設定", "a-enabled", [{ id: "on", label: "設定する" }], a === null ? "" : "on",
     value => patchDuck({ aSelection: value ? { triggerId: "", effects: [] } : null }), "未設定");
   if (a !== null) {
     const update = aSelection => patchDuck({ aSelection });
-    const trigger = el("label", "発動条件");
-    aChoice(trigger, "a-trigger", getATriggerOptions(duck, aCatalog).map(o => ({ ...o, label: `${aTriggerText(o.id)} / ${o.pointCost}pt` })),
-      a.triggerId, triggerId => update(changeATrigger(a, triggerId, duck, aCatalog)), "発動条件", aTriggerText(a.triggerId));
-    panel.append(trigger);
+    const trigger = el("div", null, "a-sentence-controls");
+    const triggerView = aTriggerEditor(getATriggerOptions(duck, aCatalog), a.triggerId);
+    for (const part of triggerView.parts) {
+      if (typeof part === "string") trigger.append(el("span", part));
+      else {
+        const f = triggerView.fields.find(field => field.key === part.key);
+        // Keep the primary selector available even with a single legal trigger.
+        const choice = f.key === "triggerId" ? aChoice : aSentenceChoice;
+        choice(trigger, f.key === "triggerId" ? "a-trigger" : "a-trigger-comparison", f.options, f.value,
+          triggerId => update(changeATrigger(a, triggerId, duck, aCatalog)), f.label, aTriggerText(a.triggerId) ?? a.triggerId);
+      }
+    }
+    panel.append(el("p", "発動条件", "description"), trigger);
     const cancelled = (a.effects ?? []).some(e => isACancel(e, aCatalog));
     const cancel = el("label", "通常攻撃");
     const cancelInput = aChoice(cancel, "a-cancel", [{ id: "off", label: "キャンセルしない" },
@@ -293,27 +309,35 @@ function renderA(duck, box) {
       const saved = allRows.find(r => r.effectId === chosen.effectId && (!chosen.options?.diceAction || String(r.definition.exactFace) === chosen.options.diceAction));
       formField("effectId", "スキル効果", contents, chosen.effectId, saved ? (saved.definition.exactFace != null ? aContentText(saved) : saved.label) : chosen.effectId);
       const view = effectSelectionFields(definitions, chosen);
-      const candidates = view.variants.filter(r => r.targetId === chosen.targetId && (!r.statusId || r.statusId === chosen.statusId));
-      const definition = !staleFace && candidates.length === 1 ? candidates[0] : null;
-      for (const key of ["targetId", "statusId", "options.amount"]) {
-        const f = view.fields.find(f => f.key === key);
-        const current = key === "options.amount" ? chosen.options?.amount : chosen[key];
-        if (!f && !current) continue;
-        const label = { targetId: "対象", statusId: "状態種別", "options.amount": "効果量" }[key];
-        const options = f?.options ?? [];
-        formField(key, label, key === "statusId" ? options.map(o => ({ ...o, label: aStatusText(o.id) })) : options,
-          current, key === "statusId" ? aStatusText(current) : current);
+      const sentence = el("div", null, "a-sentence-controls");
+      sentence.id = `a-sentence-${slot}`;
+      const parts = aEffectParts(chosen.effectId, staleFace || !view.variants.length ? (saved ? [saved] : []) : view.variants);
+      const shown = new Set();
+      const currentValue = key => key.startsWith("options.") ? chosen.options?.[key.slice(8)] : chosen[key];
+      const showField = key => {
+        shown.add(key);
+        const f = view.fields.find(field => field.key === key), current = currentValue(key);
+        const label = { targetId: "対象", statusId: "状態種別", "options.amount": "効果量", "options.direction": "増減" }[key] ?? f?.label ?? key;
+        const options = (f?.options ?? []).map(option => ({ ...option, label: aFieldOptionText(key, option) }));
+        aSentenceChoice(sentence, `a-effect-${slot}-${key}`, options, current, value => change(key, value), label,
+          key === "statusId" ? aStatusText(current) : current);
+      };
+      for (const part of parts) {
+        if (typeof part === "string") sentence.append(el("span", part));
+        else showField(part.key);
+      }
+      // Hidden identity fields (e.g. diceAction) are not prose. Still expose
+      // missing/invalid visible fields so old data can be explicitly reselected.
+      for (const key of ["targetId", "statusId", "options.amount", "options.direction"]) {
+        if (shown.has(key)) continue;
+        const f = view.fields.find(field => field.key === key), current = currentValue(key);
+        if ((!f && !current) || (f?.options.length === 1 && f.options[0].id === current)) continue;
+        sentence.append(el("span", `${f?.label ?? key}：`)); showField(key);
       }
       const issues = [...resources.errors, ...resources.unresolved].filter(i => i.path === `effects.${index}` || i.path?.startsWith(`effects.${index}.`));
-      row.append(head, controls);
+      row.append(head, controls, sentence);
       if (issues.length) row.append(el("p", "現在の設定では使用不可、または未選択です。再選択してください。", "warning"));
-      if (definition && !issues.length) {
-        const amount = definition.optionAxes.amount?.find(o => o.id === chosen.options?.amount)?.label ?? "";
-        const target = aCatalog.targets.find(t => t.id === definition.targetId)?.label ?? "";
-        const status = chosen.statusId ? `${aStatusText(chosen.statusId)}を` : "";
-        const text = definition.definition.exactFace != null ? aClauseText(definition)
-          : `${target}${aClauseText(definition)}${status}${amount}${aEnding(definition)}`;
-        row.append(el("p", text + aDrawbackText(definition), "a-completed-sentence"));
+      if (!issues.length) {
         head.append(el("span", aEffectPointText(resources, index), "a-price"));
       }
       panel.append(row);
