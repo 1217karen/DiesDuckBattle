@@ -110,3 +110,10 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
 
 #a-trigger { width:9.5em; }
 #a-trigger-comparison { width:5.5em; }
+
+#duck-name[aria-invalid="true"] { border-color:#ff8d96; background:#45252c; }
+.duck-identity { display:flex; align-items:center; gap:10px; flex:1; min-width:0; }
+.duck-identity label { min-width:0; flex:1; }
+.duck-identity-icon { width:60px; height:60px; flex:0 0 60px; display:grid; place-items:center; }
+.duck-identity-icon[hidden] { display:none; }
+.duck-identity-icon img { display:block; width:auto; height:auto; max-width:60px; max-height:60px; object-fit:contain; }

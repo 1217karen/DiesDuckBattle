@@ -42,3 +42,7 @@ button.primary { background:var(--accent); color:#1c2b19; border-color:var(--acc
 .icon-choice { min-height:112px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; }
 .icon-choice[aria-current="true"] { color:var(--accent); border-color:var(--accent); }.icon-choice img { width:64px; height:64px; object-fit:contain; }
 @media(max-width:700px) { .character-shell { padding:26px 16px; }.image-settings,.icon-slots { grid-template-columns:1fr; }.card { padding:17px; }.quote-row { grid-template-columns:78px minmax(0,1fr); }.quote-row textarea { grid-column:1 / -1; }.save-bar { position:static; flex-direction:column; align-items:stretch; } }
+
+#battler-name[aria-invalid="true"] { border-color:#ff8d96; background:#45252c; }
+.preview.duck-preview { box-sizing:content-box; width:60px; height:60px; }
+.preview.duck-preview img { width:auto; height:auto; max-width:100%; max-height:100%; object-fit:contain; }

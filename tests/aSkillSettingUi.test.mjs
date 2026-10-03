@@ -38,7 +38,7 @@ async function page(build = createEmptyPlayerBuild()) {
 
 
 function initial(aSelection=null) {
-  const b=createEmptyPlayerBuild();b.ducks.push({...createEmptyDuck({idFactory:()=>"a-ui"}),stats:{AT:3,DF:3,SP:2},diceFrame:"preset-standard",dice:[1,2,3,4,5,6],aSelection});return b;
+  const b=createEmptyPlayerBuild();b.ducks.push({...createEmptyDuck({idFactory:()=>"a-ui"}),name:"テストDuck",stats:{AT:3,DF:3,SP:2},diceFrame:"preset-standard",dice:[1,2,3,4,5,6],aSelection});return b;
 }
 const heal={effectId:"heal",targetId:"enemy",options:{amount:"amount-5"}};
 const sentenceText = element => element.tagName === "select"
@@ -249,4 +249,21 @@ test("A UI keeps heal/status amounts on parent changes and never offers a direct
   for(const [target,text] of [["self","増加する"],["enemy","減少する"]]) {p.choose("a-effect-0-targetId",target);assert.equal(p.get("a-effect-0-options.direction").tagName,"span");assert.equal(p.get("a-effect-0-options.direction").textContent,text);}
  }
  assert.deepEqual(b,before);
+});
+
+
+test("Duck name errors block saving before and after incomplete confirmation", async () => {
+  const p = await page(initial());
+  const setName = value => { const input = p.get("duck-name"); input.value = value; input.handlers.input(); };
+  for (const value of ["", " ", "　"]) {
+    setName(value); assert.equal(p.get("duck-name").attributes["aria-invalid"], "true");
+    await p.get("save").handlers.click();
+    assert.ok(p.all().some(e => e.textContent === "保存できない設定があります"));
+    assert.ok(!p.all().some(e => e.tagName === "button" && e.textContent === "このまま保存"));
+    p.all().find(e => e.tagName === "button" && e.textContent === "閉じる").handlers.click();
+  }
+  setName("正常な名前"); await p.get("save").handlers.click();
+  const confirm = p.all().find(e => e.tagName === "button" && e.textContent === "このまま保存");
+  assert.ok(confirm); setName("　"); confirm.handlers.click();
+  assert.ok(p.all().some(e => e.textContent === "保存できない設定があります"));
 });

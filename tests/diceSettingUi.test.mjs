@@ -35,7 +35,7 @@ async function page(build = createEmptyPlayerBuild()) {
 }
 
 
-function initial() {const b=createEmptyPlayerBuild();b.ducks.push({...createEmptyDuck({idFactory:()=>"ui-duck"}),stats:{AT:4,DF:4,SP:1},diceFrame:"custom-heavy",dice:[0,0,3,4,5,6],aSelection:{triggerId:"exact:6",effects:[{effectId:"heal",targetId:"enemy",options:{amount:"amount-5"}}]}});return b;}
+function initial() {const b=createEmptyPlayerBuild();b.ducks.push({...createEmptyDuck({idFactory:()=>"ui-duck"}),name:"テストDuck",stats:{AT:4,DF:4,SP:1},diceFrame:"custom-heavy",dice:[0,0,3,4,5,6],aSelection:{triggerId:"exact:6",effects:[{effectId:"heal",targetId:"enemy",options:{amount:"amount-5"}}]}});return b;}
 test("dice-first UI derives SP, resets dice only on type changes, exposes budget and preserves invalid A",async()=>{
   const p=await page(initial());
   assert.equal(p.get("stat-SP").textContent,"SP 1");
@@ -63,7 +63,7 @@ test("preset UI offers normal/void, locks every dice slot, and restores custom s
 });
 
 test("empty dice shows grouped types only; cards stay visible and locked",async()=>{
- const b=createEmptyPlayerBuild();b.ducks.push(createEmptyDuck({idFactory:()=>"empty"}));const before=structuredClone(b),p=await page(b);
+ const b=createEmptyPlayerBuild();b.ducks.push({...createEmptyDuck({idFactory:()=>"empty"}),name:"テストDuck"});const before=structuredClone(b),p=await page(b);
  for(const id of ["dice-0","stat-AT","stat-DF","stat-SP","a-trigger","c-mode"]) assert.equal(p.get(id),undefined,id);
  const groups=p.get("dice-type").children.filter(e=>e.tagName==="optgroup");
  assert.deepEqual(groups.map(g=>[g.label,g.children.map(o=>o.value)]),[["カスタマイズ",["custom-speed","custom-normal","custom-heavy"]],["プリセット",["preset-standard","preset-void"]]]);

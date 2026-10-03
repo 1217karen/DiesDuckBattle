@@ -1,3 +1,4 @@
+import { hasName } from "../js/nameValidation.js";
 import { FIXED_IMAGES } from "../js/fixedImages.js";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -54,7 +55,7 @@ async function characterScreen() {
   const controller = { snapshot: () => ({ canSave: true, canEdit: true }),
     edit(patch) { latest = { ...latest, ...structuredClone(patch) }; },
     async save() { saved = structuredClone(latest); return { ok: true }; } };
-  const context = { FIXED_IMAGES, document, structuredClone, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
+  const context = { hasName, FIXED_IMAGES, document, structuredClone, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
     Option: function (name, value) { const el = new Element("option"); el.textContent = name; el.value = value; return el; },
     createIconPicker: () => ({ open(args) { selectedCallback = args.select; }, close() { selectedCallback = null; } }),
     mountOnlineEditor: async args => { assert.deepEqual(Array.from(args.sections), ["presentation", "battlerName"]); hooks = args; latest = structuredClone(data); args.hydrate(data); args.onState({ canSave: true, canEdit: true }); return controller; } };
@@ -125,4 +126,19 @@ test("shared browser adapter wires unload warning, cancellable discard dialog an
   const leaving = guard(), logoutDialog = document.querySelectorAll()[0];
   watch("SIGNED_OUT", null); assert.equal(logoutDialog.open, false); assert.equal(await leaving, false);
   assert.equal(nodes.get("editor").hidden, true); assert.equal(nodes.get("save").disabled, true); assert.equal(hydrated.at(-1), null);
+});
+
+
+test("blank battler names load unchanged but block even a direct save click", async () => {
+  for (const value of ["", " ", "　", " \t　\n"]) {
+    const page = await characterScreen();
+    const data = structuredClone(page.data); data.battlerName = value; data.presentation = createEmptyPlayerPresentation();
+    page.hydrate(data);
+    assert.equal(page.get("battler-name").value, value);
+    assert.equal(page.get("battler-name").attributes["aria-invalid"], "true");
+    await page.save(); assert.equal(page.saved(), undefined);
+    page.get("battler-name").value = "正常な名前"; page.get("battler-name").handlers.input();
+    await page.save(); assert.equal(page.saved().battlerName, "正常な名前");
+    assert.deepEqual(page.saved().presentation, data.presentation);
+  }
 });

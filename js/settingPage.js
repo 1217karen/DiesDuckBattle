@@ -1,3 +1,4 @@
+import { hasName, duckNameIssues } from "./nameValidation.js";
 import { effectSelectionFields } from "./effectSelectionCatalog.js";
 import { mountOnlineEditor } from "./onlineEditor.js";
 import { createSettingState, changeSetting, selectedDuck, selectedPublicDuckId, cBranches, createCStructure, duckSummary } from "./settingState.js";
@@ -18,6 +19,7 @@ import { cEffectParts, cFieldOptionText, C_MODE_OPTIONS, C_STRUCTURE_OPTIONS } f
 import { D_SKILL_OPTIONS } from "./dSkillCatalog.js";
 
 let online;
+let displayPresentation;
 let state = createSettingState({ ok: false, status: "loading" });
 let dataVersion = 0;
 const rules = createBuildRules(), aCatalog = createASkillCatalog(), bCatalog = createBSkillCatalog();
@@ -45,7 +47,7 @@ function showDialog({ title, message, issues = [], onConfirm, confirmLabel = "�
     dialog.close(); if (version === dataVersion && online?.snapshot().canEdit) onConfirm();
   }, "primary"));
   const list = el("ul", null, "dialog-issues");
-  const sections = { stats: "ステータス", dice: "ダイス", ducks: "アヒル設定", build: "保存形式" };
+  const sections = { name: "Duck名", stats: "ステータス", dice: "ダイス", ducks: "アヒル設定", build: "保存形式" };
   for (const issue of issues) list.append(el("li", `${issue.ownerName} / ${sections[issue.section] ?? issue.section + "スキル"}：${issue.message}`));
   dialog.append(heading, list, el("p", message), actions);
   dialog.addEventListener("close", () => { dialog.remove(); render(); }, { once: true });
@@ -475,7 +477,8 @@ function renderC(duck, box) {
 function renderDuck() {
   const box = $("duck-editor"); box.replaceChildren(); const duck = selectedDuck(state);
   if (!duck) { box.append(el("p", "アヒル設定はまだありません。「＋ 新規アヒル」から作成できます。", "empty")); return; }
-  const meta = el("div", null, "duck-meta"), name = el("input"); name.id = "duck-name"; name.value = duck.name; name.placeholder = "例：基本型";
+  const meta = el("div", null, "duck-meta"), name = el("input"); name.id = "duck-name"; name.value = duck.name; name.placeholder = "例：基本型"; name.required = true;
+  name.setAttribute("aria-invalid", String(!hasName(duck.name)));
   name.addEventListener("input", () => patchDuck({ name: name.value }, false));
   const actions = el("div", null, "actions");
   const isPublic = selectedPublicDuckId(state) === duck.id;
@@ -490,11 +493,28 @@ function renderDuck() {
       onConfirm: () => commit({ type: "delete" }) });
     } else confirmChange(`「${displayName}」を削除しますか？保存するまで確定しません。`, () => commit({ type: "delete" }));
   }, "danger"));
-  meta.append(labeled("設定名", name), actions); box.append(meta);
+  const identity = el("div", null, "duck-identity");
+  const iconUrl = displayPresentation?.ducks?.[duck.id]?.iconUrl;
+  if (typeof iconUrl === "string" && iconUrl.trim()) {
+    const iconBox = el("div", null, "duck-identity-icon"), image = el("img");
+    iconBox.hidden = true; image.alt = "";
+    image.addEventListener("load", () => { iconBox.hidden = false; });
+    image.addEventListener("error", () => { iconBox.hidden = true; });
+    image.src = iconUrl; iconBox.append(image); identity.append(iconBox);
+  }
+  identity.append(labeled("Duck名", name));
+  meta.append(identity, actions); box.append(meta);
   renderStats(duck, box); renderA(duck, box); renderC(duck, box);
 }
-function renderSummaries() {
+// Name requirements apply to editing/saving, not legacy loadouts or battle logic.
+function inspectSettingsForSave() {
   const inspection = inspectBuildForSave(state.build);
+  const invalid = [...inspection.invalid, ...duckNameIssues(state.build)];
+  return { ...inspection, invalid, canSave: invalid.length === 0, complete: inspection.complete && invalid.length === 0 };
+}
+function renderSummaries() {
+  $("duck-name")?.setAttribute("aria-invalid", String(!hasName(selectedDuck(state)?.name)));
+  const inspection = inspectSettingsForSave();
   $("save").classList.toggle("save-invalid", !inspection.canSave);
   $("save").setAttribute("aria-disabled", String(!inspection.canSave));
   $("save").title = !inspection.canSave ? "保存できない理由を表示" : inspection.complete ? "設定を保存" : "未完成の項目を確認して保存";
@@ -523,7 +543,7 @@ function render() {
 $("add-duck").addEventListener("click", () => commit({ type: "add" }));
 async function saveSettings(approveIncomplete = false) {
   if (!state.build || !online?.snapshot().canSave) return;
-  const inspection = inspectBuildForSave(state.build);
+  const inspection = inspectSettingsForSave();
   if (!inspection.canSave) {
     showDialog({ title: "保存できない設定があります", issues: inspection.invalid,
       message: "修正してから保存してください。", cancelLabel: "閉じる" });
@@ -542,6 +562,7 @@ online = await mountOnlineEditor({
   sections: ["build", "publicSettings"],
   hydrate(data) {
     dataVersion++;
+    displayPresentation = data?.presentation;
     state = data ? createSettingState({ ok: true, status: "loaded", build: data.build },
       { ok: true, status: "loaded", settings: data.publicSettings }) : createSettingState({ ok: false, status: "loading" });
     bTraitPath = { category: "", condition: "" };

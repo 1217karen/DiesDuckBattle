@@ -1,3 +1,4 @@
+import { hasName } from "./nameValidation.js";
 import { FIXED_IMAGES } from "./fixedImages.js";
 import { mountOnlineEditor } from "./onlineEditor.js";
 import { createEmptyPlayerPresentation } from "./playerPresentationModel.js";
@@ -20,14 +21,16 @@ let selectedDuckId = "";
 const imageStates = new Map();
 const duckEditors = new Map();
 const battlerNameInput = document.querySelector("#battler-name");
-battlerNameInput.addEventListener("input", () => { online?.edit({ battlerName: battlerNameInput.value }); });
+battlerNameInput.addEventListener("input", () => { online?.edit({ battlerName: battlerNameInput.value }); updateValidation(); });
 const saveButton = document.querySelector("#save");
 const validationMessage = document.querySelector("#image-validation-message");
 
 function updateValidation() {
   const summary = imageValidationSummary(imageStates.values());
-  saveButton.disabled = !summary.canSave || !onlineState?.canSave;
-  validationMessage.textContent = summary.message;
+  const validName = hasName(battlerNameInput.value);
+  battlerNameInput.setAttribute("aria-invalid", String(!validName));
+  saveButton.disabled = !validName || !summary.canSave || !onlineState?.canSave;
+  validationMessage.textContent = validName ? summary.message : "バトラー名を入力してください（空白のみは使用できません）。";
 }
 
 function setDirty() { online?.edit({ presentation }); }
@@ -136,7 +139,7 @@ function renderDuckSelect() {
   duckEditors.clear(); select.disabled = false;
   for (const duck of ducks) {
     const id = duck.id;
-    const field = makeImageField({ label:`${duck.name || "名前未設定のDuck"} アイコンURL`, value:presentation.ducks[id]?.iconUrl ?? "", fallback:FIXED_IMAGES.duckIcon,
+    const field = makeImageField({ label:`${duck.name || "名前未設定のDuck"} アイコンURL`, value:presentation.ducks[id]?.iconUrl ?? "", fallback:FIXED_IMAGES.duckIcon, previewClass:"duck-preview",
       onInput:value => { presentation.ducks[id] = { iconUrl:value }; } });
     duckEditors.set(id, field); target.append(field);
   }
@@ -151,7 +154,7 @@ function renderDuckSelect() {
 }
 
 saveButton.addEventListener("click", async () => {
-  if (!online?.snapshot().canSave || !imageValidationSummary(imageStates.values()).canSave) { updateValidation(); return; }
+  if (!hasName(battlerNameInput.value) || !online?.snapshot().canSave || !imageValidationSummary(imageStates.values()).canSave) { updateValidation(); return; }
   await online.save();
 });
 
