@@ -34,7 +34,9 @@ if (presentation.complete) {
 - `aFieldOptionText(key, option)`: 状態名・増減などの表示語彙。
 - `aTriggerText(id)`: trigger IDの正式文。未知形式には`null`。
 - `aTriggerEditor(legal, current)`: `getATriggerOptions()`の既存行から出目・比較UIを構成。
-  合法triggerの直積を作らない。all・未選択・使用不可の保存値は全条件selectorで表示する。
+  UIは「出目が [0～6 / 全ての出目] [丁度 / 以上 / 以下] の時」。0・all・未選択では比較を非表示。
+  使用不可の候補はdisabled表示し、選択可能な組み合わせは既存の合法triggerだけに限定する。
+  staleな保存値はdisabled候補として保持する。正式文の「全ての出目で、」などは変更しない。
 
 候補は`aEditorCatalog()` / `effectSelectionFields()`から取得する。
 候補が1つで保存値と一致するfieldは固定テキスト、複数候補や未選択・不正値はselect。
@@ -45,4 +47,8 @@ if (presentation.complete) {
 
 設定画面の効果種別selectorと独立した通常攻撃キャンセルは維持する。
 効果枠下の重複した`a-completed-sentence`は廃止し、編集可能な文章そのものを表示する。
-ポイント内訳、compiled skill、catalog、balance、selection schemaは変更しない。
+AのON/OFFは置かず、AT・DFが両方1以上なら効果1を含む編集UIを最初から表示する。
+未設定selectionの空フォームは表示専用であり、明示編集するまで保存データを作らない。
+trigger未選択でも通常効果は既存の合法候補から先に編集できる。出目固有効果は条件選択後に提示する。
+作成資源の表示名は「コスト」。内訳・還元・超過量を表示するが計算式は変更しない。
+compiled skill、catalog、balance、selection schemaは変更しない。

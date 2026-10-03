@@ -6,7 +6,7 @@ import { calculateASkillResources } from "../js/aSkillResources.js";
 import { migrateSelection, resolveSelection } from "../js/selectionNormalization.js";
 import { aEditorLeaf, aNormalSlots, aEditorCatalog, aCancelAvailable, setAAttackCancel, addANormalEffect, removeANormalEffect, changeAClause, changeATrigger } from "../js/aSkillSentenceEditor.js";
 import { aDrawbackText } from "../js/aSkillPresentation.js";
-const catalog = createASkillCatalog(), duck = { diceFrame: "normal", dice: [1,2,3,4,5,6] };
+const catalog = createASkillCatalog(), duck = { diceFrame: "preset-standard", dice: [1,2,3,4,5,6] };
 const start = (triggerId="exact:1") => ({ triggerId, effects: [] });
 const rows = s => aEditorCatalog(duck,s,catalog).flatMap(d=>d.variants);
 const v2 = (id, amount) => migrateSelection("A", {effects:[{effectId:id,...(amount?{amountOptionId:`amount-${amount}`}:{})}]},catalog).effects[0];
@@ -90,7 +90,7 @@ test("parent edits clear downstream only in that leaf; external dice/trigger cha
     const saved=structuredClone(leaf);aEditorLeaf(leaf,catalog);assert.deepEqual(leaf,saved);
     assert.equal(compileASkill(duck,{...start(),effects:[leaf]}).ok,false);
   }
-  const custom={diceFrame:"light",dice:[0,0,0,2,2,2]}, snapshot=structuredClone(old);
+  const custom={diceFrame:"custom-speed",dice:[0,0,0,2,2,2]}, snapshot=structuredClone(old);
   aEditorCatalog(custom,old,catalog);assert.deepEqual(old,snapshot);assert.equal(compileASkill(custom,old).ok,false);
 });
 

@@ -7,11 +7,11 @@ const preset = (id, label, SP, dice, dicePoints) => Object.freeze({
   faces: Object.freeze([...new Set(dice.filter(face => face !== 0))].sort((a,b)=>a-b)),
 });
 export const DICE_FRAMES = Object.freeze({
-  light: standard("light", "ライト", 3, [1,2,3,4], [1,2,3,4,0,0]),
-  basic: standard("basic", "ベーシック", 2, [2,3,4,5], [0,2,3,4,5,0]),
-  heavy: standard("heavy", "ヘビー", 1, [3,4,5,6], [0,0,3,4,5,6]),
-  normal: preset("normal", "ノーマルダイス", 2, [1,2,3,4,5,6], 0),
-  void: preset("void", "ヴォイドダイス", 2, [0,0,0,0,0,0], 4),
+  "custom-speed": standard("custom-speed", "スピード", 3, [1,2,3,4], [1,2,3,4,0,0]),
+  "custom-normal": standard("custom-normal", "ノーマル", 2, [2,3,4,5], [0,2,3,4,5,0]),
+  "custom-heavy": standard("custom-heavy", "ヘビー", 1, [3,4,5,6], [0,0,3,4,5,6]),
+  "preset-standard": preset("preset-standard", "スタンダード", 2, [1,2,3,4,5,6], 0),
+  "preset-void": preset("preset-void", "ヴォイド", 1, [0,0,0,0,0,0], 4),
 });
 export function getDiceFrame(id) {
   return typeof id === "string" && Object.hasOwn(DICE_FRAMES, id) ? DICE_FRAMES[id] : undefined;

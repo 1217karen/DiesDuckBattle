@@ -9,8 +9,8 @@ import { runASkillTestBattle } from "../js/aSkillTestHarness.js";
 
 const catalog=createADevCatalog();
 const choose=(effectId,value,chanceOptionId)=>({effectId,...(value==null?{}:{amountOptionId:`dev-${value}`}),...(chanceOptionId?{chanceOptionId}:{})});
-function compiled(effects,triggerId="all",diceFrame="light") {
-  const r=compileASkill({diceFrame,dice:triggerId.startsWith("exact:") ? [Number(triggerId.split(":")[1]),0,0,3,4,4] : diceFrame === "light" ? [0,0,1,2,3,4] : [0,0,3,4,5,6]},{triggerId,effects},{catalog});
+function compiled(effects,triggerId="all",diceFrame="custom-speed") {
+  const r=compileASkill({diceFrame,dice:triggerId.startsWith("exact:") ? [Number(triggerId.split(":")[1]),0,0,3,4,4] : diceFrame === "custom-speed" ? [0,0,1,2,3,4] : [0,0,3,4,5,6]},{triggerId,effects},{catalog});
   assert.ok(r.ok,JSON.stringify(r)); return {id:"A_TEST",...r.skill};
 }
 const change=(key,value,op="set")=>({type:"changeValue",target:"self",key,op,value});
@@ -46,7 +46,7 @@ test("compiler出力はbeforeDiceResolve、Headwindキャンセルを維持",()=
 });
 test("全公開effectがcompilerからtrusted engineへ到達（unsupportedなし）",()=>{
   for(const definition of catalog.effects) {
-    const face=definition.exactFace??1, frame=face>4?"heavy":"light";
+    const face=definition.exactFace??1, frame=face>4?"custom-heavy":"custom-speed";
     const amount=definition.requiresAmount?definition.amountOptions[0].value:undefined;
     const aSkill=compiled([choose(definition.id,amount), ...(definition.id === "cancel-self-attack" ? [choose("heal-enemy",5)] : [])],definition.exactFace?`exact:${face}`:"all",frame);
     const r=battle({aSkill,dice:face,setup:[change("hp",900),change("ap",5)],enemySetup:[change("hp",900),change("ap",5)]});
@@ -91,7 +91,7 @@ test("通常攻撃 +N は汎用、dice2減少、dice6反動軽減",()=>{
     assert.equal(normals(phase(r)).length,(dice===2?2:1)+2);
   }
   assert.equal(normals(phase(battle({dice:2,aSkill:compiled([choose("reduce-dice2-attacks")],"exact:2")}))).length,1);
-  const r=battle({dice:6,aSkill:compiled([choose("reduce-dice6-recoil",2)],"exact:6","heavy")});
+  const r=battle({dice:6,aSkill:compiled([choose("reduce-dice6-recoil",2)],"exact:6","custom-heavy")});
   assert.equal(phase(r).find(e=>e.source==="dice6").value,1);
 });
 test("追加反動はphaseにつき一度、dice6と独立、通常攻撃終了後",()=>{
@@ -99,7 +99,7 @@ test("追加反動はphaseにつき一度、dice6と独立、通常攻撃終了�
   const events=phase(r),recoil=events.filter(e=>e.source==="aAdditionalRecoil");
   assert.equal(normals(events).length,4); assert.equal(recoil.length,1); assert.equal(recoil[0].value,3);
   assert.ok(events.indexOf(recoil[0])>events.indexOf(normals(events).at(-1)));
-  const six=phase(battle({dice:6,aSkill:compiled([choose("additional-recoil",2),choose("reduce-dice6-recoil",3)],"exact:6","heavy")}));
+  const six=phase(battle({dice:6,aSkill:compiled([choose("additional-recoil",2),choose("reduce-dice6-recoil",3)],"exact:6","custom-heavy")}));
   assert.equal(six.find(e=>e.source==="dice6").value,0); assert.equal(six.find(e=>e.source==="aAdditionalRecoil").value,2);
 });
 test("キャンセル/効果MISS/湯気MISSでは追加反動なし、回避は旧反動同様に成立",()=>{
@@ -127,7 +127,7 @@ for(const [face,id] of [[1,"cancel-dice1-ap"],[3,"cancel-dice3-heal"],[4,"cancel
   test(`dice${face}固有効果skip、通常攻撃は維持、逆効果で相殺しない`,()=>{
     const setup=[change("hp",900),change("ap",5)],enemySetup=[change("ap",5)];
     assert.ok(phase(battle({dice:face,setup,enemySetup})).some(e=>e.source===`dice${face}`));
-    const r=battle({dice:face,setup,enemySetup,aSkill:compiled([choose(id)],`exact:${face}`,face>4?"heavy":"light")});
+    const r=battle({dice:face,setup,enemySetup,aSkill:compiled([choose(id)],`exact:${face}`,face>4?"custom-heavy":"custom-speed")});
     assert.equal(phase(r).some(e=>e.source===`dice${face}`),false);
     assert.equal(normals(phase(r)).length,1);
     assert.equal(phase(r).filter(e=>e.originSkill?.skillId==="A_TEST"&&e.type==="valueChanged").some(e=>["ap","hp"].includes(e.key)),false);
@@ -141,7 +141,7 @@ test("skip/追加反動は次phaseへ漏れない",()=>{
   assert.equal(aEvents(r).length,1);
 });
 test("開発harness: DTO→resources→compiler→P1 duck A→battle logs",()=>{
-  const result=runASkillTestBattle({diceFrame:"void",dice:[0,0,0,0,0,0]},
+  const result=runASkillTestBattle({diceFrame:"preset-void",dice:[0,0,0,0,0,0]},
     {triggerId:"exact:0",effects:[choose("damage-enemy",5)]},{catalog,rng:()=>.9});
   assert.ok(result.compilation.ok); assert.ok(result.battle.events.some(e=>e.originSkill?.skillId==="A_DEV"));
 });

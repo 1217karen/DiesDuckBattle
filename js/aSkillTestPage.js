@@ -11,7 +11,7 @@ import { calculateASkillResources } from "./aSkillResources.js";
 const $ = id => document.getElementById(id);
 const rules = createBuildRules();
 const state = {
-  frame: "light", dice: [...getDiceFrame("light").initialDice], triggerId: "exact:0",
+  frame: "custom-speed", dice: [...getDiceFrame("custom-speed").initialDice], triggerId: "exact:0",
   rows: [{ categoryId: "damage", effectId: "damage-enemy" }],
 };
 let catalog = createPageCatalog(false);

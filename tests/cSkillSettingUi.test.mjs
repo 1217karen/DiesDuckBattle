@@ -42,7 +42,7 @@ import { effectSelectionFields } from "../js/effectSelectionCatalog.js";
 import { presentCSkill } from "../js/cSkillPresentation.js";
 
 function initial(cSelection=null) {
-  const b=createEmptyPlayerBuild();b.ducks.push({...createEmptyDuck({idFactory:()=>"c-ui"}),stats:{AT:3,DF:3,SP:2},diceFrame:"normal",dice:[1,2,3,4,5,6],cSelection});return b;
+  const b=createEmptyPlayerBuild();b.ducks.push({...createEmptyDuck({idFactory:()=>"c-ui"}),stats:{AT:3,DF:3,SP:2},diceFrame:"preset-standard",dice:[1,2,3,4,5,6],cSelection});return b;
 }
 const selection=(effects,mode="normal")=>({mode,structure:{kind:"flat",effects}});
 const grant={effectId:"grant-status",targetId:"enemy",statusId:"crack",options:{amount:"statusStacks-3"}};

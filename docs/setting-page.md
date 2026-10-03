@@ -11,15 +11,33 @@ ES modulesとWeb Cryptoを使うため、localhostまたはHTTPSで配信して�
 
 - BATTLER SETTING：共通のB（イベント型／特性型）とD（production 8択）。
 - DUCK SETTING：可変件数のタブから選択。追加・複製・削除・設定名を編集。
-- STATUS：AT/DF、SPを入力。SPはdiceFramesから素体と同時更新し、HPはstatsUtilから表示。
-- DICE：6枠の出目、重複制限と資源を表示。SP変更で不適合になった出目も保持。
-- A：発動条件、効果の追加・削除、効果量・成功率とポイントを表示。
-- C：通常／特殊、分岐なし・ランダム2/3・HP条件。分岐ごとの効果と必要APを表示。
+- DICE：最初にダイスタイプを選択。1つのselect内を「カスタマイズ」「プリセット」でグループ化。
+  選択後に6枠の出目とSTATUSを表示。カスタマイズは出目を編集可能、プリセットは固定表示。
+- STATUS：AT/DFは0～5のselect。0は未設定としてnull保存。pt不足候補はdisabledで残す。
+  SPはダイスタイプ由来の固定値。SP込みの「ステータスpt：合計 / 9」を表示。
+- A/Cカードは常に表示。AT・DFが両方1以上になるまで内部を「ステータスを設定してください」とする。
+  ステータスを0へ戻してもA/C selectionを削除・変更しない。
+- A：ON/OFFなし。未設定でも発動条件と効果1を最初から表示し、明示編集時だけselectionを作成。
+  発動条件・効果は文章型UI。作成資源は「コスト」と表示し、超過時は「コストオーバー：差分」を表示。
+- C：通常発動／特殊発動、分岐、文章型効果UIと必要APの既存仕様を維持。
 - 「設定を保存」でBattlerと全Duckを一括保存。再読込時は先頭Duckを選択。
 
 SpaceDuckBattleの大きなページ見出し、section divider、statGrid、設定名、
 patternタブ、スキルカード、保存ボタンの配置を参考にした独立CSS。
 Spaceの共通メニュー、固定3枠、storage schemaは使用しません。
+
+### ダイスタイプID
+
+| ID | 表示名 | SP |
+| --- | --- | --- |
+| `custom-speed` | スピード | 3 |
+| `custom-normal` | ノーマル | 2 |
+| `custom-heavy` | ヘビー | 1 |
+| `preset-standard` | スタンダード | 2 |
+| `preset-void` | ヴォイド | 1 |
+
+旧IDの互換変換は行わない。保存値が旧IDなら使用不可として保持し、明示的な再選択を要求する。
+ヴォイドSP1以外の出目制約・ダイス資源計算・A/C性能は変更していない。
 
 ## 責務
 
@@ -30,7 +48,7 @@ Spaceの共通メニュー、固定3枠、storage schemaは使用しません。
 CRUDはplayerBuildModelへ委譲し、dirtyとselectedDuckIdは一時stateにだけ保持します。
 
 `js/settingPage.js` はDOMとイベントを担当。入力のたびにstateを更新するので、
-タブ切替で編集内容は失われません。名前の日本語入力中やAT/DFの入力中にはフォームを再生成しません。
+タブ切替で編集内容は失われません。名前の日本語入力中はフォームを再生成せず、AT/DFの選択変更では候補とA/C表示を再評価します。
 保存は `createPlayerBuildStorage().save(state.build)`、初期読込は同adapterの `load()`。
 保存schema/keyは前段階から変更なし。ページからlocalStorageを直接操作しません。
 

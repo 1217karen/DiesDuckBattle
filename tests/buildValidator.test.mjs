@@ -16,7 +16,7 @@ function fixture() {
   const catalog = createSkillCatalog();
   catalog.effects.smallHeal = { label: "検査用回復", categories: ["C"] };
   catalog.triggers.auto = { label: "検査用発動", categories: ["C"] };
-  const build = { schemaVersion: 1, diceFrame: "light", stats: { AT: 2, DF: 3 }, dice: [1, 1, 2, 2, 3, 3],
+  const build = { schemaVersion: 1, diceFrame: "custom-speed", stats: { AT: 2, DF: 3 }, dice: [1, 1, 2, 2, 3, 3],
     skills: [{ category: "C", triggerId: "auto", effectIds: ["smallHeal"] }] };
   return { build, rules, catalog };
 }

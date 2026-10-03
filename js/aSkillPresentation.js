@@ -50,23 +50,30 @@ export function aFieldOptionText(key, option) {
 /** Project existing legal trigger rows into two controls, never a cartesian product. */
 export function aTriggerEditor(legal, current) {
   const selected = legal.find(option => option.id === current);
-  if (!selected || selected.kind === "all") return {
-    parts: [field("triggerId")],
-    fields: [{ key: "triggerId", label: "発動条件", value: current, options: legal.map(option => ({ ...option, label: `${aTriggerText(option.id)} / ${option.pointCost}pt` })) }],
-  };
+  const saved = /^(exact|gte|lte):(\d+)$/.exec(current ?? "");
+  const face = selected?.value ?? (saved ? Number(saved[2]) : null);
+  const options = Array.from({ length: 7 }, (_, value) => {
+    const option = legal.find(o => o.kind === selected?.kind && o.value === value)
+      ?? legal.find(o => o.kind === "exact" && o.value === value);
+    return option ? { ...option, label: String(value) }
+      : { id: `exact:${value}`, label: `${value}（現在は使用不可）`, disabled: true };
+  });
+  options.push({ id: "all", label: "全ての出目", disabled: !legal.some(o => o.id === "all") });
+  // The saved ID is never replaced by a currently legal alternative.
+  if (current && !selected) {
+    const index = options.findIndex(o => o.id === current);
+    const stale = { id: current, label: `現在は使用不可：${aTriggerText(current) ?? current}（再選択してください）`, disabled: true };
+    if (index >= 0) options[index] = stale; else options.push(stale);
+  }
+  const comparison = face >= 1 && face <= 6;
   return {
-    parts: ["出目【", field("triggerId"), "】", field("comparison"), "が出た時、"],
+    parts: ["出目が", field("triggerId"), ...(comparison ? [field("comparison")] : []), "の時"],
     fields: [
-      { key: "triggerId", label: "出目", value: current, options: [
-        ...legal.filter(option => option.kind === "exact").map(option => ({
-          ...(legal.find(other => other.kind === selected.kind && other.value === option.value) ?? option), label: String(option.value),
-        })),
-        ...legal.filter(option => option.kind === "all").map(option => ({ ...option, label: "全ての出目" })),
-      ] },
-      { key: "comparison", label: "出目の比較", value: current,
-        options: legal.filter(option => option.kind !== "all" && option.value === selected.value).map(option => ({
-          ...option, label: { exact: "丁度", gte: "以上", lte: "以下" }[option.kind],
-        })) },
+      { key: "triggerId", label: "出目", value: current, options },
+      ...(comparison ? [{ key: "comparison", label: "出目の比較", value: current,
+        options: [["exact", "丁度"], ["gte", "以上"], ["lte", "以下"]].map(([kind, label]) => ({
+          id: `${kind}:${face}`, label, disabled: !legal.some(o => o.id === `${kind}:${face}`),
+        })) }] : []),
     ],
   };
 }
@@ -111,7 +118,7 @@ export function aContentText(row) {
 
 // Format resource results only. Never derive prices from effect IDs or quantities.
 export function aPointText(value, signed = false) {
-  return value == null ? "未確定" : `${signed && value > 0 ? "+" : ""}${value}pt`;
+  return value == null ? "未確定" : `${signed && value > 0 ? "+" : ""}${value}`;
 }
 const pointIssues = resources => [...resources.errors, ...resources.unresolved];
 const hasEffectIssue = (resources, index) => pointIssues(resources).some(issue =>
@@ -121,31 +128,31 @@ export function aEffectPointText(resources, index) {
   // Normalization may resolve an unfinished leaf to a provisional trusted variant.
   // Its price is not a confirmed quote while that leaf has validation issues.
   if (!row || hasEffectIssue(resources, index)) return aPointText(null);
-  return row.polarity === "drawback" ? aPointText(row.drawbackPoints, true) : aPointText(row.effectCost);
+  return row.polarity === "drawback" ? `コスト還元：${aPointText(row.drawbackPoints)}` : `必要コスト：${aPointText(row.effectCost)}`;
 }
 export function aCancelPointText(resources) {
-  return aPointText(resources.frequencyRank == null ? null : resources.cancelDrawbackPoints, true);
+  return `コスト還元：${aPointText(resources.frequencyRank == null ? null : resources.cancelDrawbackPoints)}`;
 }
 export function aPointSections(resources, slots, cancelled) {
   const invalidDice = resources.errors.some(issue => issue.code === "INVALID_DICE_RESOURCES");
   const unsettledEffects = pointIssues(resources).some(issue => issue.path === "effects" || issue.path?.startsWith("effects."));
   const row = (id, label, value, signed = false) => ({ id, label, text: aPointText(value, signed) });
   return [
-    { label: "ポイント源", rows: [
-      row("base", "基本pt", resources.basePoints),
-      row("dice", "ダイスpt", invalidDice ? null : resources.dicePoints, true),
-      row("available", "使用可能", invalidDice ? null : resources.availablePoints),
+    { label: "コスト源", rows: [
+      row("base", "基本コスト", resources.basePoints),
+      row("dice", "ダイス由来コスト", invalidDice ? null : resources.dicePoints, true),
+      row("available", "使用可能コスト", invalidDice ? null : resources.availablePoints),
     ] },
     { label: "使用・還元内訳", rows: [
-      row("trigger", "発動条件", resources.triggerCost),
+      row("trigger", "発動条件の必要コスト", resources.triggerCost),
       ...slots.map(({ index }, slot) => ({ id: `effect-${slot + 1}`, label: `効果${slot + 1}`, text: aEffectPointText(resources, index) })),
       ...(cancelled ? [{ id: "cancel", label: "通常攻撃キャンセル", text: aCancelPointText(resources) }] : []),
-      row("benefit-slots", "追加メリット枠", unsettledEffects ? null : resources.benefitSlotCost),
+      row("benefit-slots", "追加メリット枠コスト", unsettledEffects ? null : resources.benefitSlotCost),
     ] },
     { label: "合計", rows: [
-      row("gross", "消費", resources.grossCost),
-      row("drawback", "還元", unsettledEffects ? null : resources.drawbackPoints),
-      row("net", "差引消費", resources.netCost),
+      row("gross", "必要コスト（還元前）", resources.grossCost),
+      row("drawback", "コスト還元", unsettledEffects ? null : resources.drawbackPoints),
+      row("net", "必要コスト", resources.netCost),
       row("remaining", "残り", resources.remaining),
     ] },
   ];

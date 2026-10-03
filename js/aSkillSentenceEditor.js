@@ -24,10 +24,14 @@ export function aNormalSlots(selection, catalog) {
 }
 export function aEditorCatalog(duck, selection, catalog, index = -1) {
   const others = (selection.effects ?? []).filter((_, i) => i !== index);
-  const available = getAEffectOptions(duck, selection.triggerId, catalog, others).flatMap(g => g.effects);
+  // A blank trigger can be edited after an ordinary effect. Use only variants
+  // offered by the trusted triggers, without choosing a trigger on the user's behalf.
+  const triggers = selection.triggerId ? [selection.triggerId] : getATriggerOptions(duck, catalog).map(t => t.id);
+  const available = new Set(triggers.flatMap(trigger => getAEffectOptions(duck, trigger, catalog, others)
+    .flatMap(g => g.effects).filter(e => e.selectable && (selection.triggerId || e.exactFace == null)).map(e => e.id)));
   const resolved = resolveSelection("A", { ...selection, effects: others }, catalog).selection.effects;
   return catalog.selectionEffects.map(d => ({ ...d, variants: d.variants.filter(r =>
-    !r.definition.cancelsNormalAttack && available.find(e => e.id === r.legacyId)?.selectable &&
+    !r.definition.cancelsNormalAttack && available.has(r.legacyId) &&
     (r.definition.allowDuplicate || !resolved.some(e => e?.effectId === r.legacyId))) })).filter(d => d.variants.length);
 }
 export function aCancelAvailable(duck, selection, catalog) {

@@ -108,7 +108,7 @@ test("公開設定storageが壊れていてもbuild編集stateはクラッシュ
   assert.throws(() => apply(state, { type: "set-public", id: state.selectedDuckId }));
 });
 test("dice type switches reset dice and SP but preserve A trigger", () => {
-  assert.deepEqual(SP_OPTIONS, [{ id: "heavy", SP: 1 }, { id: "basic", SP: 2 }, { id: "light", SP: 3 }]);
+  assert.deepEqual(SP_OPTIONS, [{ id: "custom-heavy", SP: 1 }, { id: "custom-normal", SP: 2 }, { id: "custom-speed", SP: 3 }]);
   let state = patch(add(setup().state), { dice: [1, 1, 2, 2, 3, 4], aSelection: { triggerId: "exact:1", effects: [] } });
   for (const { id, SP } of SP_OPTIONS) {
     state = sp(state, id);
@@ -116,14 +116,14 @@ test("dice type switches reset dice and SP but preserve A trigger", () => {
     assert.deepEqual(selectedDuck(state).dice, [...getDiceFrame(id).initialDice]);
     assert.equal(selectedDuck(state).aSelection.triggerId, "exact:1");
   }
-  state = sp(state, "heavy");
+  state = sp(state, "custom-heavy");
   assert.equal(duckSummary(selectedDuck(state)).dice.label, "設定完了");
   state = sp(state, null);
   assert.equal(selectedDuck(state).stats.SP, null); assert.equal(selectedDuck(state).diceFrame, null);
 });
 test("HP uses stats utility, stats/dice warnings do not block persistence", () => {
   const { storage } = setup();
-  let state = sp(patch(add(setup().state), { stats: { AT: 3, DF: 2, SP: null } }), "light");
+  let state = sp(patch(add(setup().state), { stats: { AT: 3, DF: 2, SP: null } }), "custom-speed");
   let summary = duckSummary(selectedDuck(state));
   assert.equal(summary.stats.hp, calcMaxHPFromStats({ AT: 3, DF: 2, SP: 3 }));
   assert.equal(summary.stats.total, 8); assert.equal(summary.stats.label, "設定完了");
@@ -139,7 +139,7 @@ test("A/B/C/D DTOs round-trip as the v2 model and summaries are not persisted", 
   const aSelection = migrateSelection("A", { triggerId: "exact:0", effects: [{ effectId: a.id, amountOptionId: a.amountOptions[0].id }] }, createASkillCatalog());
   const cSelection = migrateSelection("C", { mode: "normal", structure: { kind: "flat", effects: [{ effectId: effect.id,
     options: Object.fromEntries(Object.entries(effect.optionAxes).map(([axis, set]) => [axis, c.optionSets[set][0].id])) }] } }, c);
-  let state = sp(patch(add(setup().state), { aSelection, cSelection, name: "基本型", stats: { AT: 2, DF: 3, SP: null } }), "heavy");
+  let state = sp(patch(add(setup().state), { aSelection, cSelection, name: "基本型", stats: { AT: 2, DF: 3, SP: null } }), "custom-heavy");
   state = apply(state, { type: "battler", patch: { bSelection: { type: "trait", traitId: "hp-high-at", options: {} }, dSelection: { optionId: "add-self-3" } } });
   const summary = duckSummary(selectedDuck(state));
   assert.equal(summary.A.ok, true); assert.equal(summary.C.ok, true);
@@ -189,7 +189,7 @@ test("loaded incomplete selections are readable without mutation", () => {
 
 test("A trigger candidates track unsaved dice changes without replacing the selected trigger", () => {
   const initial = setup();
-  let state = sp(add(initial.state), "light");
+  let state = sp(add(initial.state), "custom-speed");
   const aSelection = { triggerId: "exact:2", effects: [{effectId:"damage",targetId:"enemy",options:{amount:"amount-3"}}] };
   state = patch(state, {dice:[0,0,1,2,3,4],aSelection});
   assert.equal(compileASkill(selectedDuck(state), selectedDuck(state).aSelection).ok,true);

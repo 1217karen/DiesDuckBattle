@@ -4,10 +4,10 @@ import { calculateBuildResources } from "../js/buildResources.js";
 import { validateBuild } from "../js/buildValidator.js";
 import { createBuildRules } from "../js/buildRules.js";
 
-const build = (dice, diceFrame = "heavy", stats = { AT: 1, DF: 1 }) => ({
-  schemaVersion: 1, diceFrame, stats, dice: dice ?? (diceFrame === "light" ? [1,2,3,4,0,0] : diceFrame === "basic" ? [0,2,3,4,5,0] : [0,0,3,4,5,6]), skills: [],
+const build = (dice, diceFrame = "custom-heavy", stats = { AT: 1, DF: 1 }) => ({
+  schemaVersion: 1, diceFrame, stats, dice: dice ?? (diceFrame === "custom-speed" ? [1,2,3,4,0,0] : diceFrame === "custom-normal" ? [0,2,3,4,5,0] : [0,0,3,4,5,6]), skills: [],
 });
-for (const frame of ["light", "basic", "heavy"]) {
+for (const frame of ["custom-speed", "custom-normal", "custom-heavy"]) {
   test(`${frame}: AT/DF最低1を許可、0と6は拒否`, () => {
     assert.equal(validateBuild(build(undefined, frame)).valid, true);
     for (const stat of ["AT", "DF"]) {
@@ -18,11 +18,11 @@ for (const frame of ["light", "basic", "heavy"]) {
   });
 }
 test("ステータス使用済み・未使用ポイントの例と負の残高", () => {
-  assert.deepEqual(calculateBuildResources(build(undefined, "light", { AT: 3, DF: 2 })).stats,
+  assert.deepEqual(calculateBuildResources(build(undefined, "custom-speed", { AT: 3, DF: 2 })).stats,
     { sp: 3, used: 8, remaining: 1 });
   assert.deepEqual(calculateBuildResources(build()).stats, { sp: 1, used: 3, remaining: 6 });
   for (const [df, remaining, valid] of [[3, 0, true], [4, -1, false]]) {
-    const result = validateBuild(build(undefined, "light", { AT: 3, DF: df }));
+    const result = validateBuild(build(undefined, "custom-speed", { AT: 3, DF: df }));
     assert.equal(result.resources.stats.remaining, remaining);
     assert.equal(result.valid, valid);
   }
@@ -80,7 +80,7 @@ test("不正入力は計算不能欄をnullにし、補正しない", () => {
   assert.equal(calculateBuildResources(build(new Array(6))).dice, null);
   assert.equal(calculateBuildResources(build(["0", 0, 0, 0, 0, 0])).dice, null);
   assert.equal(calculateBuildResources(build(undefined, "unknown")).stats, null);
-  assert.equal(calculateBuildResources(build(undefined, "heavy", { AT: NaN, DF: 1 })).stats, null);
+  assert.equal(calculateBuildResources(build(undefined, "custom-heavy", { AT: NaN, DF: 1 })).stats, null);
 });
 test("ポイント単価は信頼済み設定から取得し、不正設定は例外", () => {
   const rules = createBuildRules();

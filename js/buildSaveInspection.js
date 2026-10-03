@@ -166,7 +166,7 @@ function inspectLegacyBuildForSave(build) {
           case "AMOUNT_UNSELECTED": pending = true; break;
           case "UNKNOWN_AMOUNT_OPTION": case "UNKNOWN_CHANCE_OPTION": case "DRAWBACK_CHANCE": pending = blank(value); break;
         }
-        const message = issue.code === "INSUFFICIENT_A_POINTS" ? `Aポイントが${-aResult.resources.remaining}pt不足しています。`
+        const message = issue.code === "INSUFFICIENT_A_POINTS" ? `Aコストオーバー：${-aResult.resources.remaining}`
           : pending ? "Aの発動条件・効果・効果量などの選択が未完了です。" : issue.message ?? text[issue.code] ?? "Aの設定がproductionルールに適合しません。";
         add(owner("A"), pending ? "incomplete" : "invalid", issue.code, issue.path, message);
       }

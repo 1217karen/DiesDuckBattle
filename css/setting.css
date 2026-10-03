@@ -38,7 +38,8 @@ button.public-active { color:#152515; background:var(--accent); border-color:var
 .duck-meta { margin-bottom:24px; }.duck-meta label { flex:1; min-width:180px; }.actions { display:flex; gap:8px; }
 .stat-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
 .stat-grid label { flex-direction:row; align-items:center; color:var(--accent); font-weight:700; }
-.stat-grid input,.stat-grid select { margin-left:8px; }
+.stat-grid input,.stat-grid select { margin-left:8px; min-width:0; }
+.stat-grid > span { align-self:center; }
 .metrics { display:flex; flex-wrap:wrap; gap:12px 28px; padding:14px 0 0; color:var(--accent); font-size:.92rem; }
 .dice-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px; margin-bottom:18px; }
 .dice-grid label { text-align:center; }.dice-grid select { font-size:1.05rem; }

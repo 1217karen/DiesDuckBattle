@@ -8,7 +8,7 @@ import { createBuildRules } from "../js/buildRules.js";
 import { STATUS_GROUPS } from "../js/statusGroups.js";
 import { applyEffect } from "../js/effects.js";
 const catalog = createASkillCatalog();
-const build = (dice = [0,0,0,0,0,0], diceFrame = dice.every(face=>face===0) ? "void" : "light") => ({diceFrame,dice});
+const build = (dice = [0,0,0,0,0,0], diceFrame = dice.every(face=>face===0) ? "preset-void" : "custom-speed") => ({diceFrame,dice});
 const chosen = (effectId, amount) => ({effectId,...(amount === undefined ? {} : {amountOptionId:`amount-${amount}`})});
 const benefit = chosen("damage-enemy",3), cancel = chosen("cancel-self-attack");
 const selection = (effects=[benefit],triggerId="exact:0") => ({effects,triggerId});
@@ -126,7 +126,7 @@ test("通常効果1～4必須、キャンセルは枠外で重複不可、合計
 
 test("出目専用は対応exactのみ。キャンセル併用は2/6のみ禁止、catalogとcompilerで保証",()=>{
   for(const d of catalog.effects.filter(d=>d.exactFace)) {
-    const b=build([d.exactFace,0,0,0,3,4],d.exactFace>4?"heavy":"light"),trigger=`exact:${d.exactFace}`;
+    const b=build([d.exactFace,0,0,0,3,4],d.exactFace>4?"custom-heavy":"custom-speed"),trigger=`exact:${d.exactFace}`;
     const leaf=chosen(d.id,d.requiresAmount?3:undefined);
     assert.equal(compile(selection([leaf],trigger),b).ok,true);
     for(const other of ["all","exact:0","lte:3","gte:3"]) assert.equal(compile(selection([leaf],other),b).ok,false);
@@ -141,7 +141,7 @@ test("出目専用は対応exactのみ。キャンセル併用は2/6のみ禁止
 test("v2出目無効はtriggerから決まり別途diceAction指定を要求しない",()=>{
   for(const face of [1,3,4,5]) {
     const s=selection([{effectId:"cancel-dice-effect",targetId:"self",options:{}}],`exact:${face}`);
-    const r=compile(s,build([face,0,0,0,3,4],face>4?"heavy":"light"));
+    const r=compile(s,build([face,0,0,0,3,4],face>4?"custom-heavy":"custom-speed"));
     assert.equal(r.ok,true);assert.equal(r.skill.effect[0].key,`skipDice${face}`);
   }
 });
@@ -201,7 +201,7 @@ test("キャンセル併用禁止6効果はtrusted metadataで定義", () => {
 
 for (const id of cancelConflicts) test(`${id}: キャンセルとの双方向availability・v1/v2 resource/compiler拒否・入力保持`, () => {
   const definition = catalog.effects.find(e => e.id === id);
-  const b = definition.exactFace ? build([definition.exactFace,0,0,0,3,4], definition.exactFace > 4 ? "heavy" : "light") : build();
+  const b = definition.exactFace ? build([definition.exactFace,0,0,0,3,4], definition.exactFace > 4 ? "custom-heavy" : "custom-speed") : build();
   const triggerId = definition.exactFace ? `exact:${definition.exactFace}` : "exact:0";
   const leaf = chosen(id, definition.amountOptions[0]?.value);
   assert.equal(compile(selection([leaf],triggerId),b).ok,true, "対象効果単独は合法");
@@ -230,7 +230,7 @@ for (const id of cancelConflicts) test(`${id}: キャンセルとの双方向ava
 
 test("キャンセルと残りの公開効果は併用可能、出目1/3/4/5も双方向v1/v2で維持", () => {
   for (const definition of catalog.effects.filter(e=>e.id!=="cancel-self-attack" && !cancelConflicts.includes(e.id))) {
-    const b=definition.exactFace ? build([definition.exactFace,0,0,0,3,4],definition.exactFace>4?"heavy":"light") : build();
+    const b=definition.exactFace ? build([definition.exactFace,0,0,0,3,4],definition.exactFace>4?"custom-heavy":"custom-speed") : build();
     const triggerId=definition.exactFace?`exact:${definition.exactFace}`:"exact:0";
     const leaf=chosen(definition.id,definition.amountOptions[0]?.value);
     for(const normalized of [false,true]) {

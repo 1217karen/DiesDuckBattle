@@ -10,7 +10,7 @@ const isRecord = value => value !== null && typeof value === "object"
 
 /**
  * ユーザー作成DTO v1（戦闘用データではない）:
- * { schemaVersion: 1, diceFrame: "light"|"basic"|"heavy", stats: { AT, DF }, dice: number[6],
+ * { schemaVersion: 1, diceFrame: "custom-speed"|"custom-normal"|"custom-heavy", stats: { AT, DF }, dice: number[6],
  *   skills: [{ category: "A"|"B"|"C"|"D", triggerId: string, effectIds: string[] }] }
  * 未知キー・生effect・コスト申告は拒否。入力の補正/変更/コンパイルは行わない。
  * rules/catalogは運営側の信頼済み設定であり、ユーザーから受け取らない。

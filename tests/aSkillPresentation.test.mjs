@@ -6,7 +6,7 @@ import { compileASkill } from "../js/aSkillCompiler.js";
 import { calculateASkillResources } from "../js/aSkillResources.js";
 import { aTriggerText, aTriggerEditor, aEffectParts, presentASkill } from "../js/aSkillPresentation.js";
 
-const catalog = createASkillCatalog(), build = { diceFrame: "normal", dice: [1,2,3,4,5,6] };
+const catalog = createASkillCatalog(), build = { diceFrame: "preset-standard", dice: [1,2,3,4,5,6] };
 const legacy = (effectId, amount) => ({ effectId, ...(amount == null ? {} : { amountOptionId: `amount-${amount}` }) });
 const selection = (effectId, amount, triggerId = "exact:1") => migrateSelection("A", { triggerId, effects: [legacy(effectId, amount)] }, catalog);
 const text = (effectId, amount, triggerId) => presentASkill(build, selection(effectId, amount, triggerId)).text;
@@ -100,15 +100,15 @@ test("invalid, stale and incomplete selections never fabricate a complete descri
     assert.deepEqual(s,before);
   }
   const s=selection("heal-self",5,"exact:6");
-  assert.equal(presentASkill({diceFrame:"light",dice:[1,2,3,4,0,0]},s).text,null);
+  assert.equal(presentASkill({diceFrame:"custom-speed",dice:[1,2,3,4,0,0]},s).text,null);
 });
 
 test("trigger controls only project existing legal options, including sparse and zero dice", () => {
-  for(const duck of [build,{diceFrame:"light",dice:[0,0,1,1,3,4]},{diceFrame:"void",dice:[0,0,0,0,0,0]}]) {
+  for(const duck of [build,{diceFrame:"custom-speed",dice:[0,0,1,1,3,4]},{diceFrame:"preset-void",dice:[0,0,0,0,0,0]}]) {
     const legal=getATriggerOptions(duck);
     for(const current of ["","exact:99",...legal.map(option=>option.id)]) {
       const model=aTriggerEditor(legal,current);
-      for(const field of model.fields) for(const option of field.options) assert.ok(legal.some(row=>row.id===option.id));
+      for(const field of model.fields) for(const option of field.options) assert.ok(option.disabled || legal.some(row=>row.id===option.id));
       if(current==="all") assert.equal(model.fields.length,1);
     }
   }

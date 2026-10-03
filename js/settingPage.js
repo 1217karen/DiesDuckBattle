@@ -231,35 +231,47 @@ function renderTabs() {
   }));
 }
 function renderStats(duck, box) {
+  const diceBox = card("DICE / ダイス", "dice"), frame = getDiceFrame(duck.diceFrame);
+  const types = Object.values(DICE_FRAMES).map(item => ({ id: item.id, label: `${item.label}（SP${item.SP}）`,
+    group: item.editable ? "カスタマイズ" : "プリセット" }));
+  const typeLabel = el("label", "ダイスタイプ");
+  aChoice(typeLabel, "dice-type", types, duck.diceFrame, value => commit({ type: "dice-type", frame: value || null }), "ダイスタイプ", duck.diceFrame, "未設定");
+  diceBox.append(typeLabel);
+  if (frame) {
+    const diceGrid = el("div", null, "dice-grid");
+    duck.dice.forEach((face, index) => {
+      const input = select(`dice-${index}`, [0, ...frame.faces].map(value => ({ id: String(value), label: String(value) })), face,
+        value => { const dice = [...selectedDuck(state).dice]; dice[index] = Number(value); patchDuck({ dice }); }, null);
+      input.disabled = !frame.editable;
+      diceGrid.append(labeled(`枠 ${index + 1}`, input));
+    });
+    diceBox.append(diceGrid, el("p", frame.editable ? "6枠。同じ非0出目は通常2個、0を含む場合は3個まで。0は最大3個。0ごとに+1pt、0を含む3個積み1種類ごとに−1pt。" : "プリセットダイスは固定です。", "description"));
+    const diceMetrics = el("div", null, "metrics"); diceMetrics.id = "dice-metrics"; diceBox.append(diceMetrics);
+  }
+  feedback(diceBox, "dice"); box.append(diceBox);
+  if (!frame) return;
   const statBox = card("STATUS / 能力", "stats"), grid = el("div", null, "stat-grid");
   for (const key of ["AT", "DF"]) {
-    const input = el("input"); input.id = `stat-${key}`; input.type = "number"; input.step = "1";
-    input.min = rules.stats[key].min; input.max = rules.stats[key].max; input.value = duck.stats[key] ?? ""; input.placeholder = "未入力";
-    input.addEventListener("input", () => patchDuck({ stats: { ...selectedDuck(state).stats,
-      [key]: Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : null } }, false));
-    grid.append(labeled(key, input));
+    const other = duck.stats[key === "AT" ? "DF" : "AT"] ?? 0;
+    const options = Array.from({ length: 6 }, (_, value) => {
+      const shortage = value > 0 && value + other + frame.SP > rules.stats.totalMax;
+      return { id: String(value), label: `${value}${shortage ? "（pt不足）" : ""}`, disabled: shortage };
+    });
+    const wrapper = el("label", key);
+    aChoice(wrapper, `stat-${key}`, options, String(duck.stats[key] ?? 0), value => patchDuck({
+      stats: { ...selectedDuck(state).stats, [key]: value === "0" ? null : Number(value) },
+    }), key, duck.stats[key], null);
+    grid.append(wrapper);
   }
-
+  const sp = el("span", `SP ${frame.SP}`); sp.id = "stat-SP"; grid.append(sp);
   const metrics = el("div", null, "metrics"); metrics.id = "stat-metrics";
-  statBox.append(grid, metrics, el("p", `ATは${rules.stats.AT.min}～${rules.stats.AT.max}、DFは${rules.stats.DF.min}～${rules.stats.DF.max}。SPを含む合計上限は${rules.stats.totalMax}。HPは能力から計算します。`, "description"));
-  feedback(statBox, "stats");
-  const diceBox = card("DICE / ダイス", "dice"), diceGrid = el("div", null, "dice-grid"), frame = getDiceFrame(duck.diceFrame);
-  const presets = Object.values(DICE_FRAMES).filter(item => item.kind === "preset");
-  const type = frame?.kind === "preset" ? "preset" : duck.diceFrame;
-  field(diceBox, "ダイスタイプ", "dice-type", [...Object.values(DICE_FRAMES).filter(item => item.kind === "standard").map(item => ({id:item.id,label:item.label})), {id:"preset",label:"プリセット"}], type,
-    value => commit({type:"dice-type",frame:value === "preset" ? presets[0].id : value || null}), "未設定");
-  if (frame?.kind === "preset") field(diceBox, "プリセット種類", "dice-preset", presets.map(item => ({id:item.id,label:item.label})), frame.id,
-    value => commit({type:"dice-type",frame:value}), null);
-  duck.dice.forEach((face, index) => {
-    const input = select(`dice-${index}`, [0, ...(frame?.faces ?? [])].map(value => ({id:String(value),label:String(value)})), face,
-      value => { const dice = [...selectedDuck(state).dice]; dice[index] = Number(value); patchDuck({dice}); }, null);
-    input.disabled = !frame?.editable;
-    diceGrid.append(labeled(`枠 ${index+1}`, input));
-  });
-  diceBox.append(diceGrid, el("p", `SP ${frame?.SP ?? "未設定"}`, "description"));
-  diceBox.append(el("p", frame?.kind === "preset" ? "プリセットダイスは固定です。" : "6枠。同じ非0出目は通常2個、0を含む場合は3個まで。0は最大3個。0ごとに+1pt、0を含む3個積み1種類ごとに−1pt。", "description"));
-  const diceMetrics = el("div", null, "metrics"); diceMetrics.id = "dice-metrics"; diceBox.append(diceMetrics);
-  feedback(diceBox, "dice"); box.append(diceBox, statBox);
+  statBox.append(grid, metrics, el("p", "AT・DFは1～5。SPを含む合計上限は9pt。0は未設定です。", "description"));
+  feedback(statBox, "stats"); box.append(statBox);
+}
+const skillsUnlocked = duck => duck.stats.AT >= 1 && duck.stats.DF >= 1;
+function aEditingSelection(duck) {
+  const selection = duck.aSelection ?? { triggerId: "", effects: [] };
+  return aNormalSlots(selection, aCatalog).length ? selection : addANormalEffect(selection, aCatalog);
 }
 
 // Retain unavailable saved clauses as disabled options in sentence editors.
@@ -277,10 +289,10 @@ function aSentenceChoice(box, id, items, current, onChange, label, savedLabel = 
   } else aChoice(box, id, items, current, onChange, label, savedLabel, label);
 }
 function renderA(duck, box) {
-  const panel = card("A SKILL / Aスキル", "a"), a = duck.aSelection;
-  field(panel, "Aスキルの設定", "a-enabled", [{ id: "on", label: "設定する" }], a === null ? "" : "on",
-    value => patchDuck({ aSelection: value ? { triggerId: "", effects: [] } : null }), "未設定");
-  if (a !== null) {
+  const panel = card("A SKILL / Aスキル", "a");
+  if (!skillsUnlocked(duck)) { panel.append(el("p", "ステータスを設定してください", "description")); box.append(panel); return; }
+  const a = aEditingSelection(duck);
+  {
     const update = aSelection => patchDuck({ aSelection });
     const trigger = el("div", null, "a-sentence-controls");
     const triggerView = aTriggerEditor(getATriggerOptions(duck, aCatalog), a.triggerId);
@@ -288,13 +300,14 @@ function renderA(duck, box) {
       if (typeof part === "string") trigger.append(el("span", part));
       else {
         const f = triggerView.fields.find(field => field.key === part.key);
-        // Keep the primary selector available even with a single legal trigger.
-        const choice = f.key === "triggerId" ? aChoice : aSentenceChoice;
-        choice(trigger, f.key === "triggerId" ? "a-trigger" : "a-trigger-comparison", f.options, f.value,
+        // Both trigger clauses remain selects; unavailable choices stay disabled.
+        aChoice(trigger, f.key === "triggerId" ? "a-trigger" : "a-trigger-comparison", f.options, f.value,
           triggerId => update(changeATrigger(a, triggerId, duck, aCatalog)), f.label, aTriggerText(a.triggerId) ?? a.triggerId);
       }
     }
     panel.append(el("p", "発動条件", "description"), trigger);
+    const triggerCost = getATriggerOptions(duck, aCatalog).find(t => t.id === a.triggerId)?.pointCost;
+    panel.append(el("p", `必要コスト：${triggerCost ?? "未確定"}`, "a-price"));
     const cancelled = (a.effects ?? []).some(e => isACancel(e, aCatalog));
     const cancel = el("label", "通常攻撃");
     const cancelInput = aChoice(cancel, "a-cancel", [{ id: "off", label: "キャンセルしない" },
@@ -362,7 +375,7 @@ function renderA(duck, box) {
   }
   if (a !== null) {
     const metrics = el("section", null, "a-point-breakdown"); metrics.id = "a-metrics";
-    metrics.setAttribute("aria-label", "A POINT / ポイント内訳"); panel.append(metrics);
+    metrics.setAttribute("aria-label", "A COST / コスト内訳"); panel.append(metrics);
   }
   feedback(panel, "a"); box.append(panel);
 }
@@ -370,7 +383,7 @@ function renderA(duck, box) {
 function renderAPoints(selection, resources) {
   const box = $("a-metrics"); if (!box || selection === null) return;
   const groups = aPointSections(resources, aNormalSlots(selection, aCatalog), (selection.effects ?? []).some(e => isACancel(e, aCatalog)));
-  box.replaceChildren(el("h4", "A POINT / ポイント内訳"));
+  box.replaceChildren(el("h4", "A COST / コスト内訳"));
   for (const group of groups) {
     const section = el("div", null, "a-point-group"), list = el("dl");
     section.append(el("h5", group.label));
@@ -382,13 +395,14 @@ function renderAPoints(selection, resources) {
     section.append(list); box.append(section);
   }
   if (resources.remaining != null && resources.remaining < 0) {
-    const warning = el("p", `${Math.abs(resources.remaining)}pt不足しています`, "a-point-shortage");
+    const warning = el("p", `コストオーバー：${Math.abs(resources.remaining)}`, "a-point-shortage");
     warning.id = "a-point-shortage"; box.append(warning);
   }
 }
 
 function renderC(duck, box) {
   const panel = card("C SKILL / Cスキル", "c"), c = duck.cSelection;
+  if (!skillsUnlocked(duck)) { panel.append(el("p", "ステータスを設定してください", "description")); box.append(panel); return; }
   const hasEffects = cBranches(c).some(({ branch }) => branch?.effects?.length);
   field(panel, "Cスキルの種類", "c-mode", [...C_MODE_OPTIONS,
     ...(c !== null && !c.mode ? [{ id: "incomplete", label: "未完了（選択してください）", disabled: true }] : [])], c === null ? "" : c.mode || "incomplete",
@@ -481,13 +495,12 @@ function renderSummaries() {
     const metricId = key === "stats" ? "stat" : key.toLowerCase();
     $(`${metricId}-metrics`)?.classList.toggle("invalid", status.invalid.length > 0);
   }
-  const frame = getDiceFrame(duck.diceFrame), budget = frame ? rules.stats.totalMax - frame.SP : null;
-  const used = duck.stats.AT !== null && duck.stats.DF !== null ? duck.stats.AT + duck.stats.DF : null;
-  $("stat-metrics").textContent = `AT/DF使用可能：合計${num(budget)}pt　使用中：${num(used)}pt / 残り${num(budget !== null && used !== null ? budget-used : null)}pt　HP ${num(summary.stats.hp)}`;
+  const frame = getDiceFrame(duck.diceFrame);
+  if ($("stat-metrics")) $("stat-metrics").textContent = `ステータスpt：${(duck.stats.AT ?? 0) + (duck.stats.DF ?? 0) + frame.SP} / ${rules.stats.totalMax}　HP ${num(summary.stats.hp)}`;
   const dice = summary.dice.resources;
-  $("dice-metrics").textContent = `ダイス資源　獲得 ${num(dice?.earned)}pt / 消費 ${num(dice?.spent)}pt / 残り ${num(dice?.remaining)}pt`;
-  renderAPoints(duck.aSelection, summary.A.resources);
-  $("c-metrics").textContent = `必要AP ${num(summary.C.resources.requiredAP)}`;
+  if ($("dice-metrics")) $("dice-metrics").textContent = `ダイス資源　獲得 ${num(dice?.earned)}pt / 消費 ${num(dice?.spent)}pt / 残り ${num(dice?.remaining)}pt`;
+  if (skillsUnlocked(duck)) { const a = aEditingSelection(duck); renderAPoints(a, calculateASkillResources(duck, a, { catalog: aCatalog })); }
+  if ($("c-metrics")) $("c-metrics").textContent = `必要AP ${num(summary.C.resources.requiredAP)}`;
 }
 function render() {
   if (!state.build) return;
