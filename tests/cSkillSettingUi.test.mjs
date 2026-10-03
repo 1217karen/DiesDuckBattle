@@ -50,12 +50,13 @@ const control="c-effect-flat-0";
 const add=p=>p.all().find(e=>e.tagName==="button"&&e.textContent==="＋ C効果を追加").handlers.click();
 
 test("C explicit edits: singleton amount becomes fixed, multiple targets/status/chance stay select; save/reload",async()=>{
-  let p=await page(initial());p.choose("c-mode","normal");assert.equal(p.get("c-structure").tagName,"select");add(p);
+  let p=await page(initial());p.choose("c-mode","normal");assert.equal(p.get("c-structure").tagName,"select");
   p.choose(control,"grant-status");
   assert.equal(p.get(control+"-options.amount").tagName,"span");assert.equal(p.get(control+"-options.amount").textContent,"3");
   assert.equal(p.get(control+"-targetId").tagName,"select");assert.equal(p.get(control+"-targetId").value,"");
   assert.equal(p.get(control+"-statusId").tagName,"select");assert.equal(p.get(control+"-statusId").value,"");
   p.choose(control+"-targetId","enemy");p.choose(control+"-statusId","crack");
+  assert.equal(p.get("c-metrics").textContent,`必要AP：${calculateCSkillResources(selection([grant])).requiredAP}`);
   const saved=p.save();assert.deepEqual(saved.ducks[0].cSelection,selection([grant]));assert.equal(compileCSkill(saved.ducks[0].cSelection).ok,true);
   p=await page(saved);assert.equal(p.get(control+"-options.amount").textContent,"3");
   p.choose(control,"damage");assert.equal(p.get(control+"-options.amount").tagName,"select");assert.equal(p.get(control+"-options.amount").value,"");
@@ -194,4 +195,24 @@ test("C parent edits retain legal amount/duration and update direction without c
  assert.deepEqual(p.save().ducks[0].cSelection,before);p.choose(control+"-targetId","enemy");
  const saved=p.save().ducks[0].cSelection;assert.deepEqual(saved.structure.effects[0].options,{amount:"turnATAmount-3",duration:"turnCount-4",direction:"decrease"});
  assert.deepEqual(c,before);
+});
+
+test("C virtual first rows render for null, flat and every branch without changing stored data",async()=>{
+ for(const c of [null,selection([]),{mode:"normal",structure:{kind:"random",branches:[{effects:[]},{effects:[]},{effects:[]}]}},
+ {mode:"normal",structure:{kind:"hpCondition",branches:{met:{effects:[]},unmet:{effects:[]}}}}]) {
+  const b=initial(c),before=structuredClone(b),p=await page(b);
+  const ids=c?.structure.kind==="random"?[0,1,2]:c?.structure.kind==="hpCondition"?["met","unmet"]:["flat"];
+  for(const id of ids) {assert.equal(p.get(`c-effect-${id}-0`).tagName,"select");assert.match(p.get(`c-effect-${id}-0`).className,/select-empty/);}
+  assert.deepEqual(p.save().ducks[0].cSelection,c);assert.deepEqual(b,before);
+  assert.equal(p.get("c-issues").textContent,"");assert.match(p.get("c-metrics").textContent,/^必要AP：/);
+ }
+});
+test("C first edit materializes only its branch; add starts a second row",async()=>{
+ const p=await page(initial());p.choose("c-mode","normal");p.choose("c-structure","random2");
+ p.choose("c-effect-0-0","grant-status");
+ const saved=p.save().ducks[0].cSelection;
+ assert.equal(saved.structure.branches[0].effects.length,1);assert.equal(saved.structure.branches[1].effects.length,0);
+ add(p);assert.ok(p.get("c-effect-0-1"));
+ assert.equal(p.get("c-structure").parent.parent.className,"auxiliary-control");
+ assert.ok(p.all().some(e=>e.className==="card skill-card skill-c"));
 });

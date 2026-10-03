@@ -7,9 +7,6 @@ import { PLAYER_BUILD_STORAGE_KEY } from "../js/playerBuildStorage.js";
 import { createEmptyDuck, createEmptyPlayerBuild } from "../js/playerBuildModel.js";
 import { compileASkill } from "../js/aSkillCompiler.js";
 import { calculateASkillResources } from "../js/aSkillResources.js";
-import { aPointSections } from "../js/aSkillPresentation.js";
-import { aNormalSlots } from "../js/aSkillSentenceEditor.js";
-import { createASkillCatalog } from "../js/aSkillCatalog.js";
 
 // Exercise the real settingPage handlers with an in-memory DOM/online adapter, no browser dependency.
 async function page(build = createEmptyPlayerBuild()) {
@@ -123,82 +120,31 @@ const damage = {effectId:"damage",targetId:"enemy",options:{amount:"amount-3"}};
 const cancel = {effectId:"cancel-attack",targetId:"self",options:{}};
 const point = (p,id) => p.get(`a-point-${id}`)?.textContent;
 
-test("A POINT: hidden when unset; source, trigger, totals and mid-array cancel map to resource fields",async()=>{
-  let p=await page(initial());assert.ok(p.get("a-metrics"));
-  assert.equal(point(p,"base"),"3");assert.equal(point(p,"trigger"),"未確定");
-  const b=initial({triggerId:"lte:3",effects:[damage,cancel,heal,damage]});
-  const before=structuredClone(b),r=calculateASkillResources(b.ducks[0],b.ducks[0].aSelection);
-  p=await page(b);
-  for(const [id,key] of [["base","basePoints"],["available","availablePoints"],["trigger","triggerCost"],
-    ["benefit-slots","benefitSlotCost"],["gross","grossCost"],["drawback","drawbackPoints"],["net","netCost"],["remaining","remaining"]]) {
-    assert.equal(point(p,id),`${r[key]}`,id);
+test("A compact cost summary uses computed totals, preserves saved values, and emphasizes overspending",async()=>{
+ for(const selection of [null,{triggerId:"lte:3",effects:[damage,cancel,heal,damage]},{triggerId:"all",effects:[damage,damage]},
+   {triggerId:"exact:0",effects:[damage]}, {triggerId:"exact:1",effects:[{effectId:"heal",targetId:"self",options:{}}]}]) {
+  const b=initial(selection),before=structuredClone(b),p=await page(b);
+  const r=calculateASkillResources(b.ducks[0],selection);
+  assert.equal(p.get("a-metrics").attributes["aria-label"],"Aスキルのコスト");
+  assert.ok(!p.get("a-metrics").textContent.includes("内訳"));
+  if(selection) {
+   assert.equal(point(p,"available"),String(r.availablePoints??"—"));assert.equal(point(p,"net"),String(r.netCost??"—"));
+   assert.equal(point(p,"remaining"),r.remaining==null?"—":String(Math.abs(r.remaining)));
+   if(r.remaining<0) {assert.match(p.get("a-point-shortage").textContent,/コストオーバー/);assert.match(p.get("a-issues").textContent,/コストオーバー/);}
   }
-  assert.equal(point(p,"dice"),"0");
-  assert.equal(point(p,"effect-1"),`必要コスト：${r.effectBreakdown[0].effectCost}`);
-  assert.equal(point(p,"effect-2"),`コスト還元：${r.effectBreakdown[2].drawbackPoints}`);
-  assert.equal(point(p,"effect-3"),`必要コスト：${r.effectBreakdown[3].effectCost}`);
-  assert.equal(point(p,"effect-4"),undefined);
-  assert.equal(point(p,"cancel"),`コスト還元：${r.cancelDrawbackPoints}`);
-  assert.equal(point(p,"benefit-slots"),"1");
-  const saved=p.save();assert.deepEqual(saved.ducks[0].aSelection,b.ducks[0].aSelection);
-  p=await page(saved);assert.equal(point(p,"effect-2"),"コスト還元：2");
-  assert.deepEqual(b,before);assert.deepEqual(calculateASkillResources(b.ducks[0],b.ducks[0].aSelection),r);
+  assert.deepEqual(b,before);
+ }
 });
-
-test("A POINT: preset dice, unsaved standard edits and trigger changes refresh immediately",async()=>{
-  const p=await page(initial({triggerId:"exact:1",effects:[damage,cancel]}));
-  assert.equal(point(p,"dice"),"0");assert.equal(point(p,"trigger"),"0");assert.equal(point(p,"benefit-slots"),"0");
-  assert.equal(point(p,"cancel"),"コスト還元：1");
-  p.choose("a-trigger","exact:3");p.choose("a-trigger-comparison","lte:3");assert.equal(point(p,"trigger"),"1");assert.equal(point(p,"cancel"),"コスト還元：2");
-  p.choose("a-trigger","all");assert.equal(point(p,"trigger"),"2");assert.equal(point(p,"cancel"),"コスト還元：3");
-  p.choose("dice-type","preset-void");assert.equal(point(p,"dice"),"+4");assert.equal(point(p,"available"),"7");
-  p.choose("dice-type","custom-speed");assert.equal(point(p,"dice"),"+2");assert.equal(point(p,"available"),"5");
-  p.choose("dice-0","2");p.choose("dice-2","2");
-  assert.equal(point(p,"dice"),"+1");assert.equal(point(p,"available"),"4");
-  p.choose("dice-3","0");assert.equal(point(p,"dice"),"+1");
-  p.choose("dice-0","0");assert.equal(point(p,"dice"),"未確定");assert.equal(point(p,"available"),"未確定");
-});
-
-test("A POINT: stale trigger and unknown dice never look like zero, saved selection is retained",async()=>{
-  const b=initial({triggerId:"exact:0",effects:[damage,cancel]});
-  let p=await page(b);assert.equal(point(p,"trigger"),"未確定");assert.equal(point(p,"cancel"),"コスト還元：未確定");
-  assert.equal(point(p,"remaining"),"未確定");assert.equal(p.get("a-trigger").value,"exact:0");
-  assert.match(p.get("a-trigger").textContent,/現在は使用不可/);
-  assert.deepEqual(b.ducks[0].aSelection,{triggerId:"exact:0",effects:[damage,cancel]});
-  const noDice=initial({triggerId:"",effects:[]});noDice.ducks[0].diceFrame=null;noDice.ducks[0].stats.SP=null;
-  p=await page(noDice);assert.equal(point(p,"base"),"3");assert.equal(point(p,"dice"),"未確定");assert.equal(point(p,"available"),"未確定");
-});
-
-test("A POINT: partial or invalid effects keep confirmed rows, never display provisional prices as final",async()=>{
-  const leaves=[
-    {effectId:"",targetId:"",options:{}},
-    {effectId:"heal",options:{amount:"amount-5"}},
-    {effectId:"grant-status",targetId:"self",options:{amount:"amount-2"}},
-    {effectId:"heal",targetId:"self",options:{}},
-    {effectId:"heal",targetId:"self",options:{amount:"bad"}},
-    {effectId:"grant-status",targetId:"self",statusId:"bad",options:{amount:"amount-2"}},
-    {effectId:"obsolete",targetId:"self",options:{}},
-  ];
-  for(const leaf of leaves) {
-    const b=initial({triggerId:"exact:1",effects:[damage,leaf]}),before=structuredClone(b);
-    const r=calculateASkillResources(b.ducks[0],b.ducks[0].aSelection),rBefore=structuredClone(r);
-    const compiled=compileASkill(b.ducks[0],b.ducks[0].aSelection);
-    const p=await page(b);
-    assert.equal(point(p,"base"),"3");assert.equal(point(p,"dice"),"0");assert.equal(point(p,"available"),"3");
-    assert.equal(point(p,"trigger"),"0");assert.equal(point(p,"effect-1"),"必要コスト：2");
-    assert.equal(point(p,"effect-2"),"未確定");assert.equal(point(p,"remaining"),"未確定");
-    const catalog=createASkillCatalog();aPointSections(r,aNormalSlots(b.ducks[0].aSelection,catalog),false);
-    assert.deepEqual(r,rBefore);assert.deepEqual(b,before);assert.deepEqual(compileASkill(b.ducks[0],b.ducks[0].aSelection),compiled);
-  }
-});
-
-test("A POINT: overspending shows negative remaining plus shortage and keeps existing validation",async()=>{
-  const b=initial({triggerId:"all",effects:[damage,damage]});const r=calculateASkillResources(b.ducks[0],b.ducks[0].aSelection);
-  const p=await page(b);assert.ok(r.remaining<0);
-  assert.equal(point(p,"remaining"),`${r.remaining}`);
-  assert.equal(p.get("a-point-shortage").textContent,`コストオーバー：${Math.abs(r.remaining)}`);
-  assert.equal(p.get("a-point-remaining").className,"a-point-shortage");
-  assert.match(p.get("a-issues").textContent,/コストオーバー/);
+test("A incomplete controls use color hints without persistent warnings; supplementary control is subdued",async()=>{
+ const p=await page(initial());
+ assert.match(p.get("a-effect-0").className,/select-empty/);assert.equal(p.get("a-issues").textContent,"");
+ assert.equal(p.get("a-cancel").parent.className,"auxiliary-control");
+ assert.match(p.get("stat-AT").className,/select-compact/);
+ assert.ok(!p.get("a-effect-0").className.includes("select-compact"));
+ p.choose("a-trigger","exact:1");assert.ok(!p.get("a-trigger").className.includes("select-empty"));
+ assert.match(p.get("a-trigger-comparison").className,/select-compact/);
+ for(const key of ["a","b","c","d"]) assert.ok(p.all().some(e=>e.className===`card skill-card skill-${key}`));
+ p.get("save").handlers.click();assert.ok(p.all().some(e=>e.textContent==="未完成の設定があります"));
 });
 
 test("A sentence: effect first, only variable clauses are selects, no duplicate preview",async()=>{
@@ -289,7 +235,7 @@ test("A face 0..6/all and comparison controls; natural formal all and cost wordi
  p.choose("a-trigger","all");assert.equal(sentenceText(p.get("a-trigger").parent),"出目が全ての出目の時");assert.equal(p.get("a-trigger-comparison"),undefined);
  const saved=p.save();const {presentASkill}=await import("../js/aSkillPresentation.js");
  assert.match(presentASkill(saved.ducks[0],saved.ducks[0].aSelection).text,/^全ての出目で、/);
- assert.ok(!/pt|ポイント/.test(p.get("a-metrics").textContent));assert.match(p.get("a-metrics").textContent,/使用可能コスト.*必要コスト/);
+ assert.ok(!/pt|ポイント/.test(p.get("a-metrics").textContent));assert.match(p.get("a-metrics").textContent,/使用可能.*必要/);
 });
 
 test("A UI keeps heal/status amounts on parent changes and never offers a direction select",async()=>{

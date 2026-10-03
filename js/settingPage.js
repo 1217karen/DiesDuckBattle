@@ -6,7 +6,7 @@ import { DICE_FRAMES, getDiceFrame } from "./diceFrames.js";
 import { createBuildRules } from "./buildRules.js";
 import { createASkillCatalog, getATriggerOptions } from "./aSkillCatalog.js";
 import { aEditorLeaf, aNormalSlots, aEditorCatalog, aCancelAvailable, isACancel, setAAttackCancel, addANormalEffect, removeANormalEffect, changeAClause, changeATrigger } from "./aSkillSentenceEditor.js";
-import { aTriggerText, aTriggerEditor, aContentText, aEffectParts, aFieldOptionText, aStatusText, aEffectPointText, aCancelPointText, aPointSections } from "./aSkillPresentation.js";
+import { aTriggerText, aTriggerEditor, aContentText, aEffectParts, aFieldOptionText, aStatusText, aEffectPointText, aCancelPointText } from "./aSkillPresentation.js";
 import { calculateASkillResources } from "./aSkillResources.js";
 import { createBSkillCatalog, getBTriggerOptions, getBConditionOptions, getBEffectOptions } from "./bSkillCatalog.js";
 import { bEffectText, bSentence } from "./bSkillPresentation.js";
@@ -70,6 +70,12 @@ function select(id, items, current, onChange, placeholder = "選択してくだ�
   const value = current == null ? "" : String(current);
   if (value && !items.some(item => String(item.id) === value)) add({ id: value, label: `${value}（現在は使用不可）` });
   input.value = value;
+  const unavailable = value && (!items.some(item => String(item.id) === value && !item.disabled));
+  input.className = !value || value === "incomplete" || ((id === "stat-AT" || id === "stat-DF") && value === "0")
+    ? "select-empty" : unavailable ? "select-invalid" : "";
+  const short = !/^(a-effect-\d+|c-effect-[\w]+-\d+)$/.test(id) && items.length && items.every(item => String(labelText(item.label)).length <= 12);
+  if (short) input.className += " select-compact";
+  if (unavailable && value !== "incomplete") input.setAttribute("aria-invalid", "true");
   input.addEventListener("change", () => onChange(input.value));
   return input;
 }
@@ -77,7 +83,7 @@ function field(box, text, id, items, current, onChange, placeholder) {
   box.append(labeled(text, select(id, items, current, onChange, placeholder)));
 }
 function card(title, key) {
-  const box = el("section", null, "card"), heading = el("div", null, "card-header");
+  const box = el("section", null, ["a", "b", "c", "d"].includes(key) ? `card skill-card skill-${key}` : "card"), heading = el("div", null, "card-header");
   box.setAttribute("aria-label", title);
   const badge = el("span", null, "badge"); badge.id = `${key}-status`;
   heading.append(el("h3", title), badge); box.append(heading); return box;
@@ -85,9 +91,9 @@ function card(title, key) {
 function feedback(box, key) { const list = el("ul", null, "issues"); list.id = `${key}-issues`; box.append(list); }
 function setFeedback(key, summary) {
   const badge = $(`${key}-status`); if (!badge) return;
-  badge.textContent = summary.label;
+  badge.textContent = summary.invalid.length ? summary.label : summary.incomplete.length ? "" : summary.label;
   badge.className = "badge" + (summary.invalid.length ? " invalid" : summary.incomplete.length ? " warning" : " good");
-  const issues = [...summary.invalid.map(i => ({ ...i, severity: "invalid" })), ...summary.incomplete.map(i => ({ ...i, severity: "warning" }))];
+  const issues = summary.invalid.map(i => ({ ...i, severity: "invalid" }));
   const seen = new Set();
   $(`${key}-issues`)?.replaceChildren(...issues.filter(i => {
     const key = i.severity + i.message; if (seen.has(key)) return false; seen.add(key); return true;
@@ -309,7 +315,7 @@ function renderA(duck, box) {
     const triggerCost = getATriggerOptions(duck, aCatalog).find(t => t.id === a.triggerId)?.pointCost;
     panel.append(el("p", `必要コスト：${triggerCost ?? "未確定"}`, "a-price"));
     const cancelled = (a.effects ?? []).some(e => isACancel(e, aCatalog));
-    const cancel = el("label", "通常攻撃");
+    const cancel = el("label", "通常攻撃", "auxiliary-control");
     const cancelInput = aChoice(cancel, "a-cancel", [{ id: "off", label: "キャンセルしない" },
       { id: "on", label: "キャンセルする", disabled: !aCancelAvailable(duck, a, aCatalog) }], cancelled ? "on" : "off",
       value => update(setAAttackCancel(a, value === "on", duck, aCatalog)), "通常攻撃キャンセル");
@@ -371,7 +377,7 @@ function renderA(duck, box) {
       }
       const issues = [...resources.errors, ...resources.unresolved].filter(i => i.path === `effects.${index}` || i.path?.startsWith(`effects.${index}.`));
       row.append(head, controls, sentence);
-      if (issues.length) row.append(el("p", "現在の設定では使用不可、または未選択です。再選択してください。", "warning"));
+
       if (!issues.length) {
         head.append(el("span", aEffectPointText(resources, index), "a-price"));
       }
@@ -382,41 +388,38 @@ function renderA(duck, box) {
     panel.append(el("p", `通常効果は1～${aCatalog.maxEffects}個。通常攻撃キャンセルはこの枠に含みません。`, "description"));
   }
   if (a !== null) {
-    const metrics = el("section", null, "a-point-breakdown"); metrics.id = "a-metrics";
-    metrics.setAttribute("aria-label", "A COST / コスト内訳"); panel.append(metrics);
+    const metrics = el("section", null, "resource-summary"); metrics.id = "a-metrics";
+    metrics.setAttribute("aria-label", "Aスキルのコスト"); panel.append(metrics);
   }
   feedback(panel, "a"); box.append(panel);
 }
 
 function renderAPoints(selection, resources) {
   const box = $("a-metrics"); if (!box || selection === null) return;
-  const groups = aPointSections(resources, aNormalSlots(selection, aCatalog), (selection.effects ?? []).some(e => isACancel(e, aCatalog)));
-  box.replaceChildren(el("h4", "A COST / コスト内訳"));
-  for (const group of groups) {
-    const section = el("div", null, "a-point-group"), list = el("dl");
-    section.append(el("h5", group.label));
-    for (const row of group.rows) {
-      const value = el("dd", row.text); value.id = `a-point-${row.id}`;
-      if (row.id === "remaining" && resources.remaining < 0) value.className = "a-point-shortage";
-      list.append(el("dt", row.label), value);
-    }
-    section.append(list); box.append(section);
-  }
-  if (resources.remaining != null && resources.remaining < 0) {
-    const warning = el("p", `コストオーバー：${Math.abs(resources.remaining)}`, "a-point-shortage");
-    warning.id = "a-point-shortage"; box.append(warning);
+  const values = [["available", "使用可能", resources.availablePoints], ["net", "必要", resources.netCost],
+    ["remaining", resources.remaining < 0 ? "コストオーバー" : "残り", resources.remaining == null ? null : Math.abs(resources.remaining)]];
+  box.replaceChildren();
+  for (const [index, [id, label, amount]] of values.entries()) {
+    if (index) box.append(el("span", "｜", "muted"));
+    const item = el("span");
+    item.append(el("span", `${label} `));
+    const value = el("span", num(amount)); value.id = `a-point-${id}`; item.append(value);
+    if (id === "remaining" && resources.remaining < 0) { item.className = "a-point-shortage"; item.id = "a-point-shortage"; }
+    box.append(item);
   }
 }
 
 function renderC(duck, box) {
-  const panel = card("C SKILL / Cスキル", "c"), c = duck.cSelection;
+  // Empty rows are view-only until an explicit edit materializes that branch.
+  const panel = card("C SKILL / Cスキル", "c"), c = duck.cSelection ?? { mode: "", structure: createCStructure("flat") };
   if (!skillsUnlocked(duck)) { panel.append(el("p", "ステータスを設定してください", "description")); box.append(panel); return; }
-  const hasEffects = cBranches(c).some(({ branch }) => branch?.effects?.length);
+  const metrics = el("div", null, "resource-summary"); metrics.id = "c-metrics"; panel.append(metrics);
+  const hasEffects = cBranches(duck.cSelection).some(({ branch }) => branch?.effects?.length);
   field(panel, "Cスキルの種類", "c-mode", [...C_MODE_OPTIONS,
-    ...(c !== null && !c.mode ? [{ id: "incomplete", label: "未完了（選択してください）", disabled: true }] : [])], c === null ? "" : c.mode || "incomplete",
+    ...(duck.cSelection !== null && !c.mode ? [{ id: "incomplete", label: "未完了（選択してください）", disabled: true }] : [])], duck.cSelection === null ? "" : c.mode || "incomplete",
     mode => {
       if (!mode) { patchDuck({ cSelection: null }); return; }
-      if (c === null) { patchDuck({ cSelection: { mode, structure: createCStructure("flat") } }); return; }
+      if (duck.cSelection === null) { patchDuck({ cSelection: { mode, structure: createCStructure("flat") } }); return; }
       if (mode === "special" && c.structure?.kind !== "flat") {
         const change = () => patchDuck({ cSelection: { mode, structure: createCStructure("flat") } });
         if (hasEffects) confirmChange("特殊Cは分岐なしです。現在の分岐・効果をクリアしますか？", change);
@@ -426,7 +429,8 @@ function renderC(duck, box) {
   if (c !== null) {
     const structure = c.structure;
     const kind = structure?.kind === "random" ? `random${structure.branches?.length}` : structure?.kind;
-    if (c.mode !== "special") cField(panel, "分岐方式", "c-structure", C_STRUCTURE_OPTIONS, kind,
+    const branchControl = el("div", null, "auxiliary-control"); panel.append(branchControl);
+    if (c.mode !== "special") cField(branchControl, "分岐方式", "c-structure", C_STRUCTURE_OPTIONS, kind,
         value => {
           const change = () => patchDuck({ cSelection: { ...c, structure: createCStructure(value) } });
           if (hasEffects) confirmChange("分岐方式を変更すると、現在のC効果をクリアします。変更しますか？", change);
@@ -437,9 +441,9 @@ function renderC(duck, box) {
         const next = { ...structure }; if (value) next.thresholdOptionId = value; else delete next.thresholdOptionId;
         patchDuck({ cSelection: { ...c, structure: next } });
       });
-    const branches = cBranches(c), count = branches.reduce((sum, { branch }) => sum + (branch?.effects?.length ?? 0), 0);
+    const branches = cBranches(c), count = branches.reduce((sum, { branch }) => sum + Math.max(1, branch?.effects?.length ?? 0), 0);
     for (const { key, label, branch } of branches) {
-      const branchBox = el("div", null, "branch"), effects = branch?.effects ?? [];
+      const branchBox = el("div", null, "branch"), effects = branch?.effects?.length ? branch.effects : [{ effectId: "", options: {} }];
       branchBox.append(el("h4", label));
       const setRows = effects => {
         const next = structuredClone(c);
@@ -466,7 +470,7 @@ function renderC(duck, box) {
     }
     panel.append(el("p", `全分岐の効果を合計して${cRules.minEffects}～${cRules.maxEffects}件。各分岐に効果を設定してください。`, "description"));
   }
-  const metrics = el("div", null, "metrics"); metrics.id = "c-metrics"; panel.append(metrics); feedback(panel, "c"); box.append(panel);
+  feedback(panel, "c"); box.append(panel);
 }
 function renderDuck() {
   const box = $("duck-editor"); box.replaceChildren(); const duck = selectedDuck(state);
@@ -508,7 +512,7 @@ function renderSummaries() {
   const dice = summary.dice.resources;
   if ($("dice-metrics")) $("dice-metrics").textContent = `ダイス資源　獲得 ${num(dice?.earned)}pt / 消費 ${num(dice?.spent)}pt / 残り ${num(dice?.remaining)}pt`;
   if (skillsUnlocked(duck)) { const a = aEditingSelection(duck); renderAPoints(a, calculateASkillResources(duck, a, { catalog: aCatalog })); }
-  if ($("c-metrics")) $("c-metrics").textContent = `必要AP ${num(summary.C.resources.requiredAP)}`;
+  if ($("c-metrics")) $("c-metrics").textContent = `必要AP：${num(summary.C.resources.requiredAP)}`;
 }
 function render() {
   if (!state.build) return;
