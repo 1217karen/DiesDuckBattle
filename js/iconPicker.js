@@ -1,3 +1,4 @@
+import { FIXED_IMAGES, setImageWithFallback } from "./fixedImages.js";
 const validSlot = value => Number.isInteger(value) && value >= 1 && value <= 10 ? value : null;
 
 export function createIconPicker({ dialog, list, closeButton }) {
@@ -16,9 +17,7 @@ export function createIconPicker({ dialog, list, closeButton }) {
     button.dataset.slot = slot === null ? "default" : String(slot);
     const image = document.createElement("img");
     image.alt = "";
-    if (url.trim()) image.src = url;
-    else image.hidden = true;
-    image.addEventListener("error", () => { image.hidden = true; });
+    setImageWithFallback(image, url, FIXED_IMAGES.battlerIcon);
     const caption = document.createElement("span");
     caption.textContent = disabled ? `${label}（未登録）` : label;
     button.append(image, caption);

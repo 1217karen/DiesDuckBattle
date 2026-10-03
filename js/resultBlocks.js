@@ -1,3 +1,4 @@
+import { FIXED_IMAGES } from "./fixedImages.js";
 import { createQuotePresenter, snapshotIconHTML } from "./resultPresentation.js";
 
 export function buildBlocks(events, result, context) {
@@ -251,8 +252,7 @@ function eventToLines(event, context) {
     case "timedRuleTriggered": return [{ kind: "note", text: `${actor}の持続スキル効果！` }];
     case "roll": {
       const summaries = { 1: "自分のAP+1", 2: "通常攻撃2回", 3: "自分のHP3回復", 4: "自分に反撃+1", 5: "相手のAP-1", 6: "DF無視攻撃＋反動3ダメージ" };
-      const icon = snapshotIconHTML(context.presentations?.[event.actor]?.duckIconUrl, "logDuckIcon")
-        || `<span class="logDuckIcon" aria-hidden="true">🦆</span>`;
+      const icon = snapshotIconHTML(context.presentations?.[event.actor]?.duckIconUrl, "logDuckIcon", FIXED_IMAGES.duckIcon);
       return [{ kind: "soft rollLine", text: `${icon}<span><span class="rollMain">ダイス結果 → ${amount("buff", event.diceValue)}！</span><br><span class="rollSub">${summaries[event.diceValue] ?? "特殊効果なし"}</span></span>` }];
     }
     case "normalDamage":

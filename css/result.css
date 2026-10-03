@@ -26,7 +26,7 @@ body {
   color: #111;
   font: 400 var(--fs-14)/1.35 var(--ff-base);
   background-color: #d9e9ee;
-  background-image: url("https://duckbattlebeta.web.fc2.com/img/result_BG.webp");
+  background-image: url("../img/result_BG.png");
   background-repeat: repeat;
   background-position: top left;
 }

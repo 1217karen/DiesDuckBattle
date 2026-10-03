@@ -17,6 +17,8 @@ test("P2 renderer selects only the public Duck icon and switches standing images
   const standing = slots.get("#p2-battler-slot"), duck = slots.get("#p2-duck-slot");
   render("p2", undefined, undefined);
   assert.equal(standing.images.length, 0);
+  assert.equal(standing.fallback.src, "/img/B00.png");
+  assert.equal(duck.fallback.src, "/img/D00.png");
   for (const id of ["one", "two"]) {
     render("p2", { battler: { standingImageUrl: `${id}-standing.png` },
       ducks: { private: { iconUrl: "private.png" }, [id]: { iconUrl: `${id}-duck.png` } } }, id);
@@ -60,4 +62,14 @@ test("base overlap calculation shrinks both figures equally without enlargement"
   assert.equal(p1.scale, p2.scale); assert.ok(p1.scale < 1);
   assert.ok(300 * p1.scale + 16 <= 200);
   fitBattlersToAvoidOverlap([p1]); assert.equal(p1.scale, 1);
+});
+
+
+test("standing images retain natural size and only shrink to available width or height", async () => {
+  const { battlerSize } = await import("../js/selectPresentation.js");
+  assert.deepEqual(battlerSize(300, 600, 600, 900), { width: 300, height: 600 });
+  assert.deepEqual(battlerSize(500, 800, 600, 900), { width: 500, height: 800 });
+  assert.deepEqual(battlerSize(500, 800, 250, 900), { width: 250, height: 400 });
+  assert.deepEqual(battlerSize(300, 600, 600, 300), { width: 150, height: 300 });
+  assert.deepEqual(battlerSize(500, 800, 0, 0), { width: 0, height: 0 });
 });

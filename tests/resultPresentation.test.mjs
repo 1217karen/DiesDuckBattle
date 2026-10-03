@@ -34,7 +34,7 @@ test("quote row escapes text and URL, suppresses empty cells and uses only resol
   assert.doesNotMatch(line.text, /quoteCell p1|<script>|iconSlot/);
   assert.match(line.text, /&lt;script&gt;&quot;&amp;/);
   assert.match(line.text, /src="snapshot.png&quot; onerror=&quot;bad"/);
-  assert.doesNotMatch(makeQuoteRowLine({ text: "no icon", iconUrl: "" }, null)[0].text, /<img/);
+  assert.match(makeQuoteRowLine({ text: "no icon", iconUrl: "" }, null)[0].text, /src="\/img\/B00_icon.png"/);
 });
 
 test("phase occurrence is counted independently for each actor and resets with turn", () => {
@@ -106,16 +106,16 @@ test("existing blocks and logs remain intact; old records generate the same non-
   assert.equal(legacy.flatMap(block => block.lines).filter(line => line.kind.includes("quoteLine")).length, 0);
 });
 
-test("image failures restore header placeholder or remove only the failing inline icon", () => {
+test("image failures restore the local header and inline fallback", () => {
   let onError;
   const img = { addEventListener: (type, handler) => { onError = handler; } };
   const container = { textContent: "1P", ownerDocument: { createElement: () => img }, replaceChildren(child) { this.child = child; } };
   setHeaderIcon(container, "snapshot.png");
   assert.equal(img.src, "snapshot.png");
-  onError(); assert.equal(container.textContent, "1P");
-  let removed = 0;
-  attachImageFallbacks({ querySelectorAll: () => [{ complete: true, naturalWidth: 0, addEventListener() {}, remove() { removed++; } }] });
-  assert.equal(removed, 1);
+  onError(); assert.equal(img.src, "/img/B00_icon.png");
+  const inline = { complete: true, naturalWidth: 0, dataset: { fallback: "/img/D00.png" }, addEventListener() {} };
+  attachImageFallbacks({ querySelectorAll: () => [inline] });
+  assert.equal(inline.src, "/img/D00.png");
 });
 
 test("result modules never read current presentation, icon slots or fixed character data", async () => {

@@ -1,3 +1,4 @@
+import { FIXED_IMAGES } from "./fixedImages.js";
 import { buildBlocks, numberOr } from "./resultBlocks.js";
 import { setHeaderIcon, attachImageFallbacks } from "./resultPresentation.js";
 import { createBattleResultStorage } from "./battleResultStorage.js";
@@ -40,7 +41,7 @@ function setup(record) {
   const presentations = { P1: record.p1.presentation, P2: record.p2.presentation };
   for (const side of ["P1", "P2"]) {
     setHeaderIcon(el(`${side.toLowerCase()}BattlerIcon`), presentations[side]?.battlerDefaultIconUrl);
-    setHeaderIcon(el(`${side.toLowerCase()}DuckIcon`), presentations[side]?.duckIconUrl);
+    setHeaderIcon(el(`${side.toLowerCase()}DuckIcon`), presentations[side]?.duckIconUrl, FIXED_IMAGES.duckIcon);
   }
   const context = { names, maxHP, start, presentations };
   const blocks = buildBlocks(record.events, record.result, context);

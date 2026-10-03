@@ -1,9 +1,9 @@
+import { FIXED_IMAGES, imageOrFallback, setImageWithFallback } from "./fixedImages.js";
 const sides = ["P1", "P2"];
 const escapeHTML = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 
-export function snapshotIconHTML(url, className) {
-  return typeof url === "string" && url.trim()
-    ? `<img class="${className}" data-snapshot-icon src="${escapeHTML(url)}" alt="">` : "";
+export function snapshotIconHTML(url, className, fallback = FIXED_IMAGES.battlerIcon) {
+  return `<img class="${className}" data-snapshot-icon data-fallback="${fallback}" src="${escapeHTML(imageOrFallback(url, fallback))}" alt="">`;
 }
 
 // Adapted from base/result's quoteRow/quoteCell layout; empty sides are omitted.
@@ -76,20 +76,17 @@ export function createQuotePresenter(presentations = {}, maxHP = {}) {
   };
 }
 
-export function setHeaderIcon(container, url) {
-  if (typeof url !== "string" || !url.trim()) return;
-  const fallback = container.textContent;
+export function setHeaderIcon(container, url, fallback = FIXED_IMAGES.battlerIcon) {
   const img = container.ownerDocument.createElement("img");
   img.alt = "";
-  img.addEventListener("error", () => { container.textContent = fallback; }, { once: true });
   container.replaceChildren(img);
-  img.src = url;
+  setImageWithFallback(img, url, fallback);
 }
 
 export function attachImageFallbacks(container) {
   for (const img of container.querySelectorAll("img[data-snapshot-icon]")) {
-    const remove = () => img.remove();
-    img.addEventListener("error", remove, { once: true });
-    if (img.complete && !img.naturalWidth) remove();
+    const fallback = () => { img.src = img.dataset.fallback; };
+    img.addEventListener("error", fallback, { once: true });
+    if (img.complete && !img.naturalWidth) fallback();
   }
 }

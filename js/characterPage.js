@@ -1,3 +1,4 @@
+import { FIXED_IMAGES } from "./fixedImages.js";
 import { mountOnlineEditor } from "./onlineEditor.js";
 import { createEmptyPlayerPresentation } from "./playerPresentationModel.js";
 import { createIconPicker } from "./iconPicker.js";
@@ -34,16 +35,16 @@ function pickerLabel(slot) {
   return presentation.battler.iconSlots[slot - 1]?.trim() ? `追加 ${slot}` : `追加 ${slot}（未登録）`;
 }
 
-function makePreview(kind, onValidation, className = "") {
+function makePreview(kind, onValidation, className = "", fallback = FIXED_IMAGES.battlerIcon) {
   const box = document.createElement("div"); box.className = `preview ${className}`.trim();
   let image;
-  const placeholder = document.createElement("span"); placeholder.textContent = "NO IMAGE";
+  const placeholder = document.createElement("img"); placeholder.alt = "未設定画像"; placeholder.src = fallback;
   box.append(placeholder);
   const beginValidation = createImageValidation(kind, onValidation);
   const update = value => {
     const request = beginValidation(value);
     image?.remove();
-    placeholder.hidden = false; placeholder.textContent = value.trim() ? "読込中…" : "NO IMAGE";
+    placeholder.hidden = false;
     if (!value.trim()) return;
     // This is the preview itself, not a second validation-only Image request.
     const nextImage = document.createElement("img"); nextImage.alt = "画像プレビュー"; nextImage.hidden = true;
@@ -54,7 +55,7 @@ function makePreview(kind, onValidation, className = "") {
     };
     nextImage.onerror = () => {
       if (!request.active()) return;
-      nextImage.hidden = true; placeholder.hidden = false; placeholder.textContent = "プレビュー不可";
+      nextImage.hidden = true; placeholder.hidden = false;
       request.error();
     };
     image = nextImage; box.prepend(image); image.src = value;
@@ -62,7 +63,7 @@ function makePreview(kind, onValidation, className = "") {
   return { box, update };
 }
 
-function makeImageField({ label, value, kind = "icon", previewClass = "", compact = false, onInput }) {
+function makeImageField({ label, value, kind = "icon", previewClass = "", compact = false, fallback = kind === "standing" ? FIXED_IMAGES.battlerStanding : FIXED_IMAGES.battlerIcon, onInput }) {
   const version = dataVersion;
   const root = document.createElement("div"); root.className = `image-field${compact ? " compact" : ""}`;
   const field = document.createElement("label"); field.append(document.createTextNode(label));
@@ -75,7 +76,7 @@ function makeImageField({ label, value, kind = "icon", previewClass = "", compac
     imageStates.set(root, result); root.dataset.validation = result.status;
     status.textContent = result.message; input.setAttribute("aria-invalid", String(result.status === "invalid"));
     updateValidation();
-  }, previewClass);
+  }, previewClass, fallback);
   preview.update(value);
   input.addEventListener("input", () => { preview.update(input.value); onInput(input.value); setDirty(); });
   field.append(hint, input, status); root.append(preview.box, field); return root;
@@ -133,7 +134,7 @@ function renderDuckSelect() {
   duckEditors.clear(); select.disabled = false;
   for (const duck of ducks) {
     const id = duck.id;
-    const field = makeImageField({ label:`${duck.name || "名前未設定のDuck"} アイコンURL`, value:presentation.ducks[id]?.iconUrl ?? "",
+    const field = makeImageField({ label:`${duck.name || "名前未設定のDuck"} アイコンURL`, value:presentation.ducks[id]?.iconUrl ?? "", fallback:FIXED_IMAGES.duckIcon,
       onInput:value => { presentation.ducks[id] = { iconUrl:value }; } });
     duckEditors.set(id, field); target.append(field);
   }

@@ -1,3 +1,4 @@
+import { FIXED_IMAGES } from "../js/fixedImages.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
@@ -53,7 +54,7 @@ async function characterScreen() {
   const controller = { snapshot: () => ({ canSave: true, canEdit: true }),
     edit(patch) { latest = { ...latest, ...structuredClone(patch) }; },
     async save() { saved = structuredClone(latest); return { ok: true }; } };
-  const context = { document, structuredClone, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
+  const context = { FIXED_IMAGES, document, structuredClone, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
     Option: function (name, value) { const el = new Element("option"); el.textContent = name; el.value = value; return el; },
     createIconPicker: () => ({ open(args) { selectedCallback = args.select; }, close() { selectedCallback = null; } }),
     mountOnlineEditor: async args => { hooks = args; latest = structuredClone(data); args.hydrate(data); args.onState({ canSave: true, canEdit: true }); return controller; } };
@@ -82,7 +83,7 @@ test("actual character handlers preserve full DTO, quotes, ten icon slots, detac
   assert.equal(page.all().find(el => el.className === "quote-picker").textContent, "追加 10");
 });
 test("late image callback from prior account cannot block the newly hydrated account", async () => {
-  const page = await characterScreen(), old = page.all().find(el => el.tagName === "img");
+  const page = await characterScreen(), old = page.all().find(el => el.tagName === "img" && el.onerror);
   const next = structuredClone(page.data); next.presentation = createEmptyPlayerPresentation(); next.build.ducks = []; next.publicSettings.publicDuckId = null;
   page.hydrate(next); assert.equal(page.get("save").disabled, false);
   old.onerror(); assert.equal(page.get("save").disabled, false); assert.equal(page.get("duck-select").disabled, true);

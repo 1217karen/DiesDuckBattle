@@ -11,10 +11,15 @@ test("ローカルserverはsetting・character・A/B/C/Dと依存JS/CSSを配信
   const child = spawn(process.execPath, [fileURLToPath(new URL("../scripts/serve-a-skill-test.mjs", import.meta.url)), String(port)], { windowsHide: true });
   t.after(() => { child.kill(); });
   await Promise.race([once(child.stdout, "data"), once(child, "exit").then(([code]) => { throw new Error(`server exit ${code}`); })]);
-  const base = `http://127.0.0.1:${port}`, queue = ["/select.html", "/result.html", "/storage.html", "/setting.html", "/character.html", "/a-skill-test.html", "/b-skill-test.html", "/c-skill-test.html", "/d-skill-test.html"], visited = new Set();
+  const base = `http://127.0.0.1:${port}`, queue = ["/img/B00.png", "/img/B00_icon.png", "/img/D00.png", "/select.html", "/result.html", "/storage.html", "/setting.html", "/character.html", "/a-skill-test.html", "/b-skill-test.html", "/c-skill-test.html", "/d-skill-test.html"], visited = new Set();
   while (queue.length) {
     const path = queue.shift(); if (visited.has(path)) continue; visited.add(path);
     const response = await fetch(base + path); assert.equal(response.status, 200, path);
+    if (path.endsWith(".png")) {
+      assert.match(response.headers.get("content-type"), /image\/png/);
+      assert.deepEqual([...new Uint8Array(await response.arrayBuffer()).slice(0,8)], [137,80,78,71,13,10,26,10]);
+      continue;
+    }
     const text = await response.text();
     const refs = path.endsWith(".html") ? [...text.matchAll(/(?:src|href)="([^"]+\.(?:js|css))"/g)]
       : path.endsWith(".js") ? [...text.matchAll(/from\s+"([^"]+)"/g)] : [...text.matchAll(/url\("([^"]+)"\)/g)];
