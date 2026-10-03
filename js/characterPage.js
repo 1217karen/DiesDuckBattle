@@ -19,6 +19,8 @@ let ducks = [];
 let selectedDuckId = "";
 const imageStates = new Map();
 const duckEditors = new Map();
+const battlerNameInput = document.querySelector("#battler-name");
+battlerNameInput.addEventListener("input", () => { online?.edit({ battlerName: battlerNameInput.value }); });
 const saveButton = document.querySelector("#save");
 const validationMessage = document.querySelector("#image-validation-message");
 
@@ -154,14 +156,15 @@ saveButton.addEventListener("click", async () => {
 });
 
 online = await mountOnlineEditor({
-  sections: ["presentation"],
+  sections: ["presentation", "battlerName"],
   hydrate(data) {
     dataVersion++;
+    battlerNameInput.value = data?.battlerName ?? "";
     picker.close(); imageStates.clear(); duckEditors.clear(); selectedDuckId = "";
     presentation = data ? structuredClone(data.presentation) : createEmptyPlayerPresentation();
     ducks = data ? data.build.ducks.map(({ id, name }) => ({ id, name })) : [];
     if (data) { renderBattlerImages(); renderQuotes(); renderDuckSelect(); }
     else for (const id of ["battler-images", "quotes", "duck-icon-editor", "duck-select"]) document.getElementById(id).replaceChildren();
   },
-  onState(state) { onlineState = state; if (!state.canEdit) picker.close(); updateValidation(); },
+  onState(state) { onlineState = state; battlerNameInput.disabled = !state.canEdit; if (!state.canEdit) picker.close(); updateValidation(); },
 });

@@ -57,7 +57,7 @@ async function characterScreen() {
   const context = { FIXED_IMAGES, document, structuredClone, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
     Option: function (name, value) { const el = new Element("option"); el.textContent = name; el.value = value; return el; },
     createIconPicker: () => ({ open(args) { selectedCallback = args.select; }, close() { selectedCallback = null; } }),
-    mountOnlineEditor: async args => { hooks = args; latest = structuredClone(data); args.hydrate(data); args.onState({ canSave: true, canEdit: true }); return controller; } };
+    mountOnlineEditor: async args => { assert.deepEqual(Array.from(args.sections), ["presentation", "battlerName"]); hooks = args; latest = structuredClone(data); args.hydrate(data); args.onState({ canSave: true, canEdit: true }); return controller; } };
   await vm.runInNewContext(`(async()=>{${await source("characterPage")}})()`, context);
   return { get, all, data, latest: () => latest, saved: () => saved, hydrate(data) { latest = structuredClone(data); hooks.hydrate(data); hooks.onState({ canSave: true, canEdit: true }); },
     pick(slot) { selectedCallback(slot); }, save: () => get("save").handlers.click(), controller };
@@ -75,11 +75,15 @@ test("actual character handlers preserve full DTO, quotes, ten icon slots, detac
   const slot10 = inputs()[11]; slot10.value = "https://example.invalid/slot10.png"; slot10.handlers.input();
   image = page.all().find(el => el.tagName === "img" && el.src === slot10.value); image.naturalWidth = 250; image.naturalHeight = 250; image.onload();
   const quote = page.all().find(el => el.tagName === "textarea"); quote.value = "オンラインセリフ"; quote.handlers.input();
-  page.all().find(el => el.className === "quote-picker").handlers.click(); page.pick(10); await page.save();
-  const saved = page.saved(); assert.deepEqual(saved.build, page.data.build); assert.deepEqual(saved.publicSettings, page.data.publicSettings); assert.equal(saved.battlerName, "DB名2");
+  page.all().find(el => el.className === "quote-picker").handlers.click(); page.pick(10);
+  const beforeRename = structuredClone(page.latest().presentation);
+  page.get("battler-name").value = "変更後のバトラー"; page.get("battler-name").handlers.input();
+  assert.deepEqual(page.latest().presentation, beforeRename);
+  await page.save();
+  const saved = page.saved(); assert.deepEqual(saved.build, page.data.build); assert.deepEqual(saved.publicSettings, page.data.publicSettings); assert.equal(saved.battlerName, "変更後のバトラー");
   assert.equal(saved.presentation.battler.iconSlots[9], slot10.value); assert.deepEqual(saved.presentation.battler.quotes.battleStart, { text: quote.value, iconSlot: 10 });
   assert.equal(saved.presentation.ducks.orphan.iconUrl, orphanInput.value);
-  page.hydrate(saved); assert.equal(page.all().find(el => el.tagName === "textarea").value, "オンラインセリフ");
+  page.hydrate(saved); assert.equal(page.get("battler-name").value, "変更後のバトラー"); assert.equal(page.all().find(el => el.tagName === "textarea").value, "オンラインセリフ");
   assert.equal(page.all().find(el => el.className === "quote-picker").textContent, "追加 10");
 });
 test("late image callback from prior account cannot block the newly hydrated account", async () => {
