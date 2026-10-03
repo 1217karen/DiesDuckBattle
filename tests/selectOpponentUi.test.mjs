@@ -38,9 +38,18 @@ test("real SELECT handlers switch public names and presentation with no P2 Duck 
     listOpponents: async () => opponents.map(({ id, name }) => ({ id, name })),
     getOpponent: async id => opponents.find(o => o.id === id),
   });
-  assert.equal(elements.has("p2-duck-name"), false);
+  assert.equal(document.getElementById("p2-duck-name").textContent, "");
   const flush = () => new Promise(resolve => setImmediate(resolve));
   await flush();
+  assert.doesNotMatch(document.getElementById("self-name").textContent, /＋/);
+  assert.equal(document.getElementById("p1-battler-name").textContent, "DB名");
+  document.getElementById("p1-duck-slot").handlers.click();
+  await flush();
+  await document.getElementById("trayGrid").children[0].children[0].handlers.click();
+  const ownDuckName = document.getElementById("p1-duck-name").textContent;
+  assert.ok(ownDuckName);
+  assert.equal(document.getElementById("self-name").textContent, `ENo.88｜DB名 ＋ ${ownDuckName}`);
+  assert.ok(document.getElementById("p1-duck-info").textContent.startsWith("AT "));
   async function choose(index) {
     document.getElementById("p2-battler-slot").handlers.click();
     await flush();
@@ -54,8 +63,10 @@ test("real SELECT handlers switch public names and presentation with no P2 Duck 
     assert.equal(last.id, opponent.publicDuckId);
     assert.equal(last.presentation.battler.standingImageUrl, `${opponent.id}-standing.png`);
     assert.equal(last.presentation.ducks[last.id].iconUrl, `${opponent.id}-public.png`);
-    assert.ok(document.getElementById("p2-duck-info").textContent.includes(
+    assert.ok(document.getElementById("p2-duck-name").textContent.includes(
       opponent.build.ducks.find(d => d.id === opponent.publicDuckId).name));
+    assert.equal(document.getElementById("p2-battler-name").textContent, opponent.name);
+    assert.ok(document.getElementById("opponent-name").textContent.endsWith(` ＋ ${document.getElementById("p2-duck-name").textContent}`));
     assert.match(document.getElementById("p2-duck-info").textContent, /AT .*DF .*SP .*HP .*\nダイス：.*\nA：.*\nC：/);
     assert.equal(document.getElementById("tray").open, false);
     assert.equal(document.getElementById("p2-duck-slot").handlers.click, undefined);

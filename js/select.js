@@ -10,13 +10,15 @@ const renderPresentation = createSelectPresentation();
 const el = id => document.getElementById(id);
 const tray = el("tray");
 function renderSelf() {
-  el("self-name").textContent = current.eno ? `ENo.${current.eno}｜${state.self.name}` : "自分";
+  el("p1-battler-name").textContent = state.build ? state.self.name : "";
   el("load-status").textContent = current.message || (state.build?.ducks.length ? "" : "アヒル設定はまだありません。設定を編集して追加してください。");
   el("load-status").classList.toggle("error", !state.build);
   el("p1-battler-info").textContent = battlerSummary(state.build?.battler);
   const duck = state.build?.ducks.find(d => d.id === state.selectedDuckId);
   const name = duckChoices(state).find(d => d.id === duck?.id)?.name;
-  el("p1-duck-info").textContent = state.build ? duckSummary(duck, name) : "保存データを読み込めないため選択できません。";
+  el("self-name").textContent = (current.eno ? `ENo.${current.eno}｜${state.self.name}` : "自分") + (duck ? ` ＋ ${name}` : "");
+  el("p1-duck-name").textContent = name ?? "";
+  el("p1-duck-info").textContent = state.build ? duckSummary(duck) : "保存データを読み込めないため選択できません。";
 }
 function renderScreen() {
   renderPresentation("p1", ownPresentation, state.selectedDuckId);
@@ -30,11 +32,13 @@ function renderScreen() {
   el("vsButton").classList.toggle("vs--disabled", !start.canStart);
   el("vsButton").setAttribute("aria-label", `戦闘開始：${start.reason}`);
   renderSelf();
-  el("opponent-name").textContent = state.opponent ? `ENo.${state.opponent.eno}｜${state.opponent.name}` : "相手を選択";
-  el("p2-battler-info").textContent = state.opponent ? `${state.opponent.name}\n${battlerSummary(state.opponent.build.battler)}` : "右側の2P枠から相手を選択してください。";
+  el("p2-battler-name").textContent = state.opponent?.name ?? "";
+  el("p2-battler-info").textContent = state.opponent ? battlerSummary(state.opponent.build.battler) : "右側の2P枠から相手を選択してください。";
   const duck = state.opponent?.build.ducks.find(d => d.id === state.opponent.publicDuckId);
   const name = duck?.name || (duck ? `アヒル ${state.opponent.build.ducks.indexOf(duck) + 1}` : null);
-  el("p2-duck-info").textContent = duck ? duckSummary(duck, name) : state.opponent ? "この相手は現在対戦できません。" : "相手を選択してください。";
+  el("opponent-name").textContent = state.opponent ? `ENo.${state.opponent.eno}｜${state.opponent.name}` + (duck ? ` ＋ ${name}` : "") : "相手を選択";
+  el("p2-duck-name").textContent = name ?? "";
+  el("p2-duck-info").textContent = duck ? duckSummary(duck) : state.opponent ? "この相手は現在対戦できません。" : "相手を選択してください。";
 }
 let requestVersion = 0, returnFocus = "p1-duck-slot";
 function showMessage(message) { const p = document.createElement("p"); p.textContent = message; el("trayGrid").replaceChildren(p); }

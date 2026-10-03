@@ -3,9 +3,13 @@ import { clonePlayerBuild } from "./playerBuildModel.js";
 import { clonePlayerPresentation } from "./playerPresentationModel.js";
 import { inspectBattleLoadout } from "./battleLoadoutCompiler.js";
 import { calcMaxHPFromStats } from "./statsUtil.js";
-import { createASkillCatalog, getATriggerOptions } from "./aSkillCatalog.js";
+import { createASkillCatalog } from "./aSkillCatalog.js";
 import { createBSkillCatalog, getBSelectionDefinition } from "./bSkillCatalog.js";
 import { createCSkillCatalog } from "./cSkillCatalog.js";
+import { presentASkill } from "./aSkillPresentation.js";
+import { presentCSkill } from "./cSkillPresentation.js";
+import { bSentence } from "./bSkillPresentation.js";
+import { validateBSkillSelection } from "./bSkillCompiler.js";
 import { D_SKILL_OPTIONS } from "./dSkillCatalog.js";
 
 export const SELF_BATTLER = Object.freeze({ id: "local-player", name: "自分" });
@@ -48,31 +52,28 @@ export function battleStartStatus(state) {
 }
 const label = (items, id) => items?.find(item => item.id === id)?.label ?? "未設定・不明な選択";
 const ac = createASkillCatalog(), bc = createBSkillCatalog(), cc = createCSkillCatalog();
+// Presentation owns wording and validation. Malformed saved values must not be guessed.
+function skillText(selection, present) {
+  if (selection == null) return "未設定";
+  try {
+    const view = present();
+    if (view.complete && view.text) return view.text;
+  } catch { /* Unreadable selection: keep the rest of the information panel usable. */ }
+  return "未完成・設定を確認してください";
+}
 export function battlerSummary(battler) {
   if (!battler) return "B / D：読み込み待ち";
-  const b = resolveSelection("B", battler.bSelection, bc).selection, definition = b && getBSelectionDefinition(b, bc);
-  const bText = !b ? "未設定" : !definition ? "未完成・設定を確認してください" :
-    [definition.label ?? [definition.triggerLabel, definition.conditionLabel, definition.effectLabel].join(" / "),
-      ...Object.entries(definition.optionAxes).map(([axis, set]) => label(bc.optionSets[set], b.options?.[axis]))].join(" / ");
+  const bText = skillText(battler.bSelection, () => {
+    const validation = validateBSkillSelection(battler.bSelection, { catalog: bc });
+    if (!validation.complete) return validation;
+    const b = resolveSelection("B", battler.bSelection, bc).selection;
+    return { complete: true, text: bSentence(getBSelectionDefinition(b, bc), b.options?.statusId) };
+  });
   return `B：${bText}\nD：${battler.dSelection ? label(D_SKILL_OPTIONS, battler.dSelection.optionId) : "未設定"}`;
 }
-export function duckSummary(duck, displayName = duck?.name) {
-  if (!duck) return "中央の1P DUCKからアヒルを選択してください。";
-  const a = resolveSelection("A", duck.aSelection, ac).selection, c = resolveSelection("C", duck.cSelection, cc).selection;
-  const aText = !a ? "未設定" : [label(getATriggerOptions(duck), a.triggerId), ...(a.effects ?? []).map(leaf => {
-    const effect = ac.effects.find(e => e.id === leaf.effectId);
-    return [effect?.label ?? "不明な効果", effect?.requiresAmount ? label(effect.amountOptions, leaf.amountOptionId) : "",
-      leaf.chanceOptionId ? label(ac.chanceOptions, leaf.chanceOptionId) : ""].filter(Boolean).join(" / ");
-  })].join(" → ");
-  const branchText = branch => (branch?.effects ?? []).map(leaf => {
-    const effect = cc.effects.find(e => e.id === leaf.effectId);
-    return [effect?.label ?? "不明な効果", ...Object.entries(effect?.optionAxes ?? {}).map(([axis, set]) => label(cc.optionSets[set], leaf.options?.[axis])),
-      leaf.chanceOptionId ? label(cc.chanceOptions, leaf.chanceOptionId) : ""].filter(Boolean).join(" / ");
-  }).join(" ＋ ") || "未設定";
-  const s = c?.structure;
-  const cText = !c ? "未設定" : `${c.mode === "special" ? "特殊C" : "通常C"}：` +
-    (s?.kind === "flat" ? branchText(s) : s?.kind === "random" ?
-      (s.branches ?? []).map((b, i) => `分岐${i + 1}：${branchText(b)}`).join(" ／ ") :
-      s?.kind === "hpCondition" ? `HP ${label(cc.optionSets.hpThreshold, s.thresholdOptionId)}以上：${branchText(s.branches?.met)} ／ 未満：${branchText(s.branches?.unmet)}` : "未設定");
-  return `${displayName}\nAT ${duck.stats.AT} / DF ${duck.stats.DF} / SP ${duck.stats.SP}   HP ${calcMaxHPFromStats(duck.stats)}\nダイス：${duck.dice.join(" / ")}\nA：${aText}\nC：${cText}`;
+export function duckSummary(duck) {
+  if (!duck) return "中央の自分側アヒル枠からアヒルを選択してください。";
+  const aText = skillText(duck.aSelection, () => presentASkill(duck, duck.aSelection, { catalog: ac }));
+  const cText = skillText(duck.cSelection, () => presentCSkill(duck.cSelection, { catalog: cc }));
+  return `AT ${duck.stats.AT} / DF ${duck.stats.DF} / SP ${duck.stats.SP}   HP ${calcMaxHPFromStats(duck.stats)}\nダイス：${duck.dice.join(" / ")}\nA：${aText}\nC：${cText}`;
 }

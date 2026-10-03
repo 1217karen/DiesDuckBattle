@@ -23,9 +23,9 @@
       <div class="duckPick opponent" id="p2-duck-slot" aria-label="2P 公開Duck"><img class="duckPlaceholder duckPick__img" alt=""></div>
     </div></div>
     <div class="cell cell--p2Top"><button type="button" id="p2-battler-slot" class="silhouette" aria-label="2P 相手を選択" aria-haspopup="dialog" aria-controls="tray"><img class="figure silhouette__img" alt=""></button></div>
-    <div class="cell cell--p1Info"><section class="infoPanel" aria-label="1P情報"><h2>1P — <span id="self-name">自分</span></h2><p id="load-status" role="status"></p><p class="infoPanel__body" id="p1-battler-info"></p><p class="infoPanel__body infoPanel__body--sub" id="p1-duck-info" aria-live="polite"></p></section></div>
+    <div class="cell cell--p1Info"><section class="infoPanel" aria-label="1P情報"><h2>1P — <span id="self-name">自分</span></h2><p id="load-status" role="status"></p><p class="infoPanel__name" id="p1-battler-name"></p><p class="infoPanel__body" id="p1-battler-info"></p><div class="infoPanel__body--sub"><p class="infoPanel__name" id="p1-duck-name"></p><p class="infoPanel__body" id="p1-duck-info" aria-live="polite"></p></div></section></div>
     <div class="cell cell--midInfo"><a class="midAction" href="setting.html">設定を編集</a><button class="midAction" id="reload-online" type="button" disabled>オンライン設定を再読込</button><p id="vs-reason">自分のDuckと相手を選択してください。</p><p id="battle-result" role="status" aria-live="polite"></p></div>
-    <div class="cell cell--p2Info"><section class="infoPanel" aria-label="2P情報"><h2>2P — <span id="opponent-name">相手を選択</span></h2><p class="infoPanel__body" id="p2-battler-info"></p><p class="infoPanel__body infoPanel__body--sub" id="p2-duck-info"></p></section></div>
+    <div class="cell cell--p2Info"><section class="infoPanel" aria-label="2P情報"><h2>2P — <span id="opponent-name">相手を選択</span></h2><p class="infoPanel__name" id="p2-battler-name"></p><p class="infoPanel__body" id="p2-battler-info"></p><div class="infoPanel__body--sub"><p class="infoPanel__name" id="p2-duck-name"></p><p class="infoPanel__body" id="p2-duck-info"></p></div></section></div>
   </section>
 </main>
 <dialog id="tray" class="tray" aria-labelledby="trayTitle"><div class="tray__header"><h2 id="trayTitle">1P：アヒルを選択</h2><button id="trayClose" type="button" autofocus>閉じる</button></div><div id="trayGrid" class="tray__grid"></div></dialog>

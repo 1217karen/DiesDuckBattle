@@ -45,3 +45,6 @@ button.silhouette { width:100%; border:0; background:transparent; color:inherit;
 .tray--p2 .tray__header { background:#3399ff2e; border-color:#3399ff59; }
 #battle-result { font-size:clamp(16px,2vw,26px); font-weight:900; color:#ffcf60; }
 .vs:not(:disabled) { cursor:pointer; filter:drop-shadow(0 0 10px #ffb40088); }
+
+.infoPanel__name { margin:0 0 4px; font-weight:700; font-size:1.05em; overflow-wrap:anywhere; }
+.infoPanel__name:empty { display:none; }

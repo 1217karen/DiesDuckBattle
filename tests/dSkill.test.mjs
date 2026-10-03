@@ -11,7 +11,7 @@ test("production catalogはself 0～6とenemy 0の完成8択だけ", () => {
   assert.deepEqual(D_SKILL_OPTIONS.map(o => ({ id: o.id, target: o.semantics.target, value: o.semantics.values[0] })), expected);
   for (const option of D_SKILL_OPTIONS) {
     assert.deepEqual(option.semantics, { type: "addDice", target: option.semantics.target, values: [option.semantics.values[0]] });
-    assert.ok(option.label);
+    assert.equal(option.label, `${option.semantics.target === "self" ? "自分" : "相手"}アヒルに【${option.semantics.values[0]}】を追加`);
     assert.ok(Object.isFrozen(option) && Object.isFrozen(option.semantics) && Object.isFrozen(option.semantics.values));
   }
 });

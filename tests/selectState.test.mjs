@@ -65,6 +65,6 @@ test("storage access error is reported", () => {
 test("catalog summaries contain human labels, stats, HP and dice", () => {
   const build=complete(), b=battlerSummary(build.battler), d=duckSummary(build.ducks[0]);
   assert.match(b,/B：/); assert.match(b,/D：/); assert.doesNotMatch(b,/add-self-0/);
-  for (const text of ["基本型","AT 2","DF 2","SP 3","HP 180","ダイス：","A：","C："]) assert.ok(d.includes(text),d);
-  assert.doesNotMatch(d,/damage-enemy|exact:0|effectId/);
+  for (const text of ["AT 2","DF 2","SP 3","HP 180","ダイス：","A：","C："]) assert.ok(d.includes(text),d);
+  assert.doesNotMatch(d,/基本型|damage-enemy|exact:0|effectId/);
 });
