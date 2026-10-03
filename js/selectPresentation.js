@@ -47,14 +47,15 @@ export function fitBattlersToAvoidOverlap(images) {
   for (const img of images) img.closest(".silhouette").style.setProperty("--battlerScale", String(scale));
 }
 
-// Base's measured image height -> --topH, with room for main's labels and central controls.
+// Base's measured image height -> --topH; no label space above the figures.
 export function updateRowSplitByBattlerHeight(grid, images, midStack, availableHeight = grid.getBoundingClientRect().height) {
   const height = Math.max(0, ...images.map(img => img.getBoundingClientRect().height));
   if (!height) return;
   const gridHeight = availableHeight;
-  const required = Math.max(height + 180, midStack.getBoundingClientRect().height + 150);
-  const top = Math.max(220, gridHeight * .4, Math.min(gridHeight * .85, required));
-  grid.style.setProperty("--topH", `${Math.round(top)}px`);
+  // The center cell has 10px bottom padding; reserve only its actual content.
+  const required = Math.max(height, midStack.getBoundingClientRect().height + 10);
+  const top = Math.min(gridHeight * .85, Math.max(gridHeight * .4, required));
+  grid.style.setProperty("--topH", `${Math.ceil(top)}px`);
 }
 
 export function createSelectPresentation(root = document, viewport = window) {
@@ -64,10 +65,10 @@ export function createSelectPresentation(root = document, viewport = window) {
     viewport.cancelAnimationFrame(frame);
     frame = viewport.requestAnimationFrame(() => {
       grid.style.removeProperty("--topH");
-      // Reserve labels and the lower information row, using the actual grid height.
+      // The grid already starts below the common menu. Do not subtract it again.
       const rect = grid.getBoundingClientRect();
-      const availableHeight = Math.max(0, Math.min(rect.height, (viewport.visualViewport?.height ?? viewport.innerHeight) - rect.top - 15));
-      const maxHeight = Math.max(0, availableHeight * .85 - 180);
+      const availableHeight = Math.max(0, Math.min(rect.height, (viewport.visualViewport?.height ?? viewport.innerHeight) - rect.top));
+      const maxHeight = Math.max(0, availableHeight * .85);
       grid.style.setProperty("--battlerMaxHeight", `${maxHeight}px`);
       const images = [...grid.querySelectorAll(".silhouette__img")].filter(img => !img.hidden);
       for (const img of images) {

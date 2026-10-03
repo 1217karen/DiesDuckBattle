@@ -38,7 +38,7 @@ test("real SELECT handlers switch public names and presentation with no P2 Duck 
     listOpponents: async () => opponents.map(({ id, name }) => ({ id, name })),
     getOpponent: async id => opponents.find(o => o.id === id),
   });
-  assert.equal(document.getElementById("p2-duck-name").textContent, "公開Duck");
+  assert.equal(elements.has("p2-duck-name"), false);
   const flush = () => new Promise(resolve => setImmediate(resolve));
   await flush();
   async function choose(index) {
@@ -54,8 +54,8 @@ test("real SELECT handlers switch public names and presentation with no P2 Duck 
     assert.equal(last.id, opponent.publicDuckId);
     assert.equal(last.presentation.battler.standingImageUrl, `${opponent.id}-standing.png`);
     assert.equal(last.presentation.ducks[last.id].iconUrl, `${opponent.id}-public.png`);
-    assert.equal(document.getElementById("p2-duck-name").textContent,
-      opponent.build.ducks.find(d => d.id === opponent.publicDuckId).name);
+    assert.ok(document.getElementById("p2-duck-info").textContent.includes(
+      opponent.build.ducks.find(d => d.id === opponent.publicDuckId).name));
     assert.match(document.getElementById("p2-duck-info").textContent, /AT .*DF .*SP .*HP .*\nダイス：.*\nA：.*\nC：/);
     assert.equal(document.getElementById("tray").open, false);
     assert.equal(document.getElementById("p2-duck-slot").handlers.click, undefined);

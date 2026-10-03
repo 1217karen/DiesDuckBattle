@@ -17,7 +17,6 @@ function renderSelf() {
   const duck = state.build?.ducks.find(d => d.id === state.selectedDuckId);
   const name = duckChoices(state).find(d => d.id === duck?.id)?.name;
   el("p1-duck-info").textContent = state.build ? duckSummary(duck, name) : "保存データを読み込めないため選択できません。";
-  el("duck-name").textContent = name ?? "選択する";
 }
 function renderScreen() {
   renderPresentation("p1", ownPresentation, state.selectedDuckId);
@@ -35,7 +34,6 @@ function renderScreen() {
   el("p2-battler-info").textContent = state.opponent ? `${state.opponent.name}\n${battlerSummary(state.opponent.build.battler)}` : "右側の2P枠から相手を選択してください。";
   const duck = state.opponent?.build.ducks.find(d => d.id === state.opponent.publicDuckId);
   const name = duck?.name || (duck ? `アヒル ${state.opponent.build.ducks.indexOf(duck) + 1}` : null);
-  el("p2-duck-name").textContent = name ?? "公開Duck";
   el("p2-duck-info").textContent = duck ? duckSummary(duck, name) : state.opponent ? "この相手は現在対戦できません。" : "相手を選択してください。";
 }
 let requestVersion = 0, returnFocus = "p1-duck-slot";

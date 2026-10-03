@@ -73,3 +73,17 @@ test("standing images retain natural size and only shrink to available width or 
   assert.deepEqual(battlerSize(300, 600, 600, 300), { width: 150, height: 300 });
   assert.deepEqual(battlerSize(500, 800, 0, 0), { width: 0, height: 0 });
 });
+
+
+test("row split uses image height without reserving old label space", async () => {
+  const { updateRowSplitByBattlerHeight } = await import("../js/selectPresentation.js");
+  let top;
+  const grid = { style: { setProperty: (_, value) => { top = Number.parseFloat(value); } } };
+  const images = [{ getBoundingClientRect: () => ({ height: 800 }) }];
+  const middle = { getBoundingClientRect: () => ({ height: 364 }) };
+  updateRowSplitByBattlerHeight(grid, images, middle, 1000);
+  assert.equal(top, 800);
+  images[0].getBoundingClientRect = () => ({ height: 300 });
+  updateRowSplitByBattlerHeight(grid, images, middle, 700);
+  assert.equal(top, 374);
+});
