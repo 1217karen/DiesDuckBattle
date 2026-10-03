@@ -74,26 +74,30 @@ export function changeAClause(selection, index, key, value, duck, catalog) {
   let next = { ...old, options: { ...old.options } };
   if (key === "targetId") {
     if (!definitions.some(d => d.id === old.effectId && d.variants.some(r => r.targetId === value))) return selection;
-    next = { effectId: old.effectId, targetId: value, options: {} };
+    next.targetId = value;
   } else if (key === "effectId") {
     if (!definitions.some(d => d.id === value)) return selection;
     next = { effectId: value, targetId: "", options: {} };
   } else {
     const fields = effectSelectionFields(definitions, old).fields;
     if (!fields.find(f => f.key === key)?.options.some(o => o.id === value)) return selection;
-    if (key === "statusId") { next.statusId = value; next.options = {}; }
+    if (key === "statusId") next.statusId = value;
     else if (key.startsWith("options.")) next.options[key.slice(8)] = value;
     else return selection;
   }
-  // A uniquely determined clause is fixed text; all other clauses require a choice.
-  for (let pass = 0; pass < 2; pass++) {
-    for (const f of effectSelectionFields(definitions, next).fields) {
-      const axis = f.key.startsWith("options.") ? f.key.slice(8) : null;
-      const current = axis ? next.options[axis] : next[f.key];
-      if (!current && f.options.length === 1) {
-        if (axis) next.options[axis] = f.options[0].id;
-        else next[f.key] = f.options[0].id;
-      }
+  // Re-evaluate each downstream field after its parent. Keep legal saved values;
+  // only impossible values are cleared or replaced by the sole legal candidate.
+  const fields = effectSelectionFields(definitions, next).fields;
+  const parentIndex = key === "effectId" ? -1 : fields.findIndex(f => f.key === key);
+  let indexInFields = parentIndex + 1;
+  while (indexInFields < effectSelectionFields(definitions, next).fields.length) {
+    const f = effectSelectionFields(definitions, next).fields[indexInFields++];
+    const axis = f.key.startsWith("options.") ? f.key.slice(8) : null;
+    const current = axis ? next.options[axis] : next[f.key];
+    if (!f.options.some(option => option.id === current)) {
+      const replacement = f.options.length === 1 ? f.options[0].id : "";
+      if (axis) next.options[axis] = replacement;
+      else next[f.key] = replacement;
     }
   }
   return { ...selection, effects: selection.effects.map((leaf, i) => i === index ? next : leaf) };

@@ -225,10 +225,11 @@ test("A sentence: effect first, only variable clauses are selects, no duplicate 
   assert.deepEqual(previews(),[]);
 });
 
-test("A sentence: direction and single amount use fixed prose; ambiguous direction stays selectable",async()=>{
+test("A sentence: direction and single amount use fixed prose; ambiguous direction stays neutral fixed prose",async()=>{
   const p=await page(initial({triggerId:"exact:1",effects:[heal]}));
   p.choose("a-effect-0","change-ap");
-  assert.equal(p.get("a-effect-0-options.direction").tagName,"select");
+  assert.equal(p.get("a-effect-0-options.direction").tagName,"span");
+  assert.equal(p.get("a-effect-0-options.direction").textContent,"増加/減少する");
   p.choose("a-effect-0-targetId","enemy");
   assert.equal(p.get("a-effect-0-options.direction").tagName,"span");
   assert.equal(p.get("a-effect-0-options.direction").textContent,"減少する");
@@ -289,4 +290,17 @@ test("A face 0..6/all and comparison controls; natural formal all and cost wordi
  const saved=p.save();const {presentASkill}=await import("../js/aSkillPresentation.js");
  assert.match(presentASkill(saved.ducks[0],saved.ducks[0].aSelection).text,/^全ての出目で、/);
  assert.ok(!/pt|ポイント/.test(p.get("a-metrics").textContent));assert.match(p.get("a-metrics").textContent,/使用可能コスト.*必要コスト/);
+});
+
+test("A UI keeps heal/status amounts on parent changes and never offers a direction select",async()=>{
+ const b=initial({triggerId:"exact:1",effects:[{effectId:"heal",targetId:"self",options:{amount:"amount-10"}}]}),before=structuredClone(b),p=await page(b);
+ assert.deepEqual(p.save(),before);p.choose("a-effect-0-targetId","enemy");
+ assert.equal(sentenceText(p.get("a-sentence-0")),"相手のHPを10回復する（デメリット）");
+ p.choose("a-effect-0","grant-status");p.choose("a-effect-0-targetId","self");p.choose("a-effect-0-statusId","crack");p.choose("a-effect-0-options.amount","amount-2");
+ p.choose("a-effect-0-targetId","enemy");assert.equal(sentenceText(p.get("a-sentence-0")),"相手に亀裂を2付与する");
+ for(const effect of ["change-ap","change-next-at"]) {
+  p.choose("a-effect-0",effect);assert.equal(p.get("a-effect-0-options.direction").textContent,"増加/減少する");
+  for(const [target,text] of [["self","増加する"],["enemy","減少する"]]) {p.choose("a-effect-0-targetId",target);assert.equal(p.get("a-effect-0-options.direction").tagName,"span");assert.equal(p.get("a-effect-0-options.direction").textContent,text);}
+ }
+ assert.deepEqual(b,before);
 });

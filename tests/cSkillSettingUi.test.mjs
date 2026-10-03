@@ -178,3 +178,20 @@ test("obsolete C effect IDs and directions remain unavailable saved choices", as
     p.get("save").handlers.click();assert.ok(p.all().some(e=>e.textContent==="保存できない設定があります"));
   }
 });
+
+test("C normal singleton clauses are unframed text; turn period/increment remain selects",async()=>{
+ const p=await page(initial(selection([{effectId:"turn-damage",targetId:"enemy",options:{baseAmount:"stepBaseAmount-30",everyTurns:"stepEveryTurns-5",stepAmount:"stepAmount-10"}}])));
+ for(const [key,text] of [["targetId","相手"],["options.baseAmount","30"]]) {
+  const node=p.get(control+"-"+key);assert.equal(node.tagName,"span");assert.equal(node.textContent,text);assert.equal(node.className,"c-fixed-clause");assert.equal(node.parent.className,"c-sentence-controls");
+ }
+ assert.equal(p.get(control+"-options.everyTurns").tagName,"select");assert.equal(p.get(control+"-options.stepAmount").tagName,"select");
+ assert.deepEqual(p.get(control+"-sentence").children.filter(e=>e.tagName==="select").map(e=>e.id),[control+"-options.everyTurns",control+"-options.stepAmount"]);
+ p.choose(control,"grant-status");assert.equal(p.get(control+"-options.amount").className,"c-fixed-clause");
+ p.choose(control,"grant-on-hit");p.choose(control+"-statusId","focus");assert.equal(p.get(control+"-targetId").className,"c-fixed-clause");
+});
+test("C parent edits retain legal amount/duration and update direction without changing stored data on reads",async()=>{
+ const c=selection([{effectId:"change-at",targetId:"self",options:{amount:"turnATAmount-3",duration:"turnCount-4",direction:"increase"}}]),before=structuredClone(c),p=await page(initial(c));
+ assert.deepEqual(p.save().ducks[0].cSelection,before);p.choose(control+"-targetId","enemy");
+ const saved=p.save().ducks[0].cSelection;assert.deepEqual(saved.structure.effects[0].options,{amount:"turnATAmount-3",duration:"turnCount-4",direction:"decrease"});
+ assert.deepEqual(c,before);
+});

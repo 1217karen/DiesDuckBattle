@@ -108,7 +108,7 @@ function cField(box, text, id, items, current, onChange, placeholder) {
   if (legal.length !== 1) { field(box, text, id, items, current, onChange, placeholder); return; }
   const only = legal[0], valid = current === only.id;
   const value = el("span", valid ? labelText(only.label)
-    : `${current ? `現在は使用不可：${current}` : "未選択"}（固定値：${labelText(only.label)}）`, "c-fixed-value");
+    : `${current ? `現在は使用不可：${current}` : "未選択"}（固定値：${labelText(only.label)}）`, valid ? "c-fixed-clause" : "c-fixed-value");
   value.id = id;
   if (valid) { box.append(value); return; }
   const control = el("div", null, "c-fixed-control");
@@ -143,7 +143,7 @@ function renderCEffect(box, chosen, replace, id, context) {
       fixed.id = id + "-" + key; sentence.append(fixed);
     } else if (chosen.effectId === "grant-on-hit" && key === "targetId") {
       const valid = options.length === 1 && options[0].id === current;
-      const fixed = el("span", valid ? options[0].label : current ? `現在は使用不可：${current}（状態を再選択）` : "対象（状態から決定）", "c-fixed-value");
+      const fixed = el("span", valid ? options[0].label : current ? `現在は使用不可：${current}（状態を再選択）` : "対象（状態から決定）", valid ? "c-fixed-clause" : "c-fixed-value");
       fixed.id = id + "-" + key; sentence.append(fixed);
     } else if (options.length === 1) cField(sentence, f.label, id + "-" + key, options, current, value => put(key, value));
     else aChoice(sentence, id + "-" + key, options, current, value => put(key, value), f.label, current, f.label);
@@ -346,6 +346,14 @@ function renderA(duck, box) {
         const f = view.fields.find(field => field.key === key), current = currentValue(key);
         const label = { targetId: "対象", statusId: "状態種別", "options.amount": "効果量", "options.direction": "増減" }[key] ?? f?.label ?? key;
         const options = (f?.options ?? []).map(option => ({ ...option, label: aFieldOptionText(key, option) }));
+        if (key === "options.direction") {
+          const valid = options.length === 1 && options[0].id === current;
+          const fixed = el("span", valid ? options[0].label : "増加/減少する", "a-fixed-clause");
+          fixed.id = `a-effect-${slot}-${key}`; sentence.append(fixed);
+          if (current && !options.some(option => option.id === current))
+            sentence.append(el("span", `現在は使用不可：${current}（対象を再選択してください）`, "warning"));
+          return;
+        }
         aSentenceChoice(sentence, `a-effect-${slot}-${key}`, options, current, value => change(key, value), label,
           key === "statusId" ? aStatusText(current) : current);
       };

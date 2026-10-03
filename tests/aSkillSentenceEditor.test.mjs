@@ -78,12 +78,12 @@ test("dice-only candidates follow exact and skips 1/3/4/5 survive cancel",()=>{
   }
 });
 
-test("parent edits clear downstream only in that leaf; external dice/trigger changes and invalid legacy reads do not repair",()=>{
+test("parent edits retain legal downstream values only in that leaf; external dice/trigger changes and invalid legacy reads do not repair",()=>{
   let s={triggerId:"exact:1",effects:[v2("grant-crack-enemy",3),v2("cancel-dice1-ap")]};
   const old=structuredClone(s);
-  s=edit(s,0,"targetId","self");assert.equal(s.effects[0].statusId,undefined);assert.equal(s.effects[0].options.amount,undefined);
+  s=edit(s,0,"targetId","self");assert.equal(s.effects[0].statusId,"crack");assert.equal(s.effects[0].options.amount,"amount-3");
   assert.deepEqual(s.effects[1],old.effects[1]);
-  s=edit(s,0,"effectId","heal");assert.equal(s.effects[0].statusId,undefined);assert.equal(s.effects[0].options.amount,undefined);
+  s=edit(s,0,"effectId","heal");assert.equal(s.effects[0].statusId,undefined);assert.equal(s.effects[0].options.amount,"");
   const invalid={...old,triggerId:"all"};const copy=structuredClone(invalid);
   aEditorCatalog(duck,invalid,catalog);assert.deepEqual(invalid,copy);assert.equal(compileASkill(duck,invalid).ok,false);
   for(const leaf of [{effectId:"ap-self-decrease",amountOptionId:"amount-1"}, {...v2("heal-self",5),options:{amount:"invalid"}}, {...v2("heal-self",5),chanceOptionId:"50"}]) {
@@ -114,4 +114,30 @@ test("trigger edits retain exact variant identity without changing compiler or n
     assert.equal(compileASkill(duck,changeATrigger(changed,`exact:${oldFace}`,duck,catalog)).ok,true);
   }
   const s=start();assert.equal(changeATrigger(s,"exact:0",duck,catalog),s);
+});
+
+test("HP target edits preserve amount10; status target/status edits preserve legal amount and unrelated leaf",()=>{
+ const other=v2("cancel-dice1-ap"),s={triggerId:"exact:1",effects:[v2("heal-self",10),other]},before=structuredClone(s);
+ const changed=edit(s,0,"targetId","enemy");assert.deepEqual(changed.effects[0],v2("heal-enemy",10));assert.deepEqual(changed.effects[1],other);assert.deepEqual(s,before);
+ const grant={triggerId:"exact:1",effects:[v2("grant-crack-self",2),other]};
+ const enemy=edit(grant,0,"targetId","enemy");assert.deepEqual(enemy.effects[0],v2("grant-crack-enemy",2));
+ const status=edit(enemy,0,"statusId","focus");assert.equal(status.effects[0].options.amount,"amount-2");assert.equal(status.effects[0].targetId,"enemy");assert.deepEqual(status.effects[1],other);
+});
+test("parent edits clear only impossible downstream values and update determined direction",()=>{
+ const s={triggerId:"exact:1",effects:[{effectId:"grant-status",targetId:"self",statusId:"obsolete",options:{amount:"amount-2"}}]};
+ const changed=edit(s,0,"targetId","enemy");assert.equal(changed.effects[0].statusId,"");assert.equal(changed.effects[0].options.amount,"amount-2");
+ const invalidAmount={triggerId:"exact:1",effects:[{effectId:"grant-status",targetId:"self",statusId:"crack",options:{amount:"obsolete"}}]};
+ const fixed=edit(invalidAmount,0,"statusId","focus");assert.equal(fixed.effects[0].options.amount,"");assert.equal(fixed.effects[0].targetId,"self");
+ const ap={triggerId:"exact:1",effects:[{effectId:"change-ap",targetId:"self",options:{amount:"amount-2",direction:"increase"}}]};
+ const enemy=edit(ap,0,"targetId","enemy");assert.deepEqual(enemy.effects[0].options,{amount:"amount-2",direction:"decrease"});
+ assert.deepEqual(edit(enemy,0,"targetId","self"),ap);
+});
+test("trusted narrower downstream choices clear multi-option mismatches or fill a singleton",()=>{
+ for(const amounts of [["amount-5","amount-7"],["amount-5"]]) {
+  const custom=createASkillCatalog();
+  custom.selectionEffects.find(d=>d.id==="heal").variants.find(r=>r.targetId==="enemy").optionAxes.amount=amounts.map(id=>({id,label:id}));
+  const s={triggerId:"exact:1",effects:[v2("heal-self",10)]},before=structuredClone(s);
+  const next=changeAClause(s,0,"targetId","enemy",duck,custom);
+  assert.equal(next.effects[0].options.amount,amounts.length===1?"amount-5":"");assert.deepEqual(s,before);
+ }
 });
