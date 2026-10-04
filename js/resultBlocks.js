@@ -250,7 +250,7 @@ function eventToLines(event, context) {
       return [{ kind: `note ${event.actor?.toLowerCase() ?? ""}`, text: `${escapeHTML(owner ?? actor)}の${label}！${renderSkillDisplayName(event.skill?.skillName, event.skill?.skillRuby)}` }];
     }
     case "cSkillActivated":
-      return [{ kind: "note", text: `APチャージ完了！<br>${actor}のチャージスキル！${renderSkillDisplayName(event.skill?.skillName, event.skill?.skillRuby)}` }];
+      return [{ kind: "note", text: `<span class="ap-charge-complete">APチャージ完了！</span><br>${actor}のチャージスキル！${renderSkillDisplayName(event.skill?.skillName, event.skill?.skillRuby)}` }];
     case "timedRuleTriggered": return [{ kind: "note", text: `${actor}の持続スキル効果！` }];
     case "roll": {
       const summaries = { 1: "自分のAP+1", 2: "通常攻撃2回", 3: "自分のHP3回復", 4: "自分に反撃+1", 5: "相手のAP-1", 6: "DF無視攻撃＋反動3ダメージ" };

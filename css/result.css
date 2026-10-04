@@ -151,7 +151,12 @@ img.logDuckIcon { object-fit: contain; }
   .btn { min-width: 96px; padding: 13px 12px; }
 }
 
-.skill-display-name { font-size:1.2em; overflow-wrap:anywhere; }
+.skill-display-name { font-size:1.4em; font-weight:400; overflow-wrap:anywhere; }
+.ap-charge-complete {
+  font-size: .85em;
+  font-weight: 400;
+  opacity: .55;
+}
 .skill-display-name rt { white-space:pre; }
 
 .quote-text-small { font-size:0.8em; }
