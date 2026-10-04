@@ -8,11 +8,14 @@
   <link rel="stylesheet" href="css/index.css">
   <link rel="stylesheet" href="css/auth.css">
   <link rel="stylesheet" href="css/common-menu.css">
+  <link rel="stylesheet" href="css/page-loading.css">
 </head>
-<body class="has-common-menu">
+<body class="has-common-menu page-loading">
+  <script src="js/pageLoadGate.js"></script>
+  <noscript><p class="page-load-noscript">このページを表示するにはJavaScriptを有効にしてください。</p></noscript>
   <header id="common-menu" class="common-menu"><details><summary><span class="common-menu__icon" aria-hidden="true">☰</span><span data-identity role="status"></span><span class="common-menu__label">メニュー</span></summary><nav aria-label="共通メニュー"></nav><p data-feedback role="status" hidden></p></details></header>
   <script src="js/menuDisplayCache.js"></script>
-  <main class="home">
+  <main data-page-content class="home">
     <header class="home__header">
       <h1>DIES DUCK BATTLE</h1>
       <p class="home__notice">開発版 — 現在開発中です。</p>
@@ -26,11 +29,11 @@
     <p id="home-feedback" role="status"></p>
     <noscript>認証とメニューの表示にはJavaScriptを有効にしてください。</noscript>
   </main>
-  <dialog id="auth-dialog" class="auth-dialog" aria-labelledby="auth-dialog-title">
+  <dialog data-page-content id="auth-dialog" class="auth-dialog" aria-labelledby="auth-dialog-title">
     <div class="auth-dialog__head"><h2 id="auth-dialog-title">新規登録・ログイン</h2><button id="auth-close" type="button">閉じる</button></div>
     <div id="auth-root" class="auth auth--embedded"></div>
   </dialog>
   <script type="module" src="js/commonMenu.js"></script>
-  <script type="module" src="js/indexPage.js"></script>
+  <script src="js/pageEntry.js" data-page-src="js/indexPage.js"></script>
 </body>
 </html>

@@ -1,0 +1,15 @@
+/* Preserve layout boxes (especially SELECT measurements) while hiding unfinished UI. */
+body.page-loading [data-page-content],
+body.page-loading [data-page-content] *,
+body.page-load-failed [data-page-content],
+body.page-load-failed [data-page-content] * { visibility: hidden !important; }
+.page-load-indicator, .page-load-error {
+  position: fixed; inset: 0; z-index: 90;
+  display: grid; place-content: center; margin: 0; padding: 24px;
+  text-align: center; font: 13px/1.7 system-ui, sans-serif; color: #666;
+}
+body.has-common-menu .page-load-indicator,
+body.has-common-menu .page-load-error { top: var(--common-menu-height, 52px); }
+.page-load-indicator { pointer-events: none; }
+.page-load-error { color: #923c3c; }
+.page-load-noscript { padding: 24px; text-align: center; }

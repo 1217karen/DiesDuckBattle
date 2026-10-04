@@ -1,3 +1,4 @@
+import { finishPageLoad } from "./pageLoad.js";
 import { SKILL_NAME_MAX, SKILL_RUBY_MAX } from "./skillLabels.js";
 import { hasName, duckNameIssues } from "./nameValidation.js";
 import { effectSelectionFields } from "./effectSelectionCatalog.js";
@@ -633,3 +634,5 @@ online = await mountOnlineEditor({
   },
   onState(next) { state.dirty = next.dirty; },
 });
+
+finishPageLoad();

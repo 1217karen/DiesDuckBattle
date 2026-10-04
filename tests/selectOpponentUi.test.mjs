@@ -31,7 +31,7 @@ test("real SELECT handlers switch public names and presentation with no P2 Duck 
   let controller, streak = 0;
   const ui = await readFile(new URL("../js/select.js", import.meta.url), "utf8");
   await vm.runInNewContext(`(async () => {${ui.replace(/^import .*;\r?\n/gm, "")}\n})()`, {
-    ...selectState, document, window:{addEventListener() {}},
+    finishPageLoad() {}, ...selectState, document, window:{addEventListener() {}},
     requireLoginPage: async () => {}, renderChoices, FIXED_IMAGES,
     getSupabaseClient:async()=>({auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}}),
     createOnlineSelectController: args => (controller = createOnlineSelectController(args)),

@@ -8,10 +8,13 @@
   <link rel="stylesheet" href="css/result.css">
   <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/page-loading.css">
 </head>
-<body>
-  <div class="whiteStripe" aria-hidden="true"></div>
-  <header class="header">
+<body class="page-loading">
+  <script src="js/pageLoadGate.js"></script>
+  <noscript><p class="page-load-noscript">このページを表示するにはJavaScriptを有効にしてください。</p></noscript>
+  <div data-page-content class="whiteStripe" aria-hidden="true"></div>
+  <header data-page-content class="header" id="battle-header">
     <div class="headerInner">
       <div class="side left">
         <div class="battlerIcon placeholderIcon" id="p1BattlerIcon" aria-hidden="true">1P</div>
@@ -33,14 +36,14 @@
       </div>
     </div>
   </header>
-  <main class="main"><div class="logArea" id="logArea" aria-live="polite"></div></main>
-  <footer class="footer">
+  <main data-page-content class="main"><div class="logArea" id="logArea" aria-live="polite"></div></main>
+  <footer data-page-content class="footer">
     <div><button class="btn" id="btnBack" type="button" hidden>前の画面に戻る</button></div>
     <div class="footerActions">
       <button class="btn primary" id="btnNext" type="button">バトルを進める</button>
       <button class="btn primary" id="btnAll" type="button">全表示</button>
     </div>
   </footer>
-  <script type="module" src="js/result.js"></script>
+  <script src="js/pageEntry.js" data-page-src="js/result.js"></script>
 </body>
 </html>

@@ -7,12 +7,15 @@
   <title>バトル履歴 | DiesDuckBattle</title>
   <link rel="stylesheet" href="css/storage.css">
   <link rel="stylesheet" href="css/common-menu.css">
+  <link rel="stylesheet" href="css/page-loading.css">
 </head>
-<body class="has-common-menu">
+<body class="has-common-menu page-loading">
+  <script src="js/pageLoadGate.js"></script>
+  <noscript><p class="page-load-noscript">このページを表示するにはJavaScriptを有効にしてください。</p></noscript>
 <header id="common-menu" class="common-menu"><details><summary><span class="common-menu__icon" aria-hidden="true">☰</span><span data-identity role="status"></span><span class="common-menu__label">メニュー</span></summary><nav aria-label="共通メニュー"></nav><p data-feedback role="status" hidden></p></details></header>
   <script src="js/menuDisplayCache.js"></script>
 
-  <main class="wrap">
+  <main data-page-content class="wrap">
     <header class="head">
       <h1 class="title">💥バトル履歴💥</h1>
       <p class="hint">保存済みの戦闘結果を30件ずつ表示します。</p>
@@ -45,7 +48,7 @@
     </nav>
   </main>
 
-  <script type="module" src="js/storagePage.js"></script>
+  <script src="js/pageEntry.js" data-page-src="js/storagePage.js"></script>
 <script type="module" src="js/commonMenu.js"></script>
 </body>
 </html>

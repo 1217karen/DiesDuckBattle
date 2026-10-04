@@ -1,3 +1,4 @@
+import { finishPageLoad } from "./pageLoad.js";
 import { createBattleResultStorage } from "./battleResultStorage.js";
 import { getSupabaseClient } from "./authRuntime.js";
 import { createOnlinePlayerStorage } from "./onlinePlayerStorage.js";
@@ -10,6 +11,12 @@ let page = 1;
 let requestVersion = 0;
 let gameAccountId = null;
 let ready = false;
+let initialRendered = false;
+function finishInitialRender() {
+  if (initialRendered) return;
+  initialRendered = true;
+  finishPageLoad();
+}
 let eno = null;
 const favoritePending = new Set();
 
@@ -67,10 +74,12 @@ async function render() {
   const ticket = ++requestVersion;
   el("prev").disabled = true;
   el("next").disabled = true;
-  const result = await storage.list({ page, pageSize: PAGE_SIZE,
+  let result;
+  try { result = await storage.list({ page, pageSize: PAGE_SIZE,
     order: el("order").value === "asc" ? "asc" : "desc", eno,
     outcome: eno === null ? "all" : el("outcome").value,
     favoritesOnly: gameAccountId !== null && el("favorites").value === "only", gameAccountId });
+  } catch { result = { ok: false }; }
   if (ticket !== requestVersion) return;
   const list = el("list");
   list.replaceChildren();
@@ -78,12 +87,14 @@ async function render() {
   if (!result.ok) {
     el("empty").hidden = true;
     updatePager({ page: 1, totalPages: 0 });
+    finishInitialRender();
     return;
   }
   page = result.page;
   el("empty").hidden = result.total !== 0;
   for (const record of result.records) list.append(buildRow(record));
   updatePager(result);
+  finishInitialRender();
 }
 
 function buildRow(record) {

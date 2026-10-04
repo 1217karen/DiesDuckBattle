@@ -1,3 +1,4 @@
+import { finishPageLoad } from "./pageLoad.js";
 import { FIXED_IMAGES } from "./fixedImages.js";
 import { buildBlocks, numberOr } from "./resultBlocks.js";
 import { setHeaderIcon, attachImageFallbacks, attachCutinImages } from "./resultPresentation.js";
@@ -11,21 +12,26 @@ const btnBack = el("btnBack");
 const battleId = new URLSearchParams(location.search).get("battleId");
 btnNext.disabled = true;
 btnAll.disabled = true;
-const loaded = battleId ? await createBattleResultStorage().load(battleId) : { ok: false, status: "invalid-id" };
+try {
+  const loaded = battleId ? await createBattleResultStorage().load(battleId) : { ok: false, status: "invalid-id" };
 
-if (!loaded.ok) {
-  const messages = {
-    "invalid-id": "battleId が指定されていません。",
-    "not-found": "指定された戦闘結果が見つかりません。",
-    corrupt: "戦闘結果を読み込めませんでした。",
-    "server-error": "戦闘結果をサーバーから取得できませんでした。ログイン状態と通信状況を確認して再読み込みしてください。",
-  };
-  showError(messages[loaded.status] ?? "戦闘結果を表示できませんでした。");
-} else {
-  btnNext.disabled = false;
-  btnAll.disabled = false;
-  setup(loaded.record);
+  if (!loaded.ok) {
+    const messages = {
+      "invalid-id": "battleId が指定されていません。",
+      "not-found": "指定された戦闘結果が見つかりません。",
+      corrupt: "戦闘結果を読み込めませんでした。",
+      "server-error": "戦闘結果をサーバーから取得できませんでした。ログイン状態と通信状況を確認して再読み込みしてください。",
+    };
+    showError(messages[loaded.status] ?? "戦闘結果を表示できませんでした。");
+  } else {
+    btnNext.disabled = false;
+    btnAll.disabled = false;
+    setup(loaded.record);
+  }
+} catch {
+  showError("戦闘結果をサーバーから取得できませんでした。通信状況を確認して再読み込みしてください。");
 }
+finishPageLoad();
 
 function setup(record) {
   const start = record.events.find(event => event?.type === "battleStart");
@@ -123,6 +129,8 @@ function updateHeader(block, maxHP) {
 }
 
 function showError(message) {
+  // A failed record has no valid battle header; never reveal placeholder stats.
+  el("battle-header").hidden = true;
   logArea.innerHTML = "";
   const error = document.createElement("div");
   error.className = "errorMessage";

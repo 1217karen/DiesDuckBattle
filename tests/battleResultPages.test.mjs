@@ -14,7 +14,7 @@ function dom(){
 }
 async function page(file,context){
   const source=(await readFile(new URL('../js/'+file+'.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
-  return vm.runInNewContext('(async()=>{'+source+'})()',context);
+  return vm.runInNewContext('(async()=>{'+source+'})()', { finishPageLoad() {}, ...context });
 }
 const tick=()=>new Promise(r=>setImmediate(r));
 test('result page waits for server record then initializes unchanged renderer',async()=>{

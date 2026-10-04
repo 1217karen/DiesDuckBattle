@@ -1,3 +1,4 @@
+import { finishPageLoad } from "./pageLoad.js";
 import { duckChoices, battleStartStatus, battlerSummary, duckSummary, createSelectState } from "./selectState.js";
 import { getSupabaseClient } from "./authRuntime.js";
 import { createOnlineSelectService } from "./onlineSelectService.js";
@@ -130,9 +131,11 @@ async function initialize() {
       window.removeEventListener("focus", recheck); window.removeEventListener("pageshow", recheck); document.removeEventListener("visibilitychange", recheck);
     });
     await online.load();
+    renderScreen();
   } catch {
     current = { busy: "", message: "オンライン対戦を準備できませんでした。通信状況を確認し、ページを再読み込みしてください。", canStart: false };
     renderScreen();
   }
 }
-void initialize();
+await initialize();
+finishPageLoad();

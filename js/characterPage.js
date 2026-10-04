@@ -1,3 +1,4 @@
+import { finishPageLoad } from "./pageLoad.js";
 import { presentCSkill } from "./cSkillPresentation.js";
 import { hasName } from "./nameValidation.js";
 import { FIXED_IMAGES, setImageFromCandidates } from "./fixedImages.js";
@@ -197,3 +198,5 @@ online = await mountOnlineEditor({
   },
   onState(state) { onlineState = state; battlerNameInput.disabled = !state.canEdit; if (!state.canEdit) picker.close(); updateValidation(); },
 });
+
+finishPageLoad();

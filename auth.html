@@ -8,18 +8,21 @@
   <link rel="stylesheet" href="css/index.css">
   <link rel="stylesheet" href="css/auth.css">
   <link rel="stylesheet" href="css/common-menu.css">
+  <link rel="stylesheet" href="css/page-loading.css">
 </head>
-<body class="has-common-menu">
+<body class="has-common-menu page-loading">
+  <script src="js/pageLoadGate.js"></script>
+  <noscript><p class="page-load-noscript">このページを表示するにはJavaScriptを有効にしてください。</p></noscript>
 <header id="common-menu" class="common-menu"><details><summary><span class="common-menu__icon" aria-hidden="true">☰</span><span data-identity role="status"></span><span class="common-menu__label">メニュー</span></summary><nav aria-label="共通メニュー"></nav><p data-feedback role="status" hidden></p></details></header>
   <script src="js/menuDisplayCache.js"></script>
-<main class="auth">
+<main data-page-content class="auth">
   <header><a href="index.html">← 開発版ホーム</a><p class="brand">DIES DUCK BATTLE</p>
     <h1>新規登録・ログイン</h1><p>ENoとパスワードで、あなたのアカウントへ。</p></header>
   <div id="auth-root" aria-live="polite"></div>
   <p class="hint">現在は認証機能の確認用です。ログインしても、端末に保存されたゲームデータの送信・削除は行いません。</p>
   <noscript>この画面を使うにはJavaScriptを有効にしてください。</noscript>
 </main>
-<script type="module" src="js/authPage.js"></script>
+<script src="js/pageEntry.js" data-page-src="js/authPage.js"></script>
 <script type="module" src="js/commonMenu.js"></script>
 </body>
 </html>

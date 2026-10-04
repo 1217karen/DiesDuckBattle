@@ -7,11 +7,14 @@
   <link rel="stylesheet" href="css/character.css">
   <link rel="stylesheet" href="css/common-menu.css">
   <link rel="stylesheet" href="css/online-editor.css">
+  <link rel="stylesheet" href="css/page-loading.css">
 </head>
-<body class="has-common-menu">
+<body class="has-common-menu page-loading">
+  <script src="js/pageLoadGate.js"></script>
+  <noscript><p class="page-load-noscript">このページを表示するにはJavaScriptを有効にしてください。</p></noscript>
 <header id="common-menu" class="common-menu"><details><summary><span class="common-menu__icon" aria-hidden="true">☰</span><span data-identity role="status"></span><span class="common-menu__label">メニュー</span></summary><nav aria-label="共通メニュー"></nav><p data-feedback role="status" hidden></p></details></header>
   <script src="js/menuDisplayCache.js"></script>
-  <main class="character-shell">
+  <main data-page-content class="character-shell">
     <header class="page-header">
       <p class="eyebrow">DIES DUCK BATTLE</p>
       <h1>CHARACTER SETTING</h1>
@@ -19,7 +22,7 @@
       <p class="muted">ログイン中のENoへ表示設定を保存します。</p>
       <a class="back-link" href="setting.html">← 戦闘設定へ</a>
     </header>
-    <p id="load-message" role="status">表示設定を読み込んでいます…</p>
+    <p id="load-message" role="status"></p>
     <section id="online-edit-status" class="online-edit-status" aria-label="オンライン保存状態"></section>
     <p class="muted">この画面はオンライン設定を編集します。保存後、キャラクター選択で再読み込みして対戦に使用できます。</p>
     <noscript>表示設定ページを使用するにはJavaScriptを有効にしてください。</noscript>
@@ -48,11 +51,11 @@
     </div>
   </main>
 
-  <dialog id="icon-picker" class="icon-picker">
+  <dialog data-page-content id="icon-picker" class="icon-picker">
     <div class="picker-header"><div><strong>セリフのアイコン</strong><p>未登録の追加枠は選択できません。</p></div><button id="picker-close" type="button">閉じる</button></div>
     <div id="picker-list" class="picker-list"></div>
   </dialog>
-  <script type="module" src="js/characterPage.js"></script>
+  <script src="js/pageEntry.js" data-page-src="js/characterPage.js"></script>
 <script type="module" src="js/commonMenu.js"></script>
 </body>
 </html>

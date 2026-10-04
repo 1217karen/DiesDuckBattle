@@ -1,3 +1,4 @@
+import { finishPageLoad } from "./pageLoad.js";
 import { getAuthRuntime } from "./authRuntime.js";
 import { mountAuthView } from "./authView.js";
 import { menuModel } from "./commonMenuModel.js";
@@ -32,23 +33,30 @@ try {
   });
   let menuBuilt = false;
   controller.subscribe(state => {
-    const known = state.ready && state.sessionKnown;
-    document.getElementById("home-guest").hidden = !known || state.signedIn;
-    document.getElementById("home-game").hidden = !known || !state.signedIn;
-    document.getElementById("home-status").textContent = !known ? (state.ready ? state.sessionMessage : "")
-      : state.signedIn ? menuModel(state).identity : "ログイン、または新規登録してはじめましょう。";
-    const feedback = document.getElementById("home-feedback");
-    feedback.textContent = state.registeredEno ? "登録済みのENo：" + state.registeredEno + "。ENoを控えてください。" : state.messageSource === "logout" ? state.message : "";
-    if (!menuBuilt && known && state.signedIn) {
-      menuBuilt = true;
-      document.getElementById("home-game").replaceChildren(...menuModel(state).items.filter(item => item.href !== "index.html").map(item => {
-        const el = document.createElement(item.href ? "a" : "span");
-        el.className = "home__link"; el.textContent = item.label;
-        if (item.href) el.href = item.href; else el.setAttribute("aria-disabled", "true");
-        return el;
-      }));
+    try {
+      const known = state.ready && state.sessionKnown;
+      document.getElementById("home-guest").hidden = !known || state.signedIn;
+      document.getElementById("home-game").hidden = !known || !state.signedIn;
+      document.getElementById("home-status").textContent = !known ? (state.ready ? "認証機能を読み込めませんでした。通信状況を確認して再読み込みしてください。" : "")
+        : state.signedIn ? menuModel(state).identity : "ログイン、または新規登録してはじめましょう。";
+      const feedback = document.getElementById("home-feedback");
+      feedback.textContent = state.registeredEno ? "登録済みのENo：" + state.registeredEno + "。ENoを控えてください。" : state.messageSource === "logout" ? state.message : "";
+      if (!menuBuilt && known && state.signedIn) {
+        menuBuilt = true;
+        document.getElementById("home-game").replaceChildren(...menuModel(state).items.filter(item => item.href !== "index.html").map(item => {
+          const el = document.createElement(item.href ? "a" : "span");
+          el.className = "home__link"; el.textContent = item.label;
+          if (item.href) el.href = item.href; else el.setAttribute("aria-disabled", "true");
+          return el;
+        }));
+      }
+      if (known || state.ready) finishPageLoad();
+    } catch {
+      document.getElementById("home-status").textContent = "認証機能を読み込めませんでした。通信状況を確認して再読み込みしてください。";
+      finishPageLoad();
     }
   });
 } catch {
   document.getElementById("home-status").textContent = "認証機能を読み込めませんでした。通信状況を確認して再読み込みしてください。";
+  finishPageLoad();
 }

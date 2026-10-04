@@ -70,7 +70,7 @@ async function screen({ standalone = false } = {}) {
       : { ok: false, message: "ENoまたはパスワードを確認してください。" }, logout: async () => {},
   }, state => { last = state; });
   await controller.start();
-  const context = { document, window: { addEventListener() {} }, navigator: { clipboard: { writeText: async v => copied.push(v) } },
+  const context = { finishPageLoad() {}, document, window: { addEventListener() {} }, navigator: { clipboard: { writeText: async v => copied.push(v) } },
     consumeIndexNotice() {}, authMarkup, menuModel, getAuthRuntime: async () => controller, controller };
   const code = await source("authView") + (standalone ? '\nmountAuthView(document.getElementById("auth-root"), controller);' : await source("indexPage"));
   await vm.runInNewContext("(async()=>{" + code + "})()", context);
