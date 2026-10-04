@@ -82,7 +82,7 @@ body {
   color: var(--text);
 }
 
-.setting-shell {
+.character-shell {
   min-height: calc(100svh - var(--common-menu-height, 52px));
   background: rgba(255, 255, 255, .94);
   box-shadow: 0 0 28px #00000018;
@@ -93,12 +93,14 @@ body {
   box-shadow: 0 2px 10px #0000000a;
 }
 
-.badge {
-  background: #eef1f2;
+.preview {
+  background: #f6f8f8;
+  border-color: #aeb8bc;
 }
 
 input,
-select {
+select,
+textarea {
   color: var(--text);
   background: #fff;
   border-color: #aeb8bc;
@@ -120,90 +122,31 @@ button.primary {
   border-color: var(--accent);
 }
 
-button.danger {
-  color: #a23d35;
-  background: #fff;
-  border-color: #d9aaa6;
-}
-
-button.public-active {
-  color: #fff;
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-#duck-tabs button[aria-pressed="true"] {
-  color: #354719;
-  border-color: var(--accent);
-  background: #eef3df;
-}
-
-.effect-row {
-  background: #fafbfb;
-}
-
-.branch {
-  border-left-color: #879a5c;
-}
-
 .save-bar {
   background: rgba(255, 255, 255, .97);
   box-shadow: 0 -8px 32px #00000018;
 }
 
-.confirm-dialog {
+.icon-picker {
   color: var(--text);
   background: #fff;
   box-shadow: 0 16px 48px #0003;
 }
 
-.badge.invalid,
-.issues .invalid,
-.metrics.invalid {
-  color: #b33b45;
-}
-
-button.primary.save-invalid {
-  color: #6f787b;
-  background: #e6e9ea;
-  border-color: #b8c0c3;
-}
-
-button.primary.save-invalid:hover {
-  background: #dce1e2;
-}
-
-select.select-empty {
-  background: #fff4f6;
-  border-color: #c88e9a;
-}
-
-select.select-invalid,
-#duck-name[aria-invalid="true"] {
+#battler-name[aria-invalid="true"] {
   background: #fff0f1;
   border-color: #c94f59;
 }
 
-.skill-a {
-  --skill-line: #c07832;
-  --skill-tint: #f4a24d1f;
-  --skill-heading: #9a4e13;
+.image-field[data-validation="invalid"] .image-validation,
+#image-validation-message {
+  color: #a23d35;
 }
 
-.skill-b {
-  --skill-line: #5b8bae;
-  --skill-tint: #5aa2d91a;
-  --skill-heading: #285f88;
+.image-field[data-validation="invalid"] input {
+  border-color: #c94f59;
 }
 
-.skill-c {
-  --skill-line: #b29a3e;
-  --skill-tint: #e2c85a24;
-  --skill-heading: #76620f;
-}
-
-.skill-d {
-  --skill-line: #5d8d69;
-  --skill-tint: #6fba821c;
-  --skill-heading: #326b40;
+.image-field[data-validation="warning"] .image-validation {
+  color: #76620f;
 }
