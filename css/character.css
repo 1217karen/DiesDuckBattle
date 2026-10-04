@@ -56,3 +56,154 @@ button.primary { background:var(--accent); color:#1c2b19; border-color:var(--acc
 .preview.cutin-preview { width:auto; height:auto; max-width:100%; border:0; background:transparent; display:block; text-align:left; }
 .preview.cutin-preview img { display:block; width:auto; height:auto; max-width:min(480px,100%); max-height:480px; object-fit:contain; }
 .image-field[data-validation="warning"] .image-validation { color:#d7ca8e; }
+
+/* =========================================================
+   Light theme override
+   既存のダークテーマ定義を残したまま、画面全体を
+   RESULT寄りの白基調デザインへ変更するための上書き。
+   元テーマへ戻す場合は、このセクションを削除する。
+   ========================================================= */
+:root {
+  color-scheme: light;
+  --bg: #f4f6f7;
+  --panel: #fff;
+  --line: #c9d0d3;
+  --text: #202326;
+  --muted: #687378;
+  --accent: #60752f;
+  --warn: #a64d2a;
+}
+
+body {
+  background-color: #d9e9ee;
+  background-image: url("../img/result_BG.png");
+  background-repeat: repeat;
+  background-position: top left;
+  color: var(--text);
+}
+
+.setting-shell {
+  min-height: calc(100svh - var(--common-menu-height, 52px));
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 0 28px #00000018;
+}
+
+.card {
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 2px 10px #0000000a;
+}
+
+.badge {
+  background: #eef1f2;
+}
+
+input,
+select {
+  color: var(--text);
+  background: #fff;
+  border-color: #aeb8bc;
+}
+
+button {
+  color: var(--text);
+  background: #f5f6f6;
+  border-color: #aeb8bc;
+}
+
+button:hover {
+  background: #e8ecee;
+}
+
+button.primary {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+button.danger {
+  color: #a23d35;
+  background: #fff;
+  border-color: #d9aaa6;
+}
+
+button.public-active {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+#duck-tabs button[aria-pressed="true"] {
+  color: #354719;
+  border-color: var(--accent);
+  background: #eef3df;
+}
+
+.effect-row {
+  background: #fafbfb;
+}
+
+.branch {
+  border-left-color: #879a5c;
+}
+
+.save-bar {
+  background: rgba(255, 255, 255, .97);
+  box-shadow: 0 -8px 32px #00000018;
+}
+
+.confirm-dialog {
+  color: var(--text);
+  background: #fff;
+  box-shadow: 0 16px 48px #0003;
+}
+
+.badge.invalid,
+.issues .invalid,
+.metrics.invalid {
+  color: #b33b45;
+}
+
+button.primary.save-invalid {
+  color: #6f787b;
+  background: #e6e9ea;
+  border-color: #b8c0c3;
+}
+
+button.primary.save-invalid:hover {
+  background: #dce1e2;
+}
+
+select.select-empty {
+  background: #fff4f6;
+  border-color: #c88e9a;
+}
+
+select.select-invalid,
+#duck-name[aria-invalid="true"] {
+  background: #fff0f1;
+  border-color: #c94f59;
+}
+
+.skill-a {
+  --skill-line: #c07832;
+  --skill-tint: #f4a24d1f;
+  --skill-heading: #9a4e13;
+}
+
+.skill-b {
+  --skill-line: #5b8bae;
+  --skill-tint: #5aa2d91a;
+  --skill-heading: #285f88;
+}
+
+.skill-c {
+  --skill-line: #b29a3e;
+  --skill-tint: #e2c85a24;
+  --skill-heading: #76620f;
+}
+
+.skill-d {
+  --skill-line: #5d8d69;
+  --skill-tint: #6fba821c;
+  --skill-heading: #326b40;
+}
