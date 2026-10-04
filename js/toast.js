@@ -1,28 +1,47 @@
-import { createToastStore } from "./toastStore.js";
-let store, returnFocus;
+const durations = { success: 2000, info: 2500, warning: 3000, error: 3500 };
+const removalDelay = 220; // Allow the shared CSS's 200ms exit transition to finish.
+let container;
+const entries = [];
+
+function removeToast(entry) {
+  clearTimeout(entry.timer);
+  clearTimeout(entry.removalTimer);
+  entry.node.remove();
+  const index = entries.indexOf(entry);
+  if (index !== -1) entries.splice(index, 1);
+}
+
 export function showToast(notice) {
-  if (!store) {
-    const root = document.createElement("aside"); root.className = "common-toast"; root.hidden = true;
-    const message = document.createElement("p"); message.setAttribute("role", "status");
-    message.setAttribute("aria-live", "polite"); message.setAttribute("aria-atomic", "true");
-    const close = document.createElement("button"); close.type = "button"; close.textContent = "通知を閉じる";
-    root.append(message, close); document.body.append(root);
-    store = createToastStore({ render(value) {
-      root.hidden = !value; message.textContent = value?.message ?? "";
-      root.dataset.kind = value?.kind ?? "";
-    } });
-    close.addEventListener("click", () => {
-      store.dismiss();
-      const target = returnFocus?.isConnected && returnFocus.getClientRects().length ? returnFocus
-        : document.querySelector("#home-status, #common-menu summary");
-      target?.focus();
-    });
-    root.addEventListener("pointerenter", () => store.pause());
-    root.addEventListener("pointerleave", () => { if (!root.contains(document.activeElement)) store.resume(); });
-    root.addEventListener("focusin", () => store.pause());
-    root.addEventListener("focusout", event => { if (!root.contains(event.relatedTarget)) store.resume(); });
-    window.addEventListener("pagehide", () => store.destroy());
+  if (typeof notice?.message !== "string" || !notice.message.trim()) return;
+  const { message } = notice;
+  const kind = Object.hasOwn(durations, notice.kind) ? notice.kind : "info";
+  if (entries.some(entry => entry.kind === kind && entry.message === message)) return;
+  const duration = typeof notice.duration === "number" && Number.isFinite(notice.duration) && notice.duration > 0
+    ? notice.duration : durations[kind];
+
+  if (!container) {
+    container = document.createElement("div");
+    container.className = "common-toast-container";
+    container.setAttribute("aria-live", "polite");
+    container.setAttribute("aria-relevant", "additions");
+    document.body.append(container);
   }
-  if (!document.activeElement?.closest(".common-toast")) returnFocus = document.activeElement;
-  store.show(notice);
+  if (entries.length === 4) removeToast(entries[0]);
+  const node = document.createElement("div");
+  node.className = "common-toast";
+  node.dataset.kind = kind;
+  node.textContent = message;
+  const entry = { node, kind, message, hiding: false };
+  entries.push(entry);
+  container.append(node); // Normal column order places the newest toast at the bottom.
+  // Leave a painted initial frame so the enter transition also runs for the first toast.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (entries.includes(entry) && !entry.hiding) node.classList.add("is-visible");
+  }));
+  entry.timer = setTimeout(() => {
+    entry.hiding = true;
+    node.classList.remove("is-visible");
+    node.classList.add("is-hiding");
+    entry.removalTimer = setTimeout(() => removeToast(entry), removalDelay);
+  }, duration);
 }

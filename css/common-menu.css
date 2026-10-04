@@ -24,9 +24,12 @@ body.page-select .screen { height:calc(100dvh - var(--common-menu-height)); }
 body.has-common-menu .home { min-height:calc(100svh - var(--common-menu-height)); }
 @media(max-width:480px) { .common-menu summary { gap:8px; padding:8px 10px; } .common-menu__label { font-size:12px; } }
 
-/* Success notifications do not capture focus; actionable errors remain dismissible. */
-.common-toast { position:fixed; z-index:200; bottom:16px; left:50%; transform:translateX(-50%); width:max-content; max-width:calc(100vw - 32px); padding:12px 16px; border:1px solid #ffcf60; border-radius:8px; background:#171b20; color:#eee; box-shadow:0 4px 18px #0008; font:14px/1.5 system-ui,sans-serif; }
-.common-toast[hidden] { display:none; }
-.common-toast p { margin:0 0 6px; overflow-wrap:anywhere; }
-.common-toast button { color:inherit; background:transparent; border:1px solid #ffffff70; border-radius:4px; cursor:pointer; padding:4px 8px; }
-.common-toast button:focus-visible { outline:3px solid #ffcf60; }
+/* Transient feedback stacks above the bottom edge without capturing input or focus. */
+.common-toast-container { position:fixed; z-index:200; bottom:16px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; gap:8px; width:min(92vw, 420px); pointer-events:none; }
+.common-toast { box-sizing:border-box; padding:10px 14px; border:1px solid #ffffff29; border-radius:8px; background:rgba(24,28,38,.96); color:#f3f6fb; box-shadow:0 10px 24px #00000047; font:14px/1.5 system-ui,sans-serif; overflow-wrap:anywhere; opacity:0; transform:translateY(8px); transition:opacity .2s ease, transform .2s ease; }
+.common-toast.is-visible { opacity:1; transform:translateY(0); }
+.common-toast.is-hiding { opacity:0; transform:translateY(8px); }
+.common-toast[data-kind="info"] { border-color:rgba(120,180,255,.48); background:rgba(30,48,72,.95); }
+.common-toast[data-kind="success"] { border-color:rgba(120,210,150,.5); background:rgba(28,52,40,.95); }
+.common-toast[data-kind="warning"] { border-color:rgba(243,211,106,.58); background:rgba(60,48,24,.95); }
+.common-toast[data-kind="error"] { border-color:rgba(255,130,130,.55); background:rgba(72,28,36,.95); }
