@@ -259,7 +259,7 @@ function renderStats(duck, box) {
     if (!frame.editable) diceBox.append(el("p", "プリセットダイスは固定です。", "description"));
     const diceMetrics = el("div", null, "metrics"); diceMetrics.id = "dice-metrics"; diceBox.append(diceMetrics);
     const explanation = el("p", null, "description"); explanation.id = "dice-pt-description";
-    explanation.append(el("span", "0を選択すると、1枠ごとに1pt獲得します。同じ出目は通常2個までですが、0を含む場合は1ptを使用すると3個まで選択可能です。"),
+    explanation.append(el("span", "0を選択すると、1枠ごとに1pt獲得します。同じ出目は通常2個まで、1ptを使用すると3個まで選択可能です。"),
       el("br"), el("span", "余ったptはAスキルで使用可能です。"));
     diceBox.append(explanation);
   }
