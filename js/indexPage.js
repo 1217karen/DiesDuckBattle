@@ -1,6 +1,9 @@
 import { getAuthRuntime } from "./authRuntime.js";
 import { mountAuthView } from "./authView.js";
 import { menuModel } from "./commonMenuModel.js";
+import { consumeIndexNotice } from "./indexNotice.js";
+
+consumeIndexNotice();
 
 const dialog = document.getElementById("auth-dialog");
 const root = document.getElementById("auth-root");

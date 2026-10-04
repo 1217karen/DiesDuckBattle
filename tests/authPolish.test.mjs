@@ -71,7 +71,7 @@ async function screen({ standalone = false } = {}) {
   }, state => { last = state; });
   await controller.start();
   const context = { document, window: { addEventListener() {} }, navigator: { clipboard: { writeText: async v => copied.push(v) } },
-    authMarkup, menuModel, getAuthRuntime: async () => controller, controller };
+    consumeIndexNotice() {}, authMarkup, menuModel, getAuthRuntime: async () => controller, controller };
   const code = await source("authView") + (standalone ? '\nmountAuthView(document.getElementById("auth-root"), controller);' : await source("indexPage"));
   await vm.runInNewContext("(async()=>{" + code + "})()", context);
   const submit = async id => get(id).onsubmit({ preventDefault() {} });

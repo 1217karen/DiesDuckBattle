@@ -6,6 +6,9 @@ import { createEmptyPlayerPresentation, getQuoteIconUrlCandidates } from "./play
 import { createQuoteToolbar } from "./quoteRichTextToolbar.js";
 import { createIconPicker } from "./iconPicker.js";
 import { IMAGE_LIMITS, createImageValidation, imageValidationSummary } from "./characterImageValidation.js";
+import { requireLoginPage } from "./authPageGuard.js";
+
+await requireLoginPage();
 
 const quoteGroups = [
   { title: "戦闘開始", rows: [["戦闘開始", ["battleStart"]]] },

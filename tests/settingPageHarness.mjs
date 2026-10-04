@@ -20,6 +20,7 @@ export async function loadSettingPage(build, onSave) {
     };
   };
   let source = await readFile(file, "utf8");
+  source = source.replace('import { requireLoginPage } from "./authPageGuard.js";', 'const requireLoginPage = async () => {};');
   source = source.replace('import { mountOnlineEditor } from "./onlineEditor.js";', 'const mountOnlineEditor = globalThis.__mountSettingForTest;');
   source = source.replace(/from "(\.\/[^\"]+)"/g, (_, path) => `from ${JSON.stringify(new URL(path, file).href)}`);
   await import(`data:text/javascript;base64,${Buffer.from(source + `\n// ${crypto.randomUUID()}`).toString("base64")}`);

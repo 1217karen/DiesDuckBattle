@@ -3,6 +3,10 @@ import { getSupabaseClient } from "./authRuntime.js";
 import { createOnlineSelectService } from "./onlineSelectService.js";
 import { createOnlineSelectController } from "./onlineSelectController.js";
 import { createSelectPresentation } from "./selectPresentation.js";
+import { requireLoginPage } from "./authPageGuard.js";
+
+await requireLoginPage();
+
 let state = createSelectState({ ok: false, status: "loading" });
 let ownPresentation, online;
 let current = { busy: "load", message: "オンライン設定を読み込み中…", canStart: false };

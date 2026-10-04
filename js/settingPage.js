@@ -19,6 +19,9 @@ import { createCSkillRules } from "./cSkillRules.js";
 import { cControlDefinitions, cControlView, changeCControl } from "./cSkillControlEditor.js";
 import { cEffectParts, cFieldOptionText, C_MODE_OPTIONS, C_STRUCTURE_OPTIONS } from "./cSkillPresentation.js";
 import { D_SKILL_OPTIONS } from "./dSkillCatalog.js";
+import { requireLoginPage } from "./authPageGuard.js";
+
+await requireLoginPage();
 
 let online;
 let displayPresentation;

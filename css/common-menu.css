@@ -1,5 +1,8 @@
 :root { --common-menu-height: 52px; }
 body.has-common-menu { padding-top: var(--common-menu-height); }
+/* Preserve layout while the explicitly protected page awaits shared Auth state. */
+body.auth-required-pending > :not(.common-menu) { visibility: hidden !important; }
+body.auth-required-pending > :not(.common-menu) * { visibility: hidden !important; }
 .common-menu, .common-menu * { box-sizing: border-box; }
 .common-menu { position: fixed; inset: 0 0 auto; z-index: 100; height: var(--common-menu-height); background: #171b20; color: #eee; border-bottom: 1px solid #ffffff40; font: 14px/1.5 system-ui, sans-serif; text-align: left; }
 .common-menu summary { display: flex; align-items: center; gap: 12px; height: var(--common-menu-height); padding: 8px 16px; cursor: pointer; list-style: none; }
