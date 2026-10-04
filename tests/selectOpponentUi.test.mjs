@@ -5,6 +5,7 @@ import vm from "node:vm";
 import * as selectState from "../js/selectState.js";
 import { listOpponents, getOpponent } from "../js/opponentSource.js";
 import { createOnlineSelectController } from "../js/onlineSelectController.js";
+import { renderChoices } from "../js/selectTray.js";
 
 test("real SELECT handlers switch public names and presentation with no P2 Duck interaction", async () => {
   const opponents = await Promise.all((await listOpponents()).map(o => getOpponent(o.id)));
@@ -13,7 +14,7 @@ test("real SELECT handlers switch public names and presentation with no P2 Duck 
     ducks: { [o.publicDuckId]: { iconUrl: `${o.id}-public.png` } },
   };
   function element() {
-    return { children: [], handlers: {}, classList: { toggle() {} }, setAttribute() {}, focus() {},
+    return { ownerDocument: document, children: [], handlers: {}, classList: { toggle() {} }, setAttribute() {}, focus() {},
       append(...children) { this.children.push(...children); },
       replaceChildren(...children) { this.children = children; },
       addEventListener(type, handler) { this.handlers[type] = handler; },
@@ -27,8 +28,9 @@ test("real SELECT handlers switch public names and presentation with no P2 Duck 
   } };
   const shown = [];
   const ui = await readFile(new URL("../js/select.js", import.meta.url), "utf8");
-  vm.runInNewContext(ui.replace(/^import .*;\r?\n/gm, ""), {
+  await vm.runInNewContext(`(async () => {${ui.replace(/^import .*;\r?\n/gm, "")}\n})()`, {
     ...selectState, document, window:{addEventListener() {}},
+    requireLoginPage: async () => {}, renderChoices,
     getSupabaseClient:async()=>({auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}}),
     createOnlineSelectController,
     createOnlineSelectService:()=>({loadSelf:async()=>({ok:true,account:{id:'own',eno:'88'},authUserId:'auth',data:{build:opponents[1].build,presentation:{},battlerName:'DB名'}}),

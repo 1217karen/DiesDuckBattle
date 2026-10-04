@@ -57,7 +57,7 @@ const server = createServer(async (req, res) => {
       const { name, params } = body, id = params.p_game_account_id;
       const projection=accountId=>{const row=structuredClone(rows.get(accountId));if(!row?.publicDuckId||accountIds().includes(accountId)||accountIds().length!==1)return null;
         row.ducks=row.ducks.filter(d=>d.id===row.publicDuckId);row.battler.presentation.detachedDuckPresentation={};return row;};
-      if(name==="list_online_opponents")return json({data:[...rows.keys()].map(projection).filter(Boolean).map(r=>({id:r.gameAccountId,eno:r.eno,name:r.battler.presentation.name,publicDuckId:r.publicDuckId}))});
+      if(name==="list_online_opponents")return json({data:[...rows.keys()].map(projection).filter(Boolean).map(r=>({id:r.gameAccountId,eno:r.eno,name:r.battler.presentation.name,publicDuckId:r.publicDuckId,defaultIconUrl:r.battler.presentation.defaultIconUrl}))});
       if(name==="get_online_opponent")return json({data:projection(id)});
       if(name==="prepare_online_battle") {const opponent=projection(params.p_opponent_account_id);return json({data:accountIds().includes(id)&&opponent?.publicDuckId===params.p_opponent_duck_id?{self:rows.get(id),opponent}:null});}
       if (!accountIds().includes(id)) return json({ error: { code: "42501" } });

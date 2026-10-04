@@ -16,7 +16,7 @@
   auth.uid()あり・accessがちょうど1件・対象が自分以外・所有者とpublic_duck_idが一致するDuckのみを返します。
   private schemaはData APIのexposed schemasへ追加しないでください。
   authenticatedにはschema USAGEとこの関数のEXECUTEだけを許可し、anon/PUBLICの権限を除去します。
-- `list_online_opponents()`：公開Duckを持つ他accountのid/文字列ENo/名前/公開Duck IDのみ。
+- `list_online_opponents()`：公開Duckを持つ他accountのid/文字列ENo/名前/公開Duck ID/バトラーデフォルトアイコンURLのみ。
 - `get_online_opponent(uuid)`：そのaccountのBattler戦闘／表示フィールドと公開Duck1件のみ。
   B/D、公開Duckのstats・dice・diceFrame・A/C、名前・画像URL・アイコン・セリフが公開対象です。
   detachedDuckPresentation、非公開Duck行、未知のトップレベルJSONフィールドは返しません。

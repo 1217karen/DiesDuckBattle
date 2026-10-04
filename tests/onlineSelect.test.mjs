@@ -41,6 +41,20 @@ test('malformed public projection with extra private Duck or detached icon is re
   const f=await fixture(),row=structuredClone(f.rows.get(b));row.ducks.push({...row.ducks[0],id:privateDuck});assert.throws(()=>decodePublicOpponent(row,a));
   row.ducks.pop();row.battler.presentation.detachedDuckPresentation={hidden:{iconUrl:'secret'}};assert.throws(()=>decodePublicOpponent(row,a));
 });
+test('opponent list validates the default icon URL and returns only list fields',async()=>{
+  const f=await setup(); await f.c.load();
+  let listed=await f.c.listOpponents();
+  assert.equal(listed.opponents[0].defaultIconUrl,'https://example.invalid/89.png');
+  assert.deepEqual(Object.keys(listed.opponents[0]).sort(),['defaultIconUrl','eno','id','name','publicDuckId']);
+  for(const value of ['',null,undefined]) {
+    f.rows.get(b).battler.presentation.defaultIconUrl=value;
+    listed=await f.c.listOpponents(); assert.equal(listed.ok,true); assert.equal(listed.opponents[0].defaultIconUrl,'');
+  }
+  for(const value of [42,{},[]]) {
+    f.rows.get(b).battler.presentation.defaultIconUrl=value;
+    assert.equal((await f.c.listOpponents()).status,'unsupported-data');
+  }
+});
 for(const mutation of ['unpublish','switch'])test('VS rechecks publication: '+mutation,async()=>{
   const f=await setup();await ready(f);f.rows.get(b).publicDuckId=mutation==='unpublish'?null:privateDuck;
   assert.equal((await f.c.start()).status,'public-unavailable');assert.equal((await f.results.load('online-test')).ok,false);assert.equal(f.c.snapshot().canStart,false);

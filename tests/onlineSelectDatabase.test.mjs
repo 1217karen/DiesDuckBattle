@@ -43,6 +43,7 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
     await db.exec(await readFile(new URL('../supabase/migrations/20261001114619_online_battle_public_boundary.sql',import.meta.url),'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/20261004082650_skill_label_snapshot.sql',import.meta.url),'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/20261004101854_c_skill_cutin.sql',import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261004152422_opponent_list_default_icon.sql',import.meta.url),'utf8'));
     await asUser(userA);
     await t.test('direct tables, guessed UUIDs and full draft RPC cannot retrieve foreign data',async()=>{
       assert.equal((await db.query('select * from public.battlers where game_account_id=$1',[b])).rows.length,0);
@@ -58,6 +59,9 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
     });
     await t.test('public projection allows only published Duck and fixed battle fields',async()=>{
       const list=await value('select public.list_online_opponents() data');assert.deepEqual(list.map(r=>r.id),[b]);
+      assert.deepEqual(Object.keys(list[0]).sort(),['defaultIconUrl','eno','id','name','publicDuckId']);
+      assert.equal(list[0].defaultIconUrl,'https://example.invalid/2.png');
+      assert.doesNotMatch(JSON.stringify(list),/PRIVATE|quotes|iconSlots|cutinUrl|duck2/);
       const row=await value('select public.get_online_opponent($1) data',[b]);
       assert.doesNotMatch(JSON.stringify(row),/PRIVATE/);assert.deepEqual(row.ducks.map(d=>d.id),[duckB]);
       assert.equal(decodePublicOpponent(row,a).publicDuckId,duckB);

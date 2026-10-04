@@ -4,6 +4,7 @@ import { createOnlineSelectService } from "./onlineSelectService.js";
 import { createOnlineSelectController } from "./onlineSelectController.js";
 import { createSelectPresentation } from "./selectPresentation.js";
 import { requireLoginPage } from "./authPageGuard.js";
+import { renderChoices } from "./selectTray.js";
 
 await requireLoginPage();
 
@@ -46,23 +47,6 @@ function renderScreen() {
 }
 let requestVersion = 0, returnFocus = "p1-duck-slot";
 function showMessage(message) { const p = document.createElement("p"); p.textContent = message; el("trayGrid").replaceChildren(p); }
-function renderChoices(choices, selected, onPick) {
-  const grid = el("trayGrid"); grid.replaceChildren();
-  for (const choice of choices) {
-    const card = document.createElement("article"); card.className = "trayItem";
-    const button = document.createElement("button"); button.type = "button";
-    button.textContent = `${choice.name} — ${choice.status}`;
-    button.disabled = !choice.ready;
-    button.setAttribute("aria-pressed", String(selected === choice.id)); card.append(button);
-    if (choice.reasons.length) {
-      const details = document.createElement("details"), summary = document.createElement("summary"); summary.textContent = "理由を確認"; details.append(summary);
-      const list = document.createElement("ul");
-      for (const reason of choice.reasons) { const li = document.createElement("li"); li.textContent = reason; list.append(li); }
-      details.append(list); card.append(details);
-    }
-    button.addEventListener("click", () => onPick(choice.id)); grid.append(card);
-  }
-}
 function selectionChanged() { el("battle-result").textContent = ""; renderScreen(); tray.close(); }
 async function openTray(kind, opener) {
   if (!online || current.busy || !state.build) return;
@@ -78,7 +62,7 @@ async function openTray(kind, opener) {
       if (version !== requestVersion || !tray.open) return;
       if (!result.ok) { showMessage(result.message ?? "相手一覧を読み込めませんでした。"); return; }
       if (!opponents.length) { showMessage("選択できる相手がいません。"); return; }
-      renderChoices(opponents.map(o => ({ ...o, name: `ENo.${o.eno}｜${o.name}`, ready:true, status:"選択", reasons:[] })), state.opponent?.id, async id => {
+      renderChoices(el("trayGrid"), opponents.map(o => ({ ...o, ready:true, reasons:[] })), state.opponent?.id, async id => {
         const pickVersion = ++requestVersion; showMessage("相手を読み込み中…");
         try {
           const picked = await online.chooseOpponent(id);
@@ -86,14 +70,14 @@ async function openTray(kind, opener) {
           if (!picked.ok) { showMessage(picked.message ?? "この相手は現在対戦できません。閉じて選び直してください。"); return; }
           selectionChanged();
         } catch { if (pickVersion === requestVersion && tray.open) showMessage("相手を読み込めませんでした。閉じて再試行してください。"); }
-      });
+      }, { kind: "opponents" });
     } catch { if (version === requestVersion && tray.open) showMessage("相手一覧を取得できませんでした。閉じて再試行してください。"); }
   } else {
     const choices = duckChoices(state);
     if (!choices.length) { showMessage(state.message || "アヒル設定はまだありません。設定を編集して追加してください。"); return; }
-    renderChoices(choices, state.selectedDuckId, id => {
+    renderChoices(el("trayGrid"), choices, state.selectedDuckId, id => {
       online.chooseOwn(id); selectionChanged();
-    });
+    }, { kind: "self", presentation: ownPresentation });
   }
 }
 for (const [id,kind] of [["p1-duck-slot","self"],["p2-battler-slot","opponents"]])

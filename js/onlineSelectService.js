@@ -49,7 +49,9 @@ export function createOnlineSelectService(client, ownStorage = createOnlinePlaye
       if (!Array.isArray(rows)) throw new TypeError();
       return { opponents: rows.filter(row => row.id !== base.account.id).map(row => {
         if (!isOnlineUuid(row.id) || !isOnlineUuid(row.publicDuckId) || typeof row.name !== "string") throw new TypeError();
-        return { id: row.id, eno: canonicalEno(row.eno), name: row.name, publicDuckId: row.publicDuckId };
+        if (row.defaultIconUrl != null && typeof row.defaultIconUrl !== "string") throw new TypeError();
+        return { id: row.id, eno: canonicalEno(row.eno), name: row.name, publicDuckId: row.publicDuckId,
+          defaultIconUrl: row.defaultIconUrl ?? "" };
       }) };
     }),
     getOpponent(base, id) {
