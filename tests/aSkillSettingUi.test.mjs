@@ -267,3 +267,24 @@ test("Duck name errors block saving before and after incomplete confirmation", a
   assert.ok(confirm); setName("　"); confirm.handlers.click();
   assert.ok(p.all().some(e => e.textContent === "保存できない設定があります"));
 });
+test("A metadata separates signed effect/slot prices and updates slots on polarity edits",async()=>{
+ const s={triggerId:"lte:3",effects:[{effectId:"heal",targetId:"self",options:{amount:"amount-5"}},damage,heal,cancel]};
+ const b=initial(s),before=structuredClone(b),p=await page(b),r=calculateASkillResources(b.ducks[0],s);
+ assert.equal(p.get("a-trigger-price").textContent,`コスト -${r.triggerCost}`);
+ assert.equal(p.get("a-cancel-price").textContent,`コスト +${r.cancelDrawbackPoints}`);
+ for(const [i,row] of r.effectBreakdown.slice(0,3).entries()) {
+  assert.equal(p.get(`a-effect-${i}-price`).textContent,`コスト ${row.polarity==="benefit"?"-"+row.effectCost:"+"+row.drawbackPoints}`);
+  assert.equal(p.get(`a-effect-${i}-slot-price`).textContent,`枠コスト ${i===1?"-1":"0"}`);
+  const meta=p.get(`a-effect-${i}-price`).parent;assert.equal(meta.className,"effect-meta");
+  assert.deepEqual(meta.children.map(e=>e.tagName),["strong","span","span","button"]);
+  assert.equal(meta.parent.children[1].className,"effect-editor");
+ }
+ assert.equal(r.effectBreakdown.reduce((n,row)=>n+row.slotCost,0),r.benefitSlotCost);
+ p.choose("a-effect-0-targetId","enemy");assert.equal(p.get("a-effect-1-slot-price").textContent,"枠コスト 0");
+ assert.match(p.get("a-effect-0-price").textContent,/コスト \+/);assert.deepEqual(b,before);
+});
+test("A incomplete prices and dependent slots are dashes, never provisional zero",async()=>{
+ const p=await page(initial({triggerId:"",effects:[{effectId:"heal",targetId:"",options:{amount:"amount-5"}},damage]}));
+ for(const id of ["a-trigger-price","a-effect-0-price","a-effect-0-slot-price","a-effect-1-slot-price"]) assert.match(p.get(id).textContent,/—$/);
+ p.choose("a-trigger","exact:1");assert.equal(p.get("a-effect-1-price").textContent,"コスト -2");
+});

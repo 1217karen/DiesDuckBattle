@@ -102,7 +102,8 @@ function legacycalculateASkillResources(build, selection, {
         const effectCost = baseEffectCost;
         const drawbackPoints = definition.id === "cancel-self-attack" ? frequencyRank : benefit ? 0 : (selected ? price(option && Object.hasOwn(option, "drawbackPoints") ? option.drawbackPoints : definition.drawbackPoints, `${path}.drawbackPoints`) : null);
         effectBreakdown.push({ index, effectId: definition.id, polarity: definition.polarity,
-          baseEffectCost, effectCost, drawbackPoints });
+          baseEffectCost, effectCost, drawbackPoints,
+          slotCost: benefit ? (benefitCount > 1 ? 1 : effectBreakdown.length === index ? 0 : null) : 0 });
       }
     }
   }

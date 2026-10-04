@@ -216,3 +216,22 @@ test("C first edit materializes only its branch; add starts a second row",async(
  assert.equal(p.get("c-structure").parent.parent.className,"auxiliary-control");
  assert.ok(p.all().some(e=>e.className==="card skill-card skill-c"));
 });
+test("C effect metadata uses branch-local resource prices and retains maximum-branch total",async()=>{
+ const d=(n,target="enemy")=>({effectId:"damage",targetId:target,options:{amount:`damageAmount-${n}`}});
+ const s={mode:"normal",structure:{kind:"random",branches:[{effects:[d(60),d(70)]},{effects:[d(80),d(60,"self")]}]}};
+ const b=initial(s),before=structuredClone(b),p=await page(b),r=calculateCSkillResources(s);
+ for(const [branch,index,cost,slot] of [[0,0,"+1","0"],[0,1,"+2","+1"],[1,0,"+3","0"],[1,1,"-1","0"]]) {
+  const id=`c-effect-${branch}-${index}`;
+  assert.equal(p.get(id+"-price").textContent,`AP ${cost}`);assert.equal(p.get(id+"-slot-price").textContent,`枠AP ${slot}`);
+  const meta=p.get(id+"-price").parent;assert.equal(meta.className,"effect-meta");assert.equal(meta.parent.children[1].className,"effect-editor c-effect-controls");
+ }
+ assert.equal(r.selectedBranchPath,"structure.branches.0");assert.equal(p.get("c-metrics").textContent,`必要AP：${r.requiredAP}`);
+ assert.deepEqual(p.save().ducks[0].cSelection,s);assert.deepEqual(b,before);
+});
+test("C incomplete and dependent slot prices are unknown without contaminating another branch",async()=>{
+ const d={effectId:"damage",targetId:"enemy",options:{amount:"damageAmount-60"}};
+ const s={mode:"normal",structure:{kind:"random",branches:[{effects:[{effectId:"damage",targetId:"",options:{}},d]},{effects:[d]}]}};
+ const p=await page(initial(s));
+ for(const id of ["c-effect-0-0-price","c-effect-0-0-slot-price","c-effect-0-1-slot-price"]) assert.match(p.get(id).textContent,/—$/);
+ assert.equal(p.get("c-effect-1-0-slot-price").textContent,"枠AP 0");assert.equal(p.get("c-metrics").textContent,"必要AP：—");
+});

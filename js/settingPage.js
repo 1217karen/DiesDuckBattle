@@ -7,12 +7,13 @@ import { DICE_FRAMES, getDiceFrame } from "./diceFrames.js";
 import { createBuildRules } from "./buildRules.js";
 import { createASkillCatalog, getATriggerOptions } from "./aSkillCatalog.js";
 import { aEditorLeaf, aNormalSlots, aEditorCatalog, aCancelAvailable, isACancel, setAAttackCancel, addANormalEffect, removeANormalEffect, changeAClause, changeATrigger } from "./aSkillSentenceEditor.js";
-import { aTriggerText, aTriggerEditor, aContentText, aEffectParts, aFieldOptionText, aStatusText, aEffectPointText, aCancelPointText } from "./aSkillPresentation.js";
+import { aTriggerText, aTriggerEditor, aContentText, aEffectParts, aFieldOptionText, aStatusText } from "./aSkillPresentation.js";
 import { calculateASkillResources } from "./aSkillResources.js";
 import { createBSkillCatalog, getBTriggerOptions, getBConditionOptions, getBEffectOptions } from "./bSkillCatalog.js";
 import { bEffectText, bSentence } from "./bSkillPresentation.js";
 import { bEventEditorSelection, bEventEditorDefinition, changeBEvent } from "./bSkillSentenceEditor.js";
 import { createCSkillCatalog } from "./cSkillCatalog.js";
+import { calculateCSkillResources } from "./cSkillResources.js";
 import { createCSkillRules } from "./cSkillRules.js";
 import { cControlDefinitions, cControlView, changeCControl } from "./cSkillControlEditor.js";
 import { cEffectParts, cFieldOptionText, C_MODE_OPTIONS, C_STRUCTURE_OPTIONS } from "./cSkillPresentation.js";
@@ -296,12 +297,41 @@ function aSentenceChoice(box, id, items, current, onChange, label, savedLabel = 
     box.append(fixed);
   } else aChoice(box, id, items, current, onChange, label, savedLabel, label);
 }
+const signed = value => value == null ? "—" : value > 0 ? `+${value}` : String(value);
+const negative = value => value == null ? null : -value;
+function priceLabel(id, label, value) {
+  const node = el("span", `${label} ${signed(value)}`, "effect-price"); node.id = id; return node;
+}
+function settingLine(group, left, right, id) {
+  const row = el("div", null, "skill-setting-line"); if (id) row.id = id;
+  const meta = el("div", null, "setting-meta"), editor = el("div", null, "setting-editor");
+  meta.append(left); editor.append(right); row.append(meta, editor); group.append(row); return row;
+}
+// Normalization may retain provisional rows for diagnostics. Never present their
+// prices as confirmed, or a later slot price whose preceding choices are unsettled.
+function confirmedPrices(resources, price, path, index) {
+  const issues = [...resources.errors, ...resources.unresolved];
+  const prefix = path.slice(0, path.lastIndexOf(".") + 1);
+  const ownIssue = issues.some(i => i.path === path || i.path?.startsWith(path + "."));
+  const precedingIssue = issues.some(i => i.path?.startsWith(prefix) && Number(i.path.slice(prefix.length).split(".")[0]) <= index);
+  return { costKnown: !!price && !ownIssue, slotCost: precedingIssue ? null : price?.slotCost };
+}
+function effectMeta(index, id, label, cost, slotLabel, slotCost, remove) {
+  const meta = el("div", null, "effect-meta");
+  meta.append(el("strong", `効果 ${index + 1}`), priceLabel(id + "-price", label, cost),
+    priceLabel(id + "-slot-price", slotLabel, slotCost), button("削除", remove));
+  return meta;
+}
 function renderA(duck, box) {
   const panel = card("A SKILL / Aスキル", "a");
   if (!skillsUnlocked(duck)) { panel.append(el("p", "ステータスを設定してください", "description")); box.append(panel); return; }
   const a = aEditingSelection(duck);
   {
     const update = aSelection => patchDuck({ aSelection });
+    const resources = calculateASkillResources(duck, a, { catalog: aCatalog });
+    const top = el("div", null, "skill-settings"); panel.append(top);
+    settingLine(top, el("span", `使用可能 ${num(resources.availablePoints)}`),
+      el("span", `基礎コスト${num(resources.basePoints)} ＋ ダイス余剰コスト${num(resources.dicePoints)}`), "a-budget-line");
     const trigger = el("div", null, "a-sentence-controls");
     const triggerView = aTriggerEditor(getATriggerOptions(duck, aCatalog), a.triggerId);
     for (const part of triggerView.parts) {
@@ -313,23 +343,20 @@ function renderA(duck, box) {
           triggerId => update(changeATrigger(a, triggerId, duck, aCatalog)), f.label, aTriggerText(a.triggerId) ?? a.triggerId);
       }
     }
-    panel.append(el("p", "発動条件", "description"), trigger);
-    const triggerCost = getATriggerOptions(duck, aCatalog).find(t => t.id === a.triggerId)?.pointCost;
-    panel.append(el("p", `必要コスト：${triggerCost ?? "未確定"}`, "a-price"));
+    const triggerEditor = el("div"); triggerEditor.append(el("span", "発動条件"), trigger);
+    settingLine(top, priceLabel("a-trigger-price", "コスト", negative(resources.triggerCost)), triggerEditor);
     const cancelled = (a.effects ?? []).some(e => isACancel(e, aCatalog));
     const cancel = el("label", "通常攻撃", "auxiliary-control");
     const cancelInput = aChoice(cancel, "a-cancel", [{ id: "off", label: "キャンセルしない" },
       { id: "on", label: "キャンセルする", disabled: !aCancelAvailable(duck, a, aCatalog) }], cancelled ? "on" : "off",
       value => update(setAAttackCancel(a, value === "on", duck, aCatalog)), "通常攻撃キャンセル");
     cancelInput.children[0].disabled = true;
-    panel.append(cancel);
-    const resources = calculateASkillResources(duck, a, { catalog: aCatalog });
-    if (cancelled) cancel.append(el("span", aCancelPointText(resources), "a-price"));
+    settingLine(top, priceLabel("a-cancel-price", "コスト", cancelled ? resources.cancelDrawbackPoints : 0), cancel);
     const slots = aNormalSlots(a, aCatalog);
     slots.forEach(({ leaf, index }, slot) => {
       const chosen = aEditorLeaf(leaf, aCatalog), definitions = aEditorCatalog(duck, a, aCatalog, index);
       const allRows = aCatalog.selectionEffects.flatMap(d => d.variants);
-      const row = el("div", null, "effect-row a-effect-row"), head = el("div", null, "row-heading"), controls = el("div", null, "controls");
+      const row = el("div", null, "effect-row priced-effect-row a-effect-row"), editor = el("div", null, "effect-editor"), controls = el("div", null, "controls");
       const change = (key, value) => update(changeAClause(a, index, key, value, duck, aCatalog));
       const formField = (key, label, options, current, savedLabel = current) => {
         const wrapper = el("label", label);
@@ -337,7 +364,11 @@ function renderA(duck, box) {
           value => change(key, value), label, savedLabel, label);
         controls.append(wrapper);
       };
-      head.append(el("strong", `効果 ${slot + 1}`), button("削除", () => update(removeANormalEffect(a, index, aCatalog))));
+      const price = resources.effectBreakdown.find(item => item.index === index);
+      const confirmed = confirmedPrices(resources, price, `effects.${index}`, index);
+      const cost = !confirmed.costKnown ? null : price?.polarity === "drawback" ? price.drawbackPoints : negative(price?.effectCost);
+      const head = effectMeta(slot, `a-effect-${slot}`, "コスト", cost, "枠コスト", negative(confirmed.slotCost),
+        () => update(removeANormalEffect(a, index, aCatalog)));
       const staleFace = chosen.options?.diceAction && a.triggerId !== `exact:${chosen.options.diceAction}`;
       const contents = definitions.filter(d => !(staleFace && d.id === chosen.effectId))
         .map(d => ({ id: d.id, label: d.variants[0].definition.exactFace != null ? aContentText(d.variants[0]) : d.label }));
@@ -377,12 +408,7 @@ function renderA(duck, box) {
         if ((!f && !current) || (f?.options.length === 1 && f.options[0].id === current)) continue;
         sentence.append(el("span", `${f?.label ?? key}：`)); showField(key);
       }
-      const issues = [...resources.errors, ...resources.unresolved].filter(i => i.path === `effects.${index}` || i.path?.startsWith(`effects.${index}.`));
-      row.append(head, controls, sentence);
-
-      if (!issues.length) {
-        head.append(el("span", aEffectPointText(resources, index), "a-price"));
-      }
+      editor.append(controls, sentence); row.append(head, editor);
       panel.append(row);
     });
     const add = button("＋ 効果を追加", () => update(addANormalEffect(a, aCatalog))); add.id = "a-add-effect";
@@ -415,9 +441,12 @@ function renderC(duck, box) {
   // Empty rows are view-only until an explicit edit materializes that branch.
   const panel = card("C SKILL / Cスキル", "c"), c = duck.cSelection ?? { mode: "", structure: createCStructure("flat") };
   if (!skillsUnlocked(duck)) { panel.append(el("p", "ステータスを設定してください", "description")); box.append(panel); return; }
-  const metrics = el("div", null, "resource-summary"); metrics.id = "c-metrics"; panel.append(metrics);
+  const resources = calculateCSkillResources(c, { catalog: cCatalog, rules: cRules });
+  const top = el("div", null, "skill-settings"), modeEditor = el("div"); panel.append(top);
+  settingLine(top, el("span", `最低AP ${cRules.minimumAP}`), modeEditor);
+  const metrics = el("div", null, "resource-summary"); metrics.id = "c-metrics";
   const hasEffects = cBranches(duck.cSelection).some(({ branch }) => branch?.effects?.length);
-  field(panel, "Cスキルの種類", "c-mode", [...C_MODE_OPTIONS,
+  field(modeEditor, "Cスキルの種類", "c-mode", [...C_MODE_OPTIONS,
     ...(duck.cSelection !== null && !c.mode ? [{ id: "incomplete", label: "未完了（選択してください）", disabled: true }] : [])], duck.cSelection === null ? "" : c.mode || "incomplete",
     mode => {
       if (!mode) { patchDuck({ cSelection: null }); return; }
@@ -431,14 +460,15 @@ function renderC(duck, box) {
   if (c !== null) {
     const structure = c.structure;
     const kind = structure?.kind === "random" ? `random${structure.branches?.length}` : structure?.kind;
-    const branchControl = el("div", null, "auxiliary-control"); panel.append(branchControl);
+    const branchControl = el("div", null, "auxiliary-control");
+    if (c.mode !== "special") settingLine(top, el("span"), branchControl);
     if (c.mode !== "special") cField(branchControl, "分岐方式", "c-structure", C_STRUCTURE_OPTIONS, kind,
         value => {
           const change = () => patchDuck({ cSelection: { ...c, structure: createCStructure(value) } });
           if (hasEffects) confirmChange("分岐方式を変更すると、現在のC効果をクリアします。変更しますか？", change);
           else change();
       }, null);
-    if (structure?.kind === "hpCondition") cField(panel, "自分のHP割合", "c-threshold", cCatalog.optionSets.hpThreshold,
+    if (structure?.kind === "hpCondition") cField(branchControl, "分岐HP割合", "c-threshold", cCatalog.optionSets.hpThreshold,
       structure.thresholdOptionId, value => {
         const next = { ...structure }; if (value) next.thresholdOptionId = value; else delete next.thresholdOptionId;
         patchDuck({ cSelection: { ...c, structure: next } });
@@ -460,8 +490,12 @@ function renderC(duck, box) {
         patchDuck({ cSelection: next });
       };
       effects.forEach((chosen, index) => {
-        const row = el("div", null, "effect-row"), head = el("div", null, "row-heading"), controls = el("div", null, "c-effect-controls");
-        head.append(el("strong", `効果 ${index + 1}`), button("削除", () => setRows(effects.filter((_, i) => i !== index))));
+        const row = el("div", null, "effect-row priced-effect-row"), controls = el("div", null, "effect-editor c-effect-controls");
+        const path = key === "flat" ? `structure.effects.${index}` : `structure.branches.${key}.effects.${index}`;
+        const price = resources.effectBreakdown.find(item => item.path === path);
+        const confirmed = confirmedPrices(resources, price, path, index);
+        const head = effectMeta(index, `c-effect-${key}-${index}`, "AP", confirmed.costKnown ? price.effectDelta : null, "枠AP", confirmed.slotCost,
+          () => setRows(effects.filter((_, i) => i !== index)));
         const replace = value => setRows(effects.map((old, i) => i === index ? value : old));
         renderCEffect(controls,chosen,replace,`c-effect-${key}-${index}`,c);
         row.append(head, controls);
@@ -472,7 +506,7 @@ function renderC(duck, box) {
     }
     panel.append(el("p", `全分岐の効果を合計して${cRules.minEffects}～${cRules.maxEffects}件。各分岐に効果を設定してください。`, "description"));
   }
-  feedback(panel, "c"); box.append(panel);
+  panel.append(metrics); feedback(panel, "c"); box.append(panel);
 }
 function renderDuck() {
   const box = $("duck-editor"); box.replaceChildren(); const duck = selectedDuck(state);

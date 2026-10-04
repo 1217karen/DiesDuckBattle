@@ -117,3 +117,23 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
 .duck-identity-icon { width:60px; height:60px; flex:0 0 60px; display:grid; place-items:center; }
 .duck-identity-icon[hidden] { display:none; }
 .duck-identity-icon img { display:block; width:auto; height:auto; max-width:60px; max-height:60px; object-fit:contain; }
+
+/* A/C share metadata/editor columns; narrow screens keep metadata in a row. */
+.priced-effect-row, .skill-setting-line { display:grid; grid-template-columns:130px minmax(0,1fr); gap:16px; }
+.effect-meta { display:flex; flex-direction:column; align-items:flex-start; gap:8px; border-right:1px solid var(--line); padding-right:12px; font-size:.82rem; }
+.effect-meta button { padding:4px 9px; font-size:.78rem; }
+.effect-price { white-space:nowrap; font-variant-numeric:tabular-nums; }
+.effect-editor, .setting-editor { min-width:0; }
+.effect-editor .controls { grid-template-columns:minmax(0,1fr); }
+.skill-settings { margin-bottom:18px; }
+.skill-setting-line { padding:12px 0; border-bottom:1px dashed var(--line); align-items:center; }
+.skill-setting-line:first-child { border-bottom-style:solid; }
+.setting-meta { font-size:.85rem; font-variant-numeric:tabular-nums; }
+.setting-editor .auxiliary-control { margin:0; }
+.setting-editor .a-sentence-controls { margin-top:4px; }
+@media(max-width:700px) {
+  .priced-effect-row { grid-template-columns:minmax(0,1fr); gap:12px; padding:12px; }
+  .effect-meta { flex-direction:row; flex-wrap:wrap; align-items:center; gap:8px; border-right:0; border-bottom:1px solid var(--line); padding:0 0 10px; font-size:.75rem; }
+  .effect-meta strong { white-space:nowrap; }
+  .skill-setting-line { grid-template-columns:85px minmax(0,1fr); gap:10px; }
+}
