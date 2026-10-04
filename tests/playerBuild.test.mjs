@@ -20,11 +20,11 @@ const aSelection = { triggerId: "exact:0", effects: [{ effectId: "damage", targe
 const cLeaf = { effectId: "damage", targetId: "enemy", options: { amount: "damageAmount-50" }, chanceOptionId: "50" };
 const cSelection = { mode: "normal", structure: { kind: "flat", effects: [cLeaf] } };
 
-test("missing storage returns independent empty v2 without writing", () => {
+test("missing storage returns independent empty v3 without writing", () => {
   const memory = memoryStorage(), storage = createPlayerBuildStorage(memory);
   const a = storage.load(), b = storage.load();
   assert.deepEqual(a, { ok: true, status: "empty", build: {
-    schemaVersion: 2, battler: { bSelection: null, dSelection: null }, ducks: [] } });
+    schemaVersion: 3, battler: { bSelection: null, dSelection: null, skillLabels: { B: {name:"",ruby:""}, D: {name:"",ruby:""} } }, ducks: [] } });
   assert.notEqual(a.build, b.build);
   assert.notEqual(a.build.battler, b.build.battler);
   assert.equal(memory.writes, 0);
@@ -34,7 +34,7 @@ test("empty Duck has complete draft shape; factory called only once", () => {
   let calls = 0;
   const value = createEmptyDuck({ idFactory: () => { calls++; return "stable"; } });
   assert.deepEqual(value, { id: "stable", name: "", stats: { AT: null, DF: null, SP: null },
-    diceFrame: null, dice: [0, 0, 0, 0, 0, 0], aSelection: null, cSelection: null });
+    diceFrame: null, dice: [0, 0, 0, 0, 0, 0], aSelection: null, cSelection: null, skillLabels: { A: {name:"",ruby:""}, C: {name:"",ruby:""} } });
   const build = addDuck(createEmptyPlayerBuild(), value);
   value.dice[0] = 4;
   assert.equal(build.ducks[0].dice[0], 0);

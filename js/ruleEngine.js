@@ -67,7 +67,7 @@ export function runTrigger(triggerName, self, enemy, ctx, getRules) {
       owner: self.side,
       category: r.category,
       skillId: r.id,
-      skillName: r.name,
+      skillName: r.skillName ?? r.name, skillRuby: r.skillRuby,
     };
 
     // このスキル発動に紐づくログを束ねるID
@@ -76,7 +76,7 @@ export function runTrigger(triggerName, self, enemy, ctx, getRules) {
     // スキル発動ログ（親）
     ctx.push("skillTriggered", self.side, {
       code: "SKILL_TRIGGERED",
-      skill: { category: r.category, skillId: r.id, skillName: r.name },
+      skill: { category: r.category, skillId: r.id, skillName: r.skillName ?? r.name, skillRuby: r.skillRuby },
       trigger: triggerName,
       groupId,
     });
@@ -107,7 +107,7 @@ export function compileAllRulesForFighter(f) {
       owner: f.side,
       category: "D",
       id: ds.id,
-      name: ds.name,
+      name: ds.name, skillName: ds.skillName, skillRuby: ds.skillRuby,
       description: ds.description,
       trigger: Triggers.battleStart,
       when: () => true,
@@ -125,7 +125,7 @@ export function compileAllRulesForFighter(f) {
       owner: f.side,
       category: "A",
       id: aSkill.id,
-      name: aSkill.name,
+      name: aSkill.name, skillName: aSkill.skillName, skillRuby: aSkill.skillRuby,
       description: aSkill.description,
       trigger: Triggers.beforeDiceResolve,
 
@@ -172,7 +172,7 @@ export function compileAllRulesForFighter(f) {
       owner: f.side,
       category: "B",
       id: bs.id ?? null,
-      name: bs.name ?? "(B-skill)",
+      name: bs.name ?? "(B-skill)", skillName: bs.skillName, skillRuby: bs.skillRuby,
       description: bs.description ?? "",
       trigger,
       when: whenFn,

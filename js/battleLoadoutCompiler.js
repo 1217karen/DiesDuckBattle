@@ -1,3 +1,5 @@
+import { skillLabelSnapshot } from "./skillLabels.js";
+import { migratePlayerBuild } from "./playerBuildMigration.js";
 import { inspectBuildForSave } from "./buildSaveInspection.js";
 import { clonePlayerBuild } from "./playerBuildModel.js";
 import { compileASkill } from "./aSkillCompiler.js";
@@ -37,7 +39,9 @@ export function compileBattleLoadout(build, { duckId, battlerId, battlerName } =
       "BattlerのID（空でない文字列）と名前（文字列）を指定してください。", null, "Battler") };
 
   // Compilers receive an isolated snapshot, never the caller's editable state.
-  const snapshot = clonePlayerBuild({ ...build, ducks: [build.ducks.find(d => d?.id === duckId)] });
+  const upgraded = migratePlayerBuild({ ...build, ducks: [build.ducks.find(d => d?.id === duckId)] });
+  if (!upgraded.ok) return { ok: false, inspection: failure("INVALID_MODEL", "保存モデルを移行できません。", duckId) };
+  const snapshot = clonePlayerBuild(upgraded.build);
   const source = snapshot.ducks[0];
   const b = compileBSkill(snapshot.battler.bSelection);
   const d = compileDSkill(snapshot.battler.dSelection);
@@ -54,13 +58,13 @@ export function compileBattleLoadout(build, { duckId, battlerId, battlerName } =
   } };
   return {
     ok: true,
-    battler: { id: battlerId, name: battlerName, bSkills: b.bSkills, dSkill: d.skill },
+    battler: { id: battlerId, name: battlerName, bSkills: b.bSkills.map(skill => ({ ...skill, ...skillLabelSnapshot(snapshot.battler.skillLabels.B) })), dSkill: { ...d.skill, ...skillLabelSnapshot(snapshot.battler.skillLabels.D) } },
     duck: {
       id: source.id, name: source.name,
       stats: { AT: source.stats.AT, DF: source.stats.DF, SP: source.stats.SP },
       dice: [...source.dice],
-      aSkill: { id: "A_PLAYER", name: "Aスキル", ...a.skill },
-      cSkill: { id: "C_PLAYER", name: "Cスキル", ...c.skill },
+      aSkill: { id: "A_PLAYER", name: "Aスキル", ...a.skill, ...skillLabelSnapshot(source.skillLabels.A) },
+      cSkill: { id: "C_PLAYER", name: "Cスキル", ...c.skill, ...skillLabelSnapshot(source.skillLabels.C) },
     },
   };
 }

@@ -1,3 +1,4 @@
+import { SKILL_NAME_MAX, SKILL_RUBY_MAX } from "./skillLabels.js";
 import { hasName, duckNameIssues } from "./nameValidation.js";
 import { effectSelectionFields } from "./effectSelectionCatalog.js";
 import { mountOnlineEditor } from "./onlineEditor.js";
@@ -90,7 +91,25 @@ function card(title, key) {
   const box = el("section", null, ["a", "b", "c", "d"].includes(key) ? `card skill-card skill-${key}` : "card"), heading = el("div", null, "card-header");
   box.setAttribute("aria-label", title);
   const badge = el("span", null, "badge"); badge.id = `${key}-status`;
-  heading.append(el("h3", title), badge); box.append(heading); return box;
+  heading.append(el("h3", title), badge); box.append(heading);
+  if (["a", "b", "c", "d"].includes(key)) renderSkillLabels(box, key.toUpperCase());
+  return box;
+}
+function renderSkillLabels(box, category) {
+  const duckOwned = category === "A" || category === "C";
+  const owner = duckOwned ? selectedDuck(state) : state.build.battler;
+  const group = el("div", null, "skill-label-controls");
+  for (const [key, text, limit] of [["name", "スキル名（任意）", SKILL_NAME_MAX], ["ruby", "ルビ（任意）", SKILL_RUBY_MAX]]) {
+    const input = el("input"); input.type = "text"; input.id = `skill-${category.toLowerCase()}-${key}`;
+    input.maxLength = limit; input.value = owner.skillLabels[category][key];
+    input.addEventListener("input", () => {
+      const current = duckOwned ? selectedDuck(state) : state.build.battler;
+      const skillLabels = { ...current.skillLabels, [category]: { ...current.skillLabels[category], [key]: input.value } };
+      commit({ type: duckOwned ? "duck" : "battler", patch: { skillLabels } }, false);
+    });
+    group.append(labeled(text, input));
+  }
+  box.append(group);
 }
 function feedback(box, key) { const list = el("ul", null, "issues"); list.id = `${key}-issues`; box.append(list); }
 function setFeedback(key, summary) {

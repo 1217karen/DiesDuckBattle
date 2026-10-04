@@ -20,7 +20,7 @@ function duck(id="custom-speed",dice) {
     dice:[...(dice??d.initialDice??d.dice)],aSelection:{triggerId:"all",effects:[{...leaf}]},
     cSelection:{mode:"normal",structure:{kind:"flat",effects:[{effectId:"damage",targetId:"enemy",options:{amount:"damageAmount-50"}}]}}};
 }
-function build(d=duck()) {return {...createEmptyPlayerBuild(),battler:{bSelection:{type:"trait",traitId:"ap-at",options:{}},dSelection:{optionId:"add-self-0"}},ducks:[d]};}
+function build(d=duck()) {return {...createEmptyPlayerBuild(),battler:{...createEmptyPlayerBuild().battler,bSelection:{type:"trait",traitId:"ap-at",options:{}},dSelection:{optionId:"add-self-0"}},ducks:[d]};}
 const state=b=>createSettingState({ok:true,status:"loaded",build:b});
 for(const [id,SP,dice] of [["custom-speed",3,[1,2,3,4,0,0]],["custom-normal",2,[0,2,3,4,5,0]],["custom-heavy",1,[0,0,3,4,5,6]]]) {
   test(`${id}: explicit type switch derives SP and initial dice, preserves AT/DF/A`,()=>{

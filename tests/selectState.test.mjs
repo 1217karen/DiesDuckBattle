@@ -13,7 +13,7 @@ function complete(id = "duck-1") {
   return { schemaVersion: 1,
     battler: { bSelection: { type: "trait", traitId: createBSkillCatalog().traits[0].id, options: {} },
       dSelection: { optionId: "add-self-0" } },
-    ducks: [{ ...createEmptyDuck({ idFactory: () => id }), name: "基本型", stats: { AT: 2, DF: 2, SP: 3 }, diceFrame: "custom-speed", dice: [1,2,3,4,0,0],
+    ducks: [{ ...legacyDuck({ idFactory: () => id }), name: "基本型", stats: { AT: 2, DF: 2, SP: 3 }, diceFrame: "custom-speed", dice: [1,2,3,4,0,0],
       aSelection: { triggerId: "exact:0", effects: [{ effectId: a.id, amountOptionId: a.amountOptions.at(-1).id }] },
       cSelection: { mode: "normal", structure: { kind: "flat", effects: [{ effectId: c.id,
         options: Object.fromEntries(Object.entries(c.optionAxes).map(([axis, set]) => [axis, cCatalog.optionSets[set][0].id])) }] } } }] };
@@ -24,7 +24,7 @@ function memory(raw = null) { return { raw, writes:0, getItem() { return this.ra
 } }; }
 test("storage list retains ready, incomplete and invalid Ducks; only ready can be selected", () => {
   const build = complete();
-  build.ducks.push(createEmptyDuck({ idFactory: () => "draft" }));
+  build.ducks.push(legacyDuck({ idFactory: () => "draft" }));
   const bad = complete("invalid").ducks[0]; bad.stats.AT = 100; build.ducks.push(bad);
   const source = memory(JSON.stringify(build)), repository = createPlayerBuildStorage(source);
   const state = createSelectState(repository.load()), choices = duckChoices(state);
@@ -68,3 +68,5 @@ test("catalog summaries contain human labels, stats, HP and dice", () => {
   for (const text of ["AT 2","DF 2","SP 3","HP 180","ダイス：","A：","C："]) assert.ok(d.includes(text),d);
   assert.doesNotMatch(d,/基本型|damage-enemy|exact:0|effectId/);
 });
+
+function legacyDuck(options) { const duck = createEmptyDuck(options); delete duck.skillLabels; return duck; }

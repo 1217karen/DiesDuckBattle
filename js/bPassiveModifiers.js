@@ -79,7 +79,7 @@ export function refreshPassiveBonuses(ctx, fighter) {
       : before.AT !== result.AT || before.DF !== result.DF;
     if (!changed) return;
     const skillInfo = { owner: fighter.side, category: "B", skillId: skill.id ?? null,
-      skillName: skill.name ?? "(B-skill passive)" };
+      skillName: skill.skillName ?? skill.name ?? "(B-skill passive)", skillRuby: skill.skillRuby };
     const groupId = ctx.newGroupId?.() ?? null;
     const emit = () => ctx.push(modifier.kind === "conditional" ? "passiveSkillStateChanged" : "passiveModifierChanged", fighter.side, {
       code: modifier.kind === "conditional" ? (result.active ? "PASSIVE_SKILL_ON" : "PASSIVE_SKILL_OFF") : "PASSIVE_MODIFIER_CHANGED",

@@ -1,3 +1,4 @@
+import { validSkillLabel } from "./skillLabels.js";
 import { FIXED_IMAGES } from "./fixedImages.js";
 import { createQuotePresenter, snapshotIconHTML } from "./resultPresentation.js";
 
@@ -245,10 +246,10 @@ function eventToLines(event, context) {
       const category = String(event.skill?.category ?? "");
       const label = { A: "アヒルスキル", B: "バトラースキル", C: "チャージスキル", D: "ダイススキル" }[category] ?? "スキル";
       const owner = category === "B" || category === "D" ? context.names[event.actor]?.battler : context.names[event.actor]?.duck;
-      return [{ kind: `note ${event.actor?.toLowerCase() ?? ""}`, text: `${escapeHTML(owner ?? actor)}の${label}！${event.skill?.skillName ? `<br>${escapeHTML(event.skill.skillName)}` : ""}` }];
+      return [{ kind: `note ${event.actor?.toLowerCase() ?? ""}`, text: `${escapeHTML(owner ?? actor)}の${label}！${renderSkillDisplayName(event.skill?.skillName, event.skill?.skillRuby)}` }];
     }
     case "cSkillActivated":
-      return [{ kind: "note", text: `APチャージ完了！<br>${actor}のチャージスキル！${event.skill?.skillName ? `<br>${escapeHTML(event.skill.skillName)}` : ""}` }];
+      return [{ kind: "note", text: `APチャージ完了！<br>${actor}のチャージスキル！${renderSkillDisplayName(event.skill?.skillName, event.skill?.skillRuby)}` }];
     case "timedRuleTriggered": return [{ kind: "note", text: `${actor}の持続スキル効果！` }];
     case "roll": {
       const summaries = { 1: "自分のAP+1", 2: "通常攻撃2回", 3: "自分のHP3回復", 4: "自分に反撃+1", 5: "相手のAP-1", 6: "DF無視攻撃＋反動3ダメージ" };
@@ -331,10 +332,15 @@ function eventToLines(event, context) {
       const owner = escapeHTML(context.names[event.actor]?.battler ?? event.actor ?? "-");
       const hpHint = Number.isFinite(event.hpPct) ? ` <span class="miniHint">（現HP${Math.round(event.hpPct * 100)}%）</span>` : "";
       if (event.active === false) return [{ kind: "meta", text: `${actor}の${escapeHTML(values || "効果なし")}が解除された！${hpHint}` }];
-      return [{ kind: `note ${event.actor?.toLowerCase() ?? ""}`, text: `${owner}のバトラースキル！${event.skill?.skillName ? `<br>${escapeHTML(event.skill.skillName)}` : ""}` },
+      return [{ kind: `note ${event.actor?.toLowerCase() ?? ""}`, text: `${owner}のバトラースキル！${renderSkillDisplayName(event.skill?.skillName, event.skill?.skillRuby)}` },
         { kind: "soft", text: `${actor}の${escapeHTML(values || "効果なし")}！${hpHint}` }];
     }
-    case "passiveModifierChanged": return [{ kind: "meta", text: `${actor}の常時効果が変化` }];
+    case "passiveModifierChanged": {
+      const customName = renderSkillDisplayName(event.skill?.skillName, event.skill?.skillRuby);
+      const owner = escapeHTML(context.names[event.actor]?.battler ?? event.actor ?? "-");
+      return [...(customName ? [{ kind: `note ${event.actor?.toLowerCase() ?? ""}`, text: `${owner}のバトラースキル！${customName}` }] : []),
+        { kind: "meta", text: `${actor}の常時効果が変化` }];
+    }
     case "note": return event.code ? [{ kind: "meta", text: event.code === "EFFECT_TYPE_UNSUPPORTED"
       ? `未対応effect.type: ${escapeHTML(event.effectType ?? "")}` : escapeHTML(event.code) }] : [];
     default: return [];
@@ -394,4 +400,11 @@ export function numberOr(value, fallback) {
 
 function escapeHTML(value) {
   return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+}
+
+// Plain structured labels only. Ruby markup is created here, never stored.
+export function renderSkillDisplayName(name, ruby = "") {
+  if (!name || !validSkillLabel({ name, ruby })) return "";
+  const text = ruby ? `<ruby>${escapeHTML(name)}<rt>${escapeHTML(ruby)}</rt></ruby>` : escapeHTML(name);
+  return `<br><span class="skill-display-name">${text}</span>`;
 }

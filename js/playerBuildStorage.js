@@ -1,20 +1,22 @@
 import { createEmptyPlayerBuild, clonePlayerBuild } from "./playerBuildModel.js";
 import { migratePlayerBuild } from "./playerBuildMigration.js";
-export const PLAYER_BUILD_STORAGE_KEY = "diesDuckBattle:player-build:v2";
+export const PLAYER_BUILD_STORAGE_KEY = "diesDuckBattle:player-build:v3";
+export const V2_PLAYER_BUILD_STORAGE_KEY = "diesDuckBattle:player-build:v2";
 export const LEGACY_PLAYER_BUILD_STORAGE_KEY = "diesDuckBattle:player-build:v1";
-/** Reads are non-destructive. v1 is kept as a backup even after an explicit v2 save. */
+/** Reads are non-destructive. v1/v2 are kept as backups even after an explicit v3 save. */
 export function createPlayerBuildStorage(storage) {
   const target=()=>storage??globalThis.localStorage;
   function load() {
     let raw,sourceKey=PLAYER_BUILD_STORAGE_KEY;
     try {
       raw=target().getItem(sourceKey);
+      if(raw===null) {sourceKey=V2_PLAYER_BUILD_STORAGE_KEY;raw=target().getItem(sourceKey);}
       if(raw===null) {sourceKey=LEGACY_PLAYER_BUILD_STORAGE_KEY;raw=target().getItem(sourceKey);}
     } catch {return {ok:false,status:"storage-error",build:null};}
     if(raw===null) return {ok:true,status:"empty",build:createEmptyPlayerBuild()};
     let value;
     try {value=JSON.parse(raw);} catch {return {ok:false,status:"corrupt",build:null};}
-    if(Number.isInteger(value?.schemaVersion)&&value.schemaVersion>0&&![1,2].includes(value.schemaVersion))
+    if(Number.isInteger(value?.schemaVersion)&&value.schemaVersion>0&&![1,2,3].includes(value.schemaVersion))
       return {ok:false,status:"unsupported-version",schemaVersion:value.schemaVersion,build:null};
     const migrated=migratePlayerBuild(value);
     return migrated.ok?{ok:true,status:"loaded",build:migrated.build,sourceKey,migratedFrom:migrated.fromVersion??null}

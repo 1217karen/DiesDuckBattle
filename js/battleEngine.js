@@ -1311,7 +1311,7 @@ if (typeof refresh === "function") refresh();
     owner: atk.side,
     category: "C",
     skillId: cs.id,
-    skillName: cs.name,
+    skillName: cs.skillName ?? cs.name, skillRuby: cs.skillRuby,
   };
 
   const groupId = ctx.newGroupId();
@@ -1320,7 +1320,7 @@ if (typeof refresh === "function") refresh();
     // Cスキル発動ログ（親）
     ctx.push("cSkillActivated", atk.side, {
       code: "C_SKILL_ACTIVATED",
-      skill: { category: "C", skillId: cs.id, skillName: cs.name },
+      skill: { category: "C", skillId: cs.id, skillName: cs.skillName ?? cs.name, skillRuby: cs.skillRuby },
       groupId,
     });
 
@@ -1359,7 +1359,7 @@ function maybeUseCSkillBeforeTurnEnd(atk, def, ctx) {
     owner: atk.side,
     category: "C",
     skillId: cs.id,
-    skillName: cs.name,
+    skillName: cs.skillName ?? cs.name, skillRuby: cs.skillRuby,
   };
 
   const groupId = ctx.newGroupId();
@@ -1368,7 +1368,7 @@ function maybeUseCSkillBeforeTurnEnd(atk, def, ctx) {
     // Cスキル発動ログ（親）
     ctx.push("cSkillActivated", atk.side, {
       code: "C_SKILL_ACTIVATED",
-      skill: { category: "C", skillId: cs.id, skillName: cs.name },
+      skill: { category: "C", skillId: cs.id, skillName: cs.skillName ?? cs.name, skillRuby: cs.skillRuby },
       trigger: "beforeTurnEnd",
       ...(canonical ? { mode: "special", activationCount: ctx.specialCActivation.count,
         costAP: cost, apBefore: atk.ap + cost, apAfter: atk.ap } : {}),

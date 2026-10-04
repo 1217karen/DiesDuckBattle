@@ -84,16 +84,16 @@ test("shared status labels and normalized labels are catalog-owned for A/B/C",()
   }
   for(const {id,label} of STATUS_METADATA) assert.equal(statusLabel(id),label);
 });
-test("v1 -> v2 preserves complete loadout and round-trips only v2 selections",async()=>{
+test("v1 -> v3 preserves complete loadout and round-trips only v2 selections",async()=>{
   const old=(await getOpponent("dev-opponent-1")).build, raw=JSON.stringify(old), converted=migratePlayerBuild(old);
-  assert.equal(converted.ok,true);assert.equal(converted.build.schemaVersion,2);assert.equal(JSON.stringify(old),raw);
+  assert.equal(converted.ok,true);assert.equal(converted.build.schemaVersion,3);assert.equal(JSON.stringify(old),raw);
   const options={duckId:old.ducks[0].id,battlerId:"p1",battlerName:"自分"};
   assert.deepEqual(compileBattleLoadout(converted.build,options),compileBattleLoadout(old,options));
   const storage=memory({[LEGACY_PLAYER_BUILD_STORAGE_KEY]:raw}),repo=createPlayerBuildStorage(storage);
   const loaded=repo.load();assert.equal(loaded.migratedFrom,1);assert.equal(storage.writes,0);
   assert.equal(repo.save(loaded.build).ok,true);assert.equal(storage.values.get(LEGACY_PLAYER_BUILD_STORAGE_KEY),raw);
   const reloaded=repo.load();assert.equal(inspectBattleLoadout(reloaded.build,options.duckId).ready,true);
-  assert.equal(JSON.parse(storage.values.get(PLAYER_BUILD_STORAGE_KEY)).schemaVersion,2);
+  assert.equal(JSON.parse(storage.values.get(PLAYER_BUILD_STORAGE_KEY)).schemaVersion,3);
 });
 test("partial normalized axes are incomplete, violations remain invalid",async()=>{
   const b=migratePlayerBuild((await getOpponent("dev-opponent-1")).build).build;

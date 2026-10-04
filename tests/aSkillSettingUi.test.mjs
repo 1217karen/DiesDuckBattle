@@ -102,10 +102,10 @@ test("A setting UI: both conflict directions, invalid saved leaves and cancellat
 });
 
 test("A setting UI: explicitly converted legacy fixture keeps compiled meaning (online page does not migrate local data)",async()=>{
-  const b=initial({triggerId:"exact:1",effects:[{effectId:"heal-enemy",amountOptionId:"amount-5"}]});b.schemaVersion=1;
+  const b=initial({triggerId:"exact:1",effects:[{effectId:"heal-enemy",amountOptionId:"amount-5"}]});b.schemaVersion=1;delete b.battler.skillLabels;for(const d of b.ducks)delete d.skillLabels;
   const original=compileASkill(b.ducks[0],b.ducks[0].aSelection);
   const p=await page(migratePlayerBuild(b).build);assert.equal(p.get("a-effect-0").value,"heal");assert.equal(p.get("a-effect-0-options.amount").value,"amount-5");
-  const saved=p.save();assert.equal(saved.schemaVersion,2);
+  const saved=p.save();assert.equal(saved.schemaVersion,3);
   assert.deepEqual(compileASkill(saved.ducks[0],saved.ducks[0].aSelection),original);
 });
 
@@ -295,10 +295,34 @@ test("A pt wording and dice explanation placement change presentation only",asyn
  assert.equal(p.get("dice-metrics").textContent,"ダイスpt　獲得 0pt / 消費 0pt");
  const siblings=p.get("dice-metrics").parent.children;
  assert.equal(siblings[siblings.indexOf(p.get("dice-metrics"))+1],p.get("dice-pt-description"));
- assert.equal(p.get("dice-pt-description").textContent,"0を選択すると、1枠ごとに1pt獲得します。同じ出目は通常2個までですが、0を含む場合は1ptを使用すると3個まで選択可能です。余ったptはAスキルで使用可能です。");
+ assert.equal(p.get("dice-pt-description").textContent,"0を選択すると、1枠ごとに1pt獲得します。同じ出目は通常2個まで、1ptを使用すると3個まで選択可能です。余ったptはAスキルで使用可能です。");
  assert.ok(!p.all().some(e=>e.textContent.includes("6枠。同じ非0出目")));
  assert.ok(!p.get("dice-metrics").textContent.includes("残り"));
  assert.deepEqual(p.save().ducks[0].aSelection,b.ducks[0].aSelection);assert.deepEqual(b,before);
  p.choose("dice-type","custom-speed");assert.equal(p.get("dice-metrics").textContent,"ダイスpt　獲得 2pt / 消費 0pt");
  assert.equal(p.get("a-budget-line").textContent,"使用可能pt 5初期pt 3 ＋ ダイスpt余剰 2");
+});
+
+test("skill label inputs are under each heading; Duck/Battler ownership, whitespace and selections survive save/reload",async()=>{
+ const b=initial({triggerId:"exact:1",effects:[damage]});
+ b.ducks.push({...createEmptyDuck({idFactory:()=>"second"}),name:"別のDuck"});
+ const before=structuredClone(b),p=await page(b),ruby="   サン   ダー      ";
+ const input=(id,value)=>{const e=p.get(id);assert.ok(e);e.value=value;e.handlers.input();};
+ for(const category of ["a","b","c","d"]){
+  const name=p.get(`skill-${category}-name`),rt=p.get(`skill-${category}-ruby`);
+  assert.equal(name.tagName,"input");assert.equal(name.type,"text");assert.equal(name.maxLength,15);assert.equal(rt.maxLength,50);
+  const card=name.parent.parent.parent;assert.equal(card.children[1],name.parent.parent);
+  input(`skill-${category}-name`,`${category}雷`);input(`skill-${category}-ruby`,ruby);
+ }
+ p.choose("a-effect-0","heal");assert.equal(p.get("skill-a-name").value,"a雷");assert.equal(p.get("skill-a-ruby").value,ruby);
+ p.get("duck-tab-1").handlers.click();assert.equal(p.get("skill-a-name").value,"");assert.equal(p.get("skill-c-name").value,"");
+ assert.equal(p.get("skill-b-name").value,"b雷");assert.equal(p.get("skill-d-ruby").value,ruby);
+ // Metadata stays editable under the headings even while AT/DF lock effect editors.
+ assert.ok(!p.get("a-effect-0"));input("skill-a-name","second雷");input("skill-a-ruby","末尾   ");
+ const saved=p.save();assert.deepEqual(saved.battler.bSelection,b.battler.bSelection);assert.deepEqual(saved.battler.dSelection,b.battler.dSelection);
+ assert.deepEqual(saved.ducks[0].cSelection,b.ducks[0].cSelection);assert.deepEqual(saved.ducks[1].aSelection,b.ducks[1].aSelection);
+ assert.deepEqual(saved.ducks[0].skillLabels.A,{name:"a雷",ruby});assert.deepEqual(saved.ducks[1].skillLabels.A,{name:"second雷",ruby:"末尾   "});
+ assert.deepEqual(b,before);
+ const reloaded=await page(saved);assert.equal(reloaded.get("skill-a-ruby").value,ruby);
+ reloaded.get("duck-tab-1").handlers.click();assert.equal(reloaded.get("skill-a-ruby").value,"末尾   ");assert.equal(reloaded.get("skill-b-ruby").value,ruby);
 });

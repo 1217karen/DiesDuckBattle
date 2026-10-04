@@ -25,7 +25,7 @@ test("empty storage creates editable page state without writing or creating a Du
   const { state, memory } = setup();
   assert.equal(state.loadStatus, "empty"); assert.equal(state.dirty, false);
   assert.equal(state.selectedDuckId, null); assert.deepEqual(state.build.ducks, []);
-  assert.deepEqual(state.build.battler, { bSelection: null, dSelection: null });
+  assert.deepEqual(state.build.battler, { bSelection: null, dSelection: null, skillLabels: { B: {name:"",ruby:""}, D: {name:"",ruby:""} } });
   assert.equal(memory.writes, 0);
 });
 test("unreadable storage locks page state and cannot be edited", () => {
@@ -158,11 +158,11 @@ test("all skills can be reset to null and empty stats can be saved", () => {
   let state = patch(add(setup().state), { aSelection: {}, cSelection: {} });
   state = apply(state, { type: "battler", patch: { bSelection: {}, dSelection: {} } });
   state = patch(state, { aSelection: null, cSelection: null });
-  state = apply(state, { type: "battler", patch: { bSelection: null, dSelection: null } });
+  state = apply(state, { type: "battler", patch: { bSelection: null, dSelection: null, skillLabels: { B: {name:"",ruby:""}, D: {name:"",ruby:""} } } });
   assert.equal(storage.save(state.build).ok, true);
   const restored = createSettingState(storage.load());
   assert.equal(selectedDuck(restored).aSelection, null); assert.equal(selectedDuck(restored).cSelection, null);
-  assert.deepEqual(restored.build.battler, { bSelection: null, dSelection: null });
+  assert.deepEqual(restored.build.battler, { bSelection: null, dSelection: null, skillLabels: { B: {name:"",ruby:""}, D: {name:"",ruby:""} } });
   assert.equal(duckSummary(selectedDuck(restored)).stats.hp, null);
 });
 test("C structures are independent drafts, with all branch shapes inspectable", () => {

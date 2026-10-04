@@ -53,9 +53,9 @@ function inspectLegacyBuildForSave(build) {
       add(owner, "incomplete", "UNSET", "", `${section}スキルが未設定です。`); return false;
     }
     try {
-      const shell = createEmptyPlayerBuild(); shell.schemaVersion = 1;
+      const shell = createEmptyPlayerBuild(); shell.schemaVersion = 1; delete shell.battler.skillLabels;
       if (["B", "D"].includes(section)) shell.battler[`${section.toLowerCase()}Selection`] = selection;
-      else { const duck = createEmptyDuck({ idFactory: () => "inspection" }); duck[`${section.toLowerCase()}Selection`] = selection; shell.ducks.push(duck); }
+      else { const duck = createEmptyDuck({ idFactory: () => "inspection" }); duck[`${section.toLowerCase()}Selection`] = selection; delete duck.skillLabels; shell.ducks.push(duck); }
       clonePlayerBuild(shell);
       return true;
     } catch {
@@ -229,7 +229,7 @@ export function saveInspectedBuild(state, repository, { approveIncomplete = fals
 
 /** v2 axes are resolved before reusing legacy production inspection and costs. */
 export function inspectBuildForSave(build) {
-  if (build?.schemaVersion !== 2) return inspectLegacyBuildForSave(build);
+  if (![2,3].includes(build?.schemaVersion)) return inspectLegacyBuildForSave(build);
   let legacy;
   try { legacy = clonePlayerBuild(build); }
   catch { return {canSave:false,complete:false,incomplete:[],invalid:[{section:"build",duckId:null,ownerName:"設定全体",code:"INVALID_MODEL",path:"build",message:"保存形式が不正です。"}]}; }
@@ -243,6 +243,8 @@ export function inspectBuildForSave(build) {
     return resolved.selection;
   }
   legacy.schemaVersion=1;
+  delete legacy.battler.skillLabels;
+  for (const duck of legacy.ducks) delete duck.skillLabels;
   legacy.battler.bSelection=convert("B",legacy.battler.bSelection,createBSkillCatalog());
   legacy.ducks.forEach((duck,i)=>{
     duck.aSelection=convert("A",duck.aSelection,createASkillCatalog(),duck,i);

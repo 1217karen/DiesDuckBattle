@@ -33,7 +33,7 @@ test("lossless draft DTO includes incomplete selections, duplicate names, dice, 
   const dto=encodeOnlinePlayer(data);assert.deepEqual(decodeOnlinePlayer(dto),data);
   dto.ducks[0].build.stats.AT=99;assert.equal(data.build.ducks[0].stats.AT,-1);
 });
-for(const mutate of [d=>{d.build.schemaVersion=3;},d=>{d.presentation.future="unknown";},d=>{d.presentation.battler.iconSlots.push("eleventh");},d=>{d.publicSettings.publicDuckId=duckId;},d=>{d.build.ducks.push(createEmptyDuck({idFactory:()=>"not-uuid"}));}])test("lossy/unsupported online draft rejected",()=>{const d=empty();mutate(d);assert.throws(()=>encodeOnlinePlayer(d));});
+for(const mutate of [d=>{d.build.schemaVersion=4;},d=>{d.presentation.future="unknown";},d=>{d.presentation.battler.iconSlots.push("eleventh");},d=>{d.publicSettings.publicDuckId=duckId;},d=>{d.build.ducks.push(createEmptyDuck({idFactory:()=>"not-uuid"}));}])test("lossy/unsupported online draft rejected",()=>{const d=empty();mutate(d);assert.throws(()=>encodeOnlinePlayer(d));});
 test("registration draft defaults are independent, keep DB names, and do not write during load",async()=>{
   const f=fixture();const first=await f.storage.load();assert.equal(first.data.battlerName,"DB名0");assert.deepEqual(first.data.build,createEmptyPlayerBuild());
   f.rows([b]);const second=await f.storage.load();assert.equal(second.data.battlerName,"DB名1");assert.notEqual(first.account.id,second.account.id);

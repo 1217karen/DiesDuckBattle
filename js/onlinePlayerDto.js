@@ -1,3 +1,4 @@
+import { migratePlayerBuild } from "./playerBuildMigration.js";
 import { clonePlayerBuild, createEmptyPlayerBuild } from "./playerBuildModel.js";
 import { normalizePlayerPresentation, createEmptyPlayerPresentation } from "./playerPresentationModel.js";
 import { normalizePlayerPublicSettings } from "./playerPublicSettingsModel.js";
@@ -23,7 +24,7 @@ const keys = (value, names) => requireValue(object(value) && same(Object.keys(va
 // Validate persistence shape, not battle readiness. Never read local storage/catalogs.
 export function encodeOnlinePlayer(data) {
   keys(data, ["build", "presentation", "publicSettings", "battlerName"]);
-  requireValue(data.build.schemaVersion === 2 && typeof data.battlerName === "string");
+  requireValue(data.build.schemaVersion === 3 && typeof data.battlerName === "string");
   const build = clonePlayerBuild(data.build);
   requireValue(build.ducks.every(d => isOnlineUuid(d.id)));
   const presentation = normalizePlayerPresentation(data.presentation);
@@ -38,11 +39,11 @@ export function encodeOnlinePlayer(data) {
   return {
     dtoVersion: 1,
     battler: {
-      build: { schemaVersion: 2, ...build.battler },
+      build: { schemaVersion: 3, ...build.battler },
       presentation: { schemaVersion: 1, name: data.battlerName, ...presentation.battler, detachedDuckPresentation },
     },
     ducks: build.ducks.map(({ id, name, ...fields }) => ({ id,
-      build: { schemaVersion: 2, ...fields },
+      build: { schemaVersion: 3, ...fields },
       presentation: { schemaVersion: 1, name, icon: presentation.ducks[id] ?? null },
     })),
     publicDuckId: settings.publicDuckId,
@@ -58,24 +59,30 @@ export function decodeOnlinePlayer(snapshot) {
     return { build: createEmptyPlayerBuild(), presentation: createEmptyPlayerPresentation(),
       publicSettings: { schemaVersion: 1, publicDuckId: null }, battlerName: b.presentation.name };
   }
-  keys(b.build, ["schemaVersion", "bSelection", "dSelection"]);
+  keys(b.build, ["schemaVersion", "bSelection", "dSelection", ...(b.build.schemaVersion === 3 ? ["skillLabels"] : [])]);
   keys(b.presentation, ["schemaVersion", "name", "standingImageUrl", "defaultIconUrl", "iconSlots", "quotes", "detachedDuckPresentation"]);
-  requireValue(b.build.schemaVersion === 2 && b.presentation.schemaVersion === 1 && object(b.presentation.detachedDuckPresentation));
+  requireValue([2,3].includes(b.build.schemaVersion) && b.presentation.schemaVersion === 1 && object(b.presentation.detachedDuckPresentation));
   const { schemaVersion: _bv, ...battler } = b.build;
   const { schemaVersion: _pv, name, detachedDuckPresentation, ...display } = b.presentation;
   const duckDisplay = { ...detachedDuckPresentation };
   const ducks = snapshot.ducks.map(d => {
-    requireValue(isOnlineUuid(d.id) && object(d.build) && d.build.schemaVersion === 2);
+    requireValue(isOnlineUuid(d.id) && object(d.build) && d.build.schemaVersion === b.build.schemaVersion);
     keys(d.presentation, ["schemaVersion", "name", "icon"]); requireValue(d.presentation.schemaVersion === 1);
     requireValue(!Object.hasOwn(duckDisplay, d.id));
     const { schemaVersion: _v, ...fields } = d.build;
     if (d.presentation.icon !== null) duckDisplay[d.id] = d.presentation.icon;
     return { id: d.id, name: d.presentation.name, ...fields };
   });
-  const data = { build: { schemaVersion: 2, battler, ducks },
+  const migrated = migratePlayerBuild({ schemaVersion: b.build.schemaVersion, battler, ducks });
+  requireValue(migrated.ok);
+  const data = { build: migrated.build,
     presentation: { schemaVersion: 1, battler: display, ducks: duckDisplay },
     publicSettings: { schemaVersion: 1, publicDuckId: snapshot.publicDuckId }, battlerName: name };
   const encoded = encodeOnlinePlayer(data);
+  if (b.build.schemaVersion === 2) {
+    encoded.battler.build.schemaVersion = 2; delete encoded.battler.build.skillLabels;
+    for (const d of encoded.ducks) { d.build.schemaVersion = 2; delete d.build.skillLabels; }
+  }
   requireValue(same(encoded.battler, b) && same(encoded.ducks, snapshot.ducks));
   return data;
 }

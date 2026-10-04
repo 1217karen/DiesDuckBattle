@@ -19,7 +19,7 @@ function complete(id = "duck-1") {
   return { schemaVersion: 1,
     battler: { bSelection: { type: "trait", traitId: createBSkillCatalog().traits[0].id, options: {} },
       dSelection: { optionId: "add-self-0" } },
-    ducks: [{ ...createEmptyDuck({ idFactory: () => id }), name: "基本型", stats: { AT: 2, DF: 2, SP: 3 }, diceFrame: "custom-speed", dice: [1,2,3,4,0,0],
+    ducks: [{ ...legacyDuck({ idFactory: () => id }), name: "基本型", stats: { AT: 2, DF: 2, SP: 3 }, diceFrame: "custom-speed", dice: [1,2,3,4,0,0],
       aSelection: { triggerId: "exact:0", effects: [{ effectId: a.id, amountOptionId: a.amountOptions.at(-1).id }] },
       cSelection: { mode: "normal", structure: { kind: "flat", effects: [{ effectId: c.id,
         options: Object.fromEntries(Object.entries(c.optionAxes).map(([axis, set]) => [axis, cCatalog.optionSets[set][0].id])) }] } } }] };
@@ -36,10 +36,10 @@ test("complete loadout matches all production compilers and has only engine fiel
   const result = compileBattleLoadout(build, options);
   assert.equal(result.ok, true);
   assert.deepEqual(result.battler, { id: options.battlerId, name: options.battlerName,
-    bSkills: compileBSkill(build.battler.bSelection).bSkills, dSkill: compileDSkill(build.battler.dSelection).skill });
+    bSkills: compileBSkill(build.battler.bSelection).bSkills.map(s => ({...s,skillName:"",skillRuby:""})), dSkill: {...compileDSkill(build.battler.dSelection).skill,skillName:"",skillRuby:""} });
   assert.deepEqual(result.duck, { id: source.id, name: source.name, stats: source.stats, dice: source.dice,
-    aSkill: { id: "A_PLAYER", name: "Aスキル", ...compileASkill(source, source.aSelection).skill },
-    cSkill: { id: "C_PLAYER", name: "Cスキル", ...compileCSkill(source.cSelection).skill } });
+    aSkill: { id: "A_PLAYER", name: "Aスキル", ...compileASkill(source, source.aSelection).skill, skillName:"",skillRuby:"" },
+    cSkill: { id: "C_PLAYER", name: "Cスキル", ...compileCSkill(source.cSelection).skill, skillName:"",skillRuby:"" } });
   assert.equal("maxHP" in result.duck, false);
   assert.equal("maxHP" in result.duck.stats, false);
   const forbidden = new Set(["aSelection", "bSelection", "cSelection", "dSelection", "diceFrame", "resources", "inspection", "catalog", "cost", "dirty"]);
@@ -124,3 +124,5 @@ test("two compiled loadouts start and finish an existing engine battle; engine c
   assert.ok(battle.events.some(e => e.type === "turnStart"));
   assert.ok(battle.events.some(e => e.type === "battleEnd"));
 });
+
+function legacyDuck(options) { const duck = createEmptyDuck(options); delete duck.skillLabels; return duck; }

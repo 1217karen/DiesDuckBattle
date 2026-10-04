@@ -137,3 +137,6 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
   .effect-meta strong { white-space:nowrap; }
   .skill-setting-line { grid-template-columns:85px minmax(0,1fr); gap:10px; }
 }
+
+.skill-label-controls { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,2fr); gap:12px; margin-bottom:18px; }
+@media(max-width:700px) { .skill-label-controls { grid-template-columns:minmax(0,1fr); } }

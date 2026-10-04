@@ -41,6 +41,7 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
     });
     await db.exec('reset role;');
     await db.exec(await readFile(new URL('../supabase/migrations/20261001114619_online_battle_public_boundary.sql',import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261004082650_skill_label_snapshot.sql',import.meta.url),'utf8'));
     await asUser(userA);
     await t.test('direct tables, guessed UUIDs and full draft RPC cannot retrieve foreign data',async()=>{
       assert.equal((await db.query('select * from public.battlers where game_account_id=$1',[b])).rows.length,0);
@@ -61,6 +62,26 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
       assert.equal(decodePublicOpponent(row,a).publicDuckId,duckB);
       assert.equal(await value('select public.get_online_opponent($1) data',[a]),null);
       assert.equal(await value('select public.get_online_opponent($1) data',[privateDuck]),null);
+    });
+    await t.test('v3 public skill labels preserve spaces and whitelist only name/ruby; v2 still decodes',async()=>{
+      const ruby='   サン   ダー      ';
+      const labels=keys=>Object.fromEntries(keys.map(k=>[k,{name:k+'雷',ruby,private:'PRIVATE-LABEL'}]));
+      await db.exec('reset role;');
+      await db.query("update public.battlers set build=jsonb_set(build,'{skillLabels}',$1::jsonb) where game_account_id=$2",[JSON.stringify(labels(['B','D'])),b]);
+      await db.query("update public.ducks set build=jsonb_set(build,'{skillLabels}',$1::jsonb) where id=$2",[JSON.stringify(labels(['A','C'])),duckB]);
+      await asUser(userA);
+      const row=await value('select public.get_online_opponent($1) data',[b]),decoded=decodePublicOpponent(row,a);
+      assert.doesNotMatch(JSON.stringify(row),/PRIVATE/);
+      for(const [owner,keys]of [[decoded.build.battler,['B','D']],[decoded.build.ducks[0],['A','C']]])
+        for(const k of keys)assert.deepEqual(owner.skillLabels[k],{name:k+'雷',ruby});
+      await db.exec(`reset role;
+        update public.battlers set build=jsonb_set(build-'skillLabels','{schemaVersion}','2') where game_account_id='${b}';
+        update public.ducks set build=jsonb_set(build-'skillLabels','{schemaVersion}','2') where id='${duckB}';`);
+      await asUser(userA);
+      const old=await value('select public.get_online_opponent($1) data',[b]);
+      assert.equal('skillLabels' in old.battler.build,false);assert.equal('skillLabels' in old.ducks[0].build,false);
+      const migrated=decodePublicOpponent(old,a);assert.equal(migrated.build.schemaVersion,3);
+      assert.deepEqual(migrated.build.ducks[0].skillLabels.A,{name:'',ruby:''});
     });
     const prepare=()=>value('select public.prepare_online_battle($1,$2,$3,$4) data',[a,da,b,duckB]);
     await t.test('VS pairs latest own and public data; forged own account/duck is denied',async()=>{

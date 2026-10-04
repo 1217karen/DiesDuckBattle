@@ -17,7 +17,7 @@ const cLeaf = id => { const e = cc.effects.find(e => e.id === id); return { effe
   options: Object.fromEntries(Object.entries(e.optionAxes).map(([axis, set]) => [axis, cc.optionSets[set][0].id])) }; };
 function complete() {
   return { schemaVersion: 1, battler: { bSelection: { type: "trait", traitId: bc.traits[0].id, options: {} }, dSelection: { optionId: "add-self-0" } },
-    ducks: [{ ...createEmptyDuck({ idFactory: () => "duck-1" }), stats: { AT: 2, DF: 2, SP: 3 }, diceFrame: "custom-speed", dice: [1,2,3,4,0,0],
+    ducks: [{ ...legacyDuck({ idFactory: () => "duck-1" }), stats: { AT: 2, DF: 2, SP: 3 }, diceFrame: "custom-speed", dice: [1,2,3,4,0,0],
       aSelection: { triggerId: "exact:0", effects: [aLeaf("damage-enemy")] },
       cSelection: { mode: "normal", structure: { kind: "flat", effects: [cLeaf("damage-enemy")] } } }] };
 }
@@ -189,3 +189,5 @@ test("obsolete A choices remain invalid without replacement in save inspection",
     assert.deepEqual(b.ducks[0].aSelection.effects,[leaf]);
   }
 });
+
+function legacyDuck(options) { const duck = createEmptyDuck(options); delete duck.skillLabels; return duck; }

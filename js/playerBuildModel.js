@@ -1,4 +1,5 @@
-export const PLAYER_BUILD_SCHEMA_VERSION = 2;
+import { emptySkillLabels, validSkillLabel } from "./skillLabels.js";
+export const PLAYER_BUILD_SCHEMA_VERSION = 3;
 
 const record = value => value !== null && typeof value === "object"
   && [Object.prototype, null].includes(Object.getPrototypeOf(value));
@@ -55,7 +56,7 @@ function selection(value, category, version) {
       if (item === null) continue;
       if (category === "A" && version === 1) strings(item, ["effectId", "amountOptionId", "chanceOptionId"]);
       else {
-        fields(item, version === 2 ? ["effectId", "targetId", "statusId", "options", "chanceOptionId"] : ["effectId", "options", "chanceOptionId"], "C effect selection", []);
+        fields(item, version >= 2 ? ["effectId", "targetId", "statusId", "options", "chanceOptionId"] : ["effectId", "options", "chanceOptionId"], "C effect selection", []);
         for (const [key, v] of Object.entries(item)) {
           if (key === "options") options(v);
           else requireShape(nullableString(v), "C effect ID");
@@ -70,7 +71,7 @@ function selection(value, category, version) {
   };
   if (category === "D") strings(value, ["optionId"]);
   if (category === "B") {
-    fields(value, ["type", "triggerId", "conditionId", "effectId", "traitId", "options", ...(version === 2 ? ["targetId", "statusId"] : [])], "B selection", []);
+    fields(value, ["type", "triggerId", "conditionId", "effectId", "traitId", "options", ...(version >= 2 ? ["targetId", "statusId"] : [])], "B selection", []);
     for (const [key, v] of Object.entries(value)) {
       if (key === "options") options(v);
       else requireShape(nullableString(v), "B selection ID");
@@ -101,8 +102,13 @@ function selection(value, category, version) {
   }
 }
 
+function labels(value, categories) {
+  fields(value, categories, "skillLabels");
+  for (const key of categories) requireShape(validSkillLabel(value[key]), `skillLabels.${key}`);
+}
 function checkDuck(duck, version = PLAYER_BUILD_SCHEMA_VERSION) {
-  fields(duck, ["id", "name", "stats", "diceFrame", "dice", "aSelection", "cSelection"], "duck");
+  fields(duck, ["id", "name", "stats", "diceFrame", "dice", "aSelection", "cSelection", ...(version >= 3 ? ["skillLabels"] : [])], "duck");
+  if (version >= 3) labels(duck.skillLabels, ["A", "C"]);
   requireShape(typeof duck.id === "string" && duck.id.trim().length > 0, "duck.id");
   requireShape(typeof duck.name === "string", "duck.name");
   fields(duck.stats, ["AT", "DF", "SP"], "duck.stats");
@@ -117,8 +123,9 @@ function checkDuck(duck, version = PLAYER_BUILD_SCHEMA_VERSION) {
 export function clonePlayerBuild(build) {
   const copy = cloneData(build);
   fields(copy, ["schemaVersion", "battler", "ducks"], "root");
-  requireShape([1, PLAYER_BUILD_SCHEMA_VERSION].includes(copy.schemaVersion), "schemaVersion");
-  fields(copy.battler, ["bSelection", "dSelection"], "battler");
+  requireShape([1, 2, PLAYER_BUILD_SCHEMA_VERSION].includes(copy.schemaVersion), "schemaVersion");
+  fields(copy.battler, ["bSelection", "dSelection", ...(copy.schemaVersion >= 3 ? ["skillLabels"] : [])], "battler");
+  if (copy.schemaVersion >= 3) labels(copy.battler.skillLabels, ["B", "D"]);
   selection(copy.battler.bSelection, "B", copy.schemaVersion);
   selection(copy.battler.dSelection, "D", copy.schemaVersion);
   requireShape(Array.isArray(copy.ducks), "ducks");
@@ -129,7 +136,7 @@ export function clonePlayerBuild(build) {
 
 export function createEmptyPlayerBuild() {
   return { schemaVersion: PLAYER_BUILD_SCHEMA_VERSION,
-    battler: { bSelection: null, dSelection: null }, ducks: [] };
+    battler: { bSelection: null, dSelection: null, skillLabels: emptySkillLabels(["B", "D"]) }, ducks: [] };
 }
 
 // Called only on creation; never derived from an index, name or existing IDs.
@@ -139,7 +146,7 @@ export function generateDuckId() {
 
 export function createEmptyDuck({ idFactory = generateDuckId } = {}) {
   const duck = { id: idFactory(), name: "", stats: { AT: null, DF: null, SP: null },
-    diceFrame: null, dice: [0, 0, 0, 0, 0, 0], aSelection: null, cSelection: null };
+    diceFrame: null, dice: [0, 0, 0, 0, 0, 0], aSelection: null, cSelection: null, skillLabels: emptySkillLabels(["A", "C"]) };
   checkDuck(duck);
   return duck;
 }
@@ -168,7 +175,7 @@ export function duplicateDuck(build, id, { idFactory = generateDuckId } = {}) {
 export function updateDuck(build, id, patch) {
   const next = clonePlayerBuild(build);
   const data = cloneData(patch);
-  fields(data, ["name", "stats", "diceFrame", "dice", "aSelection", "cSelection"], "duck patch", []);
+  fields(data, ["name", "stats", "diceFrame", "dice", "aSelection", "cSelection", "skillLabels"], "duck patch", []);
   const index = duckIndex(next, id);
   next.ducks[index] = { ...next.ducks[index], ...data };
   return clonePlayerBuild(next);
@@ -183,7 +190,7 @@ export function deleteDuck(build, id) {
 export function updateBattler(build, patch) {
   const next = clonePlayerBuild(build);
   const data = cloneData(patch);
-  fields(data, ["bSelection", "dSelection"], "battler patch", []);
+  fields(data, ["bSelection", "dSelection", "skillLabels"], "battler patch", []);
   next.battler = { ...next.battler, ...data };
   return clonePlayerBuild(next);
 }
