@@ -35,7 +35,7 @@ try {
     const known = state.ready && state.sessionKnown;
     document.getElementById("home-guest").hidden = !known || state.signedIn;
     document.getElementById("home-game").hidden = !known || !state.signedIn;
-    document.getElementById("home-status").textContent = !known ? state.sessionMessage
+    document.getElementById("home-status").textContent = !known ? (state.ready ? state.sessionMessage : "")
       : state.signedIn ? menuModel(state).identity : "ログイン、または新規登録してはじめましょう。";
     const feedback = document.getElementById("home-feedback");
     feedback.textContent = state.registeredEno ? "登録済みのENo：" + state.registeredEno + "。ENoを控えてください。" : state.messageSource === "logout" ? state.message : "";

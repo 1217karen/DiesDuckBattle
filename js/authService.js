@@ -67,8 +67,8 @@ export function createAuthService({ client, config, fetchImpl = fetch }) {
     watch(callback) {
       // Keep Supabase's auth callback synchronous; defer SDK queries to avoid its lock.
       const timers = new Set();
-      const { data } = client.auth.onAuthStateChange((_event, session) => {
-        const timer = setTimeout(() => { timers.delete(timer); callback(session); }, 0);
+      const { data } = client.auth.onAuthStateChange((event, session) => {
+        const timer = setTimeout(() => { timers.delete(timer); callback(session, event); }, 0);
         timers.add(timer);
       });
       return () => { data.subscription.unsubscribe(); timers.forEach(clearTimeout); };

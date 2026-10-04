@@ -8,7 +8,7 @@ import { createAuthController } from "../js/authController.js";
 
 const source = name => readFile(new URL(`../js/${name}.js`, import.meta.url), "utf8");
 function environment() {
-  const classes = new Set(["auth-required-pending"]), redirects = [];
+  const classes = new Set(), redirects = [];
   return { classes, redirects,
     document: { body: { classList: { add: v => classes.add(v), remove: v => classes.delete(v) } } },
     location: { replace: url => redirects.push(url) } };
@@ -22,11 +22,11 @@ function runtime(initial = loading) {
     emit: state => listener(state), disposed: () => disposed };
 }
 
-test("loading stays hidden and unresolved; confirmed signed-in admits and reveals; signed-out redirects once", async () => {
+test("loading keeps static shell visible and unresolved; confirmed signed-in admits; signed-out redirects once", async () => {
   const env = environment(), r = runtime(); let allowed = false;
   const pending = requireLoginPage({ ...env, getRuntime: async () => r.auth }).then(() => { allowed = true; });
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(allowed, false); assert.ok(env.classes.has("auth-required-pending"));
+  assert.equal(allowed, false); assert.equal(env.classes.has("auth-required-pending"), false);
   assert.deepEqual(env.redirects, []);
   r.emit(signedIn); await pending;
   assert.equal(allowed, true); assert.equal(env.classes.has("auth-required-pending"), false);
@@ -115,7 +115,7 @@ test("only the three explicit page entry modules opt in; denied/loading auth can
   }
   for (const page of ["select", "setting", "character"]) {
     const html = await readFile(new URL(`../${page}.html`, import.meta.url), "utf8");
-    assert.match(html, /<body class="[^"]*auth-required-pending/);
+    assert.doesNotMatch(html, /<body class="[^"]*auth-required-pending/);
     assert.match(html, /css\/common-menu.css/);
   }
   for (const page of ["index", "storage", "result"]) {

@@ -26,7 +26,7 @@ function setup({ rows = [{ game_account_id: "different-game-uuid", game_accounts
   const service = createAuthService({ client, config, fetchImpl: async (...args) => {
     calls.push(["register", ...args]); return Response.json({ ok: true, eno: "9223372036854775807" }, { status: 201 });
   } });
-  return { client, calls, service, fire: s => callback("SIGNED_IN", s) };
+  return { client, calls, service, fire: (s, event = "SIGNED_IN") => callback(event, s) };
 }
 for (const [label, value] of [
   ["empty name", { ...input, characterName: " " }],
@@ -134,7 +134,7 @@ test("late account lookup cannot restore an ENo after signout", async () => {
   const controller = createAuthController(f.service, s => { state = s; });
   await controller.start();
   f.service.accounts = () => new Promise(r => { resolve = r; });
-  f.fire(session); await new Promise(r => setTimeout(r, 10));
+  f.fire(session, "USER_UPDATED"); await new Promise(r => setTimeout(r, 10));
   f.fire(null); await new Promise(r => setTimeout(r, 10));
   resolve([{ eno: "999", name: "late" }]); await new Promise(r => setTimeout(r, 0));
   assert.equal(state.signedIn, false); assert.deepEqual(state.enos, []);

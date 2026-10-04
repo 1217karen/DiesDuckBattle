@@ -1,6 +1,6 @@
 :root { --common-menu-height: 52px; }
 body.has-common-menu { padding-top: var(--common-menu-height); }
-/* Preserve layout while the explicitly protected page awaits shared Auth state. */
+/* Hide private content only after access is lost and redirect begins. */
 body.auth-required-pending > :not(.common-menu) { visibility: hidden !important; }
 body.auth-required-pending > :not(.common-menu) * { visibility: hidden !important; }
 .common-menu, .common-menu * { box-sizing: border-box; }

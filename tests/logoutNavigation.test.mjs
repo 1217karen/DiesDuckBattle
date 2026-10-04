@@ -1,3 +1,4 @@
+import { displayCache } from "../js/authDisplayCache.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
@@ -37,7 +38,7 @@ async function screen(page, { guardFirst = false } = {}) {
   const protectedPage = ["select", "setting", "character"].includes(page);
   const guard = () => requireLoginPage({ getRuntime: async () => auth, document, location });
   if (protectedPage && guardFirst) await guard();
-  await vm.runInNewContext(`(async()=>{${menuCode}})()`, { document, location, menuModel, getAuthRuntime: async () => auth });
+  await vm.runInNewContext(`(async()=>{${menuCode}})()`, { document, location, menuModel, displayCache, getAuthRuntime: async () => auth });
   if (protectedPage && !guardFirst) await guard();
   return { auth, redirects, notifications, classes, state: () => state, calls: () => calls,
     feedback: () => nodes.get("[data-feedback]"),

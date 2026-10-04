@@ -9,7 +9,7 @@ export const gameMenuItems = Object.freeze([
 ]);
 export function menuModel(state) {
   const loggedIn = state.sessionKnown && state.signedIn;
-  let identity = state.ready ? "ログイン状態を確認できません" : "ログイン状態を確認中…";
+  let identity = state.ready ? "ログイン状態を確認できません" : "";
   if (state.sessionKnown) {
     if (!state.signedIn) identity = "未ログイン";
     else if (state.accounts.length === 1) {

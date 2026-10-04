@@ -10,12 +10,13 @@
   <link rel="stylesheet" href="css/common-menu.css">
 </head>
 <body class="has-common-menu">
-  <header id="common-menu" class="common-menu"><span>ログイン状態を確認中…</span></header>
+  <header id="common-menu" class="common-menu"><details><summary><span class="common-menu__icon" aria-hidden="true">☰</span><span data-identity role="status"></span><span class="common-menu__label">メニュー</span></summary><nav aria-label="共通メニュー"></nav><p data-feedback role="status" hidden></p></details></header>
+  <script src="js/menuDisplayCache.js"></script>
   <main class="home">
     <header class="home__header">
       <h1>DIES DUCK BATTLE</h1>
       <p class="home__notice">開発版 — 現在開発中です。</p>
-      <p id="home-status" role="status" tabindex="-1">ログイン状態を確認中…</p>
+      <p id="home-status" role="status" tabindex="-1"></p>
     </header>
     <div id="home-guest" class="home__menu" hidden>
       <button class="home__link" type="button" data-auth-mode="login">ログイン</button>

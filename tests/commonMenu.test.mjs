@@ -56,7 +56,7 @@ test("subscribers share restore, login and logout state, including names", async
   };
   const controller = createAuthController(service, s => { state = s; });
   controller.subscribe(s => { menu = menuModel(s); });
-  assert.equal(menu.identity, "ログイン状態を確認中…");
+  assert.equal(menu.identity, "");
   await controller.start(); assert.equal(menu.identity, "ENo.77｜DB名");
   await controller.logout(); assert.equal(menu.identity, "未ログイン");
   await controller.login("77", "123456"); assert.equal(state.accounts[0].name, "DB名");
