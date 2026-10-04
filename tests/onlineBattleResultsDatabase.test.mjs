@@ -93,6 +93,63 @@ test('battle result database boundary and persistence',{skip:!PGlite&&'Set PGLIT
       }
       const rows=(await list()).records;assert.equal(new Set(rows.map(r=>r.battleNo)).size,rows.length);
     });
+    await t.test('history filters paginate after ENo/outcome/favorites and enforce account privacy',async()=>{
+      const ids=[];
+      await db.exec('reset role');
+      for(let i=0;i<60;i++) {
+        const side=i%2===0?'P1':'P2', outcome=['win','lose','draw'][i%3];
+        const result=outcome==='draw'?'draw':outcome==='win'?side+'_win':(side==='P1'?'P2':'P1')+'_win';
+        const enos=i<45?(side==='P1'?[12,13]:[13,12]):[14,15];
+        ids.push((await db.query('insert into public.battles(p1_account_id,p1_eno,p1_duck_id,p2_account_id,p2_eno,p2_duck_id,result,record,created_at) values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9) returning id',
+          [a,enos[0],da,b,enos[1],dbb,result,JSON.stringify(record),'2026-10-04T00:00:00Z'])).rows[0].id);
+      }
+      await db.exec('set role authenticated');
+      const history=(eno=null,outcome='all',favorites=false,account=null,page=1,order='desc')=>value(
+        'select public.list_online_battle_results($1,30,$2,$3,$4,$5,$6) data',[page,order,eno,outcome,favorites,account]);
+      const favorite=(account,id,state)=>value('select public.set_online_battle_favorite($1,$2,$3) data',[account,id,state]);
+      assert.equal((await history()).total,94);
+      const filtered=await history(12);assert.equal(filtered.total,45);assert.equal(filtered.totalPages,2);assert.equal(filtered.records.length,30);
+      assert.equal((await history(12,'all',false,null,2)).records.length,15);
+      for(const outcome of ['win','lose','draw']) {
+        const rows=await history(12,outcome);assert.equal(rows.total,15);
+        for(const r of rows.records) {
+          const side=r.p1.eno==='12'?'P1':'P2';
+          assert.equal(r.result,outcome==='draw'?'draw':outcome==='win'?side+'_win':(side==='P1'?'P2':'P1')+'_win');
+        }
+      }
+      assert.equal((await history(13)).total,45);assert.equal((await history(999)).total,0);
+      const asc=(await history(12,'all',false,null,1,'asc')).records;
+      const desc=(await history(12)).records;
+      assert.ok(asc[0].battleNo<asc[1].battleNo);assert.ok(desc[0].battleNo>desc[1].battleNo);
+      await assert.rejects(history(null,'win'));await assert.rejects(history(12,'bad'));
+      await assert.rejects(history(null,'all',true));await assert.rejects(history(null,'all',false,b));
+      await assert.rejects(favorite(b,ids[0],true));await assert.rejects(favorite(a,a,true));
+      await assert.rejects(favorite(a,ids[0],null));
+      assert.deepEqual(await favorite(a,ids[0],true),{battleId:ids[0],favorite:true});
+      await favorite(a,ids[0],true);await favorite(a,ids[1],true);
+      assert.equal((await history(null,'all',true,a)).total,2);
+      assert.equal((await history(12,'win',true,a)).total,1);
+      assert.ok((await history(null,'all',true,a)).records.every(r=>r.favorite));
+      assert.ok((await history()).records.every(r=>r.favorite===false));
+      for(const sql of ['select * from public.battle_favorites',
+        "insert into public.battle_favorites values ('"+a+"','"+ids[0]+"',now())",'delete from public.battle_favorites'])await assert.rejects(db.exec(sql));
+      await db.exec('reset role');
+      assert.equal(await value('select count(*)::integer data from public.battle_favorites'),2);
+      assert.equal(await value("select relrowsecurity data from pg_class where oid='public.battle_favorites'::regclass"),true);
+      // One login can have access to multiple ENos; favorites remain account-scoped.
+      await db.exec("insert into public.game_account_access values ('"+user+"','"+b+"',now());set role authenticated;");
+      assert.equal((await history(null,'all',true,b)).total,0);
+      await favorite(b,ids[2],true);
+      assert.equal((await history(null,'all',true,b)).total,1);
+      assert.equal((await history(null,'all',true,a)).total,2);
+      await favorite(a,ids[0],false);await favorite(a,ids[0],false);
+      assert.equal((await history(null,'all',true,a)).total,1);
+      await db.exec("reset role;delete from public.game_account_access where game_account_id='"+b+"';set role anon;");
+      await assert.rejects(favorite(a,ids[1],true));await assert.rejects(history());
+      await db.exec("reset role;set role authenticated;select set_config('request.jwt.claim.sub','',false);");
+      await assert.rejects(favorite(a,ids[1],true));await assert.rejects(history());
+      await db.exec("select set_config('request.jwt.claim.sub','"+user+"',false);");
+    });
     await t.test('snapshots survive presentation changes and participant deletion; result CHECK and RLS enabled',async()=>{
       await db.exec(`reset role;update public.ducks set presentation='{"name":"Changed"}';`);
       assert.equal(await value("select relrowsecurity data from pg_class where oid='public.battles'::regclass"),true);
