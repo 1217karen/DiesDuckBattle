@@ -154,9 +154,9 @@ test("chance割引はleaf価格だけ、基礎/枠/分岐/他effectを割り引�
   damage.chanceOptionId = "50"; const clamped = compile(flat([damage, heal]), c);
   assert.equal(clamped.skill.costAP, 13); assert.equal(clamped.resources.effectBreakdown[0].effectDelta, 0);
   assert.equal(clamped.resources.effectBreakdown[1].effectDelta, 7);
-  const rules = createCDevRules(); rules.branchAPDelta.random2 = 3;
+  const rules = createCDevRules();
   const branched = compile({ mode: "normal", structure: { kind: "random", branches: [{ effects: [damage] }, { effects: [heal] }] } }, c, rules);
-  assert.equal(branched.skill.costAP, 16);
+  assert.equal(branched.skill.costAP, 12);
   c.chanceOptions.find(o => o.id === "50").apDiscount = -1;
   assert.throws(() => compile(flat([damage]), c), /chance discount/);
 });

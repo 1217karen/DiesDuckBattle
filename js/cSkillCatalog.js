@@ -10,7 +10,7 @@ export function createCSkillCatalog() {
     healAmount: [[30,0],[40,1],[50,2]], currentHpPct: [[.25,0],[.5,5],[.75,10],[1,15]],
     statusStacks: [[3,0]], turnATAmount: [[2,0],[3,1],[4,2]], turnDFAmount: [[2,0],[3,1],[4,2]],
     turnCount: [[2,0],[3,1],[4,2]], timedStacks: [[1,0]], timedTurns: [[3,0],[4,1],[5,2]],
-    revivePct: [[.01,0],[.1,2],[.25,4]], hpThreshold: [[.25,-1],[.5,-1],[.75,-1]],
+    revivePct: [[.01,0],[.1,2],[.25,4]], hpThreshold: [[.25,0],[.5,0],[.75,0]],
     statusMultiplier: [[10,0],[15,1],[20,2]], stepBaseAmount: [[30,0]], stepEveryTurns: [[5,1],[10,0]], stepAmount: [[5,0],[10,2]],
   };
   const optionSets = Object.fromEntries(Object.entries(tables).map(([key, rows]) => [key,

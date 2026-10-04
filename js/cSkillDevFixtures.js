@@ -20,7 +20,7 @@ export function createCDevCatalog() {
   return catalog;
 }
 
-// 構造はproduction共通。分岐価格0は開発専用。自動onFailは数えない。
+// 構造・料金方針はproduction共通。自動onFailは数えない。
 export function createCDevRules() {
-  return { ...createCSkillRules(), branchAPDelta: { random2: 0, random3: 0, hpCondition: 0 } };
+  return createCSkillRules();
 }

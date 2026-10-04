@@ -4,7 +4,7 @@ import { createCSkillRules } from "./cSkillRules.js";
 
 const record = v => v !== null && typeof v === "object" && [Object.prototype, null].includes(Object.getPrototypeOf(v));
 function legacycalculateCSkillResources(selection, { catalog = createCSkillCatalog(), rules = createCSkillRules() } = {}) {
-  const errors = [], unresolved = [], effectBreakdown = [];
+  const errors = [], unresolved = [], effectBreakdown = [], branchBreakdown = [];
   const error = (code, path) => errors.push({ code, path });
   const pending = (code, path) => unresolved.push({ code, path });
   const keys = (object, allowed, path) => {
@@ -25,7 +25,7 @@ function legacycalculateCSkillResources(selection, { catalog = createCSkillCatal
     if (!found) { error("UNKNOWN_OPTION", path); return null; }
     return found;
   };
-  for (const key of ["baseAP", "minimumAP", "minEffects", "maxEffects", "additionalBenefitSlotAP"]) {
+  for (const key of ["baseAP", "minimumAP", "minEffects", "maxEffects", "additionalBenefitSlotAP", "maxDrawbackAP"]) {
     if (!Number.isFinite(rules[key]) || rules[key] < 0) throw new TypeError(`Invalid C rules: ${key}`);
   }
   let effectCount = 0, benefitCount = 0, drawbackCount = 0, knownOptionDelta = 0, knownStructureDelta = 0;
@@ -76,7 +76,8 @@ function legacycalculateCSkillResources(selection, { catalog = createCSkillCatal
     }
     // 他effect・基礎AP・枠・分岐料金へ割引を流さないため、そのleaf価格を上限とする。
     const appliedDiscount = benefit && priceComplete && chance && apDiscount != null ? Math.min(leafPrice, apDiscount) : 0;
-    const leafDelta = (benefit ? leafPrice - appliedDiscount : -leafPrice);
+    if (!Number.isFinite(leafPrice)) throw new TypeError("C resource arithmetic overflow");
+    const leafDelta = (benefit ? leafPrice - appliedDiscount : -Math.min(leafPrice, rules.maxDrawbackAP));
     knownOptionDelta += leafDelta;
     const complete = priceComplete && (!chanceEnabled || !!chance) && apDiscount != null;
     effectBreakdown.push({ path, effectId: effect.id, optionPrice: priceComplete ? leafPrice : null,
@@ -84,10 +85,24 @@ function legacycalculateCSkillResources(selection, { catalog = createCSkillCatal
   };
   const branch = (value, path) => {
     if (!record(value)) { error("INVALID_BRANCH", path); return; }
+    const startErrors = errors.length, startUnresolved = unresolved.length;
     keys(value, ["effects"], path);
     if (!Array.isArray(value.effects)) { error("INVALID_EFFECTS", `${path}.effects`); return; }
     if (!value.effects.length) error("EMPTY_BRANCH", `${path}.effects`);
-    for (const [i, chosen] of value.effects.entries()) leaf(chosen, `${path}.effects.${i}`);
+    const startBenefit = benefitCount, startDelta = knownOptionDelta;
+    let branchSlotCost = 0;
+    for (const [i, chosen] of value.effects.entries()) {
+      const beforeBenefit = benefitCount, beforeRows = effectBreakdown.length;
+      leaf(chosen, `${path}.effects.${i}`);
+      const slotCost = benefitCount > beforeBenefit && beforeBenefit > startBenefit ? rules.additionalBenefitSlotAP : 0;
+      branchSlotCost += slotCost;
+      if (effectBreakdown.length > beforeRows) Object.assign(effectBreakdown.at(-1), { branchPath: path, slotCost });
+    }
+    const complete = value.effects.length > 0 && errors.length === startErrors && unresolved.length === startUnresolved;
+    const optionDelta = knownOptionDelta - startDelta;
+    branchBreakdown.push({ path, benefitCount: benefitCount - startBenefit, slotCost: branchSlotCost,
+      knownOptionDelta: optionDelta, optionDelta: complete ? optionDelta : null,
+      totalAP: complete ? optionDelta + branchSlotCost : null, complete });
   };
   const structure = record(selection) && Object.hasOwn(selection, "structure") ? selection.structure : null;
   if (!record(structure)) error("INVALID_STRUCTURE", "structure");
@@ -97,10 +112,7 @@ function legacycalculateCSkillResources(selection, { catalog = createCSkillCatal
   } else if (["random", "hpCondition"].includes(structure.kind)) {
     keys(structure, structure.kind === "random" ? ["kind", "branches"] : ["kind", "thresholdOptionId", "branches"], "structure");
     if (mode === "special") error("SPECIAL_FLAT_ONLY", "structure.kind");
-    policy(rules.branchAggregation, "sum", "BRANCH_AGGREGATION_UNRESOLVED", "rules.branchAggregation");
-    const priceKey = structure.kind === "random" ? `random${structure.branches?.length}` : "hpCondition";
-    if (["random2", "random3", "hpCondition"].includes(priceKey))
-      knownStructureDelta += price(rules.branchAPDelta?.[priceKey], `rules.branchAPDelta.${priceKey}`, true);
+    policy(rules.branchAggregation, "max", "BRANCH_AGGREGATION_UNRESOLVED", "rules.branchAggregation");
     if (structure.kind === "random") {
       if (!Array.isArray(structure.branches) || ![2, 3].includes(structure.branches.length)) error("BRANCH_COUNT", "structure.branches");
       if (Array.isArray(structure.branches)) for (const [i, b] of structure.branches.entries()) branch(b, `structure.branches.${i}`);
@@ -108,7 +120,7 @@ function legacycalculateCSkillResources(selection, { catalog = createCSkillCatal
       const threshold = option(catalog.optionSets.hpThreshold, structure.thresholdOptionId, "structure.thresholdOptionId");
       if (threshold) {
         if (!Number.isFinite(threshold.value) || threshold.value <= 0 || threshold.value > 1) throw new TypeError("Invalid C HP threshold");
-        knownStructureDelta += price(threshold.apDelta, "structure.thresholdOptionId", true);
+        // HP threshold selects a condition only; it never changes AP.
       }
       if (!record(structure.branches)) error("INVALID_BRANCHES", "structure.branches");
       else {
@@ -119,13 +131,18 @@ function legacycalculateCSkillResources(selection, { catalog = createCSkillCatal
   } else error("UNKNOWN_STRUCTURE", "structure.kind");
   if (effectCount < rules.minEffects || effectCount > rules.maxEffects) error("EFFECT_COUNT", "structure");
   if (!Number.isFinite(knownOptionDelta + knownStructureDelta)) throw new TypeError("C resource arithmetic overflow");
-  const slotCost = Math.max(0, benefitCount - 1) * rules.additionalBenefitSlotAP;
   const complete = errors.length === 0 && unresolved.length === 0;
-  const optionDelta = complete ? knownOptionDelta : null;
-  const rawAP = complete ? rules.baseAP + slotCost + optionDelta + knownStructureDelta : null;
+  // Pick a whole branch, including its own slots. Ties retain the first branch.
+  const selected = complete ? branchBreakdown.reduce((best, b) => !best || b.totalAP > best.totalAP ? b : best, null) : null;
+  const branched = structure?.kind === "random" || structure?.kind === "hpCondition";
+  const slotCost = branched ? selected?.slotCost ?? null : Math.max(0, benefitCount - 1) * rules.additionalBenefitSlotAP;
+  const optionDelta = complete ? selected?.optionDelta ?? null : null;
+  const effectAP = complete ? selected?.totalAP ?? null : null;
+  const selectedBranchPath = selected?.path ?? null;
+  const rawAP = effectAP === null ? null : rules.baseAP + effectAP;
   if (rawAP !== null && !Number.isFinite(rawAP)) throw new TypeError("C resource arithmetic overflow");
   return { mode, effectCount, benefitCount, drawbackCount, baseAP: rules.baseAP, slotCost, knownOptionDelta,
-    knownStructureDelta, effectBreakdown, optionDelta, rawAP, requiredAP: rawAP === null ? null : Math.max(rules.minimumAP, rawAP), complete, errors, unresolved };
+    knownStructureDelta, effectBreakdown, branchBreakdown, selectedBranchPath, effectAP, optionDelta, rawAP, requiredAP: rawAP === null ? null : Math.max(rules.minimumAP, rawAP), complete, errors, unresolved };
 }
 
 export function calculateCSkillResources(selection, options = {}) {
@@ -133,5 +150,7 @@ export function calculateCSkillResources(selection, options = {}) {
   const resolved = resolveSelection("C", selection, catalog);
   const result = legacycalculateCSkillResources(resolved.selection, { ...options, catalog });
   const merged = withSelectionIssues(result, resolved);
+  // Normalized incomplete/invalid clauses must not expose a provisional winner.
+  if (!merged.complete) return { ...merged, optionDelta: null, effectAP: null, selectedBranchPath: null };
   return merged;
 }

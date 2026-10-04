@@ -184,18 +184,14 @@ test("production価格確定、trusted fixtureのnullは最終AP=0にしない",
   const prod = createCSkillCatalog(), pr = createCSkillRules();
   for (const set of ["hpThreshold", "statusMultiplier", "stepBaseAmount", "stepEveryTurns", "stepAmount"]) assert.ok(prod.optionSets[set].length);
   assert.deepEqual(prod.chanceOptions.map(o => o.value), [1, .7, .5, .25]);
-  assert.equal(pr.branchAggregation, "sum");
+  assert.equal(pr.branchAggregation, "max");
   for (const s of [fixtures.CS11, fixtures.CS23]) {
     const r = compile(s, { rules: pr }); assert.equal(r.ok, true);
   }
   for (const [s, field] of [[fixtures.CS11, "branchAggregation"]]) {
     assert.equal(compile(s, { rules: { ...rules, [field]: null } }).resources.requiredAP, null);
   }
-  for (const kind of ["random2", "hpCondition"]) {
-    const s = kind === "random2" ? fixtures.CS11 : fixtures.CS23;
-    assert.equal(compile(s, { rules: { ...rules, branchAPDelta: { ...rules.branchAPDelta, [kind]: null } } }).resources.requiredAP, null);
-  }
-  for (const [s, set] of [[fixtures.CS23, "hpThreshold"], [fixtures.CS15, "statusMultiplier"], [fixtures.CS16, "stepBaseAmount"],
+  for (const [s, set] of [[fixtures.CS15, "statusMultiplier"], [fixtures.CS16, "stepBaseAmount"],
     [fixtures.CS16, "stepEveryTurns"], [fixtures.CS16, "stepAmount"]]) {
     const c = createCDevCatalog(); c.optionSets[set].forEach(o => { o.apDelta = null; });
     assert.equal(compile(s, { catalog: c }).resources.requiredAP, null);

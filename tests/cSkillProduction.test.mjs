@@ -22,7 +22,7 @@ const tables = {
   turnATAmount:[[2,0],[3,1],[4,2]],turnDFAmount:[[2,0],[3,1],[4,2]],turnCount:[[2,0],[3,1],[4,2]],
   timedStacks:[[1,0]],timedTurns:[[3,0],[4,1],[5,2]],statusMultiplier:[[10,0],[15,1],[20,2]],
   stepBaseAmount:[[30,0]],stepEveryTurns:[[5,1],[10,0]],stepAmount:[[5,0],[10,2]],
-  revivePct:[[.01,0],[.1,2],[.25,4]],hpThreshold:[[.25,-1],[.5,-1],[.75,-1]],
+  revivePct:[[.01,0],[.1,2],[.25,4]],hpThreshold:[[.25,0],[.5,0],[.75,0]],
 };
 for (const [set, expected] of Object.entries(tables)) test('production '+set,()=>{
   assert.deepEqual(catalog.optionSets[set].map(o=>[o.value,o.apDelta]),expected);
@@ -55,22 +55,22 @@ test('production chance割引はleafだけ、失敗20%維持',()=>{
     assert.equal(r.resources.effectCount,2);
   }
 });
-test('normal分岐全枝合算、2択-1/3択-2/HP一律-1、special flat-only',()=>{
+test('normal分岐は最大枝、構造とHP割合は無料、special flat-only',()=>{
   assert.equal(compileCSkill(flat([row('damage-enemy')])).ok,true);
   assert.equal(compileCSkill(flat([row('revive-self')],'special')).ok,true);
   for(const n of [2,3]) {
     const s=random(n),r=compileCSkill(s);assert.equal(r.ok,true);
-    assert.equal(r.resources.optionDelta,n*5);assert.equal(r.resources.slotCost,n-1);
-    assert.equal(r.resources.knownStructureDelta,1-n);assert.equal(r.skill.costAP,5+n*5);
+    assert.equal(r.resources.optionDelta,5);assert.equal(r.resources.slotCost,0);
+    assert.equal(r.resources.knownStructureDelta,0);assert.equal(r.skill.costAP,10);
     assert.ok(compileCSkill({...s,mode:'special'}).errors.some(e=>e.code==='SPECIAL_FLAT_ONLY'));
     s.structure.branches.forEach(b=>b.effects=[row('damage-self',{amount:100})]);
     assert.equal(compileCSkill(s).skill.costAP,5);
   }
   for(const threshold of [.25,.5,.75]) {
-    const s=hp(threshold),r=compileCSkill(s);assert.equal(r.ok,true);assert.equal(r.skill.costAP,12);
-    assert.equal(r.resources.knownStructureDelta,-1);assert.equal(r.skill.effect[0].when.right,threshold);
+    const s=hp(threshold),r=compileCSkill(s);assert.equal(r.ok,true);assert.equal(r.skill.costAP,10);
+    assert.equal(r.resources.knownStructureDelta,0);assert.equal(r.skill.effect[0].when.right,threshold);
     assert.ok(compileCSkill({...s,mode:'special'}).errors.some(e=>e.code==='SPECIAL_FLAT_ONLY'));
-    s.structure.branches.met.effects=[row('damage-self',{amount:100})];assert.equal(compileCSkill(s).skill.costAP,5);
+    s.structure.branches.met.effects=[row('damage-self',{amount:100})];assert.equal(compileCSkill(s).skill.costAP,7);
   }
 });
 test('revive回数別境界、初回乱数なし、各行独立、heal/damageは抽選失敗でも継続',()=>{
