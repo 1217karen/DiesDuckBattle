@@ -8,6 +8,7 @@ export function buildBattlePresentationSnapshot(playerPresentation, duckId) {
   const group = values => Object.fromEntries(Object.entries(values).map(([key, value]) => [key, quote(value)]));
   return {
     battlerDefaultIconUrl: battler.defaultIconUrl,
+    cutinUrl: ducks[duckId]?.cutinUrl ?? "",
     duckIconUrl: ducks[duckId]?.iconUrl ?? "",
     quotes: {
       battleStart: quote(battler.quotes.battleStart),

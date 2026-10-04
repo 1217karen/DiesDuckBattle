@@ -1,3 +1,4 @@
+import { presentCSkill } from "./cSkillPresentation.js";
 import { hasName } from "./nameValidation.js";
 import { FIXED_IMAGES, setImageFromCandidates } from "./fixedImages.js";
 import { mountOnlineEditor } from "./onlineEditor.js";
@@ -43,13 +44,13 @@ function pickerLabel(slot) {
 function makePreview(kind, onValidation, className = "", fallback = FIXED_IMAGES.battlerIcon) {
   const box = document.createElement("div"); box.className = `preview ${className}`.trim();
   let image;
-  const placeholder = document.createElement("img"); placeholder.alt = "未設定画像"; placeholder.src = fallback;
-  box.append(placeholder);
+  const placeholder = document.createElement("img"); placeholder.alt = "未設定画像"; if (fallback) placeholder.src = fallback;
+  if (fallback) box.append(placeholder);
   const beginValidation = createImageValidation(kind, onValidation);
   const update = value => {
     const request = beginValidation(value);
     image?.remove();
-    placeholder.hidden = false;
+    placeholder.hidden = !fallback;
     if (!value.trim()) return;
     // This is the preview itself, not a second validation-only Image request.
     const nextImage = document.createElement("img"); nextImage.alt = "画像プレビュー"; nextImage.hidden = true;
@@ -60,7 +61,7 @@ function makePreview(kind, onValidation, className = "", fallback = FIXED_IMAGES
     };
     nextImage.onerror = () => {
       if (!request.active()) return;
-      nextImage.hidden = true; placeholder.hidden = false;
+      nextImage.hidden = true; placeholder.hidden = !fallback;
       request.error();
     };
     image = nextImage; box.prepend(image); image.src = value;
@@ -70,7 +71,7 @@ function makePreview(kind, onValidation, className = "", fallback = FIXED_IMAGES
 
 function makeImageField({ label, value, kind = "icon", previewClass = "", compact = false, fallback = kind === "standing" ? FIXED_IMAGES.battlerStanding : FIXED_IMAGES.battlerIcon, onInput }) {
   const version = dataVersion;
-  const root = document.createElement("div"); root.className = `image-field${compact ? " compact" : ""}`;
+  const root = document.createElement("div"); root.className = `image-field${compact ? " compact" : ""}${kind === "cutin" ? " cutin-field" : ""}`;
   const field = document.createElement("label"); field.append(document.createTextNode(label));
   const input = document.createElement("input"); input.type = "url"; input.value = value; input.placeholder = "https://example.com/image.png";
   const limit = IMAGE_LIMITS[kind];
@@ -84,7 +85,9 @@ function makeImageField({ label, value, kind = "icon", previewClass = "", compac
   }, previewClass, fallback);
   preview.update(value);
   input.addEventListener("input", () => { preview.update(input.value); onInput(input.value); setDirty(); });
-  field.append(hint, input, status); root.append(preview.box, field); return root;
+  field.append(hint, input, status);
+  if (kind === "cutin") root.append(field, preview.box); else root.append(preview.box, field);
+  return root;
 }
 
 function renderBattlerImages() {
@@ -151,8 +154,17 @@ function renderDuckSelect() {
   for (const duck of ducks) {
     const id = duck.id;
     const field = makeImageField({ label:`${duck.name || "名前未設定のDuck"} アイコンURL`, value:presentation.ducks[id]?.iconUrl ?? "", fallback:FIXED_IMAGES.duckIcon, previewClass:"duck-preview",
-      onInput:value => { presentation.ducks[id] = { iconUrl:value }; } });
-    duckEditors.set(id, field); target.append(field);
+      onInput:value => { presentation.ducks[id] = { ...(presentation.ducks[id] ?? {}), iconUrl:value }; } });
+    const editor = document.createElement("div"); editor.className = "duck-presentation-editor";
+    const cutin = document.createElement("section"); cutin.className = "duck-cutin";
+    const heading = document.createElement("h3"); heading.textContent = "Cスキルカットイン";
+    const description = document.createElement("p"); description.className = "muted c-skill-description";
+    const skill = presentCSkill(duck.cSelection);
+    description.textContent = skill.text ?? (duck.cSelection == null ? "Cスキル未設定" : "Cスキル設定未完了");
+    cutin.append(heading, description, makeImageField({ label:"URL", kind:"cutin", previewClass:"cutin-preview", fallback:null,
+      value:presentation.ducks[id]?.cutinUrl ?? "",
+      onInput:value => { presentation.ducks[id] = { ...(presentation.ducks[id] ?? {}), cutinUrl:value }; } }));
+    editor.append(field, cutin); duckEditors.set(id, editor); target.append(editor);
   }
   if (!ducks.length) { const option = new Option("Duck未登録", ""); select.append(option); select.disabled = true; selectedDuckId = ""; }
   else {
@@ -176,7 +188,7 @@ online = await mountOnlineEditor({
     battlerNameInput.value = data?.battlerName ?? "";
     picker.close(); imageStates.clear(); duckEditors.clear(); selectedDuckId = "";
     presentation = data ? structuredClone(data.presentation) : createEmptyPlayerPresentation();
-    ducks = data ? data.build.ducks.map(({ id, name }) => ({ id, name })) : [];
+    ducks = data ? data.build.ducks.map(({ id, name, cSelection }) => ({ id, name, cSelection })) : [];
     if (data) { renderBattlerImages(); renderQuotes(); renderDuckSelect(); }
     else for (const id of ["battler-images", "quotes", "duck-icon-editor", "duck-select"]) document.getElementById(id).replaceChildren();
   },

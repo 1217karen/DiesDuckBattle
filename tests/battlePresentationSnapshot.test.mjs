@@ -18,7 +18,7 @@ test("snapshot keeps the default and selected Duck icons, excluding editable slo
   const snapshot = buildBattlePresentationSnapshot(value, "second");
   assert.equal(snapshot.battlerDefaultIconUrl, value.battler.defaultIconUrl);
   assert.equal(snapshot.duckIconUrl, value.ducks.second.iconUrl);
-  assert.deepEqual(Object.keys(snapshot).sort(), ["battlerDefaultIconUrl", "duckIconUrl", "quotes"]);
+  assert.deepEqual(Object.keys(snapshot).sort(), ["battlerDefaultIconUrl", "cutinUrl", "duckIconUrl", "quotes"]);
   assert.doesNotMatch(JSON.stringify(snapshot), /iconSlot|standingImageUrl/);
   assert.equal(buildBattlePresentationSnapshot(value, "missing").duckIconUrl, "");
 });
@@ -80,4 +80,13 @@ test("missing P2 presentation and partial drafts yield safe complete snapshots",
   }
   const p2 = fixture();
   assert.equal(buildBattlePresentationSnapshot(p2, "second").duckIconUrl, p2.ducks.second.iconUrl);
+});
+
+test("cut-in snapshot copies only selected Duck and survives later changes",()=>{
+  const value=fixture();
+  value.ducks.first.cutinUrl="first-cutin.png";value.ducks.second.cutinUrl="second-cutin.png";
+  const snapshot=buildBattlePresentationSnapshot(value,"second");
+  assert.equal(snapshot.cutinUrl,"second-cutin.png");
+  value.ducks.second.cutinUrl="changed.png";assert.equal(snapshot.cutinUrl,"second-cutin.png");
+  assert.equal(buildBattlePresentationSnapshot({},"missing").cutinUrl,"");
 });

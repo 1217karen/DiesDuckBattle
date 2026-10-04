@@ -1,6 +1,6 @@
 import { FIXED_IMAGES } from "./fixedImages.js";
 import { buildBlocks, numberOr } from "./resultBlocks.js";
-import { setHeaderIcon, attachImageFallbacks } from "./resultPresentation.js";
+import { setHeaderIcon, attachImageFallbacks, attachCutinImages } from "./resultPresentation.js";
 import { createBattleResultStorage } from "./battleResultStorage.js";
 
 const el = id => document.getElementById(id);
@@ -91,6 +91,7 @@ function buildBlockElement(block) {
     div.className = `line${line.kind ? ` ${line.kind}` : ""}`;
     div.innerHTML = line.text;
     attachImageFallbacks(div);
+    attachCutinImages(div);
     lines.append(div);
   }
   section.append(lines);

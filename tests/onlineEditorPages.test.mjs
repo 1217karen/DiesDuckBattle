@@ -1,3 +1,4 @@
+import { presentCSkill } from "../js/cSkillPresentation.js";
 import { createQuoteToolbar } from "../js/quoteRichTextToolbar.js";
 import { hasName } from "../js/nameValidation.js";
 import { FIXED_IMAGES, setImageFromCandidates } from "../js/fixedImages.js";
@@ -58,7 +59,7 @@ async function characterScreen() {
   const controller = { snapshot: () => ({ canSave: true, canEdit: true }),
     edit(patch) { latest = { ...latest, ...structuredClone(patch) }; },
     async save() { saved = structuredClone(latest); return { ok: true }; } };
-  const context = { hasName, FIXED_IMAGES, setImageFromCandidates, getQuoteIconUrlCandidates, createQuoteToolbar, document, structuredClone, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
+  const context = { presentCSkill, hasName, FIXED_IMAGES, setImageFromCandidates, getQuoteIconUrlCandidates, createQuoteToolbar, document, structuredClone, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
     Option: function (name, value) { const el = new Element("option"); el.textContent = name; el.value = value; return el; },
     createIconPicker: () => ({ open(args) { selectedCallback = args.select; }, close() { selectedCallback = null; } }),
     mountOnlineEditor: async args => { assert.deepEqual(Array.from(args.sections), ["presentation", "battlerName"]); hooks = args; latest = structuredClone(data); args.hydrate(data); args.onState({ canSave: true, canEdit: true }); return controller; } };
@@ -69,11 +70,11 @@ async function characterScreen() {
 test("actual character handlers preserve full DTO, quotes, ten icon slots, detached Duck URLs and image validation gates", async () => {
   const page = await characterScreen();
   const inputs = () => page.all().filter(el => el.tagName === "input" && el.type === "url");
-  assert.equal(inputs().length, 14); // standing/default/10 slots/build Duck/detached Duck
+  assert.equal(inputs().length, 16); // standing/default/10 slots/build Duck/detached Duck
   assert.equal(page.get("save").disabled, true); await page.save(); assert.equal(page.saved(), undefined);
   let image = page.all().find(el => el.tagName === "img" && el.src === "https://example.invalid/orphan.png");
   image.naturalWidth = 251; image.naturalHeight = 1; image.onload(); assert.equal(page.get("save").disabled, true);
-  const orphanInput = inputs().at(-1); orphanInput.value = "https://example.invalid/fixed.png"; orphanInput.handlers.input();
+  const orphanInput = inputs().find(input => input.value === "https://example.invalid/orphan.png"); orphanInput.value = "https://example.invalid/fixed.png"; orphanInput.handlers.input();
   image = page.all().find(el => el.tagName === "img" && el.src === orphanInput.value);
   image.naturalWidth = 20; image.naturalHeight = 20; image.onload(); assert.equal(page.get("save").disabled, false);
   const slot10 = inputs()[11]; slot10.value = "https://example.invalid/slot10.png"; slot10.handlers.input();
@@ -178,4 +179,30 @@ test("blank battler names load unchanged but block even a direct save click", as
     await page.save(); assert.equal(page.saved().battlerName, "正常な名前");
     assert.deepEqual(page.saved().presentation, data.presentation);
   }
+});
+
+test("Duck cut-in editor merges sibling URLs, switches Ducks, and uses common C presentation without repair",async()=>{
+  const page=await characterScreen(),data=structuredClone(page.data),first=data.build.ducks[0];
+  first.name="一羽目";first.cSelection={mode:"normal",structure:{kind:"flat",effects:[{effectId:"heal-self",options:{amount:"healAmount-30"}}]}};
+  const second=createEmptyDuck();second.name="二羽目";data.build.ducks.push(second);
+  data.presentation.ducks={ [first.id]:{iconUrl:"first-icon.png",cutinUrl:"first-cutin.png"},[second.id]:{iconUrl:"second-icon.png",cutinUrl:"second-cutin.png"} };
+  const before=structuredClone(data.build);page.hydrate(data);assert.deepEqual(page.latest().build,before);
+  const editors=page.get("duck-icon-editor").children;assert.equal(editors.length,2);
+  assert.equal(editors[0].hidden,false);assert.equal(editors[1].hidden,true);
+  const [icon,cutin]=editors[0].children,description=cutin.children[1],field=cutin.children[2];
+  assert.equal(description.textContent,presentCSkill(first.cSelection).text);
+  assert.equal(field.className,"image-field cutin-field");assert.equal(field.children[0].tagName,"label");
+  assert.equal(field.children[1].className,"preview cutin-preview");assert.equal(field.children[1].children.length,1); // no fallback
+  const cutinInput=field.children[0].children.find(e=>e.tagName==="input");
+  cutinInput.value="new-cutin.png";cutinInput.handlers.input();
+  assert.deepEqual(page.latest().presentation.ducks[first.id],{iconUrl:"first-icon.png",cutinUrl:"new-cutin.png"});
+  const iconInput=icon.children[1].children.find(e=>e.tagName==="input");iconInput.value="new-icon.png";iconInput.handlers.input();
+  assert.deepEqual(page.latest().presentation.ducks[first.id],{iconUrl:"new-icon.png",cutinUrl:"new-cutin.png"});
+  assert.deepEqual(page.latest().presentation.ducks[second.id],data.presentation.ducks[second.id]);assert.deepEqual(page.latest().build,before);
+  page.get("duck-select").value=second.id;page.get("duck-select").onchange();
+  assert.equal(editors[0].hidden,true);assert.equal(editors[1].hidden,false);
+  assert.equal(editors[1].children[1].children[1].textContent,"Cスキル未設定");
+  data.build.ducks[0].cSelection={mode:"normal",structure:{kind:"flat",effects:[null]}};page.hydrate(data);
+  assert.equal(page.get("duck-icon-editor").children[0].children[1].children[1].textContent,"Cスキル設定未完了");
+  assert.deepEqual(page.latest().build,data.build);
 });

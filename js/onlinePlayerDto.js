@@ -21,6 +21,13 @@ function canonical(value) {
 const same = (a, b) => canonical(a) === canonical(b);
 const keys = (value, names) => requireValue(object(value) && same(Object.keys(value).sort(), [...names].sort()));
 
+// The only v1 presentation compatibility addition: missing cutinUrl on old icon objects.
+// Preserve unknown/malformed fields so canonical validation still rejects lossy data.
+const upgradeDuckDisplay = value => object(value) && same(Object.keys(value), ["iconUrl"]) && typeof value.iconUrl === "string"
+  ? { ...value, cutinUrl: "" } : value;
+const upgradeDuckDisplays = values => object(values)
+  ? Object.fromEntries(Object.entries(values).map(([id, value]) => [id, upgradeDuckDisplay(value)])) : values;
+
 // Validate persistence shape, not battle readiness. Never read local storage/catalogs.
 export function encodeOnlinePlayer(data) {
   keys(data, ["build", "presentation", "publicSettings", "battlerName"]);
@@ -29,7 +36,7 @@ export function encodeOnlinePlayer(data) {
   requireValue(build.ducks.every(d => isOnlineUuid(d.id)));
   const presentation = normalizePlayerPresentation(data.presentation);
   // The local normalizer is tolerant; online persistence must reject lossy conversion.
-  requireValue(same(presentation, data.presentation));
+  requireValue(same(presentation, { ...data.presentation, ducks: upgradeDuckDisplays(data.presentation.ducks) }));
   const settings = normalizePlayerPublicSettings(data.publicSettings);
   requireValue(same(settings, data.publicSettings));
   const ids = new Set(build.ducks.map(d => d.id));
@@ -64,13 +71,13 @@ export function decodeOnlinePlayer(snapshot) {
   requireValue([2,3].includes(b.build.schemaVersion) && b.presentation.schemaVersion === 1 && object(b.presentation.detachedDuckPresentation));
   const { schemaVersion: _bv, ...battler } = b.build;
   const { schemaVersion: _pv, name, detachedDuckPresentation, ...display } = b.presentation;
-  const duckDisplay = { ...detachedDuckPresentation };
+  const duckDisplay = { ...upgradeDuckDisplays(detachedDuckPresentation) };
   const ducks = snapshot.ducks.map(d => {
     requireValue(isOnlineUuid(d.id) && object(d.build) && d.build.schemaVersion === b.build.schemaVersion);
     keys(d.presentation, ["schemaVersion", "name", "icon"]); requireValue(d.presentation.schemaVersion === 1);
     requireValue(!Object.hasOwn(duckDisplay, d.id));
     const { schemaVersion: _v, ...fields } = d.build;
-    if (d.presentation.icon !== null) duckDisplay[d.id] = d.presentation.icon;
+    if (d.presentation.icon !== null) duckDisplay[d.id] = upgradeDuckDisplay(d.presentation.icon);
     return { id: d.id, name: d.presentation.name, ...fields };
   });
   const migrated = migratePlayerBuild({ schemaVersion: b.build.schemaVersion, battler, ducks });
@@ -83,6 +90,7 @@ export function decodeOnlinePlayer(snapshot) {
     encoded.battler.build.schemaVersion = 2; delete encoded.battler.build.skillLabels;
     for (const d of encoded.ducks) { d.build.schemaVersion = 2; delete d.build.skillLabels; }
   }
-  requireValue(same(encoded.battler, b) && same(encoded.ducks, snapshot.ducks));
+  requireValue(same(encoded.battler, { ...b, presentation: { ...b.presentation, detachedDuckPresentation: upgradeDuckDisplays(detachedDuckPresentation) } })
+    && same(encoded.ducks, snapshot.ducks.map(d => ({ ...d, presentation: { ...d.presentation, icon: upgradeDuckDisplay(d.presentation.icon) } }))));
   return data;
 }

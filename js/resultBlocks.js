@@ -1,6 +1,6 @@
 import { validSkillLabel } from "./skillLabels.js";
 import { FIXED_IMAGES } from "./fixedImages.js";
-import { createQuotePresenter, snapshotIconHTML } from "./resultPresentation.js";
+import { createQuotePresenter, snapshotIconHTML, makeCSkillCutinLines } from "./resultPresentation.js";
 
 export function buildBlocks(events, result, context) {
   const blocks = [];
@@ -33,7 +33,7 @@ export function buildBlocks(events, result, context) {
     const group = logGroup(event);
     if (groups.get(target) != null && groups.get(target) !== group) finishGroup(target);
     if (event.type === "roll") spacer(target);
-    target.lines.push(...(group == null ? lines : lines.map(line => ({ ...line, kind: `${line.kind} skill` }))));
+    target.lines.push(...(group == null ? lines : lines.map(line => ({ ...line, kind: line.kind.startsWith("c-cutin") ? line.kind : `${line.kind} skill` }))));
     groups.set(target, group);
   };
   const flushTail = event => {
@@ -48,7 +48,7 @@ export function buildBlocks(events, result, context) {
   const render = event => {
     const lines = eventToLines(event, context).map(line => isDiceEvent(event)
       ? { ...line, text: `🎲 ${line.text}` } : line);
-    return [...lines, ...quoteLines(event)];
+    return [...lines, ...quoteLines(event), ...makeCSkillCutinLines(event, context.presentations)];
   };
 
   for (const event of Array.isArray(events) ? events : []) {
@@ -144,8 +144,9 @@ export function buildBlocks(events, result, context) {
     }
 
     // Placement changes only display order. State always follows engine event order.
-    if (["beforeTurnEnd", "turnEnd"].includes(event.trigger)
-      && ["cSkillActivated", "skillTriggered"].includes(event.type)) {
+    if ((["beforeTurnEnd", "turnEnd"].includes(event.trigger)
+      && ["cSkillActivated", "skillTriggered"].includes(event.type))
+      || (event.type === "cSkillActivated" && event.mode === "special")) {
       closeCurrent();
       atTurnTail = true;
     }

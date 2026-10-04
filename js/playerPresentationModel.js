@@ -62,7 +62,7 @@ export function normalizePlayerPresentation(value) {
   if (isRecord(value?.ducks)) {
     for (const [duckId, data] of Object.entries(value.ducks)) {
       if (["__proto__", "prototype", "constructor"].includes(duckId)) continue;
-      result.ducks[duckId] = { iconUrl: text(data?.iconUrl) };
+      result.ducks[duckId] = { iconUrl: text(data?.iconUrl), cutinUrl: text(data?.cutinUrl) };
     }
   }
   return result;

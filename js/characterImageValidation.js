@@ -1,4 +1,5 @@
 export const IMAGE_LIMITS = {
+  cutin: { width: 480, height: 480, label: "Cスキルカットイン" },
   standing: { width: 500, height: 800, label: "立ち絵" },
   icon: { width: 250, height: 250, label: "アイコン" },
 };
@@ -6,6 +7,7 @@ export const IMAGE_LIMITS = {
 export function validateImageDimensions(kind, width, height) {
   const limit = IMAGE_LIMITS[kind];
   if (!(width > 0 && height > 0)) return { status: "invalid", message: "画像を読み込めないためサイズを確認できません。" };
+  if (kind === "cutin" && width < 480 && height <= 480) return { status: "warning", message: `現在の画像：${width}×${height}px。横幅が480px未満です。結果画面では小さく表示されます。` };
   return width <= limit.width && height <= limit.height
     ? { status: "valid", message: `現在の画像：${width}×${height}px` }
     : { status: "invalid", message: `${limit.label}は${limit.width}×${limit.height}px以内の画像を指定してください。現在の画像：${width}×${height}px` };

@@ -13,7 +13,7 @@ test("save/load retains presentation snapshots including the empty P2 snapshot",
   const presentation = buildBattlePresentationSnapshot({
     battler: { defaultIconUrl: "default.png", iconSlots: ["", "", "third.png"],
       quotes: { battleStart: { text: "開始！", iconSlot: 3 } } },
-    ducks: { d1: { iconUrl: "duck.png" } },
+    ducks: { d1: { iconUrl: "duck.png", cutinUrl: "cutin.png" } },
   }, "d1");
   const record = {
     battleId: "snapshot", dateISO: "2026-09-24T00:00:00.000Z",
@@ -26,9 +26,11 @@ test("save/load retains presentation snapshots including the empty P2 snapshot",
   assert.equal(storage.save(record).ok, true);
   record.p1.presentation.quotes.battleStart.text = "変更";
   record.p2.presentation.duckIconUrl = "changed.png";
+  record.p1.presentation.cutinUrl = "changed-cutin.png";
   const loaded = storage.load("snapshot");
   assert.equal(loaded.ok, true);
   assert.deepEqual(loaded.record, expected);
+  assert.equal(loaded.record.p1.presentation.cutinUrl, "cutin.png");
   loaded.record.p1.presentation.quotes.skill.A.iconUrl = "changed-again.png";
   assert.deepEqual(storage.load("snapshot").record, expected);
   assert.deepEqual(storage.list().records[0].p1.presentation, expected.p1.presentation);

@@ -91,3 +91,19 @@ export function attachImageFallbacks(container) {
     if (img.complete && !img.naturalWidth) fallback();
   }
 }
+
+/** C-only cut-ins read battle snapshots, with no substitute image. */
+export function makeCSkillCutinLines(event, presentations = {}) {
+  if (event.type !== "cSkillActivated" || !sides.includes(event.actor)) return [];
+  const url = presentations[event.actor]?.cutinUrl;
+  if (typeof url !== "string" || !url.trim()) return [];
+  const special = event.mode === "special" || ["beforeTurnEnd", "turnEnd"].includes(event.trigger);
+  return [{ kind: `c-cutin ${special ? "center" : event.actor.toLowerCase()}`, text: `<img data-c-cutin src="${escapeHTML(url)}" alt="Cスキルカットイン">` }];
+}
+export function attachCutinImages(container) {
+  for (const img of container.querySelectorAll("img[data-c-cutin]")) {
+    const hide = () => { container.hidden = true; };
+    img.addEventListener("error", hide, { once: true });
+    if (img.complete && !img.naturalWidth) hide();
+  }
+}

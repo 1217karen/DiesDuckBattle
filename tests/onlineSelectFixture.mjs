@@ -10,7 +10,7 @@ export async function player(id, eno, duckId) {
   const presentation=createEmptyPlayerPresentation();
   presentation.battler.defaultIconUrl='https://example.invalid/'+eno+'.png';
   presentation.battler.quotes.battleStart.text='開始'+eno;
-  presentation.ducks[duckId]={iconUrl:'https://example.invalid/duck'+eno+'.png'};
+  presentation.ducks[duckId]={iconUrl:'https://example.invalid/duck'+eno+'.png',cutinUrl:'https://example.invalid/cutin'+eno+'.png'};
   const data={build,presentation,publicSettings:{schemaVersion:1,publicDuckId:duckId},battlerName:'DB名'+eno};
   return {data,snapshot:{...encodeOnlinePlayer(data),gameAccountId:id,eno,revision:'0'}};
 }

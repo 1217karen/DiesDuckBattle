@@ -47,9 +47,13 @@ test('VS uses latest online data, existing engine and start-time presentation/lo
   const started=await f.c.start();assert.equal(started.ok,true);
   const record=f.results.load('online-test').record;assert.deepEqual(record.events,battle.events);assert.equal(record.events.at(-1).type,'battleEnd');
   assert.equal(record.p1.presentation.battlerDefaultIconUrl,'latest.png');
+  assert.equal(record.p1.presentation.cutinUrl,'https://example.invalid/cutin88.png');
+  assert.equal(record.p2.presentation.cutinUrl,'https://example.invalid/cutin89.png');
   assert.deepEqual(record.p2.presentation,buildBattlePresentationSnapshot(f.c.snapshot().state.opponent.presentation,db));
   assert.equal(record.p1.loadout.duck.id,da);assert.equal(record.p2.loadout.duck.id,db);
-  f.rows.get(a).battler.presentation.defaultIconUrl='after.png';assert.deepEqual(f.results.load('online-test').record,record);
+  f.rows.get(a).battler.presentation.defaultIconUrl='after.png';
+  f.rows.get(a).ducks[0].presentation.icon.cutinUrl='changed-self.png';
+  f.rows.get(b).ducks[0].presentation.icon.cutinUrl='changed-opponent.png';assert.deepEqual(f.results.load('online-test').record,record);
   assert.equal(f.calls.filter(c=>c[0]==='prepare_online_battle').length,1);
 });
 test('latest incomplete build cannot start or save a result',async()=>{

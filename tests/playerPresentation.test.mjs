@@ -22,7 +22,7 @@ test("save/loadはBattler・セリフ・Duck別アイコンを保持する", () 
   value.battler.standingImageUrl = "standing.png";
   value.battler.iconSlots[2] = "icon-3.png";
   value.battler.quotes.skill.C = { text:"ここからだ！", iconSlot:3 };
-  value.ducks.duckA = { iconUrl:"duck-a.png" }; value.ducks.duckB = { iconUrl:"duck-b.png" };
+  value.ducks.duckA = { iconUrl:"duck-a.png", cutinUrl:"cutin-a.png" }; value.ducks.duckB = { iconUrl:"duck-b.png", cutinUrl:"" };
   assert.equal(storage.save(value).ok, true);
   assert.deepEqual(storage.load().presentation, value);
 });
@@ -34,7 +34,7 @@ test("欠損と不正値を補完し、iconSlotは1〜10だけを許可する", 
   assert.deepEqual(value.battler.quotes.battleStart, { text:"", iconSlot:null });
   assert.equal(value.battler.quotes.skill.A.iconSlot, 10);
   assert.equal(value.battler.quotes.skill.B.iconSlot, null);
-  assert.deepEqual(value.ducks.old, { iconUrl:"" });
+  assert.deepEqual(value.ducks.old, { iconUrl:"", cutinUrl:"" });
 });
 
 test("未登録・不正な追加slotはdefaultIconUrlへfallbackする", () => {
@@ -51,4 +51,12 @@ test("不正JSONでもloadは初期値を返して画面を継続できる", () 
   const loaded = storage.load();
   assert.equal(loaded.ok, false); assert.equal(loaded.status, "corrupt");
   assert.equal(loaded.presentation.battler.iconSlots.length, 10);
+});
+
+test("v1 old Duck icons gain empty cut-ins; normalized cut-ins are independent Duck data",()=>{
+  const raw={schemaVersion:1,ducks:{old:{iconUrl:"old.png"},a:{iconUrl:"a.png",cutinUrl:"a-cutin.png"},b:{iconUrl:"b.png",cutinUrl:"b-cutin.png"}}};
+  const before=structuredClone(raw),value=normalizePlayerPresentation(raw);
+  assert.deepEqual(raw,before);assert.equal(value.schemaVersion,1);
+  assert.deepEqual(value.ducks.old,{iconUrl:"old.png",cutinUrl:""});
+  assert.deepEqual(value.ducks.a,raw.ducks.a);assert.deepEqual(value.ducks.b,raw.ducks.b);
 });
