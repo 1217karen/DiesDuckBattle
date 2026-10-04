@@ -46,7 +46,7 @@ test("dice-first UI derives SP, resets dice only on type changes, exposes budget
   assert.equal(p.get("stat-AT").value,"4");assert.equal(p.get("stat-DF").value,"4");
   assert.match(p.get("stat-metrics").textContent,/ステータスpt：11 \/ 9/);
   assert.equal(p.get("a-trigger").value,"exact:6");assert.match(p.get("a-trigger").textContent,/現在は使用不可/);
-  p.choose("dice-0","0");assert.match(p.get("dice-metrics").textContent,/獲得 3pt.*消費 1pt.*残り 2pt/);
+  p.choose("dice-0","0");assert.match(p.get("dice-metrics").textContent,/^ダイスpt　獲得 3pt \/ 消費 1pt$/);
   p.choose("dice-type","custom-normal");assert.deepEqual(Array.from({length:6},(_,i)=>p.get(`dice-${i}`).value),["0","2","3","4","5","0"]);
   assert.match(p.get("stat-metrics").textContent,/ステータスpt：10 \/ 9/);
 });
@@ -56,7 +56,7 @@ test("preset UI offers normal/void, locks every dice slot, and restores custom s
   assert.equal(p.get("dice-preset"),undefined);
   assert.deepEqual(Array.from({length:6},(_,i)=>p.get(`dice-${i}`).value),["1","2","3","4","5","6"]);
   assert.ok(Array.from({length:6},(_,i)=>p.get(`dice-${i}`).disabled).every(Boolean));
-  p.choose("dice-type","preset-void");assert.match(p.get("dice-metrics").textContent,/残り 4pt/);
+  p.choose("dice-type","preset-void");assert.match(p.get("dice-metrics").textContent,/^ダイスpt　獲得 4pt \/ 消費 0pt$/);
   assert.deepEqual(Array.from({length:6},(_,i)=>p.get(`dice-${i}`).value),["0","0","0","0","0","0"]);
   assert.equal(p.get("a-trigger").value,"exact:6");assert.match(p.get("a-trigger").textContent,/現在は使用不可/);
   p.choose("dice-type","custom-heavy");assert.equal(p.get("dice-preset"),undefined);assert.equal(p.get("dice-0").disabled,false);

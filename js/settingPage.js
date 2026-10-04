@@ -34,6 +34,7 @@ const el = (tag, text, className) => {
 };
 const labelText = text => String(text).replaceAll("self", "自分").replaceAll("enemy", "相手");
 const num = value => value ?? "—";
+const issueText = (section, message) => section.toLowerCase() === "a" ? message.replace("Aコストオーバー：", "Aのpt超過：") : message;
 function button(text, onClick, className) {
   const node = el("button", text, className); node.type = "button"; node.addEventListener("click", onClick); return node;
 }
@@ -49,7 +50,7 @@ function showDialog({ title, message, issues = [], onConfirm, confirmLabel = "�
   }, "primary"));
   const list = el("ul", null, "dialog-issues");
   const sections = { name: "Duck名", stats: "ステータス", dice: "ダイス", ducks: "アヒル設定", build: "保存形式" };
-  for (const issue of issues) list.append(el("li", `${issue.ownerName} / ${sections[issue.section] ?? issue.section + "スキル"}：${issue.message}`));
+  for (const issue of issues) list.append(el("li", `${issue.ownerName} / ${sections[issue.section] ?? issue.section + "スキル"}：${issueText(issue.section, issue.message)}`));
   dialog.append(heading, list, el("p", message), actions);
   dialog.addEventListener("close", () => { dialog.remove(); render(); }, { once: true });
   document.body.append(dialog); dialog.showModal();
@@ -100,7 +101,7 @@ function setFeedback(key, summary) {
   const seen = new Set();
   $(`${key}-issues`)?.replaceChildren(...issues.filter(i => {
     const key = i.severity + i.message; if (seen.has(key)) return false; seen.add(key); return true;
-  }).map(i => el("li", i.message, i.severity)));
+  }).map(i => el("li", issueText(key, i.message), i.severity)));
 }
 function commit(action, redraw = true) {
   if (!online?.snapshot().canEdit) return;
@@ -254,8 +255,13 @@ function renderStats(duck, box) {
       input.disabled = !frame.editable;
       diceGrid.append(labeled(`枠 ${index + 1}`, input));
     });
-    diceBox.append(diceGrid, el("p", frame.editable ? "6枠。同じ非0出目は通常2個、0を含む場合は3個まで。0は最大3個。0ごとに+1pt、0を含む3個積み1種類ごとに−1pt。" : "プリセットダイスは固定です。", "description"));
+    diceBox.append(diceGrid);
+    if (!frame.editable) diceBox.append(el("p", "プリセットダイスは固定です。", "description"));
     const diceMetrics = el("div", null, "metrics"); diceMetrics.id = "dice-metrics"; diceBox.append(diceMetrics);
+    const explanation = el("p", null, "description"); explanation.id = "dice-pt-description";
+    explanation.append(el("span", "0を選択すると、1枠ごとに1pt獲得します。同じ出目は通常2個までですが、0を含む場合は1ptを使用すると3個まで選択可能です。"),
+      el("br"), el("span", "余ったptはAスキルで使用可能です。"));
+    diceBox.append(explanation);
   }
   feedback(diceBox, "dice"); box.append(diceBox);
   if (!frame) return;
@@ -299,8 +305,8 @@ function aSentenceChoice(box, id, items, current, onChange, label, savedLabel = 
 }
 const signed = value => value == null ? "—" : value > 0 ? `+${value}` : String(value);
 const negative = value => value == null ? null : -value;
-function priceLabel(id, label, value) {
-  const node = el("span", `${label} ${signed(value)}`, "effect-price"); node.id = id; return node;
+function priceLabel(id, label, value, unit = "") {
+  const node = el("span", `${label ? label + " " : ""}${signed(value)}${value == null ? "" : unit}`, "effect-price"); node.id = id; return node;
 }
 function settingLine(group, left, right, id) {
   const row = el("div", null, "skill-setting-line"); if (id) row.id = id;
@@ -316,10 +322,10 @@ function confirmedPrices(resources, price, path, index) {
   const precedingIssue = issues.some(i => i.path?.startsWith(prefix) && Number(i.path.slice(prefix.length).split(".")[0]) <= index);
   return { costKnown: !!price && !ownIssue, slotCost: precedingIssue ? null : price?.slotCost };
 }
-function effectMeta(index, id, label, cost, slotLabel, slotCost, remove) {
+function effectMeta(index, id, label, cost, slotLabel, slotCost, remove, unit = "") {
   const meta = el("div", null, "effect-meta");
-  meta.append(el("strong", `効果 ${index + 1}`), priceLabel(id + "-price", label, cost),
-    priceLabel(id + "-slot-price", slotLabel, slotCost), button("削除", remove));
+  meta.append(el("strong", `効果 ${index + 1}`), priceLabel(id + "-price", label, cost, unit),
+    priceLabel(id + "-slot-price", slotLabel, slotCost, unit), button("削除", remove));
   return meta;
 }
 function renderA(duck, box) {
@@ -330,8 +336,8 @@ function renderA(duck, box) {
     const update = aSelection => patchDuck({ aSelection });
     const resources = calculateASkillResources(duck, a, { catalog: aCatalog });
     const top = el("div", null, "skill-settings"); panel.append(top);
-    settingLine(top, el("span", `使用可能 ${num(resources.availablePoints)}`),
-      el("span", `基礎コスト${num(resources.basePoints)} ＋ ダイス余剰コスト${num(resources.dicePoints)}`), "a-budget-line");
+    settingLine(top, el("span", `使用可能pt ${num(resources.availablePoints)}`),
+      el("span", `初期pt ${num(resources.basePoints)} ＋ ダイスpt余剰 ${num(resources.dicePoints)}`), "a-budget-line");
     const trigger = el("div", null, "a-sentence-controls");
     const triggerView = aTriggerEditor(getATriggerOptions(duck, aCatalog), a.triggerId);
     for (const part of triggerView.parts) {
@@ -344,14 +350,14 @@ function renderA(duck, box) {
       }
     }
     const triggerEditor = el("div"); triggerEditor.append(el("span", "発動条件"), trigger);
-    settingLine(top, priceLabel("a-trigger-price", "コスト", negative(resources.triggerCost)), triggerEditor);
+    settingLine(top, priceLabel("a-trigger-price", "", negative(resources.triggerCost), "pt"), triggerEditor);
     const cancelled = (a.effects ?? []).some(e => isACancel(e, aCatalog));
     const cancel = el("label", "通常攻撃", "auxiliary-control");
     const cancelInput = aChoice(cancel, "a-cancel", [{ id: "off", label: "キャンセルしない" },
       { id: "on", label: "キャンセルする", disabled: !aCancelAvailable(duck, a, aCatalog) }], cancelled ? "on" : "off",
       value => update(setAAttackCancel(a, value === "on", duck, aCatalog)), "通常攻撃キャンセル");
     cancelInput.children[0].disabled = true;
-    settingLine(top, priceLabel("a-cancel-price", "コスト", cancelled ? resources.cancelDrawbackPoints : 0), cancel);
+    settingLine(top, priceLabel("a-cancel-price", "", cancelled ? resources.cancelDrawbackPoints : 0, "pt"), cancel);
     const slots = aNormalSlots(a, aCatalog);
     slots.forEach(({ leaf, index }, slot) => {
       const chosen = aEditorLeaf(leaf, aCatalog), definitions = aEditorCatalog(duck, a, aCatalog, index);
@@ -367,8 +373,8 @@ function renderA(duck, box) {
       const price = resources.effectBreakdown.find(item => item.index === index);
       const confirmed = confirmedPrices(resources, price, `effects.${index}`, index);
       const cost = !confirmed.costKnown ? null : price?.polarity === "drawback" ? price.drawbackPoints : negative(price?.effectCost);
-      const head = effectMeta(slot, `a-effect-${slot}`, "コスト", cost, "枠コスト", negative(confirmed.slotCost),
-        () => update(removeANormalEffect(a, index, aCatalog)));
+      const head = effectMeta(slot, `a-effect-${slot}`, "", cost, "枠", negative(confirmed.slotCost),
+        () => update(removeANormalEffect(a, index, aCatalog)), "pt");
       const staleFace = chosen.options?.diceAction && a.triggerId !== `exact:${chosen.options.diceAction}`;
       const contents = definitions.filter(d => !(staleFace && d.id === chosen.effectId))
         .map(d => ({ id: d.id, label: d.variants[0].definition.exactFace != null ? aContentText(d.variants[0]) : d.label }));
@@ -417,7 +423,7 @@ function renderA(duck, box) {
   }
   if (a !== null) {
     const metrics = el("section", null, "resource-summary"); metrics.id = "a-metrics";
-    metrics.setAttribute("aria-label", "Aスキルのコスト"); panel.append(metrics);
+    metrics.setAttribute("aria-label", "Aスキルのpt"); panel.append(metrics);
   }
   feedback(panel, "a"); box.append(panel);
 }
@@ -425,13 +431,13 @@ function renderA(duck, box) {
 function renderAPoints(selection, resources) {
   const box = $("a-metrics"); if (!box || selection === null) return;
   const values = [["available", "使用可能", resources.availablePoints], ["net", "必要", resources.netCost],
-    ["remaining", resources.remaining < 0 ? "コストオーバー" : "残り", resources.remaining == null ? null : Math.abs(resources.remaining)]];
+    ["remaining", resources.remaining < 0 ? "pt超過" : "残り", resources.remaining == null ? null : Math.abs(resources.remaining)]];
   box.replaceChildren();
   for (const [index, [id, label, amount]] of values.entries()) {
     if (index) box.append(el("span", "｜", "muted"));
     const item = el("span");
     item.append(el("span", `${label} `));
-    const value = el("span", num(amount)); value.id = `a-point-${id}`; item.append(value);
+    const value = el("span", amount == null ? "—" : `${amount}pt`); value.id = `a-point-${id}`; item.append(value);
     if (id === "remaining" && resources.remaining < 0) { item.className = "a-point-shortage"; item.id = "a-point-shortage"; }
     box.append(item);
   }
@@ -564,7 +570,7 @@ function renderSummaries() {
   const frame = getDiceFrame(duck.diceFrame);
   if ($("stat-metrics")) $("stat-metrics").textContent = `ステータスpt：${(duck.stats.AT ?? 0) + (duck.stats.DF ?? 0) + frame.SP} / ${rules.stats.totalMax}　HP ${num(summary.stats.hp)}`;
   const dice = summary.dice.resources;
-  if ($("dice-metrics")) $("dice-metrics").textContent = `ダイス資源　獲得 ${num(dice?.earned)}pt / 消費 ${num(dice?.spent)}pt / 残り ${num(dice?.remaining)}pt`;
+  if ($("dice-metrics")) $("dice-metrics").textContent = `ダイスpt　獲得 ${num(dice?.earned)}pt / 消費 ${num(dice?.spent)}pt`;
   if (skillsUnlocked(duck)) { const a = aEditingSelection(duck); renderAPoints(a, calculateASkillResources(duck, a, { catalog: aCatalog })); }
   if ($("c-metrics")) $("c-metrics").textContent = `必要AP：${num(summary.C.resources.requiredAP)}`;
 }

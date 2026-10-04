@@ -125,12 +125,12 @@ test("A compact cost summary uses computed totals, preserves saved values, and e
    {triggerId:"exact:0",effects:[damage]}, {triggerId:"exact:1",effects:[{effectId:"heal",targetId:"self",options:{}}]}]) {
   const b=initial(selection),before=structuredClone(b),p=await page(b);
   const r=calculateASkillResources(b.ducks[0],selection);
-  assert.equal(p.get("a-metrics").attributes["aria-label"],"Aスキルのコスト");
+  assert.equal(p.get("a-metrics").attributes["aria-label"],"Aスキルのpt");
   assert.ok(!p.get("a-metrics").textContent.includes("内訳"));
   if(selection) {
-   assert.equal(point(p,"available"),String(r.availablePoints??"—"));assert.equal(point(p,"net"),String(r.netCost??"—"));
-   assert.equal(point(p,"remaining"),r.remaining==null?"—":String(Math.abs(r.remaining)));
-   if(r.remaining<0) {assert.match(p.get("a-point-shortage").textContent,/コストオーバー/);assert.match(p.get("a-issues").textContent,/コストオーバー/);}
+   assert.equal(point(p,"available"),r.availablePoints==null?"—":`${r.availablePoints}pt`);assert.equal(point(p,"net"),r.netCost==null?"—":`${r.netCost}pt`);
+   assert.equal(point(p,"remaining"),r.remaining==null?"—":`${Math.abs(r.remaining)}pt`);
+   if(r.remaining<0) {assert.match(p.get("a-point-shortage").textContent,/pt超過/);assert.match(p.get("a-issues").textContent,/pt超過/);}
   }
   assert.deepEqual(b,before);
  }
@@ -235,7 +235,7 @@ test("A face 0..6/all and comparison controls; natural formal all and cost wordi
  p.choose("a-trigger","all");assert.equal(sentenceText(p.get("a-trigger").parent),"出目が全ての出目の時");assert.equal(p.get("a-trigger-comparison"),undefined);
  const saved=p.save();const {presentASkill}=await import("../js/aSkillPresentation.js");
  assert.match(presentASkill(saved.ducks[0],saved.ducks[0].aSelection).text,/^全ての出目で、/);
- assert.ok(!/pt|ポイント/.test(p.get("a-metrics").textContent));assert.match(p.get("a-metrics").textContent,/使用可能.*必要/);
+ assert.ok(!/コスト|ポイント/.test(p.get("a-metrics").textContent));assert.match(p.get("a-metrics").textContent,/使用可能.*必要/);
 });
 
 test("A UI keeps heal/status amounts on parent changes and never offers a direction select",async()=>{
@@ -270,21 +270,35 @@ test("Duck name errors block saving before and after incomplete confirmation", a
 test("A metadata separates signed effect/slot prices and updates slots on polarity edits",async()=>{
  const s={triggerId:"lte:3",effects:[{effectId:"heal",targetId:"self",options:{amount:"amount-5"}},damage,heal,cancel]};
  const b=initial(s),before=structuredClone(b),p=await page(b),r=calculateASkillResources(b.ducks[0],s);
- assert.equal(p.get("a-trigger-price").textContent,`コスト -${r.triggerCost}`);
- assert.equal(p.get("a-cancel-price").textContent,`コスト +${r.cancelDrawbackPoints}`);
+ assert.equal(p.get("a-trigger-price").textContent,`-${r.triggerCost}pt`);
+ assert.equal(p.get("a-cancel-price").textContent,`+${r.cancelDrawbackPoints}pt`);
  for(const [i,row] of r.effectBreakdown.slice(0,3).entries()) {
-  assert.equal(p.get(`a-effect-${i}-price`).textContent,`コスト ${row.polarity==="benefit"?"-"+row.effectCost:"+"+row.drawbackPoints}`);
-  assert.equal(p.get(`a-effect-${i}-slot-price`).textContent,`枠コスト ${i===1?"-1":"0"}`);
+  assert.equal(p.get(`a-effect-${i}-price`).textContent,`${row.polarity==="benefit"?"-"+row.effectCost:"+"+row.drawbackPoints}pt`);
+  assert.equal(p.get(`a-effect-${i}-slot-price`).textContent,`枠 ${i===1?"-1":"0"}pt`);
   const meta=p.get(`a-effect-${i}-price`).parent;assert.equal(meta.className,"effect-meta");
   assert.deepEqual(meta.children.map(e=>e.tagName),["strong","span","span","button"]);
   assert.equal(meta.parent.children[1].className,"effect-editor");
  }
  assert.equal(r.effectBreakdown.reduce((n,row)=>n+row.slotCost,0),r.benefitSlotCost);
- p.choose("a-effect-0-targetId","enemy");assert.equal(p.get("a-effect-1-slot-price").textContent,"枠コスト 0");
- assert.match(p.get("a-effect-0-price").textContent,/コスト \+/);assert.deepEqual(b,before);
+ p.choose("a-effect-0-targetId","enemy");assert.equal(p.get("a-effect-1-slot-price").textContent,"枠 0pt");
+ assert.match(p.get("a-effect-0-price").textContent,/^\+\d+pt$/);assert.deepEqual(b,before);
 });
 test("A incomplete prices and dependent slots are dashes, never provisional zero",async()=>{
  const p=await page(initial({triggerId:"",effects:[{effectId:"heal",targetId:"",options:{amount:"amount-5"}},damage]}));
  for(const id of ["a-trigger-price","a-effect-0-price","a-effect-0-slot-price","a-effect-1-slot-price"]) assert.match(p.get(id).textContent,/—$/);
- p.choose("a-trigger","exact:1");assert.equal(p.get("a-effect-1-price").textContent,"コスト -2");
+ p.choose("a-trigger","exact:1");assert.equal(p.get("a-effect-1-price").textContent,"-2pt");
+});
+test("A pt wording and dice explanation placement change presentation only",async()=>{
+ const b=initial({triggerId:"exact:1",effects:[damage]}),before=structuredClone(b),p=await page(b);
+ assert.equal(p.get("a-budget-line").textContent,"使用可能pt 3初期pt 3 ＋ ダイスpt余剰 0");
+ assert.equal(p.get("a-metrics").textContent,"使用可能 3pt｜必要 2pt｜残り 1pt");
+ assert.equal(p.get("dice-metrics").textContent,"ダイスpt　獲得 0pt / 消費 0pt");
+ const siblings=p.get("dice-metrics").parent.children;
+ assert.equal(siblings[siblings.indexOf(p.get("dice-metrics"))+1],p.get("dice-pt-description"));
+ assert.equal(p.get("dice-pt-description").textContent,"0を選択すると、1枠ごとに1pt獲得します。同じ出目は通常2個までですが、0を含む場合は1ptを使用すると3個まで選択可能です。余ったptはAスキルで使用可能です。");
+ assert.ok(!p.all().some(e=>e.textContent.includes("6枠。同じ非0出目")));
+ assert.ok(!p.get("dice-metrics").textContent.includes("残り"));
+ assert.deepEqual(p.save().ducks[0].aSelection,b.ducks[0].aSelection);assert.deepEqual(b,before);
+ p.choose("dice-type","custom-speed");assert.equal(p.get("dice-metrics").textContent,"ダイスpt　獲得 2pt / 消費 0pt");
+ assert.equal(p.get("a-budget-line").textContent,"使用可能pt 5初期pt 3 ＋ ダイスpt余剰 2");
 });
