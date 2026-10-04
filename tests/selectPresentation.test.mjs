@@ -86,4 +86,11 @@ test("row split uses image height without reserving old label space", async () =
   images[0].getBoundingClientRect = () => ({ height: 300 });
   updateRowSplitByBattlerHeight(grid, images, middle, 700);
   assert.equal(top, 374);
+  // The title clearance affects only the central column, not the figures.
+  updateRowSplitByBattlerHeight(grid, images, middle, 700, 160);
+  assert.equal(top, 534);
+  updateRowSplitByBattlerHeight(grid, images, middle, 400, 160);
+  assert.equal(top, 534, "short viewports must not cap the row below title + stack height");
+  updateRowSplitByBattlerHeight(grid, [], middle, 400, 160);
+  assert.equal(top, 534, "reserve the title before standing images finish loading");
 });

@@ -7,14 +7,14 @@ body { margin:0; color:var(--text); background:#222; font-family:system-ui,sans-
 .selectTitle { position:absolute; top:8px; left:0; width:100%; text-align:center; margin:0; font-size:clamp(32px,7vw,70px); line-height:1; letter-spacing:.08em; font-weight:900; font-family:"Iceberg",sans-serif; pointer-events:none; }
 .selectGrid { max-width:1400px; margin:auto; height:100%; display:grid; grid-template-columns:minmax(0,1fr) var(--midW) minmax(0,1fr); grid-template-rows:var(--topH, 73%) 1fr; grid-template-areas:'p1Top midTop p2Top' 'p1Info midInfo p2Info'; gap:5px; }
 .cell { min-width:0; min-height:0; position:relative; }
-.cell--p1Top { grid-area:p1Top; } .cell--p2Top { grid-area:p2Top; } .cell--midTop { grid-area:midTop; display:grid; align-items:end; justify-items:center; padding-bottom:10px; }
+.cell--p1Top { grid-area:p1Top; } .cell--p2Top { grid-area:p2Top; } .cell--midTop { grid-area:midTop; display:grid; align-items:center; justify-items:center; padding-top:calc(var(--titleBottom, calc(8px + clamp(32px,7vw,70px) * 2)) + clamp(12px,2vh,24px)); padding-bottom:10px; }
 .cell--p1Info { grid-area:p1Info; } .cell--p2Info { grid-area:p2Info; } .cell--midInfo { grid-area:midInfo; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; font-size:12px; padding:8px; }
 .silhouette { position:relative; height:100%; padding:0; display:flex; flex-direction:column; align-items:center; justify-content:end; overflow:hidden; }
 /* base's bottom-centered contain layout; natural size is never enlarged. */
 .silhouette__img { position:absolute; left:50%; bottom:0; transform:translateX(-50%) scale(clamp(0,var(--battlerScale,1),1)); transform-origin:bottom center; width:auto; height:auto; max-width:100%; max-height:var(--battlerMaxHeight, 100%); object-fit:contain; object-position:bottom center; display:block; }
 .duckPick__img { width:100%; height:100%; min-width:0; min-height:0; object-fit:contain; display:block; }
 [hidden] { display:none !important; }
-.midStack { display:grid; gap:12px; justify-items:center; transform:translateY(calc(-1 * clamp(32px,4vw,64px))); }
+.midStack { display:grid; gap:12px; justify-items:center; }
 .duckPick { width:calc(var(--duckSize) + 14px); height:calc(var(--duckSize) + 14px); border:3px solid #ffa500d9; border-radius:14px; background:linear-gradient(#d3333340,#d3333399); color:var(--text); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:4px; font-size:12px; overflow-wrap:anywhere; }
 button.duckPick { cursor:pointer; } .opponent { background:linear-gradient(#3399ff26,#3399ff80); }
 .vs { width:var(--midW); height:calc(var(--midW)*.5); border:0; background:transparent; padding:0; }
@@ -37,7 +37,7 @@ button.duckPick { cursor:pointer; } .opponent { background:linear-gradient(#3399
 .trayItem button { width:100%; text-align:left; min-height:64px; font-size:15px; } .trayItem button[aria-pressed=true] { border-color:#ffcf60; }
 .trayItem button:disabled { color:#ccc; background:#333; cursor:not-allowed; } .trayItem summary { cursor:pointer; margin-top:10px; color:#ffd296; } .trayItem ul { padding-left:20px; font-size:13px; line-height:1.6; }
 @keyframes trayUp { from { transform:translateY(100%); opacity:0; } to { transform:translateY(0); opacity:1; } }
-@media(max-width:600px) { .midStack { transform:translateY(-12px); } .screen { padding:0 8px 8px; min-height:780px; } .selectGrid { grid-template-columns:minmax(0,1fr) 96px minmax(0,1fr); grid-template-rows:var(--topH, 57%) 1fr; } .infoPanel { padding:8px; } .infoPanel__body { font-size:12px; } .infoPanel h2 { font-size:13px; } }
+@media(max-width:600px) { .screen { padding:0 8px 8px; min-height:780px; } .selectGrid { grid-template-columns:minmax(0,1fr) 96px minmax(0,1fr); grid-template-rows:var(--topH, 57%) 1fr; } .infoPanel { padding:8px; } .infoPanel__body { font-size:12px; } .infoPanel h2 { font-size:13px; } }
 @media(prefers-reduced-motion:reduce) { .tray[open] { animation:none; } }
 
 button.silhouette { width:100%; border:0; background:transparent; color:inherit; font:inherit; cursor:pointer; }

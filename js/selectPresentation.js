@@ -48,13 +48,12 @@ export function fitBattlersToAvoidOverlap(images) {
 }
 
 // Base's measured image height -> --topH; no label space above the figures.
-export function updateRowSplitByBattlerHeight(grid, images, midStack, availableHeight = grid.getBoundingClientRect().height) {
+export function updateRowSplitByBattlerHeight(grid, images, midStack, availableHeight = grid.getBoundingClientRect().height, titleClearance = 0) {
   const height = Math.max(0, ...images.map(img => img.getBoundingClientRect().height));
-  if (!height) return;
   const gridHeight = availableHeight;
-  // The center cell has 10px bottom padding; reserve only its actual content.
-  const required = Math.max(height, midStack.getBoundingClientRect().height + 10);
-  const top = Math.min(gridHeight * .85, Math.max(gridHeight * .4, required));
+  // Keep title + gap + stack inside the top row, even on short viewports.
+  const centerHeight = titleClearance + midStack.getBoundingClientRect().height + 10;
+  const top = Math.max(centerHeight, Math.min(gridHeight * .85, Math.max(gridHeight * .4, height)));
   grid.style.setProperty("--topH", `${Math.ceil(top)}px`);
 }
 
@@ -67,6 +66,9 @@ export function createSelectPresentation(root = document, viewport = window) {
       grid.style.removeProperty("--topH");
       // The grid already starts below the common menu. Do not subtract it again.
       const rect = grid.getBoundingClientRect();
+      const title = root.querySelector(".selectTitle");
+      grid.style.setProperty("--titleBottom", `${Math.max(0, title.getBoundingClientRect().bottom - rect.top)}px`);
+      const titleClearance = Number.parseFloat(viewport.getComputedStyle(root.querySelector(".cell--midTop")).paddingTop);
       const availableHeight = Math.max(0, Math.min(rect.height, (viewport.visualViewport?.height ?? viewport.innerHeight) - rect.top));
       const maxHeight = Math.max(0, availableHeight * .85);
       grid.style.setProperty("--battlerMaxHeight", `${maxHeight}px`);
@@ -77,7 +79,7 @@ export function createSelectPresentation(root = document, viewport = window) {
         img.style.height = `${size.height}px`;
       }
       fitBattlersToAvoidOverlap(images);
-      updateRowSplitByBattlerHeight(grid, images, root.querySelector(".midStack"), availableHeight);
+      updateRowSplitByBattlerHeight(grid, images, root.querySelector(".midStack"), availableHeight, titleClearance);
     });
   };
   const displays = {};
@@ -100,6 +102,8 @@ export function createSelectPresentation(root = document, viewport = window) {
   }
   viewport.addEventListener("resize", requestLayout);
   viewport.visualViewport?.addEventListener("resize", requestLayout);
+  root.fonts?.ready.then(requestLayout);
+  root.fonts?.addEventListener("loadingdone", requestLayout);
   return (side, presentation, duckId) => {
     displays[side].standing(presentation?.battler?.standingImageUrl);
     displays[side].duck(presentation?.ducks?.[duckId]?.iconUrl);
