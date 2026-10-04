@@ -1,101 +1,33 @@
-import test from "node:test";
-import assert from "node:assert/strict";
-import { createBattleResultStorage, BATTLE_RESULT_INDEX_KEY, BATTLE_RESULT_STORAGE_PREFIX } from "../js/battleResultStorage.js";
-import { buildBattlePresentationSnapshot } from "../js/battlePresentationSnapshot.js";
-
-function memoryStorage() {
-  const values = new Map();
-  return { getItem: key => values.has(key) ? values.get(key) : null, setItem: (key, value) => values.set(key, String(value)) };
-}
-
-test("save/load retains presentation snapshots including the empty P2 snapshot", () => {
-  const storage = createBattleResultStorage(memoryStorage());
-  const presentation = buildBattlePresentationSnapshot({
-    battler: { defaultIconUrl: "default.png", iconSlots: ["", "", "third.png"],
-      quotes: { battleStart: { text: "開始！", iconSlot: 3 } } },
-    ducks: { d1: { iconUrl: "duck.png", cutinUrl: "cutin.png" } },
-  }, "d1");
-  const record = {
-    battleId: "snapshot", dateISO: "2026-09-24T00:00:00.000Z",
-    p1: { battlerId: "p1", battlerName: "1P", duckId: "d1", duckName: "赤", presentation },
-    p2: { battlerId: "p2", battlerName: "2P", duckId: "d2", duckName: "青",
-      presentation: buildBattlePresentationSnapshot(undefined, "d2") },
-    result: "draw", events: [{ type: "battleEnd", result: "draw" }],
-  };
-  const expected = structuredClone(record);
-  assert.equal(storage.save(record).ok, true);
-  record.p1.presentation.quotes.battleStart.text = "変更";
-  record.p2.presentation.duckIconUrl = "changed.png";
-  record.p1.presentation.cutinUrl = "changed-cutin.png";
-  const loaded = storage.load("snapshot");
-  assert.equal(loaded.ok, true);
-  assert.deepEqual(loaded.record, expected);
-  assert.equal(loaded.record.p1.presentation.cutinUrl, "cutin.png");
-  loaded.record.p1.presentation.quotes.skill.A.iconUrl = "changed-again.png";
-  assert.deepEqual(storage.load("snapshot").record, expected);
-  assert.deepEqual(storage.list().records[0].p1.presentation, expected.p1.presentation);
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { createBattleResultStorage } from '../js/battleResultStorage.js';
+const side={battlerId:'a',duckId:'d',battlerName:'name',duckName:'duck',presentation:{duckIconUrl:'duck.png',cutinUrl:'cutin.png',quotes:{battleStart:{text:'Hi'}}}};
+const record={p1:side,p2:{...side,battlerId:'b'},result:'draw',events:[{type:'battleEnd',result:'draw'}]};
+test('RPC adapter sends only result snapshot, never client metadata/loadout',async()=>{
+  const calls=[];const meta={battleId:'server-id',battleNo:12,dateISO:'server-time'};
+  const store=createBattleResultStorage({async rpc(...args){calls.push(args);return {data:meta};}});
+  assert.deepEqual(await store.save({...record,battleId:'client-id',dateISO:'client-time',p1:{...side,loadout:{secret:1}}}),{ok:true,status:'saved',...meta});
+  const [name,params]=calls[0];assert.equal(name,'save_online_battle_result');assert.deepEqual(params.p_record,record);
+  assert.equal(params.p_p1_account_id,'a');assert.equal(params.p_p2_account_id,'b');assert.equal(calls.length,1);
 });
-
-test("pre-existing records without presentation load from the unchanged v1 key", () => {
-  const memory = memoryStorage();
-  const record = {
-    battleId: "legacy", dateISO: "2026-09-23T00:00:00.000Z",
-    p1: { battlerId: "p1", battlerName: "1P", duckId: "d1", duckName: "赤" },
-    p2: { battlerId: "p2", battlerName: "2P", duckId: "d2", duckName: "青" },
-    result: "draw", events: [],
-  };
-  memory.setItem(BATTLE_RESULT_STORAGE_PREFIX + record.battleId, JSON.stringify(record));
-  const loaded = createBattleResultStorage(memory).load("legacy");
-  assert.equal(loaded.ok, true);
-  assert.deepEqual(loaded.record, record);
-  assert.equal("presentation" in loaded.record.p1, false);
+test('detail and list use dedicated RPCs, preserving returned snapshots',async()=>{
+  const calls=[];const store=createBattleResultStorage({async rpc(name,args){calls.push([name,args]);return {data:name==='get_online_battle_result'?record:{records:[{battleNo:1}],page:2,pageSize:30,total:31,totalPages:2}};}});
+  assert.deepEqual((await store.load('id')).record,record);
+  assert.equal((await store.list({page:2,order:'asc'})).totalPages,2);
+  assert.deepEqual(calls,[['get_online_battle_result',{p_battle_id:'id'}],['list_online_battle_results',{p_page:2,p_page_size:30,p_order:'asc'}]]);
+  assert.equal((await createBattleResultStorage({rpc:async()=>({data:null})}).load('missing')).status,'not-found');
 });
-
-test("battle result storage saves and loads an independent record", () => {
-  const memory = memoryStorage();
-  const storage = createBattleResultStorage(memory);
-  const record = {
-    battleId: "battle-smoke", dateISO: "2026-09-24T00:00:00.000Z",
-    p1: { battlerId: "p1", battlerName: "1P", duckId: "d1", duckName: "赤" },
-    p2: { battlerId: "p2", battlerName: "2P", duckId: "d2", duckName: "青" },
-    result: "P1_win", events: [{ type: "battleEnd", result: "P1_win" }],
-  };
-  assert.equal(storage.save(record).ok, true);
-  record.events[0].result = "draw";
-  const loaded = storage.load("battle-smoke");
-  assert.equal(loaded.ok, true);
-  assert.equal(loaded.record.events[0].result, "P1_win");
-  assert.deepEqual(JSON.parse(memory.getItem(BATTLE_RESULT_INDEX_KEY)), ["battle-smoke"]);
+for(const throws of [false,true])test('server failure has no local fallback or retry '+throws,async()=>{
+  let count=0;const store=createBattleResultStorage({rpc:async()=>{count++;if(throws)throw Error('offline');return {error:{message:'private'}};}});
+  for(const result of [await store.save(record),await store.load('id'),await store.list()])assert.equal(result.status,'server-error');
+  assert.equal(count,3);
 });
-
-test("battle result list pages 35 records in both orders and skips broken entries", () => {
-  const memory = memoryStorage();
-  const storage = createBattleResultStorage(memory);
-  for (let number = 1; number <= 35; number += 1) {
-    assert.equal(storage.save({
-      battleId: `battle-${number}`, dateISO: `2026-09-24T00:${String(number).padStart(2, "0")}:00.000Z`,
-      p1: { battlerId: "p1", battlerName: "1P", duckId: "d1", duckName: "赤" },
-      p2: { battlerId: "p2", battlerName: "2P", duckId: "d2", duckName: "青" },
-      result: number % 2 ? "P1_win" : "P2_win", events: [{ type: "battleEnd" }],
-    }).ok, true);
+test('all result consumers await RPC adapter and no result local storage remains',async()=>{
+  for(const file of ['battleResultStorage','onlineSelectController','result','storagePage']) {
+    const source=await readFile(new URL('../js/'+file+'.js',import.meta.url),'utf8');
+    assert.doesNotMatch(source,/localStorage|createBattleId|randomUUID|addEventListener\("storage"/);
   }
-
-  const newest = storage.list({ page: 1, pageSize: 30, order: "desc" });
-  assert.deepEqual({ total: newest.total, totalPages: newest.totalPages, count: newest.records.length }, { total: 35, totalPages: 2, count: 30 });
-  assert.equal(newest.records[0].battleId, "battle-35");
-  assert.equal("events" in newest.records[0], false);
-
-  const second = storage.list({ page: 2, pageSize: 30, order: "desc" });
-  assert.equal(second.records.length, 5);
-  assert.equal(second.records.at(-1).battleId, "battle-1");
-
-  const oldest = storage.list({ page: 1, pageSize: 30, order: "asc" });
-  assert.equal(oldest.records[0].battleId, "battle-1");
-  assert.equal(oldest.records.at(-1).battleId, "battle-30");
-
-  memory.setItem(BATTLE_RESULT_INDEX_KEY, JSON.stringify(["missing", "battle-35", "battle-35", 123]));
-  const resilient = storage.list();
-  assert.deepEqual(resilient.records.map(record => record.battleId), ["battle-35"]);
-  memory.setItem(BATTLE_RESULT_INDEX_KEY, "not-json");
-  assert.deepEqual(storage.list().records, []);
+  assert.match(await readFile(new URL('../js/result.js',import.meta.url),'utf8'),/await createBattleResultStorage\(\).load/);
+  assert.match(await readFile(new URL('../js/storagePage.js',import.meta.url),'utf8'),/await storage.list/);
 });

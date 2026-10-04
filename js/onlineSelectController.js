@@ -2,11 +2,11 @@ import { createSelectState, selectOwnDuck, selectOpponent, battleStartStatus } f
 import { startSelectedBattle } from "./selectBattle.js";
 import { compileBattleLoadout } from "./battleLoadoutCompiler.js";
 import { buildBattlePresentationSnapshot } from "./battlePresentationSnapshot.js";
-import { createBattleId, createBattleResultStorage } from "./battleResultStorage.js";
+import { createBattleResultStorage } from "./battleResultStorage.js";
 import { selectFailure } from "./onlineSelectService.js";
 
 const scopeErrors = new Set(["not-signed-in", "no-access", "selection-required", "session-changed", "forbidden"]);
-export function createOnlineSelectController({ service, results = createBattleResultStorage(), run = startSelectedBattle, idFactory = createBattleId }) {
+export function createOnlineSelectController({ service, results = createBattleResultStorage(), run = startSelectedBattle }) {
   let generation = 0, base = null, busy = "", message = "オンライン設定を読み込み中…", blocked = true;
   let state = createSelectState({ ok: false, status: "loading" });
   const listeners = new Set();
@@ -84,13 +84,13 @@ export function createOnlineSelectController({ service, results = createBattleRe
         if (!current()) return { ok: false, status: "stale" };
         if (!battle.ok) return fail({ ...battle, message: "最新の設定から戦闘を開始できませんでした。" });
         const side = (loadout, presentation) => ({ battlerId: loadout.battler.id, battlerName: loadout.battler.name,
-          duckId: loadout.duck.id, duckName: loadout.duck.name, loadout: { battler: loadout.battler, duck: loadout.duck }, presentation });
-        const battleId = idFactory();
-        const saved = results.save({ battleId, dateISO: new Date().toISOString(),
+          duckId: loadout.duck.id, duckName: loadout.duck.name, presentation });
+        const saved = await results.save({
           p1: side(p1, display1), p2: side(p2, display2), result: battle.result, events: battle.events });
-        if (!saved.ok) return fail({ ok: false, status: "result-save-failed", message: "戦闘結果を保存できませんでした。ブラウザの空き容量・設定を確認してください。" });
+        if (!current()) return { ok: false, status: "stale" };
+        if (!saved.ok) return fail({ ok: false, status: "result-save-failed", message: "戦闘結果をサーバーに保存できませんでした。通信状況を確認して再試行してください。" });
         blocked = true; message = "戦闘結果を開きます…";
-        return { ok: true, battleId };
+        return { ok: true, battleId: saved.battleId };
       });
     },
   };

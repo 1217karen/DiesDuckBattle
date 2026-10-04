@@ -5,6 +5,7 @@ const storage = createBattleResultStorage();
 const el = id => document.getElementById(id);
 let page = 1;
 let order = "desc";
+let requestVersion = 0;
 
 el("order").addEventListener("change", event => {
   order = event.target.value === "asc" ? "asc" : "desc";
@@ -14,12 +15,15 @@ el("order").addEventListener("change", event => {
 el("prev").addEventListener("click", () => { if (page > 1) { page -= 1; render(); } });
 el("next").addEventListener("click", () => { page += 1; render(); });
 window.addEventListener("focus", render);
-window.addEventListener("storage", render);
 window.addEventListener("pageshow", render);
 
-function render() {
+async function render() {
+  const ticket = ++requestVersion;
   order = el("order").value === "asc" ? "asc" : "desc";
-  const result = storage.list({ page, pageSize: PAGE_SIZE, order });
+  el("prev").disabled = true;
+  el("next").disabled = true;
+  const result = await storage.list({ page, pageSize: PAGE_SIZE, order });
+  if (ticket !== requestVersion) return;
   const list = el("list");
   list.replaceChildren();
   el("error").hidden = result.ok;

@@ -1,3 +1,4 @@
+import { battleResultRpcFixture } from "./battleResultRpcFixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -75,14 +76,14 @@ test("VS snapshots latest online presentation before engine execution, detached 
   const current={battler:{defaultIconUrl:"current.png",iconSlots:["third.png"],quotes:{battleStart:{text:"開始",iconSlot:1}}},ducks:{"self-duck":{iconUrl:"selected.png"}}};
   const loaded={ok:true,account:{id:state.self.id,eno:"88"},authUserId:"auth-A",data:{build:state.build,presentation:current,battlerName:"DB名"}};
   const expectedP1=buildBattlePresentationSnapshot(current,"self-duck"),expectedP2=buildBattlePresentationSnapshot(opponent.presentation,opponent.publicDuckId);
-  const values=new Map(), results=createBattleResultStorage({getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)});
+  const results=createBattleResultStorage(battleResultRpcFixture("vs-1"));
   let latestBattle;
   const controller=createOnlineSelectController({service:{loadSelf:async()=>structuredClone(loaded),getOpponent:async()=>({ok:true,opponent}),
-    prepare:async()=>({ok:true,self:loaded,opponent})},results,idFactory:()=>"vs-1",
+    prepare:async()=>({ok:true,self:loaded,opponent})},results,
     run(currentState){loaded.data.presentation.battler.defaultIconUrl="later.png";latestBattle=startSelectedBattle(currentState,{rng:()=>.5});return latestBattle;}});
   await controller.load();controller.chooseOwn("self-duck");await controller.chooseOpponent(opponent.id);
   assert.equal((await controller.start()).ok,true);
-  const record=results.load("vs-1").record;
+  const record=(await results.load("vs-1")).record;
   assert.deepEqual(record.p1.presentation,expectedP1);assert.deepEqual(record.p2.presentation,expectedP2);
   assert.deepEqual(record.events,latestBattle.events);
 });

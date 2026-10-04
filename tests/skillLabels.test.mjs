@@ -1,3 +1,4 @@
+import { battleResultRpcFixture } from "./battleResultRpcFixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -104,10 +105,11 @@ test("A/B/C/D snapshot metadata reaches actual engine events and saved records, 
   }
   const side=(p)=>({battlerId:p.battler.id,battlerName:p.battler.name,duckId:p.duck.id,duckName:p.duck.name});
   const record={battleId:"names",dateISO:new Date().toISOString(),p1:side(loadout),p2:side(other),result:result.result,events:result.events};
-  const expected=structuredClone(record),repo=createBattleResultStorage(memory());assert.equal(repo.save(record).ok,true);
+  const repo=createBattleResultStorage(battleResultRpcFixture("names"));const saved=await repo.save(record);assert.equal(saved.ok,true);
+  const expected=structuredClone({...record,battleId:saved.battleId,battleNo:saved.battleNo,dateISO:saved.dateISO});
   b.ducks[0].skillLabels.A.name="変更";b.battler.skillLabels.B.ruby="変更";
   assert.equal(loadout.duck.aSkill.skillName,"A雷");assert.equal(loadout.battler.bSkills[0].skillRuby,label.ruby);
-  assert.deepEqual(repo.load("names").record,expected);
+  assert.deepEqual((await repo.load("names")).record,expected);
 });
 
 test("multiple compiled B rules share one Battler label snapshot",async()=>{

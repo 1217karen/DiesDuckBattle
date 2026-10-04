@@ -1,3 +1,4 @@
+import { battleResultRpcFixture } from "./battleResultRpcFixture.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -58,15 +59,15 @@ test("quote image candidate fallback advances to default/fixed and stops on term
  setImageFromCandidates(img,[],FIXED_IMAGES.battlerIcon);assert.equal(img.src,FIXED_IMAGES.battlerIcon);
  setImageFromCandidates(img,["same.png","same.png"],FIXED_IMAGES.battlerIcon);img.onerror();assert.equal(img.src,FIXED_IMAGES.battlerIcon);
 });
-test("saved quote markup and spaces stay unchanged in presentation and past battle snapshots",()=>{
+test("saved quote markup and spaces stay unchanged in presentation and past battle snapshots",async()=>{
  const entries=new Map(),backend={getItem:k=>entries.get(k)??null,setItem:(k,v)=>entries.set(k,v)};
  const p=createEmptyPlayerPresentation();p.battler.quotes.battleStart={text:"  <b>行くぞ！</b> <rb>雷</rb><rt>サンダー</rt>  ",iconSlot:null};
  const original=p.battler.quotes.battleStart.text,repo=createPlayerPresentationStorage(backend);assert.equal(repo.save(p).ok,true);assert.equal(repo.load().presentation.battler.quotes.battleStart.text,original);
  assert.equal(repo.load().presentation.schemaVersion,1);assert.deepEqual(Object.keys(repo.load().presentation.battler.quotes.battleStart),["text","iconSlot"]);
  const snapshot=buildBattlePresentationSnapshot(p,"duck"),side={battlerId:"b",battlerName:"主人",duckId:"duck",duckName:"アヒル",presentation:snapshot};
- const record={battleId:"rich-quotes",dateISO:"2026-10-04",p1:side,p2:side,result:"draw",events:[]},battles=createBattleResultStorage(backend);
- assert.equal(battles.save(record).ok,true);p.battler.quotes.battleStart.text="後の変更";
- const saved=battles.load("rich-quotes").record.p1.presentation.quotes.battleStart;
+ const record={battleId:"rich-quotes",dateISO:"2026-10-04",p1:side,p2:side,result:"draw",events:[]},battles=createBattleResultStorage(battleResultRpcFixture("rich-quotes"));
+ assert.equal((await battles.save(record)).ok,true);p.battler.quotes.battleStart.text="後の変更";
+ const saved=(await battles.load("rich-quotes")).record.p1.presentation.quotes.battleStart;
  assert.equal(saved.text,original);assert.match(makeQuoteRowLine(saved,null)[0].text,/<b>行くぞ！<\/b> <ruby>雷<rt>サンダー<\/rt><\/ruby>/);
  assert.ok(makeQuoteRowLine({text:"昔のセリフ",iconUrl:""},null)[0].text.includes('>昔のセリフ</div>'));
 });

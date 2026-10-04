@@ -9,17 +9,21 @@ const btnNext = el("btnNext");
 const btnAll = el("btnAll");
 const btnBack = el("btnBack");
 const battleId = new URLSearchParams(location.search).get("battleId");
-const loaded = battleId ? createBattleResultStorage().load(battleId) : { ok: false, status: "invalid-id" };
+btnNext.disabled = true;
+btnAll.disabled = true;
+const loaded = battleId ? await createBattleResultStorage().load(battleId) : { ok: false, status: "invalid-id" };
 
 if (!loaded.ok) {
   const messages = {
     "invalid-id": "battleId が指定されていません。",
     "not-found": "指定された戦闘結果が見つかりません。",
     corrupt: "戦闘結果を読み込めませんでした。",
-    "storage-error": "ブラウザの保存領域を読み込めませんでした。",
+    "server-error": "戦闘結果をサーバーから取得できませんでした。ログイン状態と通信状況を確認して再読み込みしてください。",
   };
   showError(messages[loaded.status] ?? "戦闘結果を表示できませんでした。");
 } else {
+  btnNext.disabled = false;
+  btnAll.disabled = false;
   setup(loaded.record);
 }
 
