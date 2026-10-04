@@ -6,12 +6,12 @@ export async function requireLoginPage({ getRuntime = getAuthRuntime, document =
   location = globalThis.location } = {}) {
   let admitted = false, redirected = false;
   let unsubscribe = () => {};
-  const redirect = () => {
+  const redirect = (target = "index.html") => {
     if (redirected) return;
     redirected = true;
     document.body.classList.add("auth-required-pending");
     unsubscribe();
-    location.replace(admitted ? "index.html" : "index.html?notice=login-required");
+    location.replace(target);
   };
   try {
     const auth = await getRuntime();
@@ -25,7 +25,14 @@ export async function requireLoginPage({ getRuntime = getAuthRuntime, document =
           return;
         }
         if (!state.signedIn) {
-          redirect();
+          // Auth's SIGNED_OUT event can precede the logout promise's outcome.
+          // Hide immediately, but let the action settle before choosing its notice.
+          if (admitted && state.busy === "logout") {
+            document.body.classList.add("auth-required-pending");
+            return;
+          }
+          redirect(!admitted ? "index.html?notice=login-required"
+            : state.logoutSucceeded ? "index.html?notice=logged-out" : "index.html");
           reject(new Error("Login required"));
           return;
         }

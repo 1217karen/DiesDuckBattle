@@ -12,8 +12,12 @@ document.addEventListener("click", event => {
 });
 try {
   const controller = await getAuthRuntime();
-  let lastMenuKey = "";
+  let lastMenuKey = "", redirected = false;
   controller.subscribe(state => {
+    if (!redirected && state.sessionKnown && !state.signedIn && !state.busy && state.logoutSucceeded) {
+      redirected = true;
+      location.replace("index.html?notice=logged-out");
+    }
     const model = menuModel(state);
     const label = root.querySelector("[data-identity]");
     label.textContent = model.identity; label.title = model.identity;

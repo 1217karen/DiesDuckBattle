@@ -4,12 +4,13 @@ export function createAuthController(service, render, notifySuccess = () => {}) 
   const listeners = new Set([render]);
   const logoutGuards = new Set();
   const state = { ready: false, sessionKnown: false, busy: "", signedIn: false, enos: [], accounts: [], sessionMessage: "ログイン状態を確認中…",
-    message: "", messageSource: "", registeredEno: "" };
+    message: "", messageSource: "", registeredEno: "", logoutSucceeded: false };
   const snapshot = () => ({ ...state, enos: [...state.enos], accounts: state.accounts.map(a => ({ ...a })) });
   const emit = () => { if (!stopped) listeners.forEach(listener => listener(snapshot())); };
   async function applySession(session) {
     const version = ++revision;
     state.signedIn = !!session;
+    if (session) state.logoutSucceeded = false;
     state.sessionKnown = true;
     state.enos = [];
     state.accounts = [];
@@ -33,7 +34,9 @@ export function createAuthController(service, render, notifySuccess = () => {}) 
   }
   async function action(kind, work) {
     if (!state.ready || state.busy || stopped) return;
-    state.busy = kind; state.message = ""; state.messageSource = kind; emit();
+    state.busy = kind; state.message = ""; state.messageSource = kind;
+    if (kind === "logout") state.logoutSucceeded = false;
+    emit();
     try { return await work(); }
     catch { state.message = "処理を完了できませんでした。通信状況を確認してください。"; }
     finally { state.busy = ""; emit(); }
@@ -70,7 +73,7 @@ export function createAuthController(service, render, notifySuccess = () => {}) 
     }),
     logout: () => action("logout", async () => {
       for (const guard of logoutGuards) if (!await guard()) return;
-      try { await service.logout(); await applySession(null); try { notifySuccess("ログアウトしました。"); } catch { /* Keep logout successful. */ } }
+      try { await service.logout(); state.logoutSucceeded = true; await applySession(null); }
       catch { state.message = "ログアウトできませんでした。通信状況を確認してもう一度お試しください。"; }
     }),
     stop() { stopped = true; revision++; unsubscribe(); },

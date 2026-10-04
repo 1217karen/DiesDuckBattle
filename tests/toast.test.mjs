@@ -147,5 +147,5 @@ test("auth success is an event once, not persistent menu text; restore emits no 
  login:async()=>ok?{ok:true,session}:{ok:false,message:"入力を確認"},logout:async()=>{}},s=>{state=s;},m=>notices.push(m));
  await controller.start();assert.deepEqual(notices,[]);await controller.login("77","bad");assert.equal(state.message,"入力を確認");assert.deepEqual(notices,[]);
  ok=true;await controller.login("77","good");assert.equal(state.message,"");assert.deepEqual(notices,["ログインしました。"]);
- await controller.logout();assert.equal(state.message,"");assert.deepEqual(notices,["ログインしました。","ログアウトしました。"]);
+ await controller.logout();assert.equal(state.message,"");assert.deepEqual(notices,["ログインしました。"]);
 });

@@ -48,7 +48,7 @@ test("runtime rejection and controller restore failure both fail closed", async 
     const env = environment();
     await assert.rejects(requireLoginPage({ ...env, getRuntime }));
     assert.ok(env.classes.has("auth-required-pending"));
-    assert.deepEqual(env.redirects, ["index.html?notice=login-required"]);
+    assert.deepEqual(env.redirects, ["index.html"]);
   }
 });
 
@@ -70,14 +70,14 @@ test("actual auth state redirects only after successful logout; editor cancellat
         accepted = true; fail = true; await auth.logout(); assert.deepEqual(env.redirects, []);
         fail = false; await auth.logout();
       }
-      assert.deepEqual(env.redirects, ["index.html"]);
+      assert.deepEqual(env.redirects, [external ? "index.html" : "index.html?notice=logged-out"]);
     }
   }
   assert.match(await source("onlineEditor"), /auth\.beforeLogout\(\(\) => controller\.canLeave\(\)\)/);
 });
 
 test("index consumes known notice once, preserves other query/hash and history state; arbitrary notices are ignored", () => {
-  for (const notice of ["login-required", "unknown", "<img src=x onerror=alert(1)>"]) {
+  for (const notice of ["login-required", "logged-out", "unknown", "__proto__", "constructor", "<img src=x onerror=alert(1)>"]) {
     const location = { href: "https://example.test/index.html?foo=one&notice=" + encodeURIComponent(notice) + "&bar=two#section" };
     const toasts = [], changes = [], state = { keep: true };
     const history = { state, replaceState(value, _title, url) {
@@ -85,8 +85,9 @@ test("index consumes known notice once, preserves other query/hash and history s
     } };
     consumeIndexNotice({ location, history, toast: value => toasts.push(value) });
     consumeIndexNotice({ location, history, toast: value => toasts.push(value) });
-    if (notice === "login-required") {
-      assert.deepEqual(toasts, [{ kind: "error", message: "ログインしてください。" }]);
+    if (notice === "login-required" || notice === "logged-out") {
+      assert.deepEqual(toasts, [notice === "login-required" ? { kind: "error", message: "ログインしてください。" }
+        : { kind: "success", message: "ログアウトしました。" }]);
       assert.deepEqual(changes, ["/index.html?foo=one&bar=two#section"]);
     } else { assert.deepEqual(toasts, []); assert.deepEqual(changes, []); }
   }
