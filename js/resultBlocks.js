@@ -407,5 +407,5 @@ function escapeHTML(value) {
 export function renderSkillDisplayName(name, ruby = "") {
   if (!name || !validSkillLabel({ name, ruby })) return "";
   const text = ruby ? `<ruby>${escapeHTML(name)}<rt>${escapeHTML(ruby)}</rt></ruby>` : escapeHTML(name);
-  return `<br><span class="skill-display-name">${text}</span>`;
+  return `<br><span class="skill-display-name">${text}！</span>`;
 }
