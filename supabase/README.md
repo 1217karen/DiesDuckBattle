@@ -310,3 +310,18 @@ setting.html / character.htmlは既存clientとRPCへ接続済み。全体DTOと
 実アカウントを使った結合テストは未実施です。
 本番初回migrationのtimestamp差異に注意してください。
 SQLの影響、モデル対応、権限、検証、次段階の手順は [ONLINE_STORAGE.md](ONLINE_STORAGE.md) を参照してください。
+
+### ランダム対戦・現在連勝
+
+`20261004162107_random_battle_win_streak.sql` は `battles.selection_mode` と結果recordの
+`selectionMode`（manual/random）を追加します。旧戦闘・旧クライアントの省略値はmanualです。
+保存RPCのsignature、公開相手projection、result/history/favoriteの表示は維持します。
+
+`get_online_random_win_streak(p_game_account_id)` はそのaccountへのログイン中のアクセスを
+確認し、P1として保存した履歴をbattle_noの降順（保存順）で評価します。最新のmanual/敗北/draw
+より後のrandom P1_winだけを数え、P2参加は無視します。別カウンタは持ちません。
+private helperとpublic invoker wrapperのみを経由し、匿名実行とbattles直接SELECTは禁止のままです。
+
+SELECTのrandomマスクは表示専用です。結果snapshotには実相手の名前・presentationを保存します。
+初期表示・focus/pageshow時に連勝を取得し、手動VS時にも再取得して連勝中のみ確認します。
+取得失敗は0として扱わず、手動戦を停止します。

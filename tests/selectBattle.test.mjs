@@ -79,6 +79,7 @@ test("VS snapshots latest online presentation before engine execution, detached 
   const results=createBattleResultStorage(battleResultRpcFixture("vs-1"));
   let latestBattle;
   const controller=createOnlineSelectController({service:{loadSelf:async()=>structuredClone(loaded),getOpponent:async()=>({ok:true,opponent}),
+    getRandomWinStreak:async()=>({ok:true,randomWinStreak:0}),
     prepare:async()=>({ok:true,self:loaded,opponent})},results,
     run(currentState){loaded.data.presentation.battler.defaultIconUrl="later.png";latestBattle=startSelectedBattle(currentState,{rng:()=>.5});return latestBattle;}});
   await controller.load();controller.chooseOwn("self-duck");await controller.chooseOpponent(opponent.id);

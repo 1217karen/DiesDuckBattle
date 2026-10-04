@@ -3,6 +3,8 @@ export const FIXED_IMAGES = Object.freeze({
   battlerStanding: "/img/B00.png",
   battlerIcon: "/img/B00_icon.png",
   duckIcon: "/img/D00.png",
+  battlerRandomStanding: "/img/B00_random.png",
+  duckRandomIcon: "/img/D00_random.png",
 });
 
 export const imageOrFallback = (url, fallback) =>

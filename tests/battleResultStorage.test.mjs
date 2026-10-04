@@ -4,11 +4,22 @@ import { readFile } from 'node:fs/promises';
 import { createBattleResultStorage } from '../js/battleResultStorage.js';
 const side={battlerId:'a',duckId:'d',battlerName:'name',duckName:'duck',presentation:{duckIconUrl:'duck.png',cutinUrl:'cutin.png',quotes:{battleStart:{text:'Hi'}}}};
 const record={p1:side,p2:{...side,battlerId:'b'},result:'draw',events:[{type:'battleEnd',result:'draw'}]};
+
+test('selection mode is whitelisted into p_record without changing RPC signature',async()=>{
+  const calls=[];const store=createBattleResultStorage({rpc:async(name,params)=>{calls.push([name,params]);return {data:{battleId:'id',battleNo:1,dateISO:'now'}};}});
+  for(const selectionMode of ['random','manual']) {
+    assert.equal((await store.save({...record,selectionMode})).ok,true);
+    assert.equal(calls.at(-1)[1].p_record.selectionMode,selectionMode);
+    assert.deepEqual(Object.keys(calls.at(-1)[1]).sort(),['p_p1_account_id','p_p1_duck_id','p_p2_account_id','p_p2_duck_id','p_record']);
+  }
+  for(const selectionMode of [null,'bad',{},3]) assert.equal((await store.save({...record,selectionMode})).status,'invalid-record');
+  assert.equal(calls.length,2);
+});
 test('RPC adapter sends only result snapshot, never client metadata/loadout',async()=>{
   const calls=[];const meta={battleId:'server-id',battleNo:12,dateISO:'server-time'};
   const store=createBattleResultStorage({async rpc(...args){calls.push(args);return {data:meta};}});
   assert.deepEqual(await store.save({...record,battleId:'client-id',dateISO:'client-time',p1:{...side,loadout:{secret:1}}}),{ok:true,status:'saved',...meta});
-  const [name,params]=calls[0];assert.equal(name,'save_online_battle_result');assert.deepEqual(params.p_record,record);
+  const [name,params]=calls[0];assert.equal(name,'save_online_battle_result');assert.deepEqual(params.p_record,{...record,selectionMode:'manual'});
   assert.equal(params.p_p1_account_id,'a');assert.equal(params.p_p2_account_id,'b');assert.equal(calls.length,1);
 });
 test('detail and list use dedicated RPCs, preserving returned snapshots',async()=>{

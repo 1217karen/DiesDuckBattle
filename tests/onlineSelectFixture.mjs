@@ -16,7 +16,7 @@ export async function player(id, eno, duckId) {
 }
 export async function fixture() {
   const rows=new Map([[a,(await player(a,'88',da)).snapshot],[b,(await player(b,'89',db)).snapshot]]);
-  let user='auth-A',access=[a],error=null,gate=null;
+  let user='auth-A',access=[a],error=null,gate=null,streak=0;
   const calls=[];
   const client={auth:{getSession:async()=>({data:{session:user?{user:{id:user}}:null}})},
     from:table=>{if(table!=='game_account_access')throw Error('whole table read forbidden'); return {select:()=>({eq:async()=>({data:access.map(id=>({game_account_id:id,game_accounts:{eno:rows.get(id).eno}}))})})};},
@@ -24,6 +24,7 @@ export async function fixture() {
       calls.push([name,params]); if(gate) await gate;
       if(error==='network')throw Error('SECRET'); if(error)return{error:{code:error,message:'SECRET'}};
       if(name==='load_online_player')return {data:structuredClone(rows.get(params.p_game_account_id))};
+      if(name==='get_online_random_win_streak')return {data:streak};
       const publicRow=id=>{const row=structuredClone(rows.get(id));if(!row?.publicDuckId || access.includes(id))return null;
         row.ducks=row.ducks.filter(d=>d.id===row.publicDuckId);row.battler.presentation.detachedDuckPresentation={};return row;};
       if(name==='list_online_opponents')return {data:[...rows.keys()].map(publicRow).filter(Boolean).map(r=>({id:r.gameAccountId,eno:r.eno,name:r.battler.presentation.name,publicDuckId:r.publicDuckId,defaultIconUrl:r.battler.presentation.defaultIconUrl}))};
@@ -32,5 +33,5 @@ export async function fixture() {
         return {data:opponent?.publicDuckId===params.p_opponent_duck_id?{self:structuredClone(rows.get(params.p_game_account_id)),opponent}:null};}
       throw Error('Unexpected RPC');
     }};
-  return {client,rows,calls,user:v=>{user=v;},access:v=>{access=v;},error:v=>{error=v;},gate:v=>{gate=v;}};
+  return {client,rows,calls,user:v=>{user=v;},access:v=>{access=v;},error:v=>{error=v;},gate:v=>{gate=v;},streak:v=>{streak=v;}};
 }

@@ -45,6 +45,10 @@ export function createOnlineSelectService(client, ownStorage = createOnlinePlaye
       return scope.ok ? loaded : scope;
     },
     check,
+    getRandomWinStreak: base => read(base, "get_online_random_win_streak", { p_game_account_id: base.account.id }, value => {
+      if (!Number.isSafeInteger(value) || value < 0) throw new TypeError();
+      return { randomWinStreak: value };
+    }),
     listOpponents: base => read(base, "list_online_opponents", {}, rows => {
       if (!Array.isArray(rows)) throw new TypeError();
       return { opponents: rows.filter(row => row.id !== base.account.id).map(row => {

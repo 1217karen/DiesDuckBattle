@@ -6,6 +6,7 @@ import * as selectState from "../js/selectState.js";
 import { listOpponents, getOpponent } from "../js/opponentSource.js";
 import { createOnlineSelectController } from "../js/onlineSelectController.js";
 import { renderChoices } from "../js/selectTray.js";
+import { FIXED_IMAGES } from "../js/fixedImages.js";
 
 test("real SELECT handlers switch public names and presentation with no P2 Duck interaction", async () => {
   const opponents = await Promise.all((await listOpponents()).map(o => getOpponent(o.id)));
@@ -27,14 +28,17 @@ test("real SELECT handlers switch public names and presentation with no P2 Duck 
     return elements.get(id);
   } };
   const shown = [];
+  let controller, streak = 0;
   const ui = await readFile(new URL("../js/select.js", import.meta.url), "utf8");
   await vm.runInNewContext(`(async () => {${ui.replace(/^import .*;\r?\n/gm, "")}\n})()`, {
     ...selectState, document, window:{addEventListener() {}},
-    requireLoginPage: async () => {}, renderChoices,
+    requireLoginPage: async () => {}, renderChoices, FIXED_IMAGES,
     getSupabaseClient:async()=>({auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}}),
-    createOnlineSelectController,
+    createOnlineSelectController: args => (controller = createOnlineSelectController(args)),
     createOnlineSelectService:()=>({loadSelf:async()=>({ok:true,account:{id:'own',eno:'88'},authUserId:'auth',data:{build:opponents[1].build,presentation:{},battlerName:'DB名'}}),
       listOpponents:async()=>({ok:true,opponents:opponents.map(({id,name})=>({id,name,eno:'89'}))}),
+      getRandomWinStreak:async()=>({ok:true,randomWinStreak:streak}),
+      check:async()=>({ok:true}),
       getOpponent:async (_base,id)=>({ok:true,opponent:opponents.find(o=>o.id===id)})}),
     createSelectPresentation: () => (side, presentation, id) => shown.push({ side, presentation, id }),
     listOpponents: async () => opponents.map(({ id, name }) => ({ id, name })),
@@ -76,9 +80,27 @@ test("real SELECT handlers switch public names and presentation with no P2 Duck 
   delete opponents[0].presentation;
   await choose(0);
   assert.equal(shown.filter(s => s.side === "p2").at(-1).presentation.battler.standingImageUrl, "");
+  streak = 3; await controller.checkScope();
+  assert.equal(document.getElementById("random-win-streak").textContent,"3連勝中！");
+  await document.getElementById("random-opponent").handlers.click();
+  assert.equal(controller.snapshot().selectionMode,"random");
+  const realOpponent = controller.snapshot().state.opponent;
+  assert.notEqual(realOpponent.name,"？？？");
+  for(const id of ["opponent-name","p2-battler-name","p2-battler-info","p2-duck-name","p2-duck-info"])
+    assert.equal(document.getElementById(id).textContent,"？？？");
+  const masked = shown.filter(s => s.side === "p2").at(-1);
+  assert.equal(masked.presentation.battler.standingImageUrl,"/img/B00_random.png");
+  assert.equal(masked.presentation.ducks[masked.id].iconUrl,"/img/D00_random.png");
+  document.getElementById("p2-battler-slot").handlers.click(); await flush();
+  assert.equal(controller.snapshot().selectionMode,"random");
+  document.getElementById("tray").close();assert.equal(controller.snapshot().selectionMode,"random");
+  await choose(1);assert.equal(controller.snapshot().selectionMode,"manual");
+  assert.equal(document.getElementById("p2-battler-name").textContent,opponents[1].name);
+  assert.equal(controller.snapshot().randomWinStreak,3);
   const html = await readFile(new URL("../select.html", import.meta.url), "utf8");
   const slot = html.match(/<div[^>]*id="p2-duck-slot"[^>]*>/)?.[0];
   assert.ok(slot);
+  assert.doesNotMatch(html,/reload-online|設定を編集|オンライン設定を再読込/);
   assert.doesNotMatch(slot, /aria-haspopup|aria-controls|tabindex|role="button"/);
   assert.doesNotMatch(ui, /opponentDuckId|opponentDuckChoices|selectOpponentDuck|2P DUCKから/);
 });

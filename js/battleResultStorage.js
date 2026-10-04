@@ -13,10 +13,12 @@ export function createBattleResultStorage(client) {
       const side = value => ({ battlerId: value.battlerId, battlerName: value.battlerName,
         duckId: value.duckId, duckName: value.duckName, presentation: value.presentation });
       if (!record?.p1 || !record?.p2) return { ok: false, status: "invalid-record" };
+      const selectionMode = record.selectionMode === undefined ? "manual" : record.selectionMode;
+      if (!["manual", "random"].includes(selectionMode)) return { ok: false, status: "invalid-record" };
       const result = await rpc("save_online_battle_result", {
         p_p1_account_id: record.p1.battlerId, p_p1_duck_id: record.p1.duckId,
         p_p2_account_id: record.p2.battlerId, p_p2_duck_id: record.p2.duckId,
-        p_record: { p1: side(record.p1), p2: side(record.p2), result: record.result, events: record.events },
+        p_record: { p1: side(record.p1), p2: side(record.p2), result: record.result, events: record.events, selectionMode },
       });
       if (!result.ok) return result;
       const data = result.data;

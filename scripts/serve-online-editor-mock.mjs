@@ -63,6 +63,7 @@ const server = createServer(async (req, res) => {
       if (!accountIds().includes(id)) return json({ error: { code: "42501" } });
       const old = rows.get(id);
       if (name === "load_online_player") return json({ data: old });
+      if (name === "get_online_random_win_streak") return json({ data: 0 });
       if (name !== "save_online_player") return json({}, 400);
       saveCalls++;
       if (mode === "lost-before") { mode = "normal"; return json({}, 503); }
@@ -77,7 +78,7 @@ const server = createServer(async (req, res) => {
     else if (path === "/mock-controls.js") content = `const channel=new BroadcastChannel('online-editor-mock');for(const b of document.querySelectorAll('button'))b.onclick=async()=>{const r=await fetch('/mock/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:b.dataset.action})});document.getElementById('status').textContent=JSON.stringify(await r.json());channel.postMessage('change');};`;
     else if (path === "/" || path === "/mock.html") { content = controls; type = "text/html"; }
     else {
-      if (!/^\/(setting\.html|character\.html|select\.html|result\.html|js\/[\w-]+\.js|css\/[\w-]+\.css|img\/(?:B00|B00_icon|D00|result_BG)\.png|supabase\/functions\/_shared\/(internal-email|registration-password)\.mjs)$/.test(path)) return json({}, 404);
+      if (!/^\/(setting\.html|character\.html|select\.html|result\.html|js\/[\w-]+\.js|css\/[\w-]+\.css|img\/(?:B00|B00_icon|B00_random|D00|D00_random|result_BG)\.png|supabase\/functions\/_shared\/(internal-email|registration-password)\.mjs)$/.test(path)) return json({}, 404);
       content = await readFile(new URL(path.slice(1), root), path.endsWith(".png") ? undefined : "utf8");
       if (path === "/js/authRuntime.js") content = content.replace("https://esm.sh/@supabase/supabase-js@2.117.2?bundle", "/mock-sdk.js");
       type = path.endsWith(".png") ? "image/png" : path.endsWith(".html") ? "text/html" : path.endsWith(".css") ? "text/css" : "text/javascript";

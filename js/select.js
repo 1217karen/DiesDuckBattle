@@ -5,6 +5,7 @@ import { createOnlineSelectController } from "./onlineSelectController.js";
 import { createSelectPresentation } from "./selectPresentation.js";
 import { requireLoginPage } from "./authPageGuard.js";
 import { renderChoices } from "./selectTray.js";
+import { FIXED_IMAGES } from "./fixedImages.js";
 
 await requireLoginPage();
 
@@ -27,9 +28,16 @@ function renderSelf() {
 }
 function renderScreen() {
   renderPresentation("p1", ownPresentation, state.selectedDuckId);
-  renderPresentation("p2", state.opponent?.presentation, state.opponent?.publicDuckId);
+  const masked = current.selectionMode === "random" && state.opponent;
+  const opponentPresentation = masked ? {
+    battler: { standingImageUrl: FIXED_IMAGES.battlerRandomStanding },
+    ducks: { [state.opponent.publicDuckId]: { iconUrl: FIXED_IMAGES.duckRandomIcon } },
+  } : state.opponent?.presentation;
+  renderPresentation("p2", opponentPresentation, state.opponent?.publicDuckId);
   const start = { canStart: current.canStart, reason: current.busy ? "オンラインデータを確認中…" : current.message || battleStartStatus(state).reason };
-  el("reload-online").disabled = !!current.busy;
+  el("random-opponent").disabled = !!current.busy || !state.build;
+  el("random-win-streak").hidden = !(current.randomWinStreak > 0);
+  el("random-win-streak").textContent = current.randomWinStreak > 0 ? `${current.randomWinStreak}連勝中！` : "";
   el("p1-duck-slot").disabled = !!current.busy || !state.build;
   el("p2-battler-slot").disabled = !!current.busy || !state.build;
   el("vsButton").disabled = !start.canStart;
@@ -44,6 +52,8 @@ function renderScreen() {
   el("opponent-name").textContent = state.opponent ? `ENo.${state.opponent.eno}｜${state.opponent.name}` + (duck ? ` ＋ ${name}` : "") : "相手を選択";
   el("p2-duck-name").textContent = name ?? "";
   el("p2-duck-info").textContent = duck ? duckSummary(duck) : state.opponent ? "この相手は現在対戦できません。" : "相手を選択してください。";
+  if (masked) for (const id of ["opponent-name", "p2-battler-name", "p2-battler-info", "p2-duck-name", "p2-duck-info"])
+    el(id).textContent = "？？？";
 }
 let requestVersion = 0, returnFocus = "p1-duck-slot";
 function showMessage(message) { const p = document.createElement("p"); p.textContent = message; el("trayGrid").replaceChildren(p); }
@@ -88,7 +98,10 @@ el("vsButton").addEventListener("click", async () => {
   const result = await online?.start();
   if (result?.ok) location.assign(`result.html?battleId=${encodeURIComponent(result.battleId)}`);
 });
-el("reload-online").addEventListener("click", () => { requestVersion++; if (tray.open) tray.close(); void online?.load(); });
+el("random-opponent").addEventListener("click", async () => {
+  const result = await online?.chooseRandomOpponent();
+  if (result?.ok) el("battle-result").textContent = "";
+});
 renderScreen();
 
 async function initialize() {
