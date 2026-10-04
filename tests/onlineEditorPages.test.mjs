@@ -1,12 +1,13 @@
+import { createQuoteToolbar } from "../js/quoteRichTextToolbar.js";
 import { hasName } from "../js/nameValidation.js";
-import { FIXED_IMAGES } from "../js/fixedImages.js";
+import { FIXED_IMAGES, setImageFromCandidates } from "../js/fixedImages.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 import { createAuthController } from "../js/authController.js";
 import { createOnlineEditController } from "../js/onlineEditController.js";
-import { createEmptyPlayerPresentation } from "../js/playerPresentationModel.js";
+import { createEmptyPlayerPresentation, getQuoteIconUrlCandidates } from "../js/playerPresentationModel.js";
 import { createEmptyPlayerBuild, createEmptyDuck } from "../js/playerBuildModel.js";
 import { IMAGE_LIMITS, createImageValidation, imageValidationSummary } from "../js/characterImageValidation.js";
 const source = async name => (await readFile(new URL(`../js/${name}.js`, import.meta.url), "utf8")).replace(/^import .*;\r?\n/gm, "");
@@ -40,6 +41,8 @@ async function characterScreen() {
     replaceChildren(...nodes) { this.children = []; this.append(...nodes); }
     setAttribute(key, value) { this.attributes[key] = value; }
     addEventListener(event, callback) { this.handlers[event] = callback; }
+    focus() {}
+    setSelectionRange(start, end) { this.selectionStart=start;this.selectionEnd=end; }
     remove() { this.parent.children = this.parent.children.filter(x => x !== this); }
     set textContent(value) { this.text = value; this.children = []; }
     get textContent() { return (this.text ?? "") + this.children.map(x => x.textContent).join(""); }
@@ -55,7 +58,7 @@ async function characterScreen() {
   const controller = { snapshot: () => ({ canSave: true, canEdit: true }),
     edit(patch) { latest = { ...latest, ...structuredClone(patch) }; },
     async save() { saved = structuredClone(latest); return { ok: true }; } };
-  const context = { hasName, FIXED_IMAGES, document, structuredClone, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
+  const context = { hasName, FIXED_IMAGES, setImageFromCandidates, getQuoteIconUrlCandidates, createQuoteToolbar, document, structuredClone, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
     Option: function (name, value) { const el = new Element("option"); el.textContent = name; el.value = value; return el; },
     createIconPicker: () => ({ open(args) { selectedCallback = args.select; }, close() { selectedCallback = null; } }),
     mountOnlineEditor: async args => { assert.deepEqual(Array.from(args.sections), ["presentation", "battlerName"]); hooks = args; latest = structuredClone(data); args.hydrate(data); args.onState({ canSave: true, canEdit: true }); return controller; } };
@@ -65,7 +68,7 @@ async function characterScreen() {
 }
 test("actual character handlers preserve full DTO, quotes, ten icon slots, detached Duck URLs and image validation gates", async () => {
   const page = await characterScreen();
-  const inputs = () => page.all().filter(el => el.tagName === "input");
+  const inputs = () => page.all().filter(el => el.tagName === "input" && el.type === "url");
   assert.equal(inputs().length, 14); // standing/default/10 slots/build Duck/detached Duck
   assert.equal(page.get("save").disabled, true); await page.save(); assert.equal(page.saved(), undefined);
   let image = page.all().find(el => el.tagName === "img" && el.src === "https://example.invalid/orphan.png");
@@ -75,7 +78,7 @@ test("actual character handlers preserve full DTO, quotes, ten icon slots, detac
   image.naturalWidth = 20; image.naturalHeight = 20; image.onload(); assert.equal(page.get("save").disabled, false);
   const slot10 = inputs()[11]; slot10.value = "https://example.invalid/slot10.png"; slot10.handlers.input();
   image = page.all().find(el => el.tagName === "img" && el.src === slot10.value); image.naturalWidth = 250; image.naturalHeight = 250; image.onload();
-  const quote = page.all().find(el => el.tagName === "textarea"); quote.value = "オンラインセリフ"; quote.handlers.input();
+  const quote = page.all().find(el => el.tagName === "input" && el.type === "text"); quote.value = "オンラインセリフ"; quote.handlers.input();
   page.all().find(el => el.className === "quote-picker").handlers.click(); page.pick(10);
   const beforeRename = structuredClone(page.latest().presentation);
   page.get("battler-name").value = "変更後のバトラー"; page.get("battler-name").handlers.input();
@@ -84,8 +87,42 @@ test("actual character handlers preserve full DTO, quotes, ten icon slots, detac
   const saved = page.saved(); assert.deepEqual(saved.build, page.data.build); assert.deepEqual(saved.publicSettings, page.data.publicSettings); assert.equal(saved.battlerName, "変更後のバトラー");
   assert.equal(saved.presentation.battler.iconSlots[9], slot10.value); assert.deepEqual(saved.presentation.battler.quotes.battleStart, { text: quote.value, iconSlot: 10 });
   assert.equal(saved.presentation.ducks.orphan.iconUrl, orphanInput.value);
-  page.hydrate(saved); assert.equal(page.get("battler-name").value, "変更後のバトラー"); assert.equal(page.all().find(el => el.tagName === "textarea").value, "オンラインセリフ");
-  assert.equal(page.all().find(el => el.className === "quote-picker").textContent, "追加 10");
+  page.hydrate(saved); assert.equal(page.get("battler-name").value, "変更後のバトラー"); assert.equal(page.all().find(el => el.tagName === "input" && el.type === "text").value, "オンラインセリフ");
+  assert.equal(page.all().find(el => el.className === "quote-picker").title, "追加アイコン 10");
+  assert.equal(page.all().find(el => el.className === "quote-picker").children[0].src,slot10.value);
+});
+
+test("all quote rows use one-line inputs, six inline controls and live slot/default image previews",async()=>{
+  const page=await characterScreen(),data=structuredClone(page.data);
+  data.presentation=createEmptyPlayerPresentation();
+  data.presentation.battler.defaultIconUrl="default.png";
+  data.presentation.battler.iconSlots[2]="third.png";
+  data.presentation.battler.quotes.battleStart={text:"  雷アタック  ",iconSlot:null};
+  data.presentation.battler.quotes.skill.A.iconSlot=4; // Empty slot retains its ID, shows default.
+  page.hydrate(data);
+  const rows=page.all().filter(e=>e.className==="quote-row");assert.equal(rows.length,14);
+  assert.equal(page.all().filter(e=>e.tagName==="textarea").length,0);
+  for(const row of rows){
+    const [caption,picker,editor]=row.children;assert.equal(caption.className,"quote-label");assert.equal(picker.textContent,"");
+    assert.equal(picker.children[0].tagName,"img");assert.equal(picker.children[0].src,"default.png");
+    assert.equal(editor.className,"quote-editor");const [input,toolbar]=editor.children;
+    assert.equal(input.tagName,"input");assert.equal(input.type,"text");assert.equal(toolbar.className,"quote-toolbar");
+    assert.deepEqual(toolbar.children.map(e=>e.textContent),["B","I","U","rb","小","大"]);
+  }
+  const [caption,picker,editor]=rows[0].children,input=editor.children[0];assert.equal(picker.title,"デフォルトアイコン");
+  input.selectionStart=2;input.selectionEnd=3;editor.children[1].children[3].handlers.click();
+  assert.equal(page.latest().presentation.battler.quotes.battleStart.text,"  <rb>雷</rb><rt>ルビ</rt>アタック  ");
+  assert.equal(input.value.slice(input.selectionStart,input.selectionEnd),"ルビ");
+  picker.handlers.click();page.pick(3);assert.equal(picker.title,"追加アイコン 3");assert.equal(picker.children[0].src,"third.png");
+  assert.equal(page.latest().presentation.battler.quotes.battleStart.iconSlot,3);
+  const imageInputs=page.all().filter(e=>e.tagName==="input"&&e.type==="url");
+  const third=imageInputs[4];third.value="new-third.png";third.handlers.input();assert.equal(picker.children[0].src,"new-third.png");
+  picker.children[0].onerror();assert.equal(picker.children[0].src,"default.png");picker.children[0].onerror();assert.equal(picker.children[0].src,FIXED_IMAGES.battlerIcon);
+  third.value="";third.handlers.input();assert.equal(picker.children[0].src,"default.png");assert.equal(page.latest().presentation.battler.quotes.battleStart.iconSlot,3);
+  imageInputs[1].value="new-default.png";imageInputs[1].handlers.input();assert.equal(picker.children[0].src,"new-default.png");
+  picker.handlers.click();page.pick(null);assert.equal(picker.title,"デフォルトアイコン");assert.equal(picker.children[0].src,"new-default.png");
+  const quote=page.latest().presentation.battler.quotes.battleStart;assert.deepEqual(Object.keys(quote),["text","iconSlot"]);
+  assert.equal(quote.iconSlot,null);assert.equal(page.latest().presentation.schemaVersion,1);
 });
 test("late image callback from prior account cannot block the newly hydrated account", async () => {
   const page = await characterScreen(), old = page.all().find(el => el.tagName === "img" && el.onerror);

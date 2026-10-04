@@ -1,7 +1,8 @@
 import { hasName } from "./nameValidation.js";
-import { FIXED_IMAGES } from "./fixedImages.js";
+import { FIXED_IMAGES, setImageFromCandidates } from "./fixedImages.js";
 import { mountOnlineEditor } from "./onlineEditor.js";
-import { createEmptyPlayerPresentation } from "./playerPresentationModel.js";
+import { createEmptyPlayerPresentation, getQuoteIconUrlCandidates } from "./playerPresentationModel.js";
+import { createQuoteToolbar } from "./quoteRichTextToolbar.js";
 import { createIconPicker } from "./iconPicker.js";
 import { IMAGE_LIMITS, createImageValidation, imageValidationSummary } from "./characterImageValidation.js";
 
@@ -36,8 +37,7 @@ function updateValidation() {
 function setDirty() { online?.edit({ presentation }); }
 function quoteAt(path) { return path.reduce((value, key) => value[key], presentation.battler.quotes); }
 function pickerLabel(slot) {
-  if (slot === null) return "デフォルト";
-  return presentation.battler.iconSlots[slot - 1]?.trim() ? `追加 ${slot}` : `追加 ${slot}（未登録）`;
+  return slot === null ? "デフォルトアイコン" : `追加アイコン ${slot}`;
 }
 
 function makePreview(kind, onValidation, className = "", fallback = FIXED_IMAGES.battlerIcon) {
@@ -92,17 +92,25 @@ function renderBattlerImages() {
   const standingCard = document.createElement("div"); standingCard.className = "card"; standingCard.innerHTML = "<h3>立ち絵</h3>";
   standingCard.append(makeImageField({ label:"URL", value:presentation.battler.standingImageUrl, kind:"standing", previewClass:"standing", onInput:value => { presentation.battler.standingImageUrl = value; } }));
   const defaultCard = document.createElement("div"); defaultCard.className = "card"; defaultCard.innerHTML = "<h3>デフォルトアイコン</h3>";
-  defaultCard.append(makeImageField({ label:"URL", value:presentation.battler.defaultIconUrl, onInput:value => { presentation.battler.defaultIconUrl = value; refreshPickerLabels(); } }));
+  defaultCard.append(makeImageField({ label:"URL", value:presentation.battler.defaultIconUrl, onInput:value => { presentation.battler.defaultIconUrl = value; refreshQuoteIcons(); } }));
   const slotsCard = document.createElement("div"); slotsCard.className = "card additional-icons"; slotsCard.innerHTML = "<h3>追加アイコン</h3><p class=\"muted\">セリフから参照する固定10枠です。</p>";
   const grid = document.createElement("div"); grid.className = "icon-slots";
-  presentation.battler.iconSlots.forEach((value, index) => grid.append(makeImageField({ label:`${index + 1} URL`, value, compact:true, onInput:next => { presentation.battler.iconSlots[index] = next; refreshPickerLabels(); } })));
+  presentation.battler.iconSlots.forEach((value, index) => grid.append(makeImageField({ label:`${index + 1} URL`, value, compact:true, onInput:next => { presentation.battler.iconSlots[index] = next; refreshQuoteIcons(); } })));
   slotsCard.append(grid); target.append(standingCard, defaultCard, slotsCard);
 }
 
-function refreshPickerLabels() {
+function refreshQuoteIcons() {
   document.querySelectorAll(".quote-picker").forEach(button => {
-    const path = button.dataset.path.split("."); button.textContent = pickerLabel(quoteAt(path).iconSlot);
+    updateQuoteIcon(button, button.dataset.path.split("."));
   });
+}
+
+function updateQuoteIcon(button, path) {
+  const quote = quoteAt(path);
+  button.title = pickerLabel(quote.iconSlot); button.setAttribute("aria-label", button.title);
+  const image = document.createElement("img"); image.alt = "";
+  setImageFromCandidates(image, getQuoteIconUrlCandidates(presentation, quote), FIXED_IMAGES.battlerIcon);
+  button.replaceChildren(image);
 }
 
 function renderQuotes() {
@@ -114,11 +122,14 @@ function renderQuotes() {
       const initialValue = quoteAt(path);
       const row = document.createElement("div"); row.className = "quote-row";
       const caption = document.createElement("span"); caption.className = "quote-label"; caption.textContent = label;
-      const button = document.createElement("button"); button.type = "button"; button.className = "quote-picker"; button.dataset.path = path.join("."); button.textContent = pickerLabel(initialValue.iconSlot);
-      button.addEventListener("click", () => picker.open({ defaultIconUrl:presentation.battler.defaultIconUrl, iconSlots:presentation.battler.iconSlots, selectedSlot:quoteAt(path).iconSlot, select:slot => { quoteAt(path).iconSlot = slot; button.textContent = pickerLabel(slot); setDirty(); } }));
-      const input = document.createElement("textarea"); input.value = initialValue.text; input.placeholder = "セリフを入力"; input.setAttribute("aria-label", `${group.title} ${label}のセリフ`);
-      input.addEventListener("input", () => { quoteAt(path).text = input.value; setDirty(); });
-      row.append(caption, button, input); card.append(row);
+      const button = document.createElement("button"); button.type = "button"; button.className = "quote-picker"; button.dataset.path = path.join("."); updateQuoteIcon(button, path);
+      button.addEventListener("click", () => picker.open({ defaultIconUrl:presentation.battler.defaultIconUrl, iconSlots:presentation.battler.iconSlots, selectedSlot:quoteAt(path).iconSlot, select:slot => { quoteAt(path).iconSlot = slot; updateQuoteIcon(button, path); setDirty(); } }));
+      const input = document.createElement("input"); input.type = "text"; input.value = initialValue.text; input.placeholder = "セリフを入力"; input.setAttribute("aria-label", `${group.title} ${label}のセリフ`);
+      const changeText = value => { quoteAt(path).text = value; setDirty(); };
+      input.addEventListener("input", () => changeText(input.value));
+      const editor = document.createElement("div"); editor.className = "quote-editor";
+      editor.append(input, createQuoteToolbar(input, changeText, document));
+      row.append(caption, button, editor); card.append(row);
     }
     target.append(card);
   }

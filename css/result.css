@@ -153,3 +153,6 @@ img.logDuckIcon { object-fit: contain; }
 
 .skill-display-name { font-size:1.2em; overflow-wrap:anywhere; }
 .skill-display-name rt { white-space:pre; }
+
+.quote-text-small { font-size:0.8em; }
+.quote-text-big { font-size:1.5em; }

@@ -1,4 +1,5 @@
 import { FIXED_IMAGES, imageOrFallback, setImageWithFallback } from "./fixedImages.js";
+import { renderQuoteRichText } from "./quoteRichText.js";
 const sides = ["P1", "P2"];
 const escapeHTML = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 
@@ -13,7 +14,7 @@ export function makeQuoteRowLine(p1, p2, order = sides) {
     const quote = quotes[side];
     if (typeof quote?.text !== "string" || !quote.text.trim()) return [];
     const css = side.toLowerCase();
-    return [`<div class="quoteCell ${css}">${snapshotIconHTML(quote.iconUrl, "quoteIcon")}<div class="quoteBubble ${css}">${escapeHTML(quote.text)}</div></div>`];
+    return [`<div class="quoteCell ${css}">${snapshotIconHTML(quote.iconUrl, "quoteIcon")}<div class="quoteBubble ${css}">${renderQuoteRichText(quote.text)}</div></div>`];
   });
   return cells.length ? [{ kind: "quoteLine", text: `<div class="quoteRow">${cells.join("")}</div>` }] : [];
 }

@@ -30,8 +30,12 @@ button:hover { background:#324649; } button:disabled { opacity:.4; cursor:not-al
 button.primary { background:var(--accent); color:#1c2b19; border-color:var(--accent); font-weight:750; padding:13px 28px; }
 :focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
 .quote-group h3 { color:var(--accent); margin-bottom:14px; }
-.quote-row { display:grid; grid-template-columns:90px 112px minmax(0,1fr); gap:12px; align-items:center; margin:11px 0; }
-.quote-label { color:var(--muted); font-size:.84rem; }.quote-picker { min-height:44px; padding:7px; overflow-wrap:anywhere; }
+.quote-row { display:grid; grid-template-columns:90px 60px minmax(0,1fr); gap:12px; align-items:center; margin:11px 0; }
+.quote-label { color:var(--muted); font-size:.84rem; }.quote-picker { width:60px; height:60px; min-height:60px; padding:0; overflow:hidden; }
+.quote-picker img { display:block; width:100%; height:100%; object-fit:contain; }
+.quote-editor { min-width:0; }
+.quote-toolbar { display:flex; flex-wrap:wrap; gap:5px; margin-top:5px; }
+.quote-toolbar button { min-width:30px; min-height:28px; padding:2px 8px; font-size:.8rem; }
 .duck-card>label { max-width:480px; margin-bottom:17px; }.duck-card .image-field { max-width:720px; }
 .save-bar { position:sticky; bottom:0; display:flex; justify-content:space-between; align-items:center; gap:18px; padding:18px 22px; margin-top:28px; border:1px solid var(--line); border-radius:10px; background:#1c292cf5; box-shadow:0 -8px 32px #0003; }
 .save-bar p { margin:2px 0 0; font-size:.75rem; }.save-bar strong { font-size:.85rem; }.save-bar button { flex-shrink:0; }
@@ -41,7 +45,7 @@ button.primary { background:var(--accent); color:#1c2b19; border-color:var(--acc
 .picker-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(90px,1fr)); gap:12px; margin-top:10px; }
 .icon-choice { min-height:112px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; }
 .icon-choice[aria-current="true"] { color:var(--accent); border-color:var(--accent); }.icon-choice img { width:64px; height:64px; object-fit:contain; }
-@media(max-width:700px) { .character-shell { padding:26px 16px; }.image-settings,.icon-slots { grid-template-columns:1fr; }.card { padding:17px; }.quote-row { grid-template-columns:78px minmax(0,1fr); }.quote-row textarea { grid-column:1 / -1; }.save-bar { position:static; flex-direction:column; align-items:stretch; } }
+@media(max-width:700px) { .character-shell { padding:26px 16px; }.image-settings,.icon-slots { grid-template-columns:1fr; }.card { padding:17px; }.quote-row { grid-template-columns:60px minmax(0,1fr); align-items:start; }.quote-label { grid-column:1 / -1; }.quote-editor { grid-column:2; }.save-bar { position:static; flex-direction:column; align-items:stretch; } }
 
 #battler-name[aria-invalid="true"] { border-color:#ff8d96; background:#45252c; }
 .preview.duck-preview { box-sizing:content-box; width:60px; height:60px; }
