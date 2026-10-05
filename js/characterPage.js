@@ -3,7 +3,7 @@ import { presentCSkill } from "./cSkillPresentation.js";
 import { hasName } from "./nameValidation.js";
 import { FIXED_IMAGES, setImageFromCandidates } from "./fixedImages.js";
 import { mountOnlineEditor } from "./onlineEditor.js";
-import { createEmptyPlayerPresentation, getQuoteIconUrlCandidates } from "./playerPresentationModel.js";
+import { createEmptyDuckProfile, createEmptyPlayerPresentation, getQuoteIconUrlCandidates } from "./playerPresentationModel.js";
 import { createQuoteToolbar } from "./quoteRichTextToolbar.js";
 import { createIconPicker } from "./iconPicker.js";
 import { IMAGE_LIMITS, createImageValidation, imageValidationSummary } from "./characterImageValidation.js";
@@ -158,7 +158,7 @@ function renderDuckSelect() {
   for (const duck of ducks) {
     const id = duck.id;
     const field = makeImageField({ label:`${duck.name || "名前未設定のDuck"} アイコンURL`, value:presentation.ducks[id]?.iconUrl ?? "", fallback:FIXED_IMAGES.duckIcon, previewClass:"duck-preview",
-      onInput:value => { presentation.ducks[id] = { ...(presentation.ducks[id] ?? {}), iconUrl:value }; } });
+      onInput:value => { presentation.ducks[id] = { ...(presentation.ducks[id] ?? { iconUrl: "", cutinUrl: "", profile: createEmptyDuckProfile() }), iconUrl:value }; } });
     const editor = document.createElement("div"); editor.className = "duck-presentation-editor";
     const cutin = document.createElement("section"); cutin.className = "duck-cutin";
     const heading = document.createElement("h3"); heading.textContent = "Cスキルカットイン";
@@ -167,7 +167,7 @@ function renderDuckSelect() {
     description.textContent = skill.text ?? (duck.cSelection == null ? "Cスキル未設定" : "Cスキル設定未完了");
     cutin.append(heading, description, makeImageField({ label:"URL", kind:"cutin", previewClass:"cutin-preview", fallback:null,
       value:presentation.ducks[id]?.cutinUrl ?? "",
-      onInput:value => { presentation.ducks[id] = { ...(presentation.ducks[id] ?? {}), cutinUrl:value }; } }));
+      onInput:value => { presentation.ducks[id] = { ...(presentation.ducks[id] ?? { iconUrl: "", cutinUrl: "", profile: createEmptyDuckProfile() }), cutinUrl:value }; } }));
     editor.append(field, cutin); duckEditors.set(id, editor); target.append(editor);
   }
   if (!ducks.length) { const option = new Option("Duck未登録", ""); select.append(option); select.disabled = true; selectedDuckId = ""; }

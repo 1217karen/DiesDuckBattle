@@ -63,7 +63,7 @@ test("saved quote markup and spaces stay unchanged in presentation and past batt
  const entries=new Map(),backend={getItem:k=>entries.get(k)??null,setItem:(k,v)=>entries.set(k,v)};
  const p=createEmptyPlayerPresentation();p.battler.quotes.battleStart={text:"  <b>行くぞ！</b> <rb>雷</rb><rt>サンダー</rt>  ",iconSlot:null};
  const original=p.battler.quotes.battleStart.text,repo=createPlayerPresentationStorage(backend);assert.equal(repo.save(p).ok,true);assert.equal(repo.load().presentation.battler.quotes.battleStart.text,original);
- assert.equal(repo.load().presentation.schemaVersion,1);assert.deepEqual(Object.keys(repo.load().presentation.battler.quotes.battleStart),["text","iconSlot"]);
+ assert.equal(repo.load().presentation.schemaVersion,2);assert.deepEqual(Object.keys(repo.load().presentation.battler.quotes.battleStart),["text","iconSlot"]);
  const snapshot=buildBattlePresentationSnapshot(p,"duck"),side={battlerId:"b",battlerName:"主人",duckId:"duck",duckName:"アヒル",presentation:snapshot};
  const record={battleId:"rich-quotes",dateISO:"2026-10-04",p1:side,p2:side,result:"draw",events:[]},battles=createBattleResultStorage(battleResultRpcFixture("rich-quotes"));
  assert.equal((await battles.save(record)).ok,true);p.battler.quotes.battleStart.text="後の変更";

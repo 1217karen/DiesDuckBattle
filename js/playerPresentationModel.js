@@ -1,4 +1,4 @@
-export const PLAYER_PRESENTATION_SCHEMA_VERSION = 1;
+export const PLAYER_PRESENTATION_SCHEMA_VERSION = 2;
 export const BATTLER_ICON_SLOT_COUNT = 10;
 
 const QUOTE_PATHS = [
@@ -14,6 +14,38 @@ const text = value => typeof value === "string" ? value : "";
 const iconSlot = value => Number.isInteger(value) && value >= 1 && value <= BATTLER_ICON_SLOT_COUNT
   ? value : null;
 const quote = value => ({ text: text(value?.text), iconSlot: iconSlot(value?.iconSlot) });
+
+
+export function createEmptyBattlerProfile() {
+  return { text: "", iconSlots: [], theme: { background: "#DCEEF3", panel: "#FFFFFF", text: "#20282C", accent: "#4F91B3" }, featuredBattleId: null };
+}
+export function createEmptyDuckProfile() {
+  return { text: "", type: null, attributes: ["", "", ""], statLabelPreset: "default", flavorStats: [] };
+}
+function normalizeBattlerProfile(value) {
+  const result = createEmptyBattlerProfile();
+  result.text = text(value?.text);
+  result.iconSlots = [...new Set((Array.isArray(value?.iconSlots) ? value.iconSlots : []).filter(v => iconSlot(v) !== null))].sort((a,b) => a-b).slice(0,4);
+  for (const key of Object.keys(result.theme)) {
+    if (typeof value?.theme?.[key] === "string" && /^#[0-9a-f]{6}$/i.test(value.theme[key])) result.theme[key] = value.theme[key];
+  }
+  if (typeof value?.featuredBattleId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.featuredBattleId)) result.featuredBattleId = value.featuredBattleId;
+  return result;
+}
+function normalizeDuckProfile(value) {
+  const result = createEmptyDuckProfile();
+  result.text = text(value?.text);
+  if (["attack", "defense", "speed", "heal", "technical", "normal"].includes(value?.type)) result.type = value.type;
+  result.attributes = Array.from({ length: 3 }, (_, i) => {
+    const v = value?.attributes?.[i];
+    return typeof v === "string" && [...v].length <= 1 ? v : "";
+  });
+  if (["default", "kanji", "english", "hiragana"].includes(value?.statLabelPreset)) result.statLabelPreset = value.statLabelPreset;
+  result.flavorStats = (Array.isArray(value?.flavorStats) ? value.flavorStats : []).slice(0,2).map(v => ({
+    label: text(v?.label), value: Number.isInteger(v?.value) && v.value >= 0 && v.value <= 6 ? v.value : 0
+  }));
+  return result;
+}
 
 function emptyQuotes() {
   return {
@@ -32,7 +64,8 @@ export function createEmptyPlayerPresentation() {
       standingImageUrl: "",
       defaultIconUrl: "",
       iconSlots: Array(BATTLER_ICON_SLOT_COUNT).fill(""),
-      quotes: emptyQuotes()
+      quotes: emptyQuotes(),
+      profile: createEmptyBattlerProfile()
     },
     ducks: {}
   };
@@ -42,6 +75,7 @@ export function createEmptyPlayerPresentation() {
 export function normalizePlayerPresentation(value) {
   const result = createEmptyPlayerPresentation();
   const battler = isRecord(value?.battler) ? value.battler : {};
+  result.battler.profile = normalizeBattlerProfile(battler.profile);
   result.battler.standingImageUrl = text(battler.standingImageUrl);
   result.battler.defaultIconUrl = text(battler.defaultIconUrl);
   if (Array.isArray(battler.iconSlots)) {
@@ -62,7 +96,7 @@ export function normalizePlayerPresentation(value) {
   if (isRecord(value?.ducks)) {
     for (const [duckId, data] of Object.entries(value.ducks)) {
       if (["__proto__", "prototype", "constructor"].includes(duckId)) continue;
-      result.ducks[duckId] = { iconUrl: text(data?.iconUrl), cutinUrl: text(data?.cutinUrl) };
+      result.ducks[duckId] = { iconUrl: text(data?.iconUrl), cutinUrl: text(data?.cutinUrl), profile: normalizeDuckProfile(data?.profile) };
     }
   }
   return result;

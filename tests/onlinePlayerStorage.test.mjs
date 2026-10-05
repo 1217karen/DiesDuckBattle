@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createEmptyPlayerBuild, createEmptyDuck } from "../js/playerBuildModel.js";
-import { createEmptyPlayerPresentation } from "../js/playerPresentationModel.js";
+import { createEmptyDuckProfile, createEmptyPlayerPresentation } from "../js/playerPresentationModel.js";
 import { encodeOnlinePlayer, decodeOnlinePlayer } from "../js/onlinePlayerDto.js";
 import { createOnlinePlayerStorage } from "../js/onlinePlayerStorage.js";
 const a="11111111-1111-4111-8111-111111111111",b="22222222-2222-4222-8222-222222222222",duckId="33333333-3333-4333-8333-333333333333";
@@ -28,7 +28,7 @@ test("lossless draft DTO includes incomplete selections, duplicate names, dice, 
   d.stats.AT=-1;d.dice=[6,6,0,-1,2,3];data.build.ducks.push(d);data.build.battler.bSelection={type:null};
   data.presentation.battler.standingImageUrl="https://example.invalid/full.png";
   data.presentation.battler.iconSlots[9]="slot10";data.presentation.battler.quotes.battleStart={text:"hello",iconSlot:10};
-  data.presentation.ducks[duckId]={iconUrl:"duck",cutinUrl:"cutin"};data.presentation.ducks.orphan={iconUrl:"still preserved",cutinUrl:"private-cutin"};
+  data.presentation.ducks[duckId]={ iconUrl:"duck",cutinUrl:"cutin", profile:createEmptyDuckProfile() };data.presentation.ducks.orphan={ iconUrl:"still preserved",cutinUrl:"private-cutin", profile:createEmptyDuckProfile() };
   data.publicSettings.publicDuckId=duckId;
   const dto=encodeOnlinePlayer(data);assert.deepEqual(decodeOnlinePlayer(dto),data);
   dto.ducks[0].build.stats.AT=99;assert.equal(data.build.ducks[0].stats.AT,-1);
@@ -73,13 +73,16 @@ test("session changes during a load discard the returned data",async()=>{
   const f=fixture();f.switchAt(2);assert.equal((await f.storage.load()).status,"session-changed");
 });
 
-test("legacy v1 icon-only online data gets empty cut-ins without changing schema or selections",()=>{
+test("legacy v1 icon-only online data migrates to v2 with empty cut-ins and unchanged selections",()=>{
   const data=empty();data.build.ducks.push(createEmptyDuck({idFactory:()=>duckId}));
+  data.presentation.schemaVersion=1;delete data.presentation.battler.profile;
   data.presentation.ducks[duckId]={iconUrl:"old.png"};data.presentation.ducks.orphan={iconUrl:"private-old.png"};
   const before=structuredClone(data),dto=encodeOnlinePlayer(data);
+  dto.battler.presentation.schemaVersion=1;delete dto.battler.presentation.profile;
+  dto.ducks[0].presentation.schemaVersion=1;delete dto.ducks[0].presentation.icon.profile;delete dto.battler.presentation.detachedDuckPresentation.orphan.profile;
   delete dto.ducks[0].presentation.icon.cutinUrl;delete dto.battler.presentation.detachedDuckPresentation.orphan.cutinUrl;
   const read=decodeOnlinePlayer(dto);
-  assert.equal(read.presentation.schemaVersion,1);assert.equal(read.presentation.ducks[duckId].cutinUrl,"");
+  assert.equal(read.presentation.schemaVersion,2);assert.equal(read.presentation.ducks[duckId].cutinUrl,"");
   assert.equal(read.presentation.ducks.orphan.cutinUrl,"");assert.deepEqual(read.build,data.build);assert.deepEqual(data,before);
   for(const value of [5,null,{url:"bad"}]){
     const bad=structuredClone(dto);bad.ducks[0].presentation.icon.cutinUrl=value;assert.throws(()=>decodeOnlinePlayer(bad));
@@ -89,8 +92,12 @@ test("legacy v1 icon-only online data gets empty cut-ins without changing schema
 test("online storage save/load round-trips cut-ins including detached private display data",async()=>{
   const f=fixture();const loaded=await f.storage.load();const data=loaded.data;
   data.build.ducks.push(createEmptyDuck({idFactory:()=>duckId}));
-  data.presentation.ducks[duckId]={iconUrl:"duck.png",cutinUrl:"cutin.png"};
-  data.presentation.ducks.orphan={iconUrl:"orphan.png",cutinUrl:"private.png"};
+  data.presentation.ducks[duckId]={ iconUrl:"duck.png",cutinUrl:"cutin.png", profile:createEmptyDuckProfile() };
+  data.presentation.ducks.orphan={ iconUrl:"orphan.png",cutinUrl:"private.png", profile:createEmptyDuckProfile() };
+  data.presentation.battler.profile.text='保存する本文';
+  data.presentation.battler.profile.iconSlots=[1,10];
+  data.presentation.ducks[duckId].profile.type='speed';
+  data.presentation.ducks.orphan.profile.flavorStats=[{label:'保持',value:6}];
   const saved=await f.storage.save(loaded,data);
   assert.equal(saved.ok,true);assert.deepEqual((await f.storage.load()).data.presentation,data.presentation);
 });

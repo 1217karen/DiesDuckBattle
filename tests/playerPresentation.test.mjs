@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createEmptyPlayerPresentation, getQuoteIconUrlCandidates, normalizePlayerPresentation, resolveQuoteIconUrl } from "../js/playerPresentationModel.js";
+import { createEmptyDuckProfile, createEmptyPlayerPresentation, getQuoteIconUrlCandidates, normalizePlayerPresentation, resolveQuoteIconUrl } from "../js/playerPresentationModel.js";
 import { createPlayerPresentationStorage, PLAYER_PRESENTATION_STORAGE_KEY } from "../js/playerPresentationStorage.js";
 
 function memoryStorage(initial = {}) {
@@ -10,7 +10,7 @@ function memoryStorage(initial = {}) {
 
 test("presentationの初期値は固定10枠と全セリフを持つ", () => {
   const value = createEmptyPlayerPresentation();
-  assert.equal(value.schemaVersion, 1);
+  assert.equal(value.schemaVersion, 2);
   assert.deepEqual(value.battler.iconSlots, Array(10).fill(""));
   assert.deepEqual(value.battler.quotes.phaseStart.second, { text:"", iconSlot:null });
   assert.deepEqual(value.battler.quotes.skill.D, { text:"", iconSlot:null });
@@ -22,19 +22,19 @@ test("save/loadはBattler・セリフ・Duck別アイコンを保持する", () 
   value.battler.standingImageUrl = "standing.png";
   value.battler.iconSlots[2] = "icon-3.png";
   value.battler.quotes.skill.C = { text:"ここからだ！", iconSlot:3 };
-  value.ducks.duckA = { iconUrl:"duck-a.png", cutinUrl:"cutin-a.png" }; value.ducks.duckB = { iconUrl:"duck-b.png", cutinUrl:"" };
+  value.ducks.duckA = { iconUrl:"duck-a.png", cutinUrl:"cutin-a.png" , profile:createEmptyDuckProfile() }; value.ducks.duckB = { iconUrl:"duck-b.png", cutinUrl:"" , profile:createEmptyDuckProfile() };
   assert.equal(storage.save(value).ok, true);
   assert.deepEqual(storage.load().presentation, value);
 });
 
 test("欠損と不正値を補完し、iconSlotは1〜10だけを許可する", () => {
-  const value = normalizePlayerPresentation({ battler:{ iconSlots:["one", 2], quotes:{ battleStart:{ text:7, iconSlot:0 }, skill:{ A:{ text:"A", iconSlot:10 }, B:{ text:"B", iconSlot:11 } } } }, ducks:{ old:{}, bad:{ iconUrl:3 } } });
+  const value = normalizePlayerPresentation({ battler:{ iconSlots:["one", 2], quotes:{ battleStart:{ text:7, iconSlot:0 }, skill:{ A:{ text:"A", iconSlot:10 }, B:{ text:"B", iconSlot:11 } } } }, ducks:{ old:{}, bad:{ iconUrl:3 , profile:createEmptyDuckProfile() } } });
   assert.equal(value.battler.iconSlots.length, 10);
   assert.deepEqual(value.battler.iconSlots.slice(0, 2), ["one", ""]);
   assert.deepEqual(value.battler.quotes.battleStart, { text:"", iconSlot:null });
   assert.equal(value.battler.quotes.skill.A.iconSlot, 10);
   assert.equal(value.battler.quotes.skill.B.iconSlot, null);
-  assert.deepEqual(value.ducks.old, { iconUrl:"", cutinUrl:"" });
+  assert.deepEqual(value.ducks.old, { iconUrl:"", cutinUrl:"" , profile:createEmptyDuckProfile() });
 });
 
 test("未登録・不正な追加slotはdefaultIconUrlへfallbackする", () => {
@@ -56,7 +56,7 @@ test("不正JSONでもloadは初期値を返して画面を継続できる", () 
 test("v1 old Duck icons gain empty cut-ins; normalized cut-ins are independent Duck data",()=>{
   const raw={schemaVersion:1,ducks:{old:{iconUrl:"old.png"},a:{iconUrl:"a.png",cutinUrl:"a-cutin.png"},b:{iconUrl:"b.png",cutinUrl:"b-cutin.png"}}};
   const before=structuredClone(raw),value=normalizePlayerPresentation(raw);
-  assert.deepEqual(raw,before);assert.equal(value.schemaVersion,1);
-  assert.deepEqual(value.ducks.old,{iconUrl:"old.png",cutinUrl:""});
-  assert.deepEqual(value.ducks.a,raw.ducks.a);assert.deepEqual(value.ducks.b,raw.ducks.b);
+  assert.deepEqual(raw,before);assert.equal(value.schemaVersion,2);
+  assert.deepEqual(value.ducks.old,{ iconUrl:"old.png",cutinUrl:"", profile:createEmptyDuckProfile() });
+  assert.deepEqual(value.ducks.a,{...raw.ducks.a,profile:createEmptyDuckProfile()});assert.deepEqual(value.ducks.b,{...raw.ducks.b,profile:createEmptyDuckProfile()});
 });

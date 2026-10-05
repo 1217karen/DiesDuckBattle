@@ -8,9 +8,10 @@ import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 import { createAuthController } from "../js/authController.js";
 import { createOnlineEditController } from "../js/onlineEditController.js";
-import { createEmptyPlayerPresentation, getQuoteIconUrlCandidates } from "../js/playerPresentationModel.js";
+import { createEmptyDuckProfile, createEmptyPlayerPresentation, getQuoteIconUrlCandidates } from "../js/playerPresentationModel.js";
 import { createEmptyPlayerBuild, createEmptyDuck } from "../js/playerBuildModel.js";
 import { IMAGE_LIMITS, createImageValidation, imageValidationSummary } from "../js/characterImageValidation.js";
+import { encodeOnlinePlayer } from "../js/onlinePlayerDto.js";
 const source = async name => (await readFile(new URL(`../js/${name}.js`, import.meta.url), "utf8")).replace(/^import .*;\r?\n/gm, "");
 
 test("authRuntime shares exactly one SDK client/session key across editor and auth initialization", async () => {
@@ -55,11 +56,11 @@ async function characterScreen() {
     createElement: tag => new Element(tag), createTextNode: text => { const el = new Element("text"); el.textContent = text; return el; } };
   const data = { build: createEmptyPlayerBuild(), presentation: createEmptyPlayerPresentation(), publicSettings: { schemaVersion: 1, publicDuckId: null }, battlerName: "DB名2" };
   data.build.ducks.push(createEmptyDuck()); data.publicSettings.publicDuckId = data.build.ducks[0].id;
-  data.presentation.ducks.orphan = { iconUrl: "https://example.invalid/orphan.png" };
+  data.presentation.ducks.orphan = { iconUrl: "https://example.invalid/orphan.png", cutinUrl: "", profile: createEmptyDuckProfile() };
   const controller = { snapshot: () => ({ canSave: true, canEdit: true }),
     edit(patch) { latest = { ...latest, ...structuredClone(patch) }; },
     async save() { saved = structuredClone(latest); return { ok: true }; } };
-  const context = { finishPageLoad() {}, requireLoginPage: async () => {}, presentCSkill, hasName, FIXED_IMAGES, setImageFromCandidates, getQuoteIconUrlCandidates, createQuoteToolbar, document, structuredClone, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
+  const context = { finishPageLoad() {}, requireLoginPage: async () => {}, presentCSkill, hasName, FIXED_IMAGES, setImageFromCandidates, getQuoteIconUrlCandidates, createQuoteToolbar, document, structuredClone, createEmptyDuckProfile, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
     Option: function (name, value) { const el = new Element("option"); el.textContent = name; el.value = value; return el; },
     createIconPicker: () => ({ open(args) { selectedCallback = args.select; }, close() { selectedCallback = null; } }),
     mountOnlineEditor: async args => { assert.deepEqual(Array.from(args.sections), ["presentation", "battlerName"]); hooks = args; latest = structuredClone(data); args.hydrate(data); args.onState({ canSave: true, canEdit: true }); return controller; } };
@@ -123,7 +124,7 @@ test("all quote rows use one-line inputs, six inline controls and live slot/defa
   imageInputs[1].value="new-default.png";imageInputs[1].handlers.input();assert.equal(picker.children[0].src,"new-default.png");
   picker.handlers.click();page.pick(null);assert.equal(picker.title,"デフォルトアイコン");assert.equal(picker.children[0].src,"new-default.png");
   const quote=page.latest().presentation.battler.quotes.battleStart;assert.deepEqual(Object.keys(quote),["text","iconSlot"]);
-  assert.equal(quote.iconSlot,null);assert.equal(page.latest().presentation.schemaVersion,1);
+  assert.equal(quote.iconSlot,null);assert.equal(page.latest().presentation.schemaVersion,2);
 });
 test("late image callback from prior account cannot block the newly hydrated account", async () => {
   const page = await characterScreen(), old = page.all().find(el => el.tagName === "img" && el.onerror);
@@ -205,4 +206,17 @@ test("Duck cut-in editor merges sibling URLs, switches Ducks, and uses common C 
   data.build.ducks[0].cSelection={mode:"normal",structure:{kind:"flat",effects:[null]}};page.hydrate(data);
   assert.equal(page.get("duck-icon-editor").children[0].children[1].children[1].textContent,"Cスキル設定未完了");
   assert.deepEqual(page.latest().build,data.build);
+});
+
+
+test("editing a new Duck image creates a complete v2 display and preserves detached profiles",async()=>{
+  const page=await characterScreen(),data=structuredClone(page.data),id=data.build.ducks[0].id;
+  data.presentation.ducks.orphan.iconUrl='';data.presentation.ducks.orphan.profile.text='保持する本文';
+  data.presentation.battler.profile.iconSlots=[1,10];page.hydrate(data);
+  const fields=page.all().filter(e=>e.tagName==='input'&&e.type==='url');
+  fields[12].value='new.png';fields[12].handlers.input();
+  const display=page.latest().presentation.ducks[id];
+  assert.deepEqual(display,{iconUrl:'new.png',cutinUrl:'',profile:createEmptyDuckProfile()});
+  assert.equal(page.latest().presentation.ducks.orphan.profile.text,'保持する本文');
+  assert.doesNotThrow(()=>encodeOnlinePlayer(page.latest()));
 });
