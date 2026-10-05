@@ -1,0 +1,50 @@
+/* Shared palette for the two editor pages. Light is the default. */
+:root {
+  color-scheme: light;
+  --bg: #DCEEF3;
+  --panel: #FFFFFF;
+  --line: #B7CDD5;
+  --text: #20282C;
+  --muted: #66777E;
+  --accent: #4F91B3;
+  --warn: #B65A48;
+  --on-accent: var(--panel);
+  --theme-background-image: url("../img/result_BG.png");
+  --ui-surface: color-mix(in srgb, var(--panel) 75%, var(--bg));
+  --ui-hover: color-mix(in srgb, var(--panel) 60%, var(--line));
+  --ui-accent-surface: color-mix(in srgb, var(--panel) 88%, var(--accent));
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #10161A;
+  --panel: #182126;
+  --line: #52636B;
+  --text: #EDF2F4;
+  --muted: #9DADB5;
+  --accent: #E0C45A;
+  --warn: #E28065;
+  --on-accent: var(--bg);
+  --theme-background-image: none;
+}
+
+body {
+  background-color: var(--bg);
+  background-image: var(--theme-background-image);
+  background-repeat: repeat;
+  background-position: top left;
+  color: var(--text);
+}
+input, select, textarea, button { font: inherit; }
+input, select, textarea { color:var(--text); background:var(--panel); border:1px solid var(--line); }
+button { color:var(--text); background:var(--ui-surface); border:1px solid var(--line); }
+button:hover { background:var(--ui-hover); }
+button.primary { color:var(--on-accent); background:var(--accent); border-color:var(--accent); }
+:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+
+/* These shared components also have legacy styles loaded after this file.
+   Scope their palette to pages opting into this sheet, without changing other pages. */
+:root .online-edit-status { border-color:var(--line); }
+:root .online-confirm { color:var(--text); background:var(--panel); border-color:var(--line); }
+:root .page-load-indicator { color:var(--muted); }
+:root .page-load-error { color:var(--warn); }
