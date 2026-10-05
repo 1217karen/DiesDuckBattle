@@ -37,10 +37,16 @@ test('URL ENo passes service boundary after login; canonical header/title and fo
   const {main,document,calls,result}=await page({profile:p,search:'?eno=00123'});
   assert.equal(result.ok,true);assert.equal(result.profile.isOwner,true);
   assert.deepEqual(calls,[['login'],['client'],['rpc','get_online_profile',{p_eno:'123'}],['finish']]);
-  assert.equal(byClass(main,'profile-header')[0].textContent,`ENo.123 / ${p.battler.name}`);
+  assert.equal(byClass(main,'profile-header')[0].textContent,`ENo.123 / ${p.battler.name}🎨`);
   assert.equal(document.title,`ENo.123 ${p.battler.name} | DiesDuckBattle`);
   assert.deepEqual(document.body.styles,{'--profile-bg':'#DCEEF3','--profile-panel':'#FFFFFF','--profile-text':'#20282C','--profile-accent':'#4F91B3'});
-  assert.equal(all(main).some(n=>['input','select','textarea','button','form'].includes(n.tagName)),false);
+  assert.equal(byClass(main,'profile-theme-trigger').length,1);
+  assert.equal(byClass(document.body,'profile-theme-editor').length,1);
+});
+test('non-owner never receives theme editor DOM',async()=>{
+  const {main,document}=await page();
+  assert.equal(byClass(main,'profile-theme-trigger').length,0);
+  assert.equal(byClass(document.body,'profile-theme-editor').length,0);
 });
 for(const status of ['invalid-eno','profile-not-found','unsupported-data','migration-required','load-failed','forbidden','session-changed'])test(`page error ${status} has no partial cards and finishes loading`,async()=>{
   const p=await page({status});assert.equal(byClass(p.main,'profile-error').length,1);assert.equal(byClass(p.main,'profile-card').length,0);assert.equal(p.calls.at(-1)[0],'finish');
@@ -173,7 +179,7 @@ test('layout reserves natural standing width, five fixed zigzag rows, overlaid f
   const css=await readFile(new URL('../css/profile.css',import.meta.url),'utf8');
   assert.match(css,/max-width: 1360px/);assert.match(css,/grid-template-columns: minmax\(0, 2fr\) minmax\(0, 1fr\)/);
   assert.match(css,/\.battler-visual\s*\{[^}]*align-items: flex-start/);
-  assert.match(css,/grid-template-rows: repeat\(5, 120px\)/);assert.match(css,/width: 120px; height: 120px/);
+  assert.match(css,/grid-template-rows: repeat\(5, 120px\)/);assert.match(css,/width: 120px;\s*height: 120px/);
   assert.match(css,/img\[data-icon-position="2"\], \.profile-icon-rail img\[data-icon-position="4"\]\s*\{ justify-self: end/);
   assert.match(css,/\.stat-track::after\s*\{[^}]*repeating-linear-gradient[^}]*20%[^}]*var\(--profile-line\)/);
   assert.match(css,/@media \(max-width: 1160px\)[\s\S]*"visual" "text" "duck" "favorite"/);
