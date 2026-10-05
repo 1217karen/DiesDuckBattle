@@ -32,7 +32,7 @@ begin
     when 'structure' then array['kind','effects','branches','thresholdOptionId']
     when 'branch' then array['effects'] when 'branches' then array['met','unmet']
     when 'effect' then array['effectId','targetId','statusId','options','chanceOptionId']
-    when 'options' then array['statusId','amount','amountPct','multiplier','baseAmount','everyTurns','stepAmount','status','duration','maxHpPct']
+    when 'options' then array['statusId','amount','amountPct','multiplier','baseAmount','everyTurns','stepAmount','status','duration','maxHpPct','direction','activation','scope','preset','diceAction']
     else null end;
   if names is null then raise exception 'Invalid selection category' using errcode='22023'; end if;
   foreach k in array names loop

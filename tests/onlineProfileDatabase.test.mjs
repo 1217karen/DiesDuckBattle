@@ -6,6 +6,7 @@ import { a,b,da,db as duckB,privateDuck,player } from './onlineSelectFixture.mjs
 import { encodeOnlinePlayer } from '../js/onlinePlayerDto.js';
 import { createEmptyBattlerProfile, createEmptyDuckProfile } from '../js/playerPresentationModel.js';
 import { decodeOnlineProfile } from '../js/onlineProfileService.js';
+import { profileOptionSelections } from './onlineProfileFixture.mjs';
 let PGlite;
 if(process.env.PGLITE_MODULE)({PGlite}=await import(pathToFileURL(process.env.PGLITE_MODULE)));
 const userA='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',userB='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -48,6 +49,21 @@ test('dedicated authenticated public profile DB boundary',{skip:!PGlite&&'Set PG
     const value=async(sql,args=[]) => (await db.query(sql,args)).rows[0].data;
     const get=()=>value('select public.get_online_profile(2) data');
     await asUser(userA);
+    for (const [category, axis, selection] of profileOptionSelections) await t.test(`RPC to decoder preserves ${category} options.${axis} and excludes unknown options`, async () => {
+      await db.exec('reset role');
+      const stored = structuredClone(selection);
+      const leaf = category === 'B' ? stored : category === 'A' ? stored.effects[0] : stored.structure.effects[0];
+      leaf.options.unknownOption = 'SECRET-option';
+      const field = category.toLowerCase() + 'Selection';
+      if (category === 'B') await db.query('update public.battlers set build=jsonb_set(build,$1::text[],$2::jsonb) where game_account_id=$3', [[field], JSON.stringify(stored), b]);
+      else await db.query('update public.ducks set build=jsonb_set(build,$1::text[],$2::jsonb) where id=$3', [[field], JSON.stringify(stored), duckB]);
+      await asUser(userA);
+      const raw = await get(), owner = category === 'B' ? 'battler' : 'duck';
+      assert.deepEqual(raw[owner].skills[category].selection, selection);
+      assert.deepEqual(decodeOnlineProfile(raw)[owner].skills[category].selection, selection);
+      assert.doesNotMatch(JSON.stringify(raw), /SECRET-option|unknownOption/);
+      await restore(); await asUser(userA);
+    });
     await t.test('foreign profile uses v1 API contract with lossless v2 fields and selected empty URL',async()=>{
       const raw=await get(),p=decodeOnlineProfile(raw);assert.deepEqual(p,raw);
       assert.equal(p.isOwner,false);assert.equal(p.accountId,b);assert.equal(p.eno,'2');

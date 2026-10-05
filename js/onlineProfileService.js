@@ -9,7 +9,7 @@ const object = v => v !== null && typeof v === "object" && !Array.isArray(v);
 const keys = (v, names) => requireValue(object(v) && Reflect.ownKeys(v).length === names.length && names.every(k => Object.hasOwn(v, k)));
 const string = v => requireValue(typeof v === "string");
 const array = (v, max) => requireValue(Array.isArray(v) && v.length <= max && Object.keys(v).length === v.length);
-const optionKeys = new Set(["statusId", "amount", "amountPct", "multiplier", "baseAmount", "everyTurns", "stepAmount", "status", "duration", "maxHpPct"]);
+const optionKeys = new Set(["statusId", "amount", "amountPct", "multiplier", "baseAmount", "everyTurns", "stepAmount", "status", "duration", "maxHpPct", "direction", "activation", "scope", "preset", "diceAction"]);
 function skill(v) {
   keys(v, ["selection", "label"]); keys(v.label, ["name", "ruby"]);
   string(v.label.name); string(v.label.ruby);

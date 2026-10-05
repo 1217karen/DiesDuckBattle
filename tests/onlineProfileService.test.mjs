@@ -1,7 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { decodeOnlineProfile, createOnlineProfileService } from '../js/onlineProfileService.js';
-import { profileFixture } from './onlineProfileFixture.mjs';
+import { profileFixture, profileOptionSelections } from './onlineProfileFixture.mjs';
+
+for (const [category, axis, selection] of profileOptionSelections) test(`known ${category} option ${axis} is lossless; unknown option rejected`, () => {
+  const p = profileFixture(), owner = category === 'B' ? 'battler' : 'duck';
+  p[owner].skills[category].selection = structuredClone(selection);
+  assert.deepEqual(decodeOnlineProfile(p)[owner].skills[category].selection, selection);
+  const selected = p[owner].skills[category].selection;
+  const leaf = category === 'B' ? selected : category === 'A' ? selected.effects[0] : selected.structure.effects[0];
+  leaf.options.unknownOption = 'private';
+  assert.throws(() => decodeOnlineProfile(p), TypeError);
+});
 
 test('public profile decoder is lossless, detached, canonical and accepts incomplete stats', () => {
   const value=profileFixture(); value.eno='0001'; value.duck.profile.attributes=['🔥','a','炎'];
