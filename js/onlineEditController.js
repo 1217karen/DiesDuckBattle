@@ -137,6 +137,13 @@ export function createOnlineEditController({ storage, sections, allowDuckPresent
       if (!await ask(question)) return false;
       const result = state.latest, draft = copy(result.data);
       if (keepEdits) for (const key of sections) draft[key] = copy(state.draft[key]);
+      if (keepEdits && sections.includes("presentation")) {
+        // Do not resurrect Ducks removed since loading; preserve pre-existing detached entries.
+        const latestDuckIds = new Set(result.data.build.ducks.map(duck => duck.id));
+        for (const { id } of state.base.data.build.ducks) {
+          if (!latestDuckIds.has(id)) delete draft.presentation.ducks[id];
+        }
+      }
       if (keepEdits) for (const id of deletedDuckPresentationIds) delete draft.presentation.ducks[id];
       install(result, draft, keepEdits); emit(); return true;
     },

@@ -158,3 +158,38 @@ test('ordinary section ownership remains strict; deletion must accompany removin
  const c=p.db.character();await c.load();assert.equal(c.edit({presentation:draft.presentation},{deleteDuckPresentationIds:[a]}),false);
  assert.deepEqual(p.controller.snapshot().draft,draft);assert.equal(p.controller.snapshot().dirty,false);
 });
+
+for (const deleted of [true, false]) test(`character rebase preserves other edits and original detached data; server deletion=${deleted}`, async () => {
+ const db=database(initial()),character=db.character();await character.load();
+ const setting=createOnlineEditController({storage:db.storage,sections:['build','publicSettings'],allowDuckPresentationDeletion:true,confirm:()=>true});
+ await setting.load();
+ const serverDraft=setting.snapshot().draft;
+ if(deleted) {
+  serverDraft.build.ducks=serverDraft.build.ducks.filter(d=>d.id!==a);
+  serverDraft.publicSettings.publicDuckId=null;
+  setting.edit({build:serverDraft.build,publicSettings:serverDraft.publicSettings},{deleteDuckPresentationIds:[a]});
+ } else {
+  serverDraft.build.ducks[0].name='latest build name';
+  setting.edit({build:serverDraft.build});
+ }
+ assert.equal((await setting.save()).ok,true);
+ const presentation=character.snapshot().draft.presentation;
+ presentation.battler.standingImageUrl='edited standing';presentation.battler.defaultIconUrl='edited icon';presentation.battler.iconSlots[2]='edited slot';
+ presentation.battler.quotes.battleStart={text:' edited quote ',iconSlot:3};
+ presentation.battler.profile={text:' edited Battler\n',iconSlots:[3],theme:{background:'#ABCDEF',panel:'#FEDCBA',text:'#102030',accent:'#405060'},featuredBattleId:b};
+ presentation.ducks[a].profile.text='stale target edit';
+ presentation.ducks[b].profile.text='edited B';presentation.ducks.orphan.profile.text='edited orphan';
+ character.edit({presentation,battlerName:'edited name'});
+ assert.equal((await character.save()).status,'conflict');await character.compare();
+ const before=character.snapshot(),serverBefore=db.row();
+ assert.equal(await character.adoptLatest(true),true);
+ const expected=clone(presentation);if(deleted)delete expected.ducks[a];
+ const rebased=character.snapshot().draft;
+ assert.deepEqual(rebased.build,serverDraft.build);assert.deepEqual(rebased.publicSettings,serverDraft.publicSettings);
+ assert.deepEqual(rebased.presentation,expected);assert.equal(rebased.battlerName,'edited name');
+ assert.deepEqual(before.draft.presentation,presentation);assert.deepEqual(db.row(),serverBefore);
+ assert.equal((await character.save()).ok,true);await character.load();
+ assert.deepEqual(character.snapshot().draft,rebased);
+ if(deleted)assert.equal(Object.hasOwn(db.row().battler.presentation.detachedDuckPresentation,a),false);
+ assert.equal(character.snapshot().draft.presentation.ducks.orphan.profile.text,'edited orphan');
+});
