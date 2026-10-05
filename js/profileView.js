@@ -30,6 +30,7 @@ export function renderProfile(document, profile) {
     node.innerHTML = renderQuoteRichText(text);
     return node;
   };
+  const profileText = text => text === "" ? el("p", "profile-empty", "プロフィールが設定されていません") : rich(text);
   const skillList = skills => {
     const list = el("div", "skill-list");
     for (const [category, { selection, label }] of Object.entries(skills)) {
@@ -57,16 +58,25 @@ export function renderProfile(document, profile) {
   const battler = card("battler-card"), visual = el("div", "battler-visual"), standing = el("div", "battler-standing-wrap");
   standing.append(image(b.standingImageUrl, FIXED_IMAGES.battlerStanding, "battler-standing", "Battler立ち絵")); visual.append(standing);
   const rail = el("div", "profile-icon-rail");
+  const positionIcons = () => {
+    let position = 0;
+    for (const img of rail.children) {
+      if (img.hidden) continue;
+      img.setAttribute("data-icon-position", String(++position));
+      img.style.setProperty("--icon-position", String(position));
+    }
+  };
   rail.append(image(b.defaultIconUrl, FIXED_IMAGES.battlerIcon, "", "Battlerアイコン"));
   for (const { url } of b.profileIcons) {
     if (!url.trim()) continue;
     const img = el("img"); img.alt = "プロフィールアイコン";
-    img.addEventListener("error", () => { img.hidden = true; }, { once: true }); img.src = url;
+    img.addEventListener("error", () => { img.hidden = true; positionIcons(); }, { once: true }); img.src = url;
     rail.append(img);
   }
+  positionIcons();
   visual.append(rail);
   battler.append(visual, skillList({ B: b.skills.B, D: b.skills.D }));
-  const text = card("profile-text-card", "BATTLER PROFILE"); text.append(rich(b.profile.text));
+  const text = card("profile-text-card", "BATTLER PROFILE"); text.append(profileText(b.profile.text));
   const duck = card("duck-card", "MY DUCK"), d = profile.duck;
   if (!d) duck.append(el("p", "profile-empty", "未登録 — 公開Duckは設定されていません"));
   else {
@@ -74,12 +84,13 @@ export function renderProfile(document, profile) {
     heading.append(image(d.iconUrl, FIXED_IMAGES.duckIcon, "duck-icon", "Duckアイコン"), el("h3", "duck-name", d.name));
     duck.append(heading, el("p", "duck-meta", `${types[d.profile.type] ?? "未設定"} / ${d.profile.attributes.filter(Boolean).join("・") || "未設定"}`), skillList({ A: d.skills.A, C: d.skills.C }));
     const stats = el("div", "stat-section"); stats.setAttribute("aria-label", "ステータス");
+    stats.append(el("h3", "profile-section-heading", "STATUS"));
     ["AT", "DF", "SP"].forEach((key, i) => stats.append(row(labels[d.profile.statLabelPreset][i], profileStatLevel(key, d.stats[key]), d.stats[key] === null)));
     if (d.profile.flavorStats.length) {
       const flavor = el("div", "stat-flavor");
       d.profile.flavorStats.forEach(s => flavor.append(row(s.label, s.value))); stats.append(flavor);
     }
-    const text = el("div", "duck-profile"); text.append(rich(d.profile.text)); duck.append(stats, text);
+    const text = el("div", "duck-profile"); text.append(el("h3", "profile-section-heading", "DUCK PROFILE"), profileText(d.profile.text)); duck.append(stats, text);
   }
   const favorite = card("featured-battle", "FAVORITE BATTLE"), battle = profile.featuredBattle;
   if (!battle) favorite.append(el("p", "profile-empty", "お気に入りバトルは設定されていません"));

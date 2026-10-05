@@ -101,7 +101,7 @@ test('unpublished Duck leaves Battler readable without Duck skill/stats/profile'
 for(const [preset,labels] of Object.entries({default:['AT','DF','SP'],kanji:['攻撃','防御','速度'],english:['Attack','Defense','Speed'],hiragana:['つよさ','かたさ','はやさ']}))test(`stat preset ${preset} and no numeric labels`,async()=>{
   const profile=profileFixture();profile.duck.profile.statLabelPreset=preset;
   const {main}=await page({profile});assert.deepEqual(byClass(main,'stat-label').map(n=>n.textContent),labels);
-  assert.equal(byClass(main,'stat-section')[0].textContent,labels.join(''));
+  assert.equal(byClass(main,'stat-section')[0].textContent,'STATUS'+labels.join(''));
 });
 test('SP conversion is display-only, null is empty, flavor 0/5/6 keep unclipped levels',async()=>{
   for(const [sp,level] of [[1,1],[2,3],[3,5],[null,0],[99,0]])assert.equal(profileStatLevel('SP',sp),level);
@@ -125,6 +125,58 @@ test('HTML/CSS integrate gate/menu without common theme, preserve layout, natura
   assert.doesNotMatch(html,/common-theme.css|<input|<select|<textarea/);assert.doesNotMatch(css,/result_BG|url\(/);
   assert.match(css,/width: auto; height: auto; max-width: min\(100%, 500px\); max-height: 800px/);
   assert.match(css,/"visual duck" "text text" "favorite favorite"/);assert.match(css,/"visual" "text" "duck" "favorite"/);
-  assert.match(css,/white-space: pre-wrap/);assert.match(css,/var\(--value\) \* 20%/);assert.match(css,/padding-right: 17%/);
+  assert.match(css,/white-space: pre-wrap/);assert.match(css,/var\(--value\) \* 20%/);assert.match(css,/width: calc\(100% \/ 1\.2\)/);
   assert.doesNotMatch(css,/overflow:\s*hidden/);
+});
+
+for(const count of [1,2,3,4,5])test(`fixed icon positions start at top for ${count} visible icons`,async()=>{
+  const profile=profileFixture();profile.battler.profileIcons=Array.from({length:count-1},(_,i)=>({slot:i+1,url:`icon-${i}.png`}));
+  const {main}=await page({profile}),rail=byClass(main,'profile-icon-rail')[0];
+  assert.equal(rail.children.length,count);
+  assert.deepEqual(rail.children.map(img=>img.attributes['data-icon-position']),Array.from({length:count},(_,i)=>String(i+1)));
+  assert.deepEqual(rail.children.map(img=>img.styles['--icon-position']),Array.from({length:count},(_,i)=>String(i+1)));
+});
+
+test('empty and broken additional icons compact visible positions without default fallback changes',async()=>{
+  const profile=profileFixture();profile.battler.profileIcons=[{slot:1,url:'one.png'},{slot:2,url:''},{slot:3,url:'three.png'},{slot:4,url:'four.png'}];
+  const {main}=await page({profile}),rail=byClass(main,'profile-icon-rail')[0];
+  assert.deepEqual(rail.children.map(img=>img.src),[FIXED_IMAGES.battlerIcon,'one.png','three.png','four.png']);
+  assert.deepEqual(rail.children.map(img=>img.attributes['data-icon-position']),['1','2','3','4']);
+  rail.children[1].handlers.error();
+  assert.equal(rail.children[1].hidden,true);assert.equal(rail.children[1].src,'one.png');
+  assert.deepEqual(rail.children.filter(img=>!img.hidden).map(img=>img.attributes['data-icon-position']),['1','2','3']);
+  rail.children[2].handlers.error();
+  assert.equal(rail.children[3].attributes['data-icon-position'],'2');
+  assert.equal(rail.children[0].attributes['data-icon-position'],'1');
+});
+
+for(const value of ['', ' ', '   ', '\n', '<b>本文</b><script>alert(1)</script>'])test(`profile empty state distinguishes exact empty string: ${JSON.stringify(value)}`,async()=>{
+  const profile=profileFixture();profile.battler.profile.text=value;profile.duck.profile.text=value;
+  const {main}=await page({profile});
+  for(const name of ['profile-text-card','duck-profile']) {
+    const section=byClass(main,name)[0];
+    if(value==='') {assert.equal(byClass(section,'profile-empty')[0].textContent,'プロフィールが設定されていません');assert.equal(byClass(section,'profile-rich-text').length,0);}
+    else {assert.equal(byClass(section,'profile-empty').length,0);assert.equal(byClass(section,'profile-rich-text')[0].innerHTML,renderQuoteRichText(value));assert.doesNotMatch(byClass(section,'profile-rich-text')[0].innerHTML,/<script>/);}
+  }
+});
+
+test('section headings and themed separators distinguish Battler visuals and Duck skills/status/profile',async()=>{
+  const {main}=await page(),css=await readFile(new URL('../css/profile.css',import.meta.url),'utf8');
+  const battler=byClass(main,'battler-card')[0],duck=byClass(main,'duck-card')[0];
+  assert.equal(battler.children[0].className,'battler-visual');assert.equal(battler.children[1].className,'skill-list');
+  assert.deepEqual(duck.children.map(child=>child.className),['','duck-heading','duck-meta','skill-list','stat-section','duck-profile']);
+  assert.equal(byClass(duck,'stat-section')[0].children[0].textContent,'STATUS');assert.equal(byClass(duck,'duck-profile')[0].children[0].textContent,'DUCK PROFILE');
+  assert.match(css,/\.battler-card > \.skill-list, \.duck-card > \.skill-list, \.stat-section, \.duck-profile\s*\{[^}]*border-top: 1px solid var\(--profile-line\)/);
+});
+
+test('layout reserves natural standing width, five fixed zigzag rows, overlaid five-step marks and responsive order',async()=>{
+  const css=await readFile(new URL('../css/profile.css',import.meta.url),'utf8');
+  assert.match(css,/max-width: 1360px/);assert.match(css,/grid-template-columns: minmax\(0, 2fr\) minmax\(0, 1fr\)/);
+  assert.match(css,/\.battler-visual\s*\{[^}]*align-items: flex-start/);
+  assert.match(css,/grid-template-rows: repeat\(5, 120px\)/);assert.match(css,/width: 120px; height: 120px/);
+  assert.match(css,/img\[data-icon-position="2"\], \.profile-icon-rail img\[data-icon-position="4"\]\s*\{ justify-self: end/);
+  assert.match(css,/\.stat-track::after\s*\{[^}]*repeating-linear-gradient[^}]*20%[^}]*var\(--profile-line\)/);
+  assert.match(css,/@media \(max-width: 1160px\)[\s\S]*"visual" "text" "duck" "favorite"/);
+  assert.match(css,/@media \(max-width: 760px\)[\s\S]*flex-direction: column/);
+  assert.match(css,/repeat\(5, 90px\)/);assert.doesNotMatch(css,/overflow:\s*hidden|align-items: center; gap: 16px; margin-bottom/);
 });
