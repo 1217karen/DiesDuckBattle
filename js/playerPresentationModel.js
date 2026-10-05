@@ -1,7 +1,7 @@
-export const PLAYER_PRESENTATION_SCHEMA_VERSION = 2;
+export const PLAYER_PRESENTATION_SCHEMA_VERSION = 3;
 export const BATTLER_ICON_SLOT_COUNT = 10;
 
-const QUOTE_PATHS = [
+export const QUOTE_PATHS = [
   ["battleStart"],
   ["turn", "even"], ["turn", "lead"], ["turn", "behind"],
   ["phaseStart", "first"], ["phaseStart", "second"], ["phaseStart", "third"],
@@ -13,7 +13,26 @@ const isRecord = value => value !== null && typeof value === "object" && !Array.
 const text = value => typeof value === "string" ? value : "";
 const iconSlot = value => Number.isInteger(value) && value >= 1 && value <= BATTLER_ICON_SLOT_COUNT
   ? value : null;
-const quote = value => ({ text: text(value?.text), iconSlot: iconSlot(value?.iconSlot) });
+export const QUOTE_TEXT_MAX = 200;
+export function isQuoteEno(value) {
+  return typeof value === "string" && /^[1-9][0-9]{0,18}$/.test(value) && BigInt(value) <= 9223372036854775807n;
+}
+export const createEmptyQuoteLine = () => ({ text: "", iconSlot: null, opponentEno: null });
+const quote = value => {
+  const lines = Array.isArray(value?.lines) && value.lines.length ? value.lines : [value];
+  return { lines: lines.map((line, index) => ({ text: text(line?.text), iconSlot: iconSlot(line?.iconSlot),
+    opponentEno: index > 0 && isQuoteEno(line?.opponentEno) ? line.opponentEno : null })) };
+};
+
+/** Copy a draft for persistence without removing empty editor rows in place. */
+export function presentationForPersistence(value) {
+  const result = structuredClone(value);
+  for (const path of QUOTE_PATHS) {
+    const timing = path.reduce((v, k) => v[k], result.battler.quotes);
+    timing.lines = timing.lines.filter((line, index) => index === 0 || line.text !== "");
+  }
+  return result;
+}
 
 
 export function createEmptyBattlerProfile() {

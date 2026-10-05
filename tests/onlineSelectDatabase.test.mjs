@@ -34,6 +34,7 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
       data.presentation.ducks[duck].profile.type='attack';
       data.presentation.ducks[duck].profile.attributes=['火','',''];
       data.presentation.ducks[duck].profile.flavorStats=[{label:'PRIVATE-FLAVOR',value:6}];
+      data.presentation.battler.quotes.battleStart.lines.push({text:'PRIVATE-extra',iconSlot:2,opponentEno:'9223372036854775807'});
       const snapshot=encodeOnlinePlayer(data);
       snapshot.battler.presentation.detachedDuckPresentation={hidden:{iconUrl:'PRIVATE-DETACHED',cutinUrl:'PRIVATE-DETACHED-CUTIN',profile:structuredClone(data.presentation.ducks[duck].profile)}};
       await asUser(user);const initial=await value('select public.load_online_player($1) data',[id]);
@@ -54,6 +55,7 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
     await db.exec(await readFile(new URL('../supabase/migrations/20261004101854_c_skill_cutin.sql',import.meta.url),'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/20261004152422_opponent_list_default_icon.sql',import.meta.url),'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/20261005110530_presentation_v2_battle_projection.sql',import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261005173129_presentation_v3_public_compatibility.sql',import.meta.url),'utf8'));
     await asUser(userA);
     await t.test('direct tables, guessed UUIDs and full draft RPC cannot retrieve foreign data',async()=>{
       assert.equal((await db.query('select * from public.battlers where game_account_id=$1',[b])).rows.length,0);
@@ -78,12 +80,34 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
       assert.doesNotMatch(JSON.stringify(row),/PRIVATE/);assert.deepEqual(row.ducks.map(d=>d.id),[duckB]);
       assert.equal(row.battler.presentation.schemaVersion,1);assert.equal(row.ducks[0].presentation.schemaVersion,1);
       assert.equal('profile' in row.battler.presentation,false);assert.equal('profile' in row.ducks[0].presentation.icon,false);
-      assert.equal(decodePublicOpponent(row,a).presentation.schemaVersion,2);
+      assert.equal(decodePublicOpponent(row,a).presentation.schemaVersion,3);
       assert.equal(decodePublicOpponent(row,a).publicDuckId,duckB);
       assert.equal(row.ducks[0].presentation.icon.cutinUrl,'https://example.invalid/cutin2.png');
       assert.equal(decodePublicOpponent(row,a).presentation.ducks[duckB].cutinUrl,row.ducks[0].presentation.icon.cutinUrl);
       assert.equal(await value('select public.get_online_opponent($1) data',[a]),null);
       assert.equal(await value('select public.get_online_opponent($1) data',[privateDuck]),null);
+    });
+    await t.test('stored v1/v2 quote projections remain readable without exposing v3 extras',async()=>{
+      await db.exec('reset role');
+      const original=await value('select presentation data from public.battlers where game_account_id=$1',[b]);
+      const duckOriginal=await value('select presentation data from public.ducks where id=$1',[duckB]);
+      for(const version of [1,2]) {
+        const legacy=structuredClone(original);legacy.schemaVersion=version;
+        for(const [key,group] of Object.entries(legacy.quotes)) {
+          if(key==='battleStart')legacy.quotes[key]={text:group.lines[0].text,iconSlot:group.lines[0].iconSlot};
+          else for(const [timing,q]of Object.entries(group))group[timing]={text:q.lines[0].text,iconSlot:q.lines[0].iconSlot};
+        }
+        if(version===1)delete legacy.profile;
+        const duckLegacy=structuredClone(duckOriginal);duckLegacy.schemaVersion=version;if(version===1)delete duckLegacy.icon.profile;
+        await db.query('update public.battlers set presentation=$1 where game_account_id=$2',[JSON.stringify(legacy),b]);
+        await db.query('update public.ducks set presentation=$1 where id=$2',[JSON.stringify(duckLegacy),duckB]);
+        await asUser(userA);const raw=await value('select public.get_online_opponent($1) data',[b]);
+        assert.equal(raw.battler.presentation.schemaVersion,1);assert.deepEqual(raw.battler.presentation.quotes,legacy.quotes);
+        assert.equal(decodePublicOpponent(raw,a).presentation.battler.quotes.battleStart.lines[0].text,'開始2');
+        await db.exec('reset role');
+      }
+      await db.query('update public.battlers set presentation=$1 where game_account_id=$2',[JSON.stringify(original),b]);
+      await db.query('update public.ducks set presentation=$1 where id=$2',[JSON.stringify(duckOriginal),duckB]);await asUser(userA);
     });
     await t.test('public cut-in whitelist omits unknown/private fields and fills old missing cut-ins',async()=>{
       await db.exec('reset role;');
@@ -126,7 +150,7 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
       await db.exec(`reset role; update public.battlers set presentation=jsonb_set(presentation,'{name}','"latest"') where game_account_id='${b}';`);await asUser(userA);
       const pair=await prepare();
       assert.equal(decodeOnlinePlayer(pair.self).presentation.battler.profile.text,'PRIVATE-BATTLER-PROFILE');
-      assert.equal(decodePublicOpponent(pair.opponent,a).presentation.schemaVersion,2);
+      assert.equal(decodePublicOpponent(pair.opponent,a).presentation.schemaVersion,3);
       assert.doesNotMatch(JSON.stringify(pair.opponent),/PRIVATE|profile|featuredBattleId|flavorStats/);
       assert.equal(pair.opponent.battler.presentation.name,'latest');
       assert.equal(pair.opponent.ducks[0].presentation.icon.cutinUrl,'https://example.invalid/cutin2.png');

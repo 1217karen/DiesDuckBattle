@@ -30,7 +30,7 @@ test('dedicated authenticated public profile DB boundary',{skip:!PGlite&&'Set PG
     bp.text=' raw [b]profile[/b]\n ';bp.iconSlots=[1,3];bp.theme.accent='#abcdef';
     data.presentation.battler.standingImageUrl='standing.png';
     data.presentation.battler.iconSlots[0]='one.png';data.presentation.battler.iconSlots[1]='SECRET-unselected';
-    data.presentation.battler.quotes.battleStart.text='SECRET-quotes';
+    data.presentation.battler.quotes.battleStart.lines[0].text='SECRET-quotes';
     data.presentation.ducks.orphan={iconUrl:'SECRET-detached',cutinUrl:'',profile:createEmptyDuckProfile()};
     const dp=data.presentation.ducks[duckB].profile;
     Object.assign(dp,{text:' duck\n ',type:'technical',attributes:['🔥','炎',''],statLabelPreset:'kanji',flavorStats:[{label:'',value:0},{label:'味',value:6}]});

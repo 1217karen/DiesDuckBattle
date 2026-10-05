@@ -1,6 +1,6 @@
 import { migratePlayerBuild } from "./playerBuildMigration.js";
 import { clonePlayerBuild, createEmptyPlayerBuild } from "./playerBuildModel.js";
-import { normalizePlayerPresentation, createEmptyPlayerPresentation } from "./playerPresentationModel.js";
+import { normalizePlayerPresentation, createEmptyPlayerPresentation, QUOTE_PATHS, QUOTE_TEXT_MAX, presentationForPersistence } from "./playerPresentationModel.js";
 import { normalizePlayerPublicSettings } from "./playerPublicSettingsModel.js";
 
 export const isOnlineUuid = value => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value);
@@ -29,17 +29,28 @@ const upgradeDuckDisplays = values => object(values)
   ? Object.fromEntries(Object.entries(values).map(([id, value]) => [id, upgradeDuckDisplay(value)])) : values;
 
 
-/** Known v1 is checked in its original shape before adding v2 defaults. */
+/** Check each version in its original shape before migrating; never discard unknown data. */
 export function migrateOnlinePlayerPresentation(value) {
-  requireValue(object(value) && [1, 2].includes(value.schemaVersion));
+  requireValue(object(value) && [1, 2, 3].includes(value.schemaVersion));
   const normalized = normalizePlayerPresentation(value);
-  if (value.schemaVersion === 2) requireValue(same(normalized, value));
-  else {
-    const legacy = structuredClone(normalized);
-    legacy.schemaVersion = 1;
-    delete legacy.battler.profile;
-    for (const duck of Object.values(legacy.ducks)) delete duck.profile;
-    requireValue(same(legacy, { ...value, ducks: upgradeDuckDisplays(value.ducks) }));
+  const expected = structuredClone(normalized);
+  if (value.schemaVersion < 3) {
+    expected.schemaVersion = value.schemaVersion;
+    for (const path of QUOTE_PATHS) {
+      const parent = path.slice(0, -1).reduce((v, k) => v[k], expected.battler.quotes);
+      const line = parent[path.at(-1)].lines[0];
+      parent[path.at(-1)] = { text: line.text, iconSlot: line.iconSlot };
+    }
+    if (value.schemaVersion === 1) {
+      delete expected.battler.profile;
+      for (const duck of Object.values(expected.ducks)) delete duck.profile;
+    }
+  }
+  requireValue(same(expected, value.schemaVersion === 1 ? { ...value, ducks: upgradeDuckDisplays(value.ducks) } : value));
+  // Legacy text is preserved on load, including historical values longer than the new limit.
+  if (value.schemaVersion === 3) for (const path of QUOTE_PATHS) {
+    const timing = path.reduce((v, k) => v[k], normalized.battler.quotes);
+    requireValue(timing.lines.every(line => [...line.text].length <= QUOTE_TEXT_MAX));
   }
   return normalized;
 }
@@ -50,7 +61,8 @@ export function encodeOnlinePlayer(data) {
   requireValue(data.build.schemaVersion === 3 && typeof data.battlerName === "string");
   const build = clonePlayerBuild(data.build);
   requireValue(build.ducks.every(d => isOnlineUuid(d.id)));
-  const presentation = migrateOnlinePlayerPresentation(data.presentation);
+  const presentation = presentationForPersistence(migrateOnlinePlayerPresentation(data.presentation));
+  for (const path of QUOTE_PATHS) requireValue(path.reduce((v,k) => v[k], presentation.battler.quotes).lines.every(line => [...line.text].length <= QUOTE_TEXT_MAX));
   const settings = normalizePlayerPublicSettings(data.publicSettings);
   requireValue(same(settings, data.publicSettings));
   const ids = new Set(build.ducks.map(d => d.id));
@@ -61,11 +73,11 @@ export function encodeOnlinePlayer(data) {
     dtoVersion: 1,
     battler: {
       build: { schemaVersion: 3, ...build.battler },
-      presentation: { schemaVersion: 2, name: data.battlerName, ...presentation.battler, detachedDuckPresentation },
+      presentation: { schemaVersion: 3, name: data.battlerName, ...presentation.battler, detachedDuckPresentation },
     },
     ducks: build.ducks.map(({ id, name, ...fields }) => ({ id,
       build: { schemaVersion: 3, ...fields },
-      presentation: { schemaVersion: 2, name, icon: presentation.ducks[id] ?? null },
+      presentation: { schemaVersion: 3, name, icon: presentation.ducks[id] ?? null },
     })),
     publicDuckId: settings.publicDuckId,
   };
@@ -84,29 +96,33 @@ export function decodeOnlinePlayer(snapshot) {
   requireValue(object(b.presentation));
   const { schemaVersion: version, name: storedName, detachedDuckPresentation: detached, ...storedDisplay } = b.presentation;
   const migratedDisplay = migrateOnlinePlayerPresentation({ schemaVersion: version, battler: storedDisplay, ducks: detached });
-  b = { ...b, presentation: { schemaVersion: 2, name: storedName, ...migratedDisplay.battler, detachedDuckPresentation: migratedDisplay.ducks } };
+  b = { ...b, presentation: { schemaVersion: 3, name: storedName, ...migratedDisplay.battler, detachedDuckPresentation: migratedDisplay.ducks } };
   const storedDucks = snapshot.ducks.map(d => {
     keys(d.presentation, ["schemaVersion", "name", "icon"]);
-    requireValue([1, 2].includes(d.presentation.schemaVersion));
+    requireValue([1, 2, 3].includes(d.presentation.schemaVersion));
     let icon = d.presentation.icon;
     if (icon !== null) {
       const empty = createEmptyPlayerPresentation();
       empty.schemaVersion = d.presentation.schemaVersion;
+      if (empty.schemaVersion < 3) for (const path of QUOTE_PATHS) {
+        const parent = path.slice(0,-1).reduce((v,k) => v[k], empty.battler.quotes);
+        parent[path.at(-1)] = { text: "", iconSlot: null };
+      }
       if (empty.schemaVersion === 1) delete empty.battler.profile;
       empty.ducks = { duck: icon };
       icon = migrateOnlinePlayerPresentation(empty).ducks.duck;
     }
-    return { ...d, presentation: { ...d.presentation, schemaVersion: 2, icon } };
+    return { ...d, presentation: { ...d.presentation, schemaVersion: 3, icon } };
   });
   keys(b.build, ["schemaVersion", "bSelection", "dSelection", ...(b.build.schemaVersion === 3 ? ["skillLabels"] : [])]);
   keys(b.presentation, ["schemaVersion", "name", "standingImageUrl", "defaultIconUrl", "iconSlots", "quotes", "profile", "detachedDuckPresentation"]);
-  requireValue([2,3].includes(b.build.schemaVersion) && b.presentation.schemaVersion === 2 && object(b.presentation.detachedDuckPresentation));
+  requireValue([2,3].includes(b.build.schemaVersion) && b.presentation.schemaVersion === 3 && object(b.presentation.detachedDuckPresentation));
   const { schemaVersion: _bv, ...battler } = b.build;
   const { schemaVersion: _pv, name, detachedDuckPresentation, ...display } = b.presentation;
   const duckDisplay = { ...detachedDuckPresentation };
   const ducks = storedDucks.map(d => {
     requireValue(isOnlineUuid(d.id) && object(d.build) && d.build.schemaVersion === b.build.schemaVersion);
-    keys(d.presentation, ["schemaVersion", "name", "icon"]); requireValue(d.presentation.schemaVersion === 2);
+    keys(d.presentation, ["schemaVersion", "name", "icon"]); requireValue(d.presentation.schemaVersion === 3);
     requireValue(!Object.hasOwn(duckDisplay, d.id));
     const { schemaVersion: _v, ...fields } = d.build;
     if (d.presentation.icon !== null) duckDisplay[d.id] = d.presentation.icon;
@@ -115,9 +131,14 @@ export function decodeOnlinePlayer(snapshot) {
   const migrated = migratePlayerBuild({ schemaVersion: b.build.schemaVersion, battler, ducks });
   requireValue(migrated.ok);
   const data = { build: migrated.build,
-    presentation: { schemaVersion: 2, battler: display, ducks: duckDisplay },
+    presentation: { schemaVersion: 3, battler: display, ducks: duckDisplay },
     publicSettings: { schemaVersion: 1, publicDuckId: snapshot.publicDuckId }, battlerName: name };
-  const encoded = encodeOnlinePlayer(data);
+  const comparisonData = structuredClone(data);
+  // Quotes were already validated above; compare the remaining DTO independently
+  // so loading legacy text never applies the new save-only length restriction.
+  comparisonData.presentation.battler.quotes = createEmptyPlayerPresentation().battler.quotes;
+  const encoded = encodeOnlinePlayer(comparisonData);
+  encoded.battler.presentation.quotes = structuredClone(display.quotes);
   if (b.build.schemaVersion === 2) {
     encoded.battler.build.schemaVersion = 2; delete encoded.battler.build.skillLabels;
     for (const d of encoded.ducks) { d.build.schemaVersion = 2; delete d.build.skillLabels; }

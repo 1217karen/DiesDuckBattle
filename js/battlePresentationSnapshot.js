@@ -4,7 +4,7 @@ import { normalizePlayerPresentation, resolveQuoteIconUrl } from "./playerPresen
 export function buildBattlePresentationSnapshot(playerPresentation, duckId) {
   const presentation = normalizePlayerPresentation(playerPresentation);
   const { battler, ducks } = presentation;
-  const quote = value => ({ text: value.text, iconUrl: resolveQuoteIconUrl(presentation, value) });
+  const quote = value => ({ text: value.lines[0].text, iconUrl: resolveQuoteIconUrl(presentation, value.lines[0]) });
   const group = values => Object.fromEntries(Object.entries(values).map(([key, value]) => [key, quote(value)]));
   return {
     battlerDefaultIconUrl: battler.defaultIconUrl,

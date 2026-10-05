@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createEmptyPlayerPresentation, createEmptyBattlerProfile, createEmptyDuckProfile, normalizePlayerPresentation } from '../js/playerPresentationModel.js';
+import { createEmptyPlayerPresentation, createEmptyBattlerProfile, createEmptyDuckProfile, normalizePlayerPresentation, QUOTE_PATHS } from '../js/playerPresentationModel.js';
 import { encodeOnlinePlayer, decodeOnlinePlayer, migrateOnlinePlayerPresentation } from '../js/onlinePlayerDto.js';
 import { buildBattlePresentationSnapshot } from '../js/battlePresentationSnapshot.js';
 import { player, a, da } from './onlineSelectFixture.mjs';
@@ -15,7 +15,7 @@ const populated = async () => {
 };
 
 test('v2 complete defaults and independently allocated profiles', () => {
-  const p=createEmptyPlayerPresentation();assert.equal(p.schemaVersion,2);
+  const p=createEmptyPlayerPresentation();assert.equal(p.schemaVersion,3);
   assert.deepEqual(p.battler.profile,{text:'',iconSlots:[],theme:{background:'#DCEEF3',panel:'#FFFFFF',text:'#20282C',accent:'#4F91B3'},featuredBattleId:null});
   const n=normalizePlayerPresentation({ducks:{a:{},b:{}}});
   assert.deepEqual(n.ducks.a.profile,{text:'',type:null,attributes:['','',''],statLabelPreset:'default',flavorStats:[]});
@@ -29,11 +29,15 @@ test('v1 explicit migration preserves every display field; next save is v2',asyn
   const dto=encodeOnlinePlayer(data);dto.battler.presentation.schemaVersion=1;delete dto.battler.presentation.profile;
   for(const d of dto.ducks){d.presentation.schemaVersion=1;delete d.presentation.icon.profile;}
   for(const d of Object.values(dto.battler.presentation.detachedDuckPresentation))delete d.profile;
+  for (const path of QUOTE_PATHS) {
+    const parent=path.slice(0,-1).reduce((v,k)=>v[k],dto.battler.presentation.quotes),line=parent[path.at(-1)].lines[0];
+    parent[path.at(-1)]={text:line.text,iconSlot:line.iconSlot};
+  }
   const before=structuredClone(dto),loaded=decodeOnlinePlayer(dto);
-  assert.deepEqual(dto,before);assert.equal(loaded.presentation.schemaVersion,2);
+  assert.deepEqual(dto,before);assert.equal(loaded.presentation.schemaVersion,3);
   const expected=structuredClone(data);expected.presentation.battler.profile=createEmptyBattlerProfile();
   for(const d of Object.values(expected.presentation.ducks))d.profile=createEmptyDuckProfile();
-  assert.deepEqual(loaded,expected);assert.equal(encodeOnlinePlayer(loaded).battler.presentation.schemaVersion,2);
+  assert.deepEqual(loaded,expected);assert.equal(encodeOnlinePlayer(loaded).battler.presentation.schemaVersion,3);
 });
 
 test('v2 lossless roundtrip includes detached profile, empty selected URLs and no shared objects',async()=>{
@@ -68,7 +72,7 @@ for(const [kind,mutations] of [['battler',badBattler],['duck',badDuck]])for(cons
 }
 
 test('strict versions, nested unknowns, missing v2 profile and legacy unknowns never normalize away',async()=>{
- for(const version of [0,3,99,'2',null]){const data=await populated();data.presentation.schemaVersion=version;assert.throws(()=>encodeOnlinePlayer(data));}
+ for(const version of [0,4,99,'2',null]){const data=await populated();data.presentation.schemaVersion=version;assert.throws(()=>encodeOnlinePlayer(data));}
  for(const mutate of [d=>d.battler.presentation.schemaVersion=99,d=>d.ducks[0].presentation.schemaVersion=99,
   d=>delete d.battler.presentation.profile,d=>delete d.ducks[0].presentation.icon.profile,
   d=>d.battler.presentation.detachedDuckPresentation.detached.profile.unknown=1,

@@ -54,7 +54,7 @@ test("separate tabs conflict, retain draft, compare, explicitly rebase own secti
   const presentation = character.snapshot().draft.presentation;
   presentation.battler.standingImageUrl = "https://example.invalid/a.png";
   presentation.battler.iconSlots[9] = "https://example.invalid/icon.png";
-  presentation.battler.quotes.battleStart = { text: "セリフ", iconSlot: 10 };
+  presentation.battler.quotes.battleStart = { lines: [{ text: "セリフ", iconSlot: 10 , opponentEno:null}] };
   presentation.ducks.orphan = { iconUrl: "https://example.invalid/orphan.png" };
   character.edit({ presentation }); await character.save();
   const build = setting.snapshot().draft.build; build.ducks.push(createEmptyDuck()); setting.edit({ build });
@@ -71,7 +71,8 @@ test("character rebase preserves newly added Duck/public choice/build/name", asy
   const f = fixture(), s = f.make(), c = f.make(["presentation"]); await s.load(); await c.load();
   const build = s.snapshot().draft.build; const duck = createEmptyDuck(); build.ducks.push(duck);
   s.edit({ build, publicSettings: { schemaVersion: 1, publicDuckId: duck.id } }); await s.save();
-  const presentation = c.snapshot().draft.presentation; presentation.battler.quotes.skill.A.text = "保持"; c.edit({ presentation });
+  const presentation = c.snapshot().draft.presentation; presentation.battler.quotes.skill.A.lines[0].text = "保持";
+  presentation.battler.quotes.skill.A.lines.push({text:'追加も保持',iconSlot:2,opponentEno:'15'}); c.edit({ presentation });
   assert.equal((await c.save()).status, "conflict"); await c.compare(); await c.adoptLatest(true); await c.save();
   assert.deepEqual(f.rows.get("2").data.build, build); assert.equal(f.rows.get("2").data.publicSettings.publicDuckId, duck.id);
 });

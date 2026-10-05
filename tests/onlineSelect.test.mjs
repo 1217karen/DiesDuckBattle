@@ -63,7 +63,7 @@ for(const mutation of ['unpublish','switch'])test('VS rechecks publication: '+mu
 test('VS uses latest online data, existing engine and start-time presentation snapshots without loadouts',async()=>{
   let battle;
   const f=await setup({run:state=>{battle=startSelectedBattle(state,{rng:()=>.5});return battle;}});await ready(f);
-  f.rows.get(a).battler.presentation.defaultIconUrl='latest.png';f.rows.get(b).battler.presentation.quotes.battleStart.text='最新の相手';
+  f.rows.get(a).battler.presentation.defaultIconUrl='latest.png';f.rows.get(b).battler.presentation.quotes.battleStart.lines[0].text='最新の相手';
   const started=await f.c.start();assert.equal(started.ok,true);
   const record=(await f.results.load('online-test')).record;assert.deepEqual(record.events,battle.events);assert.equal(record.events.at(-1).type,'battleEnd');
   assert.equal(record.p1.presentation.battlerDefaultIconUrl,'latest.png');

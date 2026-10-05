@@ -34,7 +34,8 @@ test('open uses explicit account with multiple accessible accounts; save patches
   f.controller.preset('dark');assert.equal(f.calls.length,1);
   f.update(d=>{d.battlerName='latest name';d.build.ducks[0].name='latest build';d.publicSettings.publicDuckId=null;
     d.presentation.battler.standingImageUrl='latest-standing';d.presentation.battler.defaultIconUrl='latest-default';d.presentation.battler.iconSlots[0]='latest-slot';
-    d.presentation.battler.quotes.battleStart.text='latest quote';d.presentation.battler.profile.text=' latest text ';
+    d.presentation.battler.quotes.battleStart.lines[0].text='latest quote';
+    d.presentation.battler.quotes.battleStart.lines.push({text:'private ENo quote',iconSlot:7,opponentEno:'9223372036854775807'});d.presentation.battler.profile.text=' latest text ';
     d.presentation.ducks[da].profile.text=' latest duck ';d.presentation.ducks[da].cutinUrl='latest-cutin';});
   const expected=decodeOnlinePlayer(f.row());expected.presentation.battler.profile.theme={...THEME_PRESETS.dark};
   await f.controller.save();assert.deepEqual(decodeOnlinePlayer(f.row()),expected);

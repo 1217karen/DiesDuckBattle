@@ -78,3 +78,28 @@ button.primary { font-weight:750; padding:13px 28px; }
 .profile-flavor { margin-top:20px; }
 .flavor-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(100px,1fr) auto; gap:10px; align-items:end; margin-bottom:12px; }
 @media(max-width:700px) { .profile-fields { grid-template-columns:1fr; } .flavor-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .flavor-row>button { grid-column:1 / -1; justify-self:end; } }
+
+/* Each timing is a lighter enclosure than its parent quote-group card. */
+.quote-timing-block { border:1px solid transparent; border-radius:7px; padding:5px 8px; margin:4px -9px; }
+.quote-timing-block.is-open { border-color:var(--line); background:var(--ui-surface); }
+.quote-row { grid-template-columns:70px 28px 60px minmax(0,1fr); gap:9px; }
+.quote-toggle,.quote-add { padding:3px; width:28px; min-height:30px; }
+.quote-toggle { color:var(--muted); opacity:.5; }
+.quote-toggle.has-extras { color:var(--text); opacity:1; }
+.quote-text-row { display:flex; gap:5px; align-items:center; }
+.quote-text-row input { min-width:0; flex:1; }
+.quote-remove { padding:2px 7px; min-height:28px; }
+.quote-controls { display:flex; flex-wrap:wrap; align-items:center; gap:5px 12px; margin-top:5px; }
+.quote-controls .quote-toolbar { margin-top:0; }
+.quote-eno { flex-direction:row; align-items:center; gap:5px; }
+.quote-eno input { width:12em; min-height:28px; padding:2px 5px; }
+.quote-eno-status { font-size:.78rem; overflow-wrap:anywhere; }
+.quote-error { color:var(--warn); font-size:.78rem; }
+.quote-editor input[aria-invalid="true"] { border-color:var(--warn); }
+@media(max-width:700px) {
+  .quote-row { grid-template-columns:28px 48px minmax(0,1fr); gap:6px; }
+  .quote-label { grid-column:1 / -1; }
+  .quote-label:empty { display:none; }
+  .quote-picker { width:48px; height:48px; min-height:48px; }
+  .quote-editor { grid-column:3; }
+}

@@ -34,7 +34,7 @@ const at = (value, path) => path.reduce((node, key) => node[key], value);
 
 test("all 14 quotes retain text and resolve slot 3 to iconSlots[2]", () => {
   const value = fixture();
-  for (const path of paths) Object.assign(at(value.battler.quotes, path), { text: `セリフ ${path.join(".")}`, iconSlot: 3 });
+  for (const path of paths) Object.assign(at(value.battler.quotes, path).lines[0], { text: `セリフ ${path.join(".")}`, iconSlot: 3 });
   const before = structuredClone(value);
   const snapshot = buildBattlePresentationSnapshot(value, "first");
   for (const path of paths) assert.deepEqual(at(snapshot.quotes, path), {
@@ -47,7 +47,7 @@ for (const [name, slot, url] of [["null slot", null, "third.png"], ["empty slot 
   test(`${name} resolves to the default icon`, () => {
     const value = fixture();
     value.battler.iconSlots[2] = url;
-    value.battler.quotes.battleStart = { text: "ここからだ！", iconSlot: slot };
+    value.battler.quotes.battleStart = { lines: [{ text: "ここからだ！", iconSlot: slot , opponentEno:null}] };
     assert.deepEqual(buildBattlePresentationSnapshot(value, "first").quotes.battleStart, {
       text: "ここからだ！", iconUrl: value.battler.defaultIconUrl,
     });
@@ -56,7 +56,7 @@ for (const [name, slot, url] of [["null slot", null, "third.png"], ["empty slot 
 
 test("later edits, slot deletion and quote replacement cannot change an existing snapshot", () => {
   const value = fixture();
-  value.battler.quotes.battleStart = { text: "開始！", iconSlot: 3 };
+  value.battler.quotes.battleStart = { lines: [{ text: "開始！", iconSlot: 3 , opponentEno:null}] };
   const snapshot = buildBattlePresentationSnapshot(value, "first");
   const expected = structuredClone(snapshot);
   value.battler.defaultIconUrl = "changed.png";
@@ -64,8 +64,8 @@ test("later edits, slot deletion and quote replacement cannot change an existing
   value.battler.iconSlots[2] = "changed-slot.png";
   assert.deepEqual(snapshot, expected);
   value.battler.iconSlots.splice(2, 1);
-  value.battler.quotes.battleStart.iconSlot = null;
-  value.battler.quotes.battleStart.text = "変更";
+  value.battler.quotes.battleStart.lines[0].iconSlot = null;
+  value.battler.quotes.battleStart.lines[0].text = "変更";
   value.battler.quotes.turn = {};
   assert.deepEqual(snapshot, expected);
 });

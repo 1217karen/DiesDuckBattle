@@ -1,4 +1,4 @@
-import { createEmptyPlayerPresentation, normalizePlayerPresentation } from "./playerPresentationModel.js";
+import { createEmptyPlayerPresentation, normalizePlayerPresentation, presentationForPersistence } from "./playerPresentationModel.js";
 
 export const PLAYER_PRESENTATION_STORAGE_KEY = "diesDuckBattle:player-presentation:v1";
 
@@ -18,7 +18,7 @@ export function createPlayerPresentationStorage(storage) {
   }
 
   function save(presentation) {
-    const normalized = normalizePlayerPresentation(presentation);
+    const normalized = presentationForPersistence(normalizePlayerPresentation(presentation));
     try { target().setItem(PLAYER_PRESENTATION_STORAGE_KEY, JSON.stringify(normalized)); }
     catch { return { ok: false, status: "storage-error" }; }
     return { ok: true, status: "saved", presentation: normalized };

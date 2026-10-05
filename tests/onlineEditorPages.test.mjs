@@ -1,3 +1,4 @@
+import { createQuoteEnoLookup } from "../js/quoteEnoLookup.js";
 import { presentCSkill } from "../js/cSkillPresentation.js";
 import { createQuoteToolbar } from "../js/quoteRichTextToolbar.js";
 import { hasName } from "../js/nameValidation.js";
@@ -8,7 +9,7 @@ import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 import { createAuthController } from "../js/authController.js";
 import { createOnlineEditController } from "../js/onlineEditController.js";
-import { createEmptyDuckProfile, createEmptyPlayerPresentation, getQuoteIconUrlCandidates } from "../js/playerPresentationModel.js";
+import { createEmptyDuckProfile, createEmptyPlayerPresentation, getQuoteIconUrlCandidates, presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine } from "../js/playerPresentationModel.js";
 import { createEmptyPlayerBuild, createEmptyDuck } from "../js/playerBuildModel.js";
 import { IMAGE_LIMITS, createImageValidation, imageValidationSummary } from "../js/characterImageValidation.js";
 import { encodeOnlinePlayer } from "../js/onlinePlayerDto.js";
@@ -60,7 +61,7 @@ async function characterScreen() {
   const controller = { snapshot: () => ({ canSave: true, canEdit: true }),
     edit(patch) { latest = { ...latest, ...structuredClone(patch) }; },
     async save() { saved = structuredClone(latest); return { ok: true }; } };
-  const context = { finishPageLoad() {}, requireLoginPage: async () => {}, presentCSkill, hasName, FIXED_IMAGES, setImageFromCandidates, getQuoteIconUrlCandidates, createQuoteToolbar, document, structuredClone, createEmptyDuckProfile, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
+  const context = { presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine, createQuoteEnoLookup, getSupabaseClient: async()=>({}), createOnlineProfileService: ()=>({getProfile:async()=>({ok:false,status:"profile-not-found"})}), finishPageLoad() {}, requireLoginPage: async () => {}, presentCSkill, hasName, FIXED_IMAGES, setImageFromCandidates, getQuoteIconUrlCandidates, createQuoteToolbar, document, structuredClone, createEmptyDuckProfile, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
     Option: function (name, value) { const el = new Element("option"); el.textContent = name; el.value = value; return el; },
     createIconPicker: () => ({ open(args) { selectedCallback = args.select; }, close() { selectedCallback = null; } }),
     mountOnlineEditor: async args => { assert.deepEqual(Array.from(args.sections), ["presentation", "battlerName"]); hooks = args; latest = structuredClone(data); args.hydrate(data); args.onState({ canSave: true, canEdit: true }); return controller; } };
@@ -87,7 +88,7 @@ test("actual character handlers preserve full DTO, quotes, ten icon slots, detac
   assert.deepEqual(page.latest().presentation, beforeRename);
   await page.save();
   const saved = page.saved(); assert.deepEqual(saved.build, page.data.build); assert.deepEqual(saved.publicSettings, page.data.publicSettings); assert.equal(saved.battlerName, "変更後のバトラー");
-  assert.equal(saved.presentation.battler.iconSlots[9], slot10.value); assert.deepEqual(saved.presentation.battler.quotes.battleStart, { text: quote.value, iconSlot: 10 });
+  assert.equal(saved.presentation.battler.iconSlots[9], slot10.value); assert.deepEqual(saved.presentation.battler.quotes.battleStart, { lines:[{ text: quote.value, iconSlot: 10, opponentEno:null }] });
   assert.equal(saved.presentation.ducks.orphan.iconUrl, orphanInput.value);
   page.hydrate(saved); assert.equal(page.get("battler-name").value, "変更後のバトラー"); assert.equal(page.all().find(el => el.tagName === "input" && el.type === "text").value, "オンラインセリフ");
   assert.equal(page.all().find(el => el.className === "quote-picker").title, "追加アイコン 10");
@@ -99,32 +100,32 @@ test("all quote rows use one-line inputs, six inline controls and live slot/defa
   data.presentation=createEmptyPlayerPresentation();
   data.presentation.battler.defaultIconUrl="default.png";
   data.presentation.battler.iconSlots[2]="third.png";
-  data.presentation.battler.quotes.battleStart={text:"  雷アタック  ",iconSlot:null};
-  data.presentation.battler.quotes.skill.A.iconSlot=4; // Empty slot retains its ID, shows default.
+  data.presentation.battler.quotes.battleStart={ lines: [{text:"  雷アタック  ",iconSlot:null, opponentEno:null}] };
+  data.presentation.battler.quotes.skill.A.lines[0].iconSlot=4; // Empty slot retains its ID, shows default.
   page.hydrate(data);
   const rows=page.all().filter(e=>e.className==="quote-row");assert.equal(rows.length,14);
   assert.ok(rows.every(row=>!row.children.some(e=>e.tagName==="textarea")));
   for(const row of rows){
-    const [caption,picker,editor]=row.children;assert.equal(caption.className,"quote-label");assert.equal(picker.textContent,"");
+    const [caption,toggle,picker,editor]=row.children;assert.equal(caption.className,"quote-label");assert.equal(picker.textContent,"");
     assert.equal(picker.children[0].tagName,"img");assert.equal(picker.children[0].src,"default.png");
-    assert.equal(editor.className,"quote-editor");const [input,toolbar]=editor.children;
+    assert.equal(editor.className,"quote-editor");const input=editor.children[0].children[0],toolbar=editor.children[1].children[0];
     assert.equal(input.tagName,"input");assert.equal(input.type,"text");assert.equal(toolbar.className,"quote-toolbar");
     assert.deepEqual(toolbar.children.map(e=>e.textContent),["B","I","U","rb","小","大"]);
   }
-  const [caption,picker,editor]=rows[0].children,input=editor.children[0];assert.equal(picker.title,"デフォルトアイコン");
-  input.selectionStart=2;input.selectionEnd=3;editor.children[1].children[3].handlers.click();
-  assert.equal(page.latest().presentation.battler.quotes.battleStart.text,"  <rb>雷</rb><rt>ルビ</rt>アタック  ");
+  const [caption,toggle,picker,editor]=rows[0].children,input=editor.children[0].children[0];assert.equal(picker.title,"デフォルトアイコン");
+  input.selectionStart=2;input.selectionEnd=3;editor.children[1].children[0].children[3].handlers.click();
+  assert.equal(page.latest().presentation.battler.quotes.battleStart.lines[0].text,"  <rb>雷</rb><rt>ルビ</rt>アタック  ");
   assert.equal(input.value.slice(input.selectionStart,input.selectionEnd),"ルビ");
   picker.handlers.click();page.pick(3);assert.equal(picker.title,"追加アイコン 3");assert.equal(picker.children[0].src,"third.png");
-  assert.equal(page.latest().presentation.battler.quotes.battleStart.iconSlot,3);
+  assert.equal(page.latest().presentation.battler.quotes.battleStart.lines[0].iconSlot,3);
   const imageInputs=page.all().filter(e=>e.tagName==="input"&&e.type==="url");
   const third=imageInputs[4];third.value="new-third.png";third.handlers.input();assert.equal(picker.children[0].src,"new-third.png");
   picker.children[0].onerror();assert.equal(picker.children[0].src,"default.png");picker.children[0].onerror();assert.equal(picker.children[0].src,FIXED_IMAGES.battlerIcon);
-  third.value="";third.handlers.input();assert.equal(picker.children[0].src,"default.png");assert.equal(page.latest().presentation.battler.quotes.battleStart.iconSlot,3);
+  third.value="";third.handlers.input();assert.equal(picker.children[0].src,"default.png");assert.equal(page.latest().presentation.battler.quotes.battleStart.lines[0].iconSlot,3);
   imageInputs[1].value="new-default.png";imageInputs[1].handlers.input();assert.equal(picker.children[0].src,"new-default.png");
   picker.handlers.click();page.pick(null);assert.equal(picker.title,"デフォルトアイコン");assert.equal(picker.children[0].src,"new-default.png");
-  const quote=page.latest().presentation.battler.quotes.battleStart;assert.deepEqual(Object.keys(quote),["text","iconSlot"]);
-  assert.equal(quote.iconSlot,null);assert.equal(page.latest().presentation.schemaVersion,2);
+  const quote=page.latest().presentation.battler.quotes.battleStart.lines[0];assert.deepEqual(Object.keys(quote),["text","iconSlot","opponentEno"]);
+  assert.equal(quote.iconSlot,null);assert.equal(page.latest().presentation.schemaVersion,3);
 });
 test("late image callback from prior account cannot block the newly hydrated account", async () => {
   const page = await characterScreen(), old = page.all().find(el => el.tagName === "img" && el.onerror);
@@ -340,7 +341,7 @@ test('flavor stats add up to two, preserve empty/unlimited labels and values 0..
 test('profile edits preserve all images, quotes, theme, featured battle and other Duck data',async()=>{
  const page=await profileScreen(),data=structuredClone(page.latest()),id=data.build.ducks[0].id;
  data.presentation.battler.standingImageUrl='standing.png';data.presentation.battler.defaultIconUrl='default.png';data.presentation.battler.iconSlots[3]='slot.png';
- data.presentation.battler.quotes.battleStart.text=' quote ';
+ data.presentation.battler.quotes.battleStart.lines[0].text=' quote ';
  data.presentation.ducks[id]={iconUrl:'duck.png',cutinUrl:'cutin.png',profile:createEmptyDuckProfile()};
  page.hydrate(data);
  for(const image of page.all().filter(e=>e.tagName==='img'&&e.onload)){image.naturalWidth=20;image.naturalHeight=20;image.onload();}
@@ -350,4 +351,46 @@ test('profile edits preserve all images, quotes, theme, featured battle and othe
  const url=page.all().find(e=>e.type==='url'&&e.value==='duck.png');inputValue(url,'bad.png');
  const bad=page.all().find(e=>e.tagName==='img'&&e.src==='bad.png');bad.naturalWidth=999;bad.naturalHeight=999;bad.onload();
  assert.equal(page.get('save').disabled,true);inputValue(aria(duckRoot(page),'属性1'),'a');assert.equal(page.get('save').disabled,true);
+});
+
+const walkQuote = el => [el,...el.children.flatMap(walkQuote)];
+const quoteParts = row => ({ action:row.children[1],picker:row.children[2],input:row.children[3].children[0].children[0],
+  remove:row.children[3].children[0].children[1],controls:row.children[3].children[1],
+  eno:walkQuote(row).find(e=>e.className==='quote-eno')?.children[1] });
+test('v3 timing UI starts closed, opens once, preserves drafts, inserts after row, deletes and prunes only exact empty text',async()=>{
+ const page=await characterScreen(),data=structuredClone(page.data);data.presentation=createEmptyPlayerPresentation();page.hydrate(data);
+ const block=page.all().find(e=>e.className==='quote-timing-block'),primary=quoteParts(block.children[0]),extras=block.children[1];
+ assert.equal(primary.remove,undefined);assert.equal(primary.eno,undefined);assert.equal(primary.controls.children[0].children.length,6);
+ assert.equal(extras.hidden,true);assert.equal(primary.action.textContent,'▶');assert.equal(primary.action.className,'quote-toggle');
+ primary.action.handlers.click();assert.equal(extras.hidden,false);assert.equal(extras.children.length,1);assert.match(block.className,/is-open/);
+ let second=quoteParts(extras.children[0]);assert.equal(second.controls.children[0].children.length,6);assert.ok(second.eno);
+ second.input.value='second';second.input.handlers.input();second.eno.value='15';second.eno.handlers.input();second.picker.handlers.click();page.pick(7);
+ primary.action.handlers.click();assert.equal(extras.hidden,true);assert.equal(second.input.value,'second');assert.equal(second.eno.value,'15');
+ assert.match(primary.action.className,/has-extras/);primary.action.handlers.click();assert.equal(extras.children.length,1);assert.equal(second.picker.title,'追加アイコン 7');
+ second.action.handlers.click();let third=quoteParts(extras.children[1]);third.input.value='third';third.input.handlers.input();
+ second=quoteParts(extras.children[0]);second.action.handlers.click();assert.equal(extras.children.length,3);
+ assert.deepEqual(extras.children.map(r=>quoteParts(r).input.value),['second','','third']);
+ assert.equal(page.latest().presentation.battler.quotes.battleStart.lines.length,3);
+ let middle=quoteParts(extras.children[1]);middle.input.value=' ';middle.input.handlers.input();assert.equal(page.latest().presentation.battler.quotes.battleStart.lines.length,4);
+ middle.input.value='';middle.input.handlers.input();assert.equal(page.latest().presentation.battler.quotes.battleStart.lines.length,3);
+ middle.remove.handlers.click();assert.deepEqual(extras.children.map(r=>quoteParts(r).input.value),['second','third']);
+ assert.deepEqual(page.latest().presentation.battler.quotes.battleStart.lines[1],{text:'second',iconSlot:7,opponentEno:'15'});
+ primary.action.handlers.click();primary.action.handlers.click();assert.equal(extras.children.length,2);
+ const saved=structuredClone(page.latest());page.hydrate(saved);
+ const loaded=page.all().find(e=>e.className==='quote-timing-block'),toggle=quoteParts(loaded.children[0]).action;
+ assert.equal(loaded.children[1].hidden,true);assert.equal(toggle.textContent,'▶');assert.match(toggle.className,/has-extras/);
+ toggle.handlers.click();assert.equal(loaded.children[1].children.length,2);
+});
+test('v3 UI blocks invalid text and ENo, counts code points and tags, retains empty UI rows on close',async()=>{
+ const page=await characterScreen(),data=structuredClone(page.data);data.presentation=createEmptyPlayerPresentation();page.hydrate(data);
+ const block=page.all().find(e=>e.className==='quote-timing-block'),primary=quoteParts(block.children[0]),extras=block.children[1];
+ primary.input.value='😀'.repeat(200);primary.input.handlers.input();assert.equal(primary.input.attributes['aria-invalid'],'false');assert.equal(page.get('save').disabled,false);
+ primary.input.value='<b>'+'a'.repeat(194)+'</b>';primary.input.handlers.input();assert.equal(primary.input.attributes['aria-invalid'],'true');assert.equal(page.get('save').disabled,true);
+ await page.save();assert.equal(page.saved(),undefined);assert.match(page.get('profile-validation-message').textContent,/200/);
+ primary.input.value='';primary.input.handlers.input();primary.action.handlers.click();const second=quoteParts(extras.children[0]);
+ second.eno.value='01';second.eno.handlers.input();assert.equal(second.eno.attributes['aria-invalid'],'true');assert.equal(page.get('save').disabled,true);
+ second.eno.value='9223372036854775807';second.eno.handlers.input();assert.equal(second.eno.attributes['aria-invalid'],'false');assert.equal(page.get('save').disabled,false);
+ primary.action.handlers.click();primary.action.handlers.click();assert.equal(extras.children.length,1);assert.equal(second.eno.value,'9223372036854775807');
+ await page.save();assert.equal(page.saved().presentation.battler.quotes.battleStart.lines.length,1);
+ page.hydrate(page.saved());const reloaded=page.all().find(e=>e.className==='quote-timing-block');assert.equal(quoteParts(reloaded.children[0]).action.className,'quote-toggle');
 });

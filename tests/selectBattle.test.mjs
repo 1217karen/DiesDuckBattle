@@ -34,9 +34,9 @@ test("opponent selection immediately uses its public Duck, preserves P1 and deta
   assert.equal(battleStartStatus(state).canStart,true);
   assert.equal(state.opponent.publicDuckId,opponent.publicDuckId);
   opponent.build.ducks[0].stats.AT=999;
-  opponent.presentation.battler.quotes.battleStart.text="mutated";
+  opponent.presentation.battler.quotes.battleStart.lines[0].text="mutated";
   assert.notEqual(state.opponent.build.ducks[0].stats.AT,999);
-  assert.notEqual(state.opponent.presentation.battler.quotes.battleStart.text,"mutated");
+  assert.notEqual(state.opponent.presentation.battler.quotes.battleStart.lines[0].text,"mutated");
   const next=await getOpponent((await listOpponents())[0].id);
   state=selectOpponent(state,next);
   assert.equal(state.opponent.publicDuckId,next.publicDuckId);

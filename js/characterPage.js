@@ -3,13 +3,19 @@ import { presentCSkill } from "./cSkillPresentation.js";
 import { hasName } from "./nameValidation.js";
 import { FIXED_IMAGES, setImageFromCandidates } from "./fixedImages.js";
 import { mountOnlineEditor } from "./onlineEditor.js";
-import { createEmptyDuckProfile, createEmptyPlayerPresentation, getQuoteIconUrlCandidates } from "./playerPresentationModel.js";
+import { createEmptyDuckProfile, createEmptyPlayerPresentation, getQuoteIconUrlCandidates, presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine } from "./playerPresentationModel.js";
 import { createQuoteToolbar } from "./quoteRichTextToolbar.js";
 import { createIconPicker } from "./iconPicker.js";
 import { IMAGE_LIMITS, createImageValidation, imageValidationSummary } from "./characterImageValidation.js";
 import { requireLoginPage } from "./authPageGuard.js";
 
+import { getSupabaseClient } from "./authRuntime.js";
+import { createOnlineProfileService } from "./onlineProfileService.js";
+import { createQuoteEnoLookup } from "./quoteEnoLookup.js";
+
 await requireLoginPage();
+const lookupProfile = async eno => createOnlineProfileService(await getSupabaseClient()).getProfile(eno);
+const quoteLookups = new Set();
 
 const quoteGroups = [
   { title: "戦闘開始", rows: [["戦闘開始", ["battleStart"]]] },
@@ -40,17 +46,24 @@ function profileValidationMessage() {
   return "";
 }
 
+function quoteValidationMessage() {
+  for (const path of QUOTE_PATHS) for (const line of quoteAt(path).lines) {
+    if ([...line.text].length > QUOTE_TEXT_MAX) return "セリフは装飾タグ込み200文字まで入力できます。";
+    if (line.opponentEno !== null && !isQuoteEno(line.opponentEno)) return "ENoは先頭に0のない正整数（9223372036854775807以下）で入力してください。";
+  }
+  return "";
+}
 function updateValidation() {
   const summary = imageValidationSummary(imageStates.values());
   const validName = hasName(battlerNameInput.value);
   battlerNameInput.setAttribute("aria-invalid", String(!validName));
-  const profileError = profileValidationMessage();
+  const profileError = profileValidationMessage() || quoteValidationMessage();
   saveButton.disabled = !validName || !summary.canSave || !!profileError || !onlineState?.canSave;
   document.querySelector("#profile-validation-message").textContent = profileError;
   validationMessage.textContent = validName ? summary.message : "バトラー名を入力してください（空白のみは使用できません）。";
 }
 
-function setDirty() { online?.edit({ presentation }); }
+function setDirty() { online?.edit({ presentation: presentationForPersistence(presentation) }); }
 function quoteAt(path) { return path.reduce((value, key) => value[key], presentation.battler.quotes); }
 function pickerLabel(slot) {
   return slot === null ? "デフォルトアイコン" : `追加アイコン ${slot}`;
@@ -143,12 +156,11 @@ function renderBattlerImages() {
 
 function refreshQuoteIcons() {
   document.querySelectorAll(".quote-picker").forEach(button => {
-    updateQuoteIcon(button, button.dataset.path.split("."));
+    updateQuoteIcon(button, button.quoteLine);
   });
 }
 
-function updateQuoteIcon(button, path) {
-  const quote = quoteAt(path);
+function updateQuoteIcon(button, quote) {
   button.title = pickerLabel(quote.iconSlot); button.setAttribute("aria-label", button.title);
   const image = document.createElement("img"); image.alt = "";
   setImageFromCandidates(image, getQuoteIconUrlCandidates(presentation, quote), FIXED_IMAGES.battlerIcon);
@@ -156,22 +168,92 @@ function updateQuoteIcon(button, path) {
 }
 
 function renderQuotes() {
+  for (const lookup of quoteLookups) lookup.dispose();
+  quoteLookups.clear();
   const target = document.querySelector("#quotes"); target.replaceChildren();
   for (const group of quoteGroups) {
     const card = document.createElement("div"); card.className = "card quote-group";
     const heading = document.createElement("h3"); heading.textContent = group.title; card.append(heading);
     for (const [label, path] of group.rows) {
-      const initialValue = quoteAt(path);
-      const row = document.createElement("div"); row.className = "quote-row";
-      const caption = document.createElement("span"); caption.className = "quote-label"; caption.textContent = label;
-      const button = document.createElement("button"); button.type = "button"; button.className = "quote-picker"; button.dataset.path = path.join("."); updateQuoteIcon(button, path);
-      button.addEventListener("click", () => picker.open({ defaultIconUrl:presentation.battler.defaultIconUrl, iconSlots:presentation.battler.iconSlots, selectedSlot:quoteAt(path).iconSlot, select:slot => { quoteAt(path).iconSlot = slot; updateQuoteIcon(button, path); setDirty(); } }));
-      const input = document.createElement("input"); input.type = "text"; input.value = initialValue.text; input.placeholder = "セリフを入力"; input.setAttribute("aria-label", `${group.title} ${label}のセリフ`);
-      const changeText = value => { quoteAt(path).text = value; setDirty(); };
-      input.addEventListener("input", () => changeText(input.value));
-      const editor = document.createElement("div"); editor.className = "quote-editor";
-      editor.append(input, createQuoteToolbar(input, changeText, document));
-      row.append(caption, button, editor); card.append(row);
+      const timing = quoteAt(path);
+      const block = document.createElement("div"); block.className = "quote-timing-block";
+      const extras = document.createElement("div"); extras.className = "quote-extras"; extras.hidden = true;
+      extras.id = "quote-extras-" + path.join("-");
+      const toggle = document.createElement("button"); toggle.type = "button";
+      toggle.setAttribute("aria-controls", extras.id);
+      toggle.setAttribute("aria-label", group.title + " " + label + "の追加セリフ");
+      const sync = () => {
+        toggle.textContent = extras.hidden ? "▶" : "▼";
+        toggle.className = "quote-toggle" + (timing.lines.slice(1).some(line => line.text !== "") ? " has-extras" : "");
+        toggle.setAttribute("aria-expanded", String(!extras.hidden));
+        block.className = "quote-timing-block" + (extras.hidden ? "" : " is-open");
+      };
+      const rowLookups = new Set();
+      const changed = () => { sync(); setDirty(); updateValidation(); };
+      const makeRow = (line, primary) => {
+        const row = document.createElement("div"); row.className = "quote-row";
+        const caption = document.createElement("span"); caption.className = "quote-label"; caption.textContent = primary ? label : "";
+        const action = primary ? toggle : document.createElement("button");
+        if (!primary) {
+          action.type = "button"; action.className = "quote-add"; action.textContent = "＋";
+          action.setAttribute("aria-label", "このセリフの直後に追加");
+          action.addEventListener("click", () => { timing.lines.splice(timing.lines.indexOf(line) + 1, 0, createEmptyQuoteLine()); renderExtras(); changed(); });
+        }
+        const button = document.createElement("button"); button.type = "button"; button.className = "quote-picker";
+        button.quoteLine = line; updateQuoteIcon(button, line);
+        button.addEventListener("click", () => picker.open({ defaultIconUrl:presentation.battler.defaultIconUrl, iconSlots:presentation.battler.iconSlots, selectedSlot:line.iconSlot,
+          select:slot => { line.iconSlot = slot; updateQuoteIcon(button, line); changed(); } }));
+        const input = document.createElement("input"); input.type = "text"; input.value = line.text; input.placeholder = "セリフを入力";
+        input.setAttribute("aria-label", group.title + " " + label + "のセリフ");
+        const error = document.createElement("span"); error.className = "quote-error"; error.setAttribute("role", "status");
+        const validate = () => {
+          const invalid = [...line.text].length > QUOTE_TEXT_MAX;
+          input.setAttribute("aria-invalid", String(invalid)); error.textContent = invalid ? "装飾タグ込み200文字まで入力できます。" : "";
+        };
+        const changeText = value => { line.text = value; validate(); changed(); };
+        input.addEventListener("input", () => changeText(input.value));
+        const editor = document.createElement("div"); editor.className = "quote-editor";
+        const controls = document.createElement("div"); controls.className = "quote-controls";
+        controls.append(createQuoteToolbar(input, changeText, document));
+        const textRow = document.createElement("div"); textRow.className = "quote-text-row"; textRow.append(input);
+        if (!primary) {
+          const remove = document.createElement("button"); remove.type = "button"; remove.className = "quote-remove"; remove.textContent = "×";
+          remove.setAttribute("aria-label", "この追加セリフを削除");
+          remove.addEventListener("click", () => { timing.lines.splice(timing.lines.indexOf(line), 1); renderExtras(); changed(); toggle.focus(); });
+          textRow.append(remove);
+          const enoLabel = document.createElement("label"); enoLabel.className = "quote-eno"; enoLabel.append(document.createTextNode("ENo指定"));
+          const eno = document.createElement("input"); eno.type = "text"; eno.inputMode = "numeric"; eno.value = line.opponentEno ?? "";
+          eno.setAttribute("aria-label", group.title + " " + label + "の対象ENo");
+          const status = document.createElement("span"); status.className = "quote-eno-status"; status.setAttribute("role", "status");
+          const lookup = createQuoteEnoLookup(lookupProfile, message => { status.textContent = message; });
+          quoteLookups.add(lookup); rowLookups.add(lookup);
+          const updateEno = () => {
+            line.opponentEno = eno.value === "" ? null : eno.value;
+            eno.setAttribute("aria-invalid", String(line.opponentEno !== null && !isQuoteEno(line.opponentEno)));
+            lookup.update(eno.value);
+          };
+          eno.addEventListener("input", () => { updateEno(); changed(); });
+          updateEno(); enoLabel.append(eno); controls.append(enoLabel, status);
+        }
+        validate(); editor.append(textRow, controls, error); row.append(caption, action, button, editor); return row;
+      };
+      const renderExtras = () => {
+        for (const lookup of rowLookups) { lookup.dispose(); quoteLookups.delete(lookup); }
+        rowLookups.clear(); extras.replaceChildren();
+        for (const line of timing.lines.slice(1)) extras.append(makeRow(line, false));
+        if (timing.lines.length === 1) {
+          const add = document.createElement("button"); add.type = "button"; add.textContent = "＋";
+          add.setAttribute("aria-label", "追加セリフを作成");
+          add.addEventListener("click", () => { timing.lines.push(createEmptyQuoteLine()); renderExtras(); changed(); });
+          extras.append(add);
+        }
+      };
+      toggle.addEventListener("click", () => {
+        extras.hidden = !extras.hidden;
+        if (!extras.hidden && timing.lines.length === 1) { timing.lines.push(createEmptyQuoteLine()); renderExtras(); }
+        sync();
+      });
+      block.append(makeRow(timing.lines[0], true), extras); renderExtras(); sync(); card.append(block);
     }
     target.append(card);
   }
@@ -316,14 +398,17 @@ function renderDuckSelect() {
 }
 
 saveButton.addEventListener("click", async () => {
-  if (!hasName(battlerNameInput.value) || !online?.snapshot().canSave || !imageValidationSummary(imageStates.values()).canSave || profileValidationMessage()) { updateValidation(); return; }
-  await online.save();
+  if (!hasName(battlerNameInput.value) || !online?.snapshot().canSave || !imageValidationSummary(imageStates.values()).canSave || profileValidationMessage() || quoteValidationMessage()) { updateValidation(); return; }
+  const result = await online.save();
+  if (result?.ok) { presentation = presentationForPersistence(presentation); renderQuotes(); updateValidation(); }
 });
 
 online = await mountOnlineEditor({
   sections: ["presentation", "battlerName"],
   hydrate(data) {
     dataVersion++;
+    for (const lookup of quoteLookups) lookup.dispose();
+    quoteLookups.clear();
     battlerNameInput.value = data?.battlerName ?? "";
     picker.close(); imageStates.clear(); duckEditors.clear(); selectedDuckId = "";
     presentation = data ? structuredClone(data.presentation) : createEmptyPlayerPresentation();
