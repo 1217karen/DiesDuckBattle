@@ -3,6 +3,7 @@
   color-scheme: light;
   --bg: #DCEEF3;
   --panel: #FFFFFF;
+  --shell-surface: color-mix(in srgb, var(--panel) 95%, transparent);
   --line: #B7CDD5;
   --text: #20282C;
   --muted: #66777E;
@@ -25,7 +26,7 @@
   --accent: #E0C45A;
   --warn: #E28065;
   --on-accent: var(--bg);
-  --theme-background-image: none;
+  --theme-background-image: url("../img/result_BG_dark.png");
 }
 
 body {

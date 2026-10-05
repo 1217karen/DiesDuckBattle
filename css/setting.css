@@ -140,7 +140,7 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
 
 .setting-shell {
   min-height: calc(100svh - var(--common-menu-height, 52px));
-  background: var(--panel);
+  background: var(--shell-surface);
   box-shadow: 0 0 28px #00000018;
 }
 .card { box-shadow: 0 2px 10px #0000000a; }
