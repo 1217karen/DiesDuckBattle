@@ -16,7 +16,7 @@ body {
 .profile-header h1 { font-size: clamp(1.4rem, 3vw, 2rem); margin: 0 0 16px; }
 .profile-grid { display: grid; gap: 24px; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-areas: "visual duck" "text text" "favorite favorite"; align-items: start; }
 .profile-card { min-width: 0; padding: 24px; border: 1px solid var(--profile-line); border-radius: 12px; background: var(--profile-panel); }
-.profile-card h2 { font-size: 1rem; letter-spacing: .08em; margin: 0 0 20px; }
+.profile-card h2 { font-size: 1rem; letter-spacing: .08em; margin: 0 0 20px; color: var(--profile-accent);}
 .battler-card { grid-area: visual; }
 .profile-text-card { grid-area: text; }
 .duck-card { grid-area: duck; }
