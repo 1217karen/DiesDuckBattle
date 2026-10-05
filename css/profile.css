@@ -13,7 +13,11 @@ body {
 .profile-page, .profile-page * { box-sizing: border-box; }
 .profile-page { max-width: 1360px; margin: 0 auto; padding: 36px 24px 64px; overflow-wrap: anywhere; }
 .profile-header { margin-bottom: 28px; border-bottom: 3px solid var(--profile-accent); }
-.profile-header h1 { font-size: clamp(1.4rem, 3vw, 2rem); margin: 0 0 16px; }
+.profile-header h1 {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  margin: 0 0 16px;
+  color: var(--profile-accent);
+}
 .profile-grid { display: grid; gap: 24px; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-areas: "visual duck" "text text" "favorite favorite"; align-items: start; }
 .profile-card { min-width: 0; padding: 24px; border: 1px solid var(--profile-line); border-radius: 12px; background: var(--profile-panel); }
 .profile-card h2 { font-size: 1rem; letter-spacing: .08em; margin: 0 0 20px; color: var(--profile-accent);}
