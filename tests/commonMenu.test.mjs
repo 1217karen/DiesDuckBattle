@@ -125,7 +125,7 @@ test("INDEX actual handlers hide pre-restore menus and manage modal close/focus/
   assert.equal(document.getElementById("home-game").hidden, false);
 });
 test("menu mount is restricted to requested pages and standalone auth shares the same form", async () => {
-  for (const page of ["index", "auth", "select", "setting", "character", "storage"]) {
+  for (const page of ["index", "auth", "select", "setting", "character", "storage", "profile"]) {
     const html = await readFile(new URL("../" + page + ".html", import.meta.url), "utf8");
     assert.match(html, /id="common-menu"/); assert.match(html, /js\/commonMenu.js/);
   }

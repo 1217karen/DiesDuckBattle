@@ -14,15 +14,19 @@ async function screen(page, { guardFirst = false } = {}) {
   let watch, state, accepted = true, fail = false, calls = 0, duringLogout = async () => {};
   class Element {
     constructor(tag = "div") { this.tagName = tag; this.children = []; this.handlers = {}; this.isConnected = true; }
-    setAttribute() {}
+    setAttribute(key, value) { this[key] = value; }
+    removeAttribute(key) { delete this[key]; }
     addEventListener(event, fn) { this.handlers[event] = fn; }
     replaceChildren(...children) { this.children.forEach(node => { node.isConnected = false; }); this.children = children; }
     append(node) { this.children.push(node); }
     focus() {}
   }
-  for (const selector of ["details", "summary", "nav", "[data-identity]", "[data-feedback]"]) nodes.set(selector, new Element());
+  for (const selector of ["details", "summary", "nav", "[data-identity]", "[data-feedback]", ".common-menu__nav", ".common-menu__account", "[data-account-menu]", "[data-account-arrow]", "account-summary"]) nodes.set(selector, new Element());
+  nodes.set(".common-menu__nav", nodes.get("details"));
+  nodes.get(".common-menu__nav").querySelector = () => nodes.get("summary");
+  nodes.get(".common-menu__account").querySelector = () => nodes.get("account-summary");
   const root = new Element();
-  root.querySelector = selector => selector === "nav button" ? nodes.get("nav").children.find(node => node.tagName === "button") : nodes.get(selector);
+  root.querySelector = selector => selector === "[data-account-menu] button" ? nodes.get("[data-account-menu]").children.find(node => node.tagName === "button") : nodes.get(selector);
   const document = {
     getElementById: () => root, createElement: tag => new Element(tag), addEventListener() {},
     body: { classList: { add: value => classes.add(value), remove: value => classes.delete(value) } },
@@ -42,7 +46,7 @@ async function screen(page, { guardFirst = false } = {}) {
   if (protectedPage && !guardFirst) await guard();
   return { auth, redirects, notifications, classes, state: () => state, calls: () => calls,
     feedback: () => nodes.get("[data-feedback]"),
-    click: () => root.querySelector("nav button").handlers.click(), external: () => watch(null),
+    click: () => root.querySelector("[data-account-menu] button").handlers.click(), external: () => watch(null),
     accept: value => { accepted = value; }, fail: value => { fail = value; },
     during: fn => { duringLogout = fn; } };
 }

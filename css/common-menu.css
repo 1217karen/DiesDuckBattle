@@ -4,25 +4,33 @@ body.has-common-menu { padding-top: var(--common-menu-height); }
 body.auth-required-pending > :not(.common-menu) { visibility: hidden !important; }
 body.auth-required-pending > :not(.common-menu) * { visibility: hidden !important; }
 .common-menu, .common-menu * { box-sizing: border-box; }
-.common-menu { position: fixed; inset: 0 0 auto; z-index: 100; height: var(--common-menu-height); background: #171b20; color: #eee; border-bottom: 1px solid #ffffff40; font: 14px/1.5 system-ui, sans-serif; text-align: left; }
+.common-menu { position: fixed; inset: 0 0 auto; z-index: 100; height: var(--common-menu-height); display:flex; justify-content:space-between; align-items:start; background: #171b20; color: #eee; border-bottom: 1px solid #ffffff40; font: 14px/1.5 system-ui, sans-serif; text-align: left; }
 .common-menu summary { display: flex; align-items: center; gap: 12px; height: var(--common-menu-height); padding: 8px 16px; cursor: pointer; list-style: none; }
 .common-menu summary::-webkit-details-marker { display:none; }
+.common-menu summary::marker { content:""; }
+.common-menu__nav { flex:0 0 auto; }
+.common-menu__account { min-width:0; max-width:calc(100% - 60px); margin-left:auto; }
+.common-menu__account summary { min-width:0; }
+.common-menu__account summary[aria-disabled="true"] { cursor:default; }
+.common-menu [data-account-arrow] { flex:0 0 auto; }
 .common-menu [data-identity] { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .common-menu__icon { font-size: 22px; }
-.common-menu details[open] { background: #171b20; box-shadow: 0 6px 20px #0008; max-height: 90dvh; overflow: auto; }
-.common-menu details[open] [data-identity] { white-space: normal; overflow-wrap: anywhere; }
-.common-menu nav { display: grid; gap: 4px; padding: 8px 16px 16px; }
-.common-menu nav a, .common-menu nav span, .common-menu nav button { display:block; margin:0; padding:10px 12px; border:1px solid #ffffff30; border-radius:6px; color:#eee; background:#ffffff08; text-decoration:none; font:inherit; text-align:left; }
+.common-menu nav, .common-menu__account-dropdown { position:absolute; top:var(--common-menu-height); background:#171b20; box-shadow:0 6px 20px #0008; width:min(360px, 100%); max-height:calc(90dvh - var(--common-menu-height)); overflow:auto; }
+.common-menu nav { left:0; }
+.common-menu__account-dropdown { right:0; }
+.common-menu nav, .common-menu [data-account-menu] { display: grid; gap: 4px; padding: 8px 16px 16px; }
+.common-menu nav a, .common-menu nav span, .common-menu [data-account-menu] a, .common-menu [data-account-menu] button { display:block; margin:0; padding:10px 12px; border:1px solid #ffffff30; border-radius:6px; color:#eee; background:#ffffff08; text-decoration:none; font:inherit; text-align:left; overflow-wrap:anywhere; }
 .common-menu nav span { color:#aaa; }
-.common-menu nav button { cursor:pointer; }
-.common-menu nav button:disabled { opacity:.5; }
+.common-menu [data-account-menu] button { cursor:pointer; }
+.common-menu [data-account-menu] button:disabled { opacity:.5; }
+.common-menu [data-account-menu] a:not([hidden]) + button { margin-top:8px; }
 .common-menu [data-feedback] { margin:0; padding:8px 16px; }
 .common-menu :focus-visible { outline:3px solid #ffcf60; outline-offset:-3px; }
 .common-menu [hidden] { display:none !important; }
 /* Reserve the bar outside SELECT's existing grid, including narrow screens. */
 body.page-select .screen { height:calc(100dvh - var(--common-menu-height)); }
 body.has-common-menu .home { min-height:calc(100svh - var(--common-menu-height)); }
-@media(max-width:480px) { .common-menu summary { gap:8px; padding:8px 10px; } .common-menu__label { font-size:12px; } }
+@media(max-width:480px) { .common-menu summary { gap:8px; padding:8px 10px; } .common-menu nav, .common-menu__account-dropdown { left:8px; right:8px; width:auto; } }
 
 /* Transient feedback stacks above the bottom edge without capturing input or focus. */
 .common-toast-container { position:fixed; z-index:200; bottom:16px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; gap:8px; width:min(92vw, 420px); pointer-events:none; }

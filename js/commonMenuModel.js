@@ -18,5 +18,8 @@ export function menuModel(state) {
     } else if (state.accounts.length > 1) identity = "複数ENo：" + state.enos.map(eno => "ENo." + eno).join(" / ") + "｜切り替えは今後実装";
     else identity = "ログイン中｜" + state.sessionMessage;
   }
-  return { identity, loggedIn, items: gameMenuItems.filter(item => !item.login || loggedIn) };
+  // Only confirmed account data may identify an owner profile. Display cache is not account selection.
+  const currentAccount = loggedIn && state.accountsResolved !== false && state.accounts.length === 1
+    && /^[1-9]\d*$/.test(String(state.accounts[0].eno)) ? state.accounts[0] : null;
+  return { identity, loggedIn, currentAccount, items: gameMenuItems.filter(item => !item.login || loggedIn) };
 }

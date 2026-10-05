@@ -27,15 +27,19 @@ function dom() {
   class Element {
     constructor(tag) { this.tagName = tag; this.textContent = ""; this.children = []; this.handlers = {}; this.replacements = 0; this.isConnected = true; }
     set innerHTML(_) { assert.fail("header must never be regenerated"); }
-    setAttribute() {}
+    setAttribute(key, value) { this[key] = value; }
+    removeAttribute(key) { delete this[key]; }
     addEventListener(event, fn) { this.handlers[event] = fn; }
     replaceChildren(...children) { this.replacements++; this.children = children; }
     append(node) { this.children.push(node); }
     focus() {}
   }
-  const nodes = new Map(["details", "summary", "nav", "[data-identity]", "[data-feedback]"].map(s => [s, new Element(s)]));
+  const nodes = new Map(["details", "summary", "nav", "[data-identity]", "[data-feedback]", ".common-menu__nav", ".common-menu__account", "[data-account-menu]", "[data-account-arrow]", "account-summary"].map(s => [s, new Element(s)]));
+  nodes.set(".common-menu__nav", nodes.get("details"));
+  nodes.get(".common-menu__nav").querySelector = () => nodes.get("summary");
+  nodes.get(".common-menu__account").querySelector = () => nodes.get("account-summary");
   const root = new Element("header");
-  root.querySelector = s => s === "nav button" ? nodes.get("nav").children.find(n => n.tagName === "button") : nodes.get(s);
+  root.querySelector = s => s === "[data-account-menu] button" ? nodes.get("[data-account-menu]").children.find(n => n.tagName === "button") : nodes.get(s);
   return { root, nodes, document: { getElementById: () => root, createElement: tag => new Element(tag), addEventListener() {} } };
 }
 for (const raw of [null, "{", "null", "[]", "{}", JSON.stringify({ ...signedCache, version: 2 }), JSON.stringify({ ...signedCache, loggedIn: "true" }), JSON.stringify({ ...signedCache, identity: 12 }), JSON.stringify({ ...signedCache, access_token: "secret" })]) {
@@ -169,7 +173,10 @@ test("every common-menu HTML has identical prebuilt shell and early cache bootst
     if (!html.includes('id="common-menu"')) continue;
     const header = html.match(/<header id="common-menu"[\s\S]*?<\/header>/)[0];
     expected ??= header; assert.equal(header, expected); count++;
-    assert.match(header, /<details><summary>/); assert.match(header, /<nav /);
+    assert.match(header, /<details class="common-menu__nav"><summary aria-label="ゲームメニューを開く">/);
+    assert.match(header, /<details class="common-menu__account">/);
+    assert.match(header, /data-account-menu/);
+    assert.doesNotMatch(header, /common-menu__label|>メニュー</); assert.match(header, /<nav /);
     assert.doesNotMatch(html, /ログイン状態を確認中…|auth-required-pending/);
     assert.ok(html.indexOf('src="js/menuDisplayCache.js"') < html.indexOf('src="js/commonMenu.js"'));
   }
