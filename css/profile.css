@@ -24,8 +24,16 @@ body {
 .battler-visual { display: flex; justify-content: center; align-items: flex-start; gap: 16px; }
 .battler-standing-wrap { min-width: 0; display: flex; justify-content: center; }
 .battler-standing { display: block; width: auto; height: auto; max-width: min(100%, 500px); max-height: 800px; }
-.profile-icon-rail { display: grid; grid-template-rows: repeat(5, 120px); align-self: flex-start; align-content: start; flex: 0 0 156px; gap: 14px; width: 156px; }
-.profile-icon-rail img { grid-row: var(--icon-position); justify-self: start; width: 120px; height: 120px; object-fit: contain; border-radius: 8px; }
+.profile-icon-rail { display: grid; grid-template-rows: repeat(5, 120px); align-self: center; align-content: start; flex: 0 0 156px; gap: 14px; width: 156px; }
+.profile-icon-rail img {
+  grid-row: var(--icon-position);
+  justify-self: start;
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  border: 1px solid var(--profile-line);
+  border-radius: 8px;
+}
 .profile-icon-rail img[data-icon-position="2"], .profile-icon-rail img[data-icon-position="4"] { justify-self: end; }
 .profile-icon-rail img[hidden] { display: none; }
 .skill-list { display: grid; gap: 16px; }
