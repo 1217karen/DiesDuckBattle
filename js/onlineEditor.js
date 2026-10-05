@@ -22,7 +22,7 @@ function confirmEdit(message) {
 }
 
 /** Browser wiring is shared; editors only hydrate and patch their own DTO sections. */
-export async function mountOnlineEditor({ sections, hydrate, onState = () => {} }) {
+export async function mountOnlineEditor({ sections, allowDuckPresentationDeletion = false, hydrate, onState = () => {} }) {
   const root = document.getElementById("online-edit-status"), editor = document.getElementById("editor");
   const save = document.getElementById("save"), loadMessage = document.getElementById("load-message");
   const node = (tag, text) => { const el = document.createElement(tag); el.textContent = text; return el; };
@@ -44,7 +44,7 @@ export async function mountOnlineEditor({ sections, hydrate, onState = () => {} 
   let controller, version = -1, stopLogout, authSubscription, knownUser;
   try {
     const client = await getSupabaseClient();
-    controller = createOnlineEditController({ storage: createOnlinePlayerStorage(client), sections,
+    controller = createOnlineEditController({ storage: createOnlinePlayerStorage(client), sections, allowDuckPresentationDeletion,
       confirm: confirmEdit, notify: showToast });
     controller.subscribe(state => {
       if (state.dataVersion !== version) {
@@ -67,6 +67,7 @@ export async function mountOnlineEditor({ sections, hydrate, onState = () => {} 
         const labels = { build: "戦闘設定", presentation: "表示設定", publicSettings: "公開アヒル", battlerName: "Battler名" };
         const changed = Object.keys(labels).filter(key => JSON.stringify(state.draft[key]) !== JSON.stringify(state.latest.data[key]));
         difference.textContent = changed.length ? `最新データと異なる項目：${changed.map(key => labels[key]).join("、")}。引継ぎ対象：${sections.map(key => labels[key]).join("、")}。` : "ドラフトとサーバーの最新データは同じ内容です。最新を開けば再保存は不要です。";
+        if (state.deletedDuckPresentationIds.length) difference.textContent += ` 表示設定は最新を保持し、削除対象Duck ${state.deletedDuckPresentationIds.length}件の表示設定・プロフィール情報のみ削除します。`;
         draftText.textContent = `ドラフト（読込時 revision ${state.base.revision}）\n${JSON.stringify(state.draft, null, 2)}`;
         serverText.textContent = `サーバー（revision ${state.latest.revision}）\n${JSON.stringify(state.latest.data, null, 2)}`;
       } else { draftText.textContent = ""; serverText.textContent = ""; details.open = false; }

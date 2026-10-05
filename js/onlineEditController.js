@@ -5,12 +5,14 @@ const sameScope = (a, b) => a?.authUserId === b?.authUserId && a?.account?.id ==
 const scopeErrors = new Set(["not-signed-in", "no-access", "selection-required", "forbidden", "session-changed"]);
 
 /** A full DTO stays in memory only. Page-specific edits never replace the other page's fields. */
-export function createOnlineEditController({ storage, sections, confirm = () => false, notify = () => {} }) {
+export function createOnlineEditController({ storage, sections, allowDuckPresentationDeletion = false, confirm = () => false, notify = () => {} }) {
   let generation = 0;
+  // Keep deletion intent across repeated conflicts without owning the entire presentation.
+  const deletedDuckPresentationIds = new Set();
   const listeners = new Set();
   let state = { base: null, draft: null, latest: null, dirty: false, busy: "", blocked: true,
     message: "オンライン設定を読み込んでいます…", status: "loading", dataVersion: 0 };
-  const snapshot = () => copy({ ...state, canEdit: !!state.draft && !state.busy && !state.blocked,
+  const snapshot = () => copy({ ...state, deletedDuckPresentationIds: [...deletedDuckPresentationIds], canEdit: !!state.draft && !state.busy && !state.blocked,
     canSave: !!state.draft && !state.busy && !state.blocked && !state.latest });
   const emit = () => listeners.forEach(listener => listener(snapshot()));
   const fail = result => {
@@ -18,11 +20,13 @@ export function createOnlineEditController({ storage, sections, confirm = () => 
   };
   function invalidate(message = "ログイン先が変わりました。旧アカウントの未保存変更は破棄されました。読み込み直してください。") {
     generation++;
+    deletedDuckPresentationIds.clear();
     state = { base: null, draft: null, latest: null, dirty: false, busy: "", blocked: true,
       status: "session-changed", message, dataVersion: state.dataVersion + 1 };
     emit();
   }
   function install(result, draft = result.data, dirty = false) {
+    if (!dirty) deletedDuckPresentationIds.clear();
     state.base = copy(result); state.draft = copy(draft); state.latest = null;
     state.dirty = dirty; state.blocked = false; state.status = "ready";
     state.message = dirty ? "最新データを基準に編集を引き継ぎました。内容を確認してから保存してください。" : "オンライン設定を読み込みました。";
@@ -57,10 +61,22 @@ export function createOnlineEditController({ storage, sections, confirm = () => 
       // In-flight initial loads have no base yet; invalidate those too on sign-out/user change.
       else if (!state.base && state.busy) invalidate("ログイン状態が変わりました。読み込み直してください。");
     },
-    edit(patch) {
+    edit(patch, { deleteDuckPresentationIds = [] } = {}) {
       if (!snapshot().canEdit) return false;
       if (Object.keys(patch).some(key => !sections.includes(key))) return false;
-      state.draft = { ...state.draft, ...copy(patch) }; state.dirty = true; emit(); return true;
+      if (!Array.isArray(deleteDuckPresentationIds)) return false;
+      if (deleteDuckPresentationIds.length && (!allowDuckPresentationDeletion || !sections.includes("build")
+        || !Array.isArray(patch.build?.ducks) || deleteDuckPresentationIds.some(id => typeof id !== "string"
+          || !state.draft.build.ducks.some(d => d.id === id) || patch.build.ducks.some(d => d.id === id)))) return false;
+      const draft = { ...state.draft, ...copy(patch) };
+      if (deleteDuckPresentationIds.length) {
+        draft.presentation = copy(state.draft.presentation);
+        for (const id of deleteDuckPresentationIds) {
+          delete draft.presentation.ducks[id];
+          deletedDuckPresentationIds.add(id);
+        }
+      }
+      state.draft = draft; state.dirty = true; emit(); return true;
     },
     async load() {
       if (state.busy) return { ok: false, status: "busy" };
@@ -93,6 +109,7 @@ export function createOnlineEditController({ storage, sections, confirm = () => 
         if (!result.ok) { scopeFailure(result); return result; }
         if (!sameScope(state.base, result)) { invalidate(); return onlineFailure("session-changed"); }
         state.base = copy(result); state.draft = copy(result.data); state.dirty = false;
+        deletedDuckPresentationIds.clear();
         state.status = "ready"; state.message = "";
         try { notify({ kind: "success", message: "保存しました。" }); } catch { /* Notification is not part of the save. */ }
         return result;
@@ -113,11 +130,14 @@ export function createOnlineEditController({ storage, sections, confirm = () => 
     async adoptLatest(keepEdits = false) {
       if (!state.latest || state.busy) return false;
       const question = keepEdits
-        ? "最新データへ、この画面の編集項目を引き継ぎます。同じ項目にある他の編集は置き換わります。比較内容を確認しましたか？（まだ保存しません）"
+        ? "最新データへ、この画面の編集項目を引き継ぎます。同じ項目にある他の編集は置き換わります。" +
+          (deletedDuckPresentationIds.size ? "表示設定は最新を保持し、削除したDuckの表示設定・プロフィール情報だけを削除します。" : "") +
+          "比較内容を確認しましたか？（まだ保存しません）"
         : "未保存変更を破棄して、確認したサーバーの最新データを開きますか？";
       if (!await ask(question)) return false;
       const result = state.latest, draft = copy(result.data);
       if (keepEdits) for (const key of sections) draft[key] = copy(state.draft[key]);
+      if (keepEdits) for (const id of deletedDuckPresentationIds) delete draft.presentation.ducks[id];
       install(result, draft, keepEdits); emit(); return true;
     },
     async canLeave() {

@@ -3,6 +3,7 @@ import { SKILL_NAME_MAX, SKILL_RUBY_MAX } from "./skillLabels.js";
 import { hasName, duckNameIssues } from "./nameValidation.js";
 import { effectSelectionFields } from "./effectSelectionCatalog.js";
 import { mountOnlineEditor } from "./onlineEditor.js";
+import { createEmptyDuckProfile } from "./playerPresentationModel.js";
 import { createSettingState, changeSetting, selectedDuck, selectedPublicDuckId, cBranches, createCStructure, duckSummary } from "./settingState.js";
 import { inspectBuildForSave, saveSectionSummary } from "./buildSaveInspection.js";
 import { DICE_FRAMES, getDiceFrame } from "./diceFrames.js";
@@ -134,6 +135,24 @@ function commit(action, redraw = true) {
 }
 const patchDuck = (patch, redraw = true) => commit({ type: "duck", patch }, redraw);
 const patchBattler = patch => commit({ type: "battler", patch });
+
+function hasDuckDisplayData(id) {
+  const display = displayPresentation?.ducks?.[id];
+  if (!display) return false;
+  if (display.iconUrl || display.cutinUrl) return true;
+  return Object.entries(createEmptyDuckProfile()).some(([key, empty]) =>
+    JSON.stringify(display.profile?.[key] ?? empty) !== JSON.stringify(empty));
+}
+
+function deleteSelectedDuck(id) {
+  if (!online?.snapshot().canEdit || selectedDuck(state)?.id !== id) return;
+  const next = changeSetting(state, { type: "delete" });
+  // One draft publication: build/public choice and the targeted display deletion.
+  if (!online.edit({ build: next.build, publicSettings: next.publicSettings }, { deleteDuckPresentationIds: [id] })) return;
+  state = next;
+  displayPresentation = online.snapshot().draft.presentation;
+  render();
+}
 
 // Catalog-driven normalized leaf editor: parameters stay separate from effect labels.
 function cField(box, text, id, items, current, onChange, placeholder) {
@@ -550,11 +569,13 @@ function renderDuck() {
   if (!state.publicSettings) publicButton.title = "公開用設定を読み込めないため変更できません";
   actions.append(publicButton, button("複製", () => commit({ type: "duplicate" })), button("削除", () => {
     const current = selectedDuck(state), displayName = current.name || "名前未設定のアヒル";
+    const displayWarning = hasDuckDisplayData(current.id)
+      ? "このアヒルに登録されているアイコン・カットイン・プロフィール情報も削除されます。\n\n" : "";
     if (selectedPublicDuckId(state) === current.id) {
       showDialog({ title: "公開中のアヒルを削除", confirmLabel: "削除する", message:
-        `「${displayName}」は現在、公開用アヒルに設定されています。\n\n削除すると公開用アヒルが未設定になり、他のプレイヤーから対戦相手として選択されなくなります。\n\n削除しますか？ 保存するまで確定しません。`,
-      onConfirm: () => commit({ type: "delete" }) });
-    } else confirmChange(`「${displayName}」を削除しますか？保存するまで確定しません。`, () => commit({ type: "delete" }));
+        `「${displayName}」は現在、公開用アヒルに設定されています。\n\n削除すると公開用アヒルが未設定になり、他のプレイヤーから対戦相手として選択されなくなります。\n\n${displayWarning}削除しますか？ 保存するまで確定しません。`,
+      onConfirm: () => deleteSelectedDuck(current.id) });
+    } else confirmChange(`「${displayName}」を削除しますか？\n\n${displayWarning}保存するまで確定しません。`, () => deleteSelectedDuck(current.id));
   }, "danger"));
   const identity = el("div", null, "duck-identity");
   const iconUrl = displayPresentation?.ducks?.[duck.id]?.iconUrl;
@@ -623,6 +644,7 @@ async function saveSettings(approveIncomplete = false) {
 $("save").addEventListener("click", () => saveSettings());
 online = await mountOnlineEditor({
   sections: ["build", "publicSettings"],
+  allowDuckPresentationDeletion: true,
   hydrate(data) {
     dataVersion++;
     displayPresentation = data?.presentation;

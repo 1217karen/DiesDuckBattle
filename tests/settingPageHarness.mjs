@@ -2,9 +2,9 @@ import { readFile } from "node:fs/promises";
 import { createEmptyPlayerPresentation } from "../js/playerPresentationModel.js";
 
 // Replace only the browser connection boundary. All production editor handlers/catalogs run unchanged.
-export async function loadSettingPage(build, onSave) {
+export async function loadSettingPage(build, onSave, mount) {
   const file = new URL("../js/settingPage.js", import.meta.url);
-  globalThis.__mountSettingForTest = async ({ hydrate, onState }) => {
+  globalThis.__mountSettingForTest = mount ?? (async ({ hydrate, onState }) => {
     let data = { build: structuredClone(build), presentation: createEmptyPlayerPresentation(),
       publicSettings: { schemaVersion: 1, publicDuckId: null }, battlerName: "mock DB name" };
     let dirty = false;
@@ -18,7 +18,7 @@ export async function loadSettingPage(build, onSave) {
       edit(patch) { data = { ...data, ...structuredClone(patch) }; dirty = true; emit(); },
       save() { onSave(structuredClone(data.build)); dirty = false; emit(); return { ok: true }; },
     };
-  };
+  });
   let source = await readFile(file, "utf8");
   source = source.replace('import { requireLoginPage } from "./authPageGuard.js";', 'const requireLoginPage = async () => {};');
   source = source.replace('import { mountOnlineEditor } from "./onlineEditor.js";', 'const mountOnlineEditor = globalThis.__mountSettingForTest;');
