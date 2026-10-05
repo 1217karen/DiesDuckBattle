@@ -31,11 +31,22 @@ battlerNameInput.addEventListener("input", () => { online?.edit({ battlerName: b
 const saveButton = document.querySelector("#save");
 const validationMessage = document.querySelector("#image-validation-message");
 
+function profileValidationMessage() {
+  for (const duck of ducks) {
+    const attributes = presentation.ducks[duck.id]?.profile.attributes ?? [];
+    const index = attributes.findIndex(value => [...value].length > 1);
+    if (index !== -1) return `${duck.name || "名前未設定のDuck"}の属性${index + 1}は1文字まで入力できます。`;
+  }
+  return "";
+}
+
 function updateValidation() {
   const summary = imageValidationSummary(imageStates.values());
   const validName = hasName(battlerNameInput.value);
   battlerNameInput.setAttribute("aria-invalid", String(!validName));
-  saveButton.disabled = !validName || !summary.canSave || !onlineState?.canSave;
+  const profileError = profileValidationMessage();
+  saveButton.disabled = !validName || !summary.canSave || !!profileError || !onlineState?.canSave;
+  document.querySelector("#profile-validation-message").textContent = profileError;
   validationMessage.textContent = validName ? summary.message : "バトラー名を入力してください（空白のみは使用できません）。";
 }
 
@@ -100,9 +111,33 @@ function renderBattlerImages() {
   standingCard.append(makeImageField({ label:"URL", value:presentation.battler.standingImageUrl, kind:"standing", previewClass:"standing", onInput:value => { presentation.battler.standingImageUrl = value; } }));
   const defaultCard = document.createElement("div"); defaultCard.className = "card"; defaultCard.innerHTML = "<h3>デフォルトアイコン</h3>";
   defaultCard.append(makeImageField({ label:"URL", value:presentation.battler.defaultIconUrl, onInput:value => { presentation.battler.defaultIconUrl = value; refreshQuoteIcons(); } }));
-  const slotsCard = document.createElement("div"); slotsCard.className = "card additional-icons"; slotsCard.innerHTML = "<h3>追加アイコン</h3><p class=\"muted\">セリフから参照する固定10枠です。</p>";
+  const slotsCard = document.createElement("div"); slotsCard.className = "card additional-icons"; slotsCard.innerHTML = "<h3>追加アイコン</h3><p class=\"muted\">セリフから参照する固定10枠です。プロフィールには最大4枠を選択できます。</p>";
   const grid = document.createElement("div"); grid.className = "icon-slots";
-  presentation.battler.iconSlots.forEach((value, index) => grid.append(makeImageField({ label:`${index + 1} URL`, value, compact:true, onInput:next => { presentation.battler.iconSlots[index] = next; refreshQuoteIcons(); } })));
+  const checkboxes = [];
+  const syncChecks = () => {
+    const selected = presentation.battler.profile.iconSlots;
+    for (const [index, checkbox] of checkboxes.entries()) {
+      checkbox.checked = selected.includes(index + 1);
+      checkbox.disabled = !checkbox.checked && selected.length >= 4;
+    }
+  };
+  presentation.battler.iconSlots.forEach((value, index) => {
+    const slot = index + 1;
+    const field = makeImageField({ label:`${slot} URL`, value, compact:true, onInput:next => { presentation.battler.iconSlots[index] = next; refreshQuoteIcons(); } });
+    const label = document.createElement("label"); label.className = "profile-icon-choice";
+    const checkbox = document.createElement("input"); checkbox.type = "checkbox";
+    checkbox.setAttribute("aria-label", `追加アイコン${slot}をプロフィールに表示`);
+    checkbox.addEventListener("change", () => {
+      const selected = new Set(presentation.battler.profile.iconSlots);
+      if (!checkbox.checked) selected.delete(slot);
+      else if (selected.size < 4) selected.add(slot);
+      presentation.battler.profile.iconSlots = [...selected].sort((a,b) => a-b);
+      syncChecks(); setDirty();
+    });
+    checkboxes.push(checkbox); label.append(checkbox, document.createTextNode("プロフィールに表示"));
+    field.append(label); grid.append(field);
+  });
+  syncChecks();
   slotsCard.append(grid); target.append(standingCard, defaultCard, slotsCard);
 }
 
@@ -142,6 +177,106 @@ function renderQuotes() {
   }
 }
 
+// Allocate only on edit: opening the page must not create absent Duck displays.
+function duckPresentation(id) {
+  return presentation.ducks[id] ??= { iconUrl: "", cutinUrl: "", profile: createEmptyDuckProfile() };
+}
+
+function profileTextEditor(labelText, value, onChange) {
+  const root = document.createElement("div"); root.className = "profile-text-editor";
+  const label = document.createElement("label"); label.append(document.createTextNode(labelText));
+  const input = document.createElement("textarea"); input.value = value; input.rows = 6;
+  input.setAttribute("aria-label", labelText);
+  const change = value => { onChange(value); setDirty(); };
+  input.addEventListener("input", () => change(input.value));
+  label.append(input);
+  root.append(label, createQuoteToolbar(input, change, document, { ariaLabel: "プロフィールの文字装飾" }));
+  return root;
+}
+
+function renderBattlerProfile() {
+  const target = document.querySelector("#battler-profile"); target.replaceChildren();
+  target.append(profileTextEditor("Battlerプロフィール本文", presentation.battler.profile.text,
+    value => { presentation.battler.profile.text = value; }));
+}
+
+function profileSelect(labelText, value, options, onChange) {
+  const label = document.createElement("label"); label.append(document.createTextNode(labelText));
+  const select = document.createElement("select"); select.setAttribute("aria-label", labelText);
+  for (const [key, caption] of options) select.append(new Option(caption, key));
+  select.value = value;
+  select.addEventListener("change", () => { onChange(select.value); setDirty(); });
+  label.append(select); return label;
+}
+
+function duckProfileEditor(duck) {
+  const id = duck.id;
+  const initial = presentation.ducks[id]?.profile ?? createEmptyDuckProfile();
+  const profile = () => duckPresentation(id).profile;
+  const root = document.createElement("section"); root.className = "duck-profile";
+  const heading = document.createElement("h3"); heading.textContent = "プロフィール";
+  const fields = document.createElement("div"); fields.className = "profile-fields";
+  fields.append(profileSelect("タイプ", initial.type ?? "", [
+    ["", "未設定"], ["attack", "アタック"], ["defense", "ディフェンス"], ["speed", "スピード"],
+    ["heal", "ヒール"], ["technical", "テクニカル"], ["normal", "ノーマル"]
+  ], value => { profile().type = value || null; }));
+  const attributes = document.createElement("div"); attributes.className = "profile-attributes";
+  initial.attributes.forEach((value, index) => {
+    const label = document.createElement("label"); label.append(document.createTextNode(`属性${index + 1}`));
+    const input = document.createElement("input"); input.type = "text"; input.value = value;
+    input.setAttribute("aria-label", `属性${index + 1}`);
+    const error = document.createElement("span"); error.className = "profile-field-error";
+    error.id = `attribute-error-${id}-${index}`;
+    input.setAttribute("aria-describedby", error.id);
+    const validate = () => {
+      const invalid = [...input.value].length > 1;
+      input.setAttribute("aria-invalid", String(invalid));
+      error.textContent = invalid ? "1文字まで入力できます。" : "";
+    };
+    input.addEventListener("input", () => {
+      profile().attributes[index] = input.value;
+      validate(); setDirty(); updateValidation();
+    });
+    validate(); label.append(input, error); attributes.append(label);
+  });
+  fields.append(attributes, profileSelect("ステータス表記", initial.statLabelPreset, [
+    ["default", "AT / DF / SP"], ["kanji", "攻撃 / 防御 / 速度"],
+    ["english", "Attack / Defense / Speed"], ["hiragana", "つよさ / かたさ / はやさ"]
+  ], value => { profile().statLabelPreset = value; }));
+  const flavor = document.createElement("div"); flavor.className = "profile-flavor";
+  const rows = document.createElement("div"); rows.className = "flavor-rows";
+  const add = document.createElement("button"); add.type = "button"; add.textContent = "＋ フレーバーステータス";
+  const renderRows = () => {
+    rows.replaceChildren();
+    const stats = presentation.ducks[id]?.profile.flavorStats ?? [];
+    stats.forEach((stat, index) => {
+      const row = document.createElement("div"); row.className = "flavor-row";
+      const label = document.createElement("label"); label.append(document.createTextNode("名前"));
+      const input = document.createElement("input"); input.type = "text"; input.value = stat.label;
+      input.setAttribute("aria-label", `フレーバーステータス${index + 1}の名前`);
+      input.addEventListener("input", () => { profile().flavorStats[index].label = input.value; setDirty(); });
+      label.append(input);
+      const value = profileSelect(`フレーバーステータス${index + 1}の値`, String(stat.value),
+        Array.from({ length: 7 }, (_, i) => [String(i), String(i)]), next => { profile().flavorStats[index].value = Number(next); });
+      const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "削除";
+      remove.setAttribute("aria-label", `フレーバーステータス${index + 1}を削除`);
+      remove.addEventListener("click", () => {
+        profile().flavorStats.splice(index, 1); renderRows(); setDirty(); add.focus();
+      });
+      row.append(label, value, remove); rows.append(row);
+    });
+    add.disabled = stats.length >= 2;
+  };
+  add.addEventListener("click", () => {
+    if (profile().flavorStats.length >= 2) return;
+    profile().flavorStats.push({ label: "", value: 0 }); renderRows(); setDirty();
+  });
+  renderRows(); flavor.append(rows, add);
+  root.append(heading, fields, flavor, profileTextEditor("Duckプロフィール本文", initial.text, value => { profile().text = value; }));
+  return root;
+}
+
+
 function renderDuckEditor() {
   const message = document.querySelector("#duck-message");
   message.textContent = selectedDuckId ? "" : "戦闘設定に保存済みのDuckがありません。";
@@ -158,7 +293,7 @@ function renderDuckSelect() {
   for (const duck of ducks) {
     const id = duck.id;
     const field = makeImageField({ label:`${duck.name || "名前未設定のDuck"} アイコンURL`, value:presentation.ducks[id]?.iconUrl ?? "", fallback:FIXED_IMAGES.duckIcon, previewClass:"duck-preview",
-      onInput:value => { presentation.ducks[id] = { ...(presentation.ducks[id] ?? { iconUrl: "", cutinUrl: "", profile: createEmptyDuckProfile() }), iconUrl:value }; } });
+      onInput:value => { duckPresentation(id).iconUrl = value; } });
     const editor = document.createElement("div"); editor.className = "duck-presentation-editor";
     const cutin = document.createElement("section"); cutin.className = "duck-cutin";
     const heading = document.createElement("h3"); heading.textContent = "Cスキルカットイン";
@@ -167,8 +302,8 @@ function renderDuckSelect() {
     description.textContent = skill.text ?? (duck.cSelection == null ? "Cスキル未設定" : "Cスキル設定未完了");
     cutin.append(heading, description, makeImageField({ label:"URL", kind:"cutin", previewClass:"cutin-preview", fallback:null,
       value:presentation.ducks[id]?.cutinUrl ?? "",
-      onInput:value => { presentation.ducks[id] = { ...(presentation.ducks[id] ?? { iconUrl: "", cutinUrl: "", profile: createEmptyDuckProfile() }), cutinUrl:value }; } }));
-    editor.append(field, cutin); duckEditors.set(id, editor); target.append(editor);
+      onInput:value => { duckPresentation(id).cutinUrl = value; } }));
+    editor.append(field, cutin, duckProfileEditor(duck)); duckEditors.set(id, editor); target.append(editor);
   }
   if (!ducks.length) { const option = new Option("Duck未登録", ""); select.append(option); select.disabled = true; selectedDuckId = ""; }
   else {
@@ -181,7 +316,7 @@ function renderDuckSelect() {
 }
 
 saveButton.addEventListener("click", async () => {
-  if (!hasName(battlerNameInput.value) || !online?.snapshot().canSave || !imageValidationSummary(imageStates.values()).canSave) { updateValidation(); return; }
+  if (!hasName(battlerNameInput.value) || !online?.snapshot().canSave || !imageValidationSummary(imageStates.values()).canSave || profileValidationMessage()) { updateValidation(); return; }
   await online.save();
 });
 
@@ -193,8 +328,8 @@ online = await mountOnlineEditor({
     picker.close(); imageStates.clear(); duckEditors.clear(); selectedDuckId = "";
     presentation = data ? structuredClone(data.presentation) : createEmptyPlayerPresentation();
     ducks = data ? data.build.ducks.map(({ id, name, cSelection }) => ({ id, name, cSelection })) : [];
-    if (data) { renderBattlerImages(); renderQuotes(); renderDuckSelect(); }
-    else for (const id of ["battler-images", "quotes", "duck-icon-editor", "duck-select"]) document.getElementById(id).replaceChildren();
+    if (data) { renderBattlerImages(); renderBattlerProfile(); renderQuotes(); renderDuckSelect(); }
+    else for (const id of ["battler-images", "battler-profile", "quotes", "duck-icon-editor", "duck-select"]) document.getElementById(id).replaceChildren();
   },
   onState(state) { onlineState = state; battlerNameInput.disabled = !state.canEdit; if (!state.canEdit) picker.close(); updateValidation(); },
 });

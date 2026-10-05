@@ -16,9 +16,9 @@ export function editQuoteMarkup(text, start, end, tag) {
   return { text: text.slice(0, start) + insertion + text.slice(end), selectionStart, selectionEnd };
 }
 
-export function createQuoteToolbar(input, onChange, document = input.ownerDocument) {
+export function createQuoteToolbar(input, onChange, document = input.ownerDocument, { ariaLabel = "セリフの文字装飾" } = {}) {
   const toolbar = document.createElement("div"); toolbar.className = "quote-toolbar";
-  toolbar.setAttribute("role", "group"); toolbar.setAttribute("aria-label", "セリフの文字装飾");
+  toolbar.setAttribute("role", "group"); toolbar.setAttribute("aria-label", ariaLabel);
   for (const [tag, label, title] of controls) {
     const button = document.createElement("button"); button.type = "button";
     button.textContent = label; button.title = title; button.setAttribute("aria-label", title);

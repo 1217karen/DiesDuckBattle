@@ -103,7 +103,7 @@ test("all quote rows use one-line inputs, six inline controls and live slot/defa
   data.presentation.battler.quotes.skill.A.iconSlot=4; // Empty slot retains its ID, shows default.
   page.hydrate(data);
   const rows=page.all().filter(e=>e.className==="quote-row");assert.equal(rows.length,14);
-  assert.equal(page.all().filter(e=>e.tagName==="textarea").length,0);
+  assert.ok(rows.every(row=>!row.children.some(e=>e.tagName==="textarea")));
   for(const row of rows){
     const [caption,picker,editor]=row.children;assert.equal(caption.className,"quote-label");assert.equal(picker.textContent,"");
     assert.equal(picker.children[0].tagName,"img");assert.equal(picker.children[0].src,"default.png");
@@ -186,7 +186,7 @@ test("Duck cut-in editor merges sibling URLs, switches Ducks, and uses common C 
   const page=await characterScreen(),data=structuredClone(page.data),first=data.build.ducks[0];
   first.name="一羽目";first.cSelection={mode:"normal",structure:{kind:"flat",effects:[{effectId:"heal-self",options:{amount:"healAmount-30"}}]}};
   const second=createEmptyDuck();second.name="二羽目";data.build.ducks.push(second);
-  data.presentation.ducks={ [first.id]:{iconUrl:"first-icon.png",cutinUrl:"first-cutin.png"},[second.id]:{iconUrl:"second-icon.png",cutinUrl:"second-cutin.png"} };
+  data.presentation.ducks={ [first.id]:{iconUrl:"first-icon.png",cutinUrl:"first-cutin.png",profile:createEmptyDuckProfile()},[second.id]:{iconUrl:"second-icon.png",cutinUrl:"second-cutin.png",profile:createEmptyDuckProfile()} };
   const before=structuredClone(data.build);page.hydrate(data);assert.deepEqual(page.latest().build,before);
   const editors=page.get("duck-icon-editor").children;assert.equal(editors.length,2);
   assert.equal(editors[0].hidden,false);assert.equal(editors[1].hidden,true);
@@ -196,9 +196,9 @@ test("Duck cut-in editor merges sibling URLs, switches Ducks, and uses common C 
   assert.equal(field.children[1].className,"preview cutin-preview");assert.equal(field.children[1].children.length,1); // no fallback
   const cutinInput=field.children[0].children.find(e=>e.tagName==="input");
   cutinInput.value="new-cutin.png";cutinInput.handlers.input();
-  assert.deepEqual(page.latest().presentation.ducks[first.id],{iconUrl:"first-icon.png",cutinUrl:"new-cutin.png"});
+  assert.deepEqual(page.latest().presentation.ducks[first.id],{iconUrl:"first-icon.png",cutinUrl:"new-cutin.png",profile:createEmptyDuckProfile()});
   const iconInput=icon.children[1].children.find(e=>e.tagName==="input");iconInput.value="new-icon.png";iconInput.handlers.input();
-  assert.deepEqual(page.latest().presentation.ducks[first.id],{iconUrl:"new-icon.png",cutinUrl:"new-cutin.png"});
+  assert.deepEqual(page.latest().presentation.ducks[first.id],{iconUrl:"new-icon.png",cutinUrl:"new-cutin.png",profile:createEmptyDuckProfile()});
   assert.deepEqual(page.latest().presentation.ducks[second.id],data.presentation.ducks[second.id]);assert.deepEqual(page.latest().build,before);
   page.get("duck-select").value=second.id;page.get("duck-select").onchange();
   assert.equal(editors[0].hidden,true);assert.equal(editors[1].hidden,false);
@@ -219,4 +219,135 @@ test("editing a new Duck image creates a complete v2 display and preserves detac
   assert.deepEqual(display,{iconUrl:'new.png',cutinUrl:'',profile:createEmptyDuckProfile()});
   assert.equal(page.latest().presentation.ducks.orphan.profile.text,'保持する本文');
   assert.doesNotThrow(()=>encodeOnlinePlayer(page.latest()));
+});
+
+const descendants = root => [root, ...root.children.flatMap(descendants)];
+const aria = (root, label) => descendants(root).find(e => e.attributes['aria-label'] === label);
+const inputValue = (input, value, event='input') => { input.value=value; input.handlers[event](); };
+async function profileScreen() {
+  const page=await characterScreen(),data=structuredClone(page.data);
+  data.build.ducks[0].name='一羽目';
+  const second=createEmptyDuck();second.name='二羽目';data.build.ducks.push(second);
+  data.presentation.ducks.orphan.iconUrl='';data.presentation.ducks.orphan.profile.text='detached';
+  data.presentation.battler.profile.theme={background:'#123456',panel:'#234567',text:'#345678',accent:'#456789'};
+  data.presentation.battler.profile.featuredBattleId=data.build.ducks[0].id;
+  page.hydrate(data);
+  return page;
+}
+const duckRoot = (page,index=0) => page.get('duck-icon-editor').children[index];
+const battlerText = page => aria(page.get('battler-profile'),'Battlerプロフィール本文');
+const checkboxes = page => page.all().filter(e=>e.type==='checkbox');
+
+test('Battler multiline profile and shared toolbar save/rehydrate without touching existing data',async()=>{
+  const page=await profileScreen(),before=structuredClone(page.latest());
+  const text='  本文\n 次の行  \n';inputValue(battlerText(page),text);
+  const toolbar=aria(page.get('battler-profile'),'プロフィールの文字装飾');
+  assert.deepEqual(toolbar.children.map(b=>b.title),['太字','斜体','下線','ルビ','小さい文字','大きい文字']);
+  battlerText(page).selectionStart=2;battlerText(page).selectionEnd=4;toolbar.children[0].handlers.click();
+  const expected='  <b>本文</b>\n 次の行  \n';
+  await page.save();assert.equal(page.saved().presentation.battler.profile.text,expected);
+  const wanted=structuredClone(before);wanted.presentation.battler.profile.text=expected;
+  assert.deepEqual(page.saved(),wanted);assert.doesNotThrow(()=>encodeOnlinePlayer(page.saved()));
+  page.hydrate(page.saved());assert.equal(battlerText(page).value,expected);
+  assert.equal(battlerText(page).maxLength,undefined);
+  assert.ok(page.all().some(e=>e.attributes['aria-label']==='セリフの文字装飾'));
+});
+
+test('ten independent profile checkboxes enforce max four, ascending unique slots and retain empty URLs',async()=>{
+  const page=await profileScreen(),boxes=checkboxes(page);assert.equal(boxes.length,10);
+  const toggle=(slot,checked)=>{boxes[slot-1].checked=checked;boxes[slot-1].handlers.change();};
+  for(const slot of [10,3,7,1])toggle(slot,true);
+  assert.deepEqual(page.latest().presentation.battler.profile.iconSlots,[1,3,7,10]);
+  assert.equal(boxes.filter(b=>b.disabled).length,6);assert.ok(boxes.filter(b=>b.checked).every(b=>!b.disabled));
+  toggle(3,true);assert.deepEqual(page.latest().presentation.battler.profile.iconSlots,[1,3,7,10]);
+  toggle(2,true);assert.equal(boxes[1].checked,false); // direct invocation cannot exceed four
+  toggle(7,false);assert.ok(boxes.every(b=>!b.disabled));toggle(2,true);
+  assert.deepEqual(page.latest().presentation.battler.profile.iconSlots,[1,2,3,10]);
+  assert.deepEqual(page.latest().presentation.battler.iconSlots,Array(10).fill(''));
+  await page.save();assert.doesNotThrow(()=>encodeOnlinePlayer(page.saved()));page.hydrate(page.saved());
+  assert.deepEqual(checkboxes(page).map((b,i)=>b.checked?i+1:null).filter(Boolean),[1,2,3,10]);
+});
+
+test('Duck profiles are independent including detached Duck; text, types and label presets roundtrip',async()=>{
+  const page=await profileScreen(),before=structuredClone(page.latest()),ids=before.build.ducks.map(d=>d.id);
+  const select=page.get('duck-select');assert.match(select.children.at(-1).textContent,/戦闘設定なし/);
+  for(const [index,text]of [[0,'  一\n羽  '],[1,' 二羽\n'],[2,' detached編集 ']]) {
+    select.value=index===2?'orphan':ids[index];select.onchange();
+    assert.equal(duckRoot(page,index).hidden,false);
+    const input=aria(duckRoot(page,index),'Duckプロフィール本文');inputValue(input,text);
+    input.selectionStart=0;input.selectionEnd=0;aria(duckRoot(page,index),'プロフィールの文字装飾').children[4].handlers.click();
+  }
+  const own=aria(duckRoot(page),'タイプ');
+  assert.deepEqual(own.children.map(e=>e.value),['','attack','defense','speed','heal','technical','normal']);
+  for(const type of ['', 'attack','defense','speed','heal','technical','normal']) {
+    inputValue(own,type,'change');await page.save();assert.equal(page.saved().presentation.ducks[ids[0]].profile.type,type||null);
+    assert.doesNotThrow(()=>encodeOnlinePlayer(page.saved()));
+  }
+  for(const preset of ['default','kanji','english','hiragana']) {
+    inputValue(aria(duckRoot(page),'ステータス表記'),preset,'change');await page.save();page.hydrate(page.saved());
+    assert.equal(aria(duckRoot(page),'ステータス表記').value,preset);
+  }
+  for(const [index,text]of [[0,'  一\n羽  '],[1,' 二羽\n'],[2,' detached編集 ']])
+    assert.equal(aria(duckRoot(page,index),'Duckプロフィール本文').value,'<small></small>'+text);
+  assert.deepEqual(page.latest().build,before.build);assert.deepEqual(page.latest().publicSettings,before.publicSettings);
+  assert.deepEqual(page.latest().presentation.battler,before.presentation.battler);
+  assert.equal(page.latest().presentation.ducks.orphan.cutinUrl,'');
+});
+
+test('attributes count code points, block direct save while invalid even on hidden Duck, and recover',async()=>{
+  const page=await profileScreen(),id=page.latest().build.ducks[0].id;
+  const fields=[1,2,3].map(i=>aria(duckRoot(page),`属性${i}`));assert.ok(fields.every(Boolean));
+  for(const value of ['','A','あ','炎','😀']) {
+    inputValue(fields[0],value);assert.equal(fields[0].attributes['aria-invalid'],'false');
+    assert.equal(page.get('save').disabled,false);assert.doesNotThrow(()=>encodeOnlinePlayer(page.latest()));
+  }
+  for(const value of ['炎闇','😀😀','e\u0301']){
+    inputValue(fields[1],value);assert.equal(fields[1].value,value);assert.equal(fields[1].attributes['aria-invalid'],'true');
+    assert.equal(page.latest().presentation.ducks[id].profile.attributes[1],value);
+    assert.equal(page.get('save').disabled,true);assert.match(page.get('profile-validation-message').textContent,/一羽目.*属性2/);
+    page.get('duck-select').value='orphan';page.get('duck-select').onchange();
+    await page.save();assert.equal(page.saved(),undefined);
+    inputValue(fields[1],'闇');assert.equal(page.get('save').disabled,false);
+  }
+  await page.save();assert.deepEqual(page.saved().presentation.ducks[id].profile.attributes,['😀','闇','']);
+  assert.doesNotThrow(()=>encodeOnlinePlayer(page.saved()));page.hydrate(page.saved());
+  assert.equal(aria(duckRoot(page),'属性1').value,'😀');
+  inputValue(aria(duckRoot(page),'属性1'),'ab');page.hydrate(page.saved());assert.equal(page.get('save').disabled,false);
+  page.get('battler-name').value=' ';page.get('battler-name').handlers.input();assert.equal(page.get('save').disabled,true);
+});
+
+test('flavor stats add up to two, preserve empty/unlimited labels and values 0..6, delete without reordering',async()=>{
+  const page=await profileScreen(),id=page.latest().build.ducks[0].id;
+  const add=()=>descendants(duckRoot(page)).find(e=>e.tagName==='button'&&e.textContent==='＋ フレーバーステータス');
+  const rows=()=>descendants(duckRoot(page)).filter(e=>e.className==='flavor-row');
+  assert.equal(rows().length,0);add().handlers.click();assert.equal(rows().length,1);
+  assert.deepEqual(page.latest().presentation.ducks[id].profile.flavorStats,[{label:'',value:0}]);
+  add().handlers.click();assert.equal(rows().length,2);assert.equal(add().disabled,true);
+  add().handlers.click();assert.equal(rows().length,2);
+  inputValue(aria(duckRoot(page),'フレーバーステータス1の名前'),'  長い名前'.repeat(200));
+  inputValue(aria(duckRoot(page),'フレーバーステータス2の名前'),'二行目');
+  for(let value=0;value<=6;value++){
+    inputValue(aria(duckRoot(page),'フレーバーステータス2の値'),String(value),'change');await page.save();
+    assert.equal(page.saved().presentation.ducks[id].profile.flavorStats[1].value,value);assert.doesNotThrow(()=>encodeOnlinePlayer(page.saved()));
+  }
+  aria(duckRoot(page),'フレーバーステータス1を削除').handlers.click();assert.equal(add().disabled,false);
+  assert.deepEqual(page.latest().presentation.ducks[id].profile.flavorStats,[{label:'二行目',value:6}]);
+  await page.save();page.hydrate(page.saved());assert.equal(aria(duckRoot(page),'フレーバーステータス1の値').value,'6');
+  aria(duckRoot(page),'フレーバーステータス1を削除').handlers.click();await page.save();
+  assert.deepEqual(page.saved().presentation.ducks[id].profile.flavorStats,[]);assert.equal(add().disabled,false);
+});
+
+test('profile edits preserve all images, quotes, theme, featured battle and other Duck data',async()=>{
+ const page=await profileScreen(),data=structuredClone(page.latest()),id=data.build.ducks[0].id;
+ data.presentation.battler.standingImageUrl='standing.png';data.presentation.battler.defaultIconUrl='default.png';data.presentation.battler.iconSlots[3]='slot.png';
+ data.presentation.battler.quotes.battleStart.text=' quote ';
+ data.presentation.ducks[id]={iconUrl:'duck.png',cutinUrl:'cutin.png',profile:createEmptyDuckProfile()};
+ page.hydrate(data);
+ for(const image of page.all().filter(e=>e.tagName==='img'&&e.onload)){image.naturalWidth=20;image.naturalHeight=20;image.onload();}
+ inputValue(battlerText(page),'Battler');inputValue(aria(duckRoot(page),'Duckプロフィール本文'),'Duck');
+ await page.save();const expected=structuredClone(data);expected.presentation.battler.profile.text='Battler';expected.presentation.ducks[id].profile.text='Duck';
+ assert.deepEqual(page.saved(),expected);assert.doesNotThrow(()=>encodeOnlinePlayer(page.saved()));
+ const url=page.all().find(e=>e.type==='url'&&e.value==='duck.png');inputValue(url,'bad.png');
+ const bad=page.all().find(e=>e.tagName==='img'&&e.src==='bad.png');bad.naturalWidth=999;bad.naturalHeight=999;bad.onload();
+ assert.equal(page.get('save').disabled,true);inputValue(aria(duckRoot(page),'属性1'),'a');assert.equal(page.get('save').disabled,true);
 });
