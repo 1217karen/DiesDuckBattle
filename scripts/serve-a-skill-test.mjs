@@ -14,7 +14,7 @@ const server = createServer(async (req, res) => {
     const pathname = decodeURIComponent(new URL(req.url, "http://127.0.0.1").pathname);
     const relative = pathname === "/" ? "a-skill-test.html" : pathname.slice(1);
     // 必要な静的ファイルだけを提供。.gitや任意のローカルファイルは提供しない。
-    if (!/^(index\.html|auth\.html|select\.html|result\.html|storage\.html|setting\.html|character\.html|[abcd]-skill-test\.html|js\/[\w-]+\.js|css\/[\w-]+\.css|img\/(?:B00|B00_icon|D00|result_BG)\.png|supabase\/functions\/_shared\/(?:internal-email|registration-password)\.mjs)$/.test(relative)) {
+    if (!/^(index\.html|auth\.html|select\.html|result\.html|storage\.html|setting\.html|character\.html|profile\.html|[abcd]-skill-test\.html|js\/[\w-]+\.js|css\/[\w-]+\.css|img\/(?:B00|B00_icon|D00|result_BG)\.png|supabase\/functions\/_shared\/(?:internal-email|registration-password)\.mjs)$/.test(relative)) {
       res.writeHead(404).end(); return;
     }
     const path = resolve(root, relative);

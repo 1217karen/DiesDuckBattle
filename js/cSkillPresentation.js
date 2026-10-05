@@ -52,7 +52,7 @@ export function cEffectParts(effectId, variants = [], chosen = {}, { catalog = c
 
 /** DOM-independent presentation. Pricing and validity are owned by the resource
  * calculator. Incomplete/obsolete input is retained and produces text:null. */
-export function presentCSkill(selection, { catalog = createCSkillCatalog(), ...options } = {}) {
+export function presentCSkill(selection, { catalog = createCSkillCatalog(), includeCost = true, ...options } = {}) {
   if (selection == null) return { complete: false, text: null, requiredAP: null, branches: [], issues: [] };
   const resources = calculateCSkillResources(selection, { ...options, catalog });
   const issues = [...resources.errors, ...resources.unresolved];
@@ -87,5 +87,5 @@ export function presentCSkill(selection, { catalog = createCSkillCatalog(), ...o
     const threshold = catalog.optionSets.hpThreshold.find(o => o.id === s.thresholdOptionId).value * 100;
     body = `①自分のHPが${threshold}％以上の時、${texts[0]}②自分のHPが${threshold}％未満の時、${texts[1]}`;
   }
-  return { complete: true, text: `〈AP${resources.requiredAP}〉${body}`, requiredAP: resources.requiredAP, branches, issues };
+  return { complete: true, text: (includeCost ? `〈AP${resources.requiredAP}〉` : "") + body, requiredAP: resources.requiredAP, branches, issues };
 }

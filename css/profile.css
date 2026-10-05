@@ -1,0 +1,70 @@
+body {
+  --profile-bg: #DCEEF3;
+  --profile-panel: #FFFFFF;
+  --profile-text: #20282C;
+  --profile-accent: #4F91B3;
+  --profile-line: color-mix(in srgb, var(--profile-text) 20%, var(--profile-panel));
+  --profile-muted: color-mix(in srgb, var(--profile-text) 75%, var(--profile-panel));
+  margin: 0;
+  background: var(--profile-bg);
+  color: var(--profile-text);
+  font: 16px/1.8 system-ui, sans-serif;
+}
+.profile-page, .profile-page * { box-sizing: border-box; }
+.profile-page { max-width: 1200px; margin: 0 auto; padding: 36px 24px 64px; overflow-wrap: anywhere; }
+.profile-header { margin-bottom: 28px; border-bottom: 3px solid var(--profile-accent); }
+.profile-header h1 { font-size: clamp(1.4rem, 3vw, 2rem); margin: 0 0 16px; }
+.profile-grid { display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "visual duck" "text text" "favorite favorite"; align-items: start; }
+.profile-card { min-width: 0; padding: 24px; border: 1px solid var(--profile-line); border-radius: 12px; background: var(--profile-panel); }
+.profile-card h2 { font-size: 1rem; letter-spacing: .08em; margin: 0 0 20px; }
+.battler-card { grid-area: visual; }
+.profile-text-card { grid-area: text; }
+.duck-card { grid-area: duck; }
+.featured-battle { grid-area: favorite; }
+.battler-visual { display: flex; justify-content: center; align-items: center; gap: 16px; margin-bottom: 28px; }
+.battler-standing-wrap { min-width: 0; display: flex; justify-content: center; }
+.battler-standing { display: block; width: auto; height: auto; max-width: min(100%, 500px); max-height: 800px; }
+.profile-icon-rail { display: flex; flex-direction: column; flex-shrink: 0; gap: 14px; width: 78px; }
+.profile-icon-rail img { width: 60px; height: 60px; object-fit: contain; border-radius: 8px; }
+.profile-icon-rail img:nth-child(even) { align-self: flex-end; }
+.profile-icon-rail img[hidden] { display: none; }
+.skill-list { display: grid; gap: 16px; }
+.skill-card { min-width: 0; border-left: 3px solid var(--skill-color, var(--profile-accent)); padding-left: 14px; }
+.skill-A { --skill-color: #d98039; } .skill-B { --skill-color: #528ac6; }
+.skill-C { --skill-color: #b7a038; } .skill-D { --skill-color: #509d69; }
+.skill-category { color: var(--profile-muted); font-size: .75rem; letter-spacing: .12em; }
+.skill-name { margin: 2px 0 6px; font-size: 1.05rem; }
+.skill-name rt { font-size: .6em; }
+.skill-effect { margin: 0; white-space: pre-wrap; }
+.duck-heading { display: flex; align-items: center; gap: 16px; }
+.duck-icon, .battle-icon { width: 60px; height: 60px; object-fit: contain; border-radius: 8px; }
+.duck-name { margin: 0; font-size: 1.3rem; }
+.duck-meta { color: var(--profile-muted); margin: 16px 0 24px; }
+.stat-section { margin: 28px 0; padding-right: 17%; }
+.stat-row { display: grid; grid-template-columns: minmax(65px, 1fr) minmax(0, 2fr); gap: 12px; align-items: center; margin: 12px 0; }
+.stat-label { line-height: 1.4; font-size: .9rem; }
+.stat-track { height: 12px; border-radius: 3px; background: color-mix(in srgb, var(--profile-accent) 14%, var(--profile-panel)); outline: 1px solid var(--profile-line); }
+.stat-fill { width: calc(var(--value) * 20%); height: 100%; border-radius: 3px; background: var(--profile-accent); }
+.stat-flavor { margin-top: 20px; }
+.profile-rich-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.quote-text-small { font-size: .8em; } .quote-text-big { font-size: 1.25em; }
+.duck-profile { border-top: 1px solid var(--profile-line); padding-top: 24px; }
+.profile-empty { color: var(--profile-muted); }
+.featured-summary { display: block; color: inherit; text-decoration: none; border: 1px solid var(--profile-line); border-radius: 8px; padding: 20px; }
+.featured-summary:hover, .featured-summary:focus-visible { outline: 2px solid var(--profile-accent); }
+.battle-participants { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.battle-side { min-width: 0; }
+.battle-person { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+.battle-meta { color: var(--profile-muted); margin: 0 0 16px; }
+.profile-error { padding: 24px; background: var(--profile-panel); border: 1px solid var(--profile-line); border-radius: 12px; }
+@media (max-width: 800px) {
+  .profile-page { padding: 24px 16px 40px; }
+  .profile-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "visual" "text" "duck" "favorite"; }
+  .profile-card { padding: 20px; }
+}
+@media (max-width: 420px) {
+  .battler-visual { flex-direction: column; }
+  .profile-icon-rail { flex-direction: row; flex-wrap: wrap; width: auto; justify-content: center; }
+  .profile-icon-rail img:nth-child(even) { transform: translateY(6px); }
+  .battle-participants { grid-template-columns: minmax(0, 1fr); }
+}

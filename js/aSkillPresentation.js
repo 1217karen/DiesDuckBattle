@@ -87,6 +87,38 @@ export function presentASkill(build, selection, { catalog = createASkillCatalog(
   const validation = calculateASkillResources(build, selection, { catalog });
   const issues = [...validation.errors, ...validation.unresolved];
   if (issues.length) return { complete: false, text: null, triggerText: null, effects: [], issues };
+  return describeASelection(selection, catalog, issues);
+}
+
+/** Describe saved content without dice, frequency or resource validation. */
+export function presentASelection(selection, { catalog = createASkillCatalog() } = {}) {
+  const invalid = { complete: false, text: null };
+  if (!selection || !/^(all|exact:[0-6]|(?:gte|lte):[1-6])$/.test(selection.triggerId)) return invalid;
+  try {
+    if (Object.keys(selection).some(k => !["triggerId", "effects"].includes(k))) return invalid;
+    const resolved = resolveSelection("A", selection, catalog);
+    if (resolved.errors.length || resolved.incomplete.length) return invalid;
+    const effects = resolved.selection.effects;
+    if (!Array.isArray(effects) || !effects.length) return invalid;
+    const counts = new Map();
+    for (const leaf of effects) {
+      if (!leaf || Object.keys(leaf).some(k => !["effectId", "amountOptionId", "chanceOptionId"].includes(k))) return invalid;
+      const d = catalog.effects.find(d => d.id === leaf.effectId);
+      if (!d || (leaf.chanceOptionId !== undefined && leaf.chanceOptionId !== "100")) return invalid;
+      if (d.exactFace != null && selection.triggerId !== `exact:${d.exactFace}`) return invalid;
+      if (d.requiresAmount ? !d.amountOptions.some(o => o.id === leaf.amountOptionId) : Object.hasOwn(leaf, "amountOptionId")) return invalid;
+      counts.set(d.id, (counts.get(d.id) ?? 0) + 1);
+      if (!d.allowDuplicate && counts.get(d.id) > 1) return invalid;
+    }
+    const normalCount = effects.filter(e => e.effectId !== "cancel-self-attack").length;
+    if (normalCount < 1 || normalCount > catalog.maxEffects) return invalid;
+    const definitions = effects.map(e => catalog.effects.find(d => d.id === e.effectId));
+    if (definitions.some(d => d.cancelsNormalAttack) && definitions.some(d => d.conflictsWithAttackCancel)) return invalid;
+    return describeASelection(selection, catalog, []);
+  } catch { return invalid; }
+}
+
+function describeASelection(selection, catalog, issues) {
   const resolved = resolveSelection("A", selection, catalog).selection;
   const rows = catalog.selectionEffects.flatMap(definition => definition.variants);
   const effects = resolved.effects.map((leaf, index) => {
