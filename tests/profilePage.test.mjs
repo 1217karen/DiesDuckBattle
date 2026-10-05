@@ -51,15 +51,32 @@ test('missing/invalid ENo makes no RPC; unexpected connection/service/render fai
     const p=await page(opts);assert.equal(byClass(p.main,'profile-error').length,1);assert.equal(p.calls.at(-1)[0],'finish');assert.doesNotMatch(p.main.textContent,/private failure/);
   }
 });
-test('image fallbacks and selected icon filtering; broken additional icons hide without placeholder',async()=>{
+test('default Battler icon remains visible with fixed fallback; empty/broken additional icons have no placeholder',async()=>{
   const profile=profileFixture();profile.battler.defaultIconUrl='default.png';profile.battler.standingImageUrl='standing.png';
   let {main}=await page({profile});
   const standing=byClass(main,'battler-standing')[0];assert.equal(standing.src,'standing.png');standing.handlers.error();assert.equal(standing.src,FIXED_IMAGES.battlerStanding);
   const rail=byClass(main,'profile-icon-rail')[0];assert.equal(rail.children.length,2);assert.deepEqual(rail.children.map(i=>i.src),['default.png','three.png']);
-  rail.children[1].handlers.error();assert.equal(rail.children[1].hidden,true);
+  assert.equal(rail.children[0].alt,'Battlerアイコン');
+  rail.children[0].handlers.error();assert.equal(rail.children[0].src,FIXED_IMAGES.battlerIcon);assert.notEqual(rail.children[0].hidden,true);
+  rail.children[1].handlers.error();assert.equal(rail.children[1].hidden,true);assert.equal(rail.children[1].src,'three.png');
   const duck=byClass(main,'duck-icon')[0];assert.equal(duck.src,FIXED_IMAGES.duckIcon);
   profile.battler.defaultIconUrl='';profile.battler.standingImageUrl='';profile.battler.profileIcons=[];
-  ({main}=await page({profile}));assert.equal(byClass(main,'profile-icon-rail').length,0);assert.equal(byClass(main,'battler-standing')[0].src,FIXED_IMAGES.battlerStanding);
+  ({main}=await page({profile}));const defaultRail=byClass(main,'profile-icon-rail');assert.equal(defaultRail.length,1);assert.equal(defaultRail[0].children.length,1);
+  assert.equal(defaultRail[0].children[0].src,FIXED_IMAGES.battlerIcon);assert.equal(FIXED_IMAGES.battlerIcon,'/img/B00_icon.png');
+  assert.equal(byClass(main,'battler-standing')[0].src,FIXED_IMAGES.battlerStanding);
+});
+
+test('Battler icon rail has default plus four additional icons at most, and keeps default when all additional URLs are empty',async()=>{
+  const profile=profileFixture();
+  profile.battler.profileIcons=[1,2,3,4].map(slot=>({slot,url:`icon-${slot}.png`}));
+  let {main}=await page({profile});
+  const rail=byClass(main,'profile-icon-rail')[0];
+  assert.equal(rail.children.length,5);
+  assert.deepEqual(rail.children.map(img=>img.src),[FIXED_IMAGES.battlerIcon,'icon-1.png','icon-2.png','icon-3.png','icon-4.png']);
+  profile.battler.profileIcons.forEach(icon=>{icon.url='';});
+  ({main}=await page({profile}));
+  assert.equal(byClass(main,'profile-icon-rail')[0].children.length,1);
+  assert.equal(byClass(main,'profile-icon-rail')[0].children[0].src,FIXED_IMAGES.battlerIcon);
 });
 test('DOM order, skill placement, Duck metadata and safe rich text/name/ruby',async()=>{
   const p=profileFixture();p.duck.profile.type='attack';p.duck.profile.attributes=['炎','','🔥'];

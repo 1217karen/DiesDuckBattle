@@ -57,13 +57,14 @@ export function renderProfile(document, profile) {
   const battler = card("battler-card"), visual = el("div", "battler-visual"), standing = el("div", "battler-standing-wrap");
   standing.append(image(b.standingImageUrl, FIXED_IMAGES.battlerStanding, "battler-standing", "Battler立ち絵")); visual.append(standing);
   const rail = el("div", "profile-icon-rail");
-  for (const [index, url] of [b.defaultIconUrl, ...b.profileIcons.map(i => i.url)].entries()) {
+  rail.append(image(b.defaultIconUrl, FIXED_IMAGES.battlerIcon, "", "Battlerアイコン"));
+  for (const { url } of b.profileIcons) {
     if (!url.trim()) continue;
-    const img = el("img"); img.alt = index === 0 ? "Battlerアイコン" : "プロフィールアイコン";
+    const img = el("img"); img.alt = "プロフィールアイコン";
     img.addEventListener("error", () => { img.hidden = true; }, { once: true }); img.src = url;
     rail.append(img);
   }
-  if (rail.children.length) visual.append(rail);
+  visual.append(rail);
   battler.append(visual, skillList({ B: b.skills.B, D: b.skills.D }));
   const text = card("profile-text-card", "BATTLER PROFILE"); text.append(rich(b.profile.text));
   const duck = card("duck-card", "MY DUCK"), d = profile.duck;
