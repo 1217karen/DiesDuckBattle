@@ -6,7 +6,7 @@ const css = await readFile(new URL("../css/result.css", import.meta.url), "utf8"
 const html = await readFile(new URL("../result.html", import.meta.url), "utf8");
 const rule = selector => {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return css.match(new RegExp('(?:^|\\n)' + escaped + ' \\{([^}]*)\\}'))[1];
+  return css.match(new RegExp('(?:^|\\n)' + escaped + ' \\{([^}]*)\\}'))?.[1] ?? "";
 };
 test("result loads the shared theme after early site preference scripts and before result CSS", () => {
   const paths = ["js/siteTheme.js","js/siteThemeAuth.js","css/common-theme.css","css/result.css"];
@@ -27,7 +27,8 @@ test("neutral backgrounds, icon borders and placeholders follow the common theme
   }
   assert.match(rule(".placeholderIcon"), /color: var\(--muted\)/);
   for (const selector of [".line.soft",".quoteBubble",".miniPanel"]) assert.match(rule(selector), /color-mix\(in srgb, var\(--text\) 3\.5%, transparent\)/);
-  for (const selector of [".phaseHeader.system",".logDuckIcon",".miniTag"]) assert.match(rule(selector), /background: var\(--ui-surface\)/);
+  for (const selector of [".logDuckIcon",".miniTag"]) assert.match(rule(selector), /background: var\(--ui-surface\)/);
+  assert.match(rule(".phaseHeader.system"), /background: #b7d7e3; color: #20282c/);
   assert.match(rule(".hpBar"), /background: var\(--ui-hover\)/);
   assert.match(rule(".errorMessage"), /var\(--panel\)/);
   assert.doesNotMatch(css, /#111|#fff(?:\W|$)|#f0f0f0|#cfcfcf|rgba\(0,0,0,/);
@@ -44,9 +45,20 @@ test("result buttons override shared primary styling while retaining their own s
   assert.match(css, /\.btn, \.btn\.primary \{ min-width: 92px; padding: 8px 10px/);
   assert.match(css, /\.btn, \.btn\.primary \{ min-width: 96px; padding: 13px 12px/);
 });
-test("combat semantic colors and victory gold remain unchanged", () => {
+test("combat backgrounds and HP semantic colors remain unchanged", () => {
   for (const [key,value] of Object.entries({p1:'#e35b5b',p2:'#4a86e8',damage:'#8b3fe6',heal:'#2e9b4f',buff:'#f08a24',debuff:'#7a7a7a'})) assert.ok(css.includes('--'+key+': '+value+';'));
-  for (const [selector,color] of [[".phaseHeader.p1","rgba(227,91,91,.6)"],[".phaseHeader.p2","rgba(74,134,232,.6)"],[".line.note.p1","rgba(227,91,91,.18)"],[".line.note.p2","rgba(74,134,232,.18)"],[".line.note.status","rgba(180,130,255,.18)"],[".hpFill.p1","rgba(227,91,91,.7)"],[".hpFill.p2","rgba(74,134,232,.7)"],[".quoteBubble.p1","rgba(227,91,91,.55)"],[".quoteBubble.p2","rgba(74,134,232,.55)"]]) assert.ok(rule(selector).includes(color),selector);
+  for (const [selector,color] of [[".phaseHeader.p1","rgba(227,91,91,.6)"],[".phaseHeader.p2","rgba(74,134,232,.6)"],[".line.note","rgba(255,236,140,.35)"],[".line.note.p1","rgba(227,91,91,.18)"],[".line.note.p2","rgba(74,134,232,.18)"],[".line.note.status","rgba(180,130,255,.18)"],[".hpFill.p1","rgba(227,91,91,.7)"],[".hpFill.p2","rgba(74,134,232,.7)"]]) assert.ok(rule(selector).includes(color),selector);
+});
+test("Light victory is gold and Dark victory retains its silver gradient", () => {
   assert.match(rule(".line.victoryLine"), /rgba\(255,214,102,\.55\),color-mix\(in srgb, var\(--panel\) 75%, transparent\),rgba\(255,214,102,\.55\)/);
+  assert.match(rule(".line.victoryLine"), /border: 2px solid rgba\(160,120,0,\.28\)/);
+  assert.match(rule(':root[data-theme="dark"] .line.victoryLine'), /background: linear-gradient\(90deg,#59636d,#65717c,#59636d\); border-color: #7d8994; color: #f2f5f7/);
+});
+test("log bands have no vertical accent borders; HP labels and errors keep theirs", () => {
+  for (const selector of [".phaseHeader", ".phaseHeader.p1", ".phaseHeader.p2", ".phaseHeader.system", ".line", ".line.note", ".line.note.p1", ".line.note.p2", ".line.note.status", ".quoteBubble", ".quoteBubble.p1", ".quoteBubble.p2"]) {
+    assert.doesNotMatch(rule(selector), /border(?:-(?:left|right|inline)(?:-[\w-]+)?)?\s*:/, selector);
+  }
+  assert.match(rule(".miniTag.p1"), /border-left: 4px solid var\(--p1\)/);
+  assert.match(rule(".miniTag.p2"), /border-left: 4px solid var\(--p2\)/);
   assert.match(rule(".errorMessage"), /border-left: 6px solid var\(--p1\)/);
 });
