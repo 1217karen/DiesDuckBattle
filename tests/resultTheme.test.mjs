@@ -28,7 +28,7 @@ test("neutral backgrounds, icon borders and placeholders follow the common theme
   assert.match(rule(".placeholderIcon"), /color: var\(--muted\)/);
   for (const selector of [".line.soft",".quoteBubble",".miniPanel"]) assert.match(rule(selector), /color-mix\(in srgb, var\(--text\) 3\.5%, transparent\)/);
   for (const selector of [".logDuckIcon",".miniTag"]) assert.match(rule(selector), /background: var\(--ui-surface\)/);
-  assert.match(rule(".phaseHeader.system"), /background: #b7d7e3; color: #20282c/);
+  assert.match(rule(".phaseHeader.system"), /color: #20282c/);
   assert.match(rule(".hpBar"), /background: var\(--ui-hover\)/);
   assert.match(rule(".errorMessage"), /var\(--panel\)/);
   assert.doesNotMatch(css, /#111|#fff(?:\W|$)|#f0f0f0|#cfcfcf|rgba\(0,0,0,/);
@@ -61,4 +61,21 @@ test("log bands have no vertical accent borders; HP labels and errors keep their
   assert.match(rule(".miniTag.p1"), /border-left: 4px solid var\(--p1\)/);
   assert.match(rule(".miniTag.p2"), /border-left: 4px solid var\(--p2\)/);
   assert.match(rule(".errorMessage"), /border-left: 6px solid var\(--p1\)/);
+});
+test("only system header and system notes fade their background across the outer ten percent", () => {
+  const cases = [
+    [".phaseHeader.system", "#b7d7e3"],
+    [".phaseBlock.system .line.note", "rgba(255,236,140,.35)"],
+    [".phaseBlock.system .line.note.p1", "rgba(227,91,91,.18)"],
+    [".phaseBlock.system .line.note.p2", "rgba(74,134,232,.18)"],
+    [".phaseBlock.system .line.note.status", "rgba(180,130,255,.18)"],
+  ];
+  for (const [selector, color] of cases) {
+    const declaration = rule(selector);
+    assert.ok(declaration.includes(`background: linear-gradient(90deg, transparent 0%, ${color} 10%, ${color} 90%, transparent 100%)`), selector);
+    assert.doesNotMatch(declaration, /opacity|mask|border|padding|width|height/);
+  }
+  for (const selector of [".line.soft", ".line.note", ".line.note.p1", ".line.note.p2", ".line.note.status", ".phaseHeader.p1", ".phaseHeader.p2", ".line.victoryLine", ':root[data-theme="dark"] .line.victoryLine']) {
+    assert.doesNotMatch(rule(selector), /transparent 0%|transparent 100%/, selector);
+  }
 });

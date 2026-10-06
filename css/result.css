@@ -75,7 +75,7 @@ body {
 .phaseHeader { width: 100%; box-sizing: border-box; padding: 8px 10px; font-size: var(--fs-18); font-weight: 700; }
 .phaseHeader.p1 { background: linear-gradient(90deg, rgba(227,91,91,.6), rgba(227,91,91,.08)); }
 .phaseHeader.p2 { background: linear-gradient(90deg, rgba(74,134,232,.6), rgba(74,134,232,.08)); }
-.phaseHeader.system { font: 400 var(--fs-20) var(--ff-display); background: #b7d7e3; color: #20282c; }
+.phaseHeader.system { font: 400 var(--fs-20) var(--ff-display); background: linear-gradient(90deg, transparent 0%, #b7d7e3 10%, #b7d7e3 90%, transparent 100%); color: #20282c; }
 .lines { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
 .line { width: 100%; box-sizing: border-box; padding: 2px 6px; white-space: pre-wrap; }
 .line.soft { background: color-mix(in srgb, var(--text) 3.5%, transparent); }
@@ -83,6 +83,10 @@ body {
 .line.note.p1 { background: rgba(227,91,91,.18); }
 .line.note.p2 { background: rgba(74,134,232,.18); }
 .line.note.status { background: rgba(180,130,255,.18); }
+.phaseBlock.system .line.note { background: linear-gradient(90deg, transparent 0%, rgba(255,236,140,.35) 10%, rgba(255,236,140,.35) 90%, transparent 100%); }
+.phaseBlock.system .line.note.p1 { background: linear-gradient(90deg, transparent 0%, rgba(227,91,91,.18) 10%, rgba(227,91,91,.18) 90%, transparent 100%); }
+.phaseBlock.system .line.note.p2 { background: linear-gradient(90deg, transparent 0%, rgba(74,134,232,.18) 10%, rgba(74,134,232,.18) 90%, transparent 100%); }
+.phaseBlock.system .line.note.status { background: linear-gradient(90deg, transparent 0%, rgba(180,130,255,.18) 10%, rgba(180,130,255,.18) 90%, transparent 100%); }
 .line.meta { padding: 0 6px; font-size: var(--fs-10); opacity: .58; background: transparent; }
 .line.spacer { height: 10px; padding: 0; }
 .line.skill { margin-left: 28px; width: calc(100% - 28px); }
