@@ -1,0 +1,51 @@
+/* Ordinary page layout. Battle/result and public profile layouts stay separate. */
+.page-shell {
+  box-sizing:border-box;
+  width:calc(100% - 12px);
+  max-width:var(--page-max-width, 1080px);
+  min-height:calc(100svh - var(--common-menu-height, 52px));
+  margin:var(--page-margin-block, 0px) auto;
+  padding:var(--page-padding, 40px 28px);
+  background:var(--shell-surface);
+  box-shadow:0 0 28px #00000018;
+  color:var(--text);
+}
+.page-header { color:var(--text); }
+.page-eyebrow {
+  color:var(--page-eyebrow-color, var(--muted));
+  font-size:var(--page-eyebrow-size, 12px);
+  letter-spacing:var(--page-eyebrow-spacing, .12em);
+  font-weight:var(--page-eyebrow-weight, inherit);
+}
+.page-title {
+  margin:var(--page-title-margin, 0 0 24px);
+  font-size:var(--page-title-size, 2em);
+  letter-spacing:var(--page-title-spacing, normal);
+  line-height:var(--page-title-line-height, normal);
+  font-weight:var(--page-title-weight, 700);
+}
+.page-muted { color:var(--muted); }
+.page-panel, .page-shell--editor .card {
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+  color:var(--text);
+  box-shadow:0 2px 10px #0000000a;
+}
+/* The two editor pages already share these dimensions and heading styles. */
+.page-shell--editor {
+  --page-padding:46px 28px 40px;
+  --page-padding-narrow:26px 16px;
+  --page-eyebrow-color:var(--accent);
+  --page-eyebrow-size:.75rem;
+  --page-eyebrow-spacing:.23em;
+  --page-eyebrow-weight:700;
+  --page-title-size:clamp(2rem,5vw,3.4rem);
+  --page-title-spacing:.045em;
+  --page-title-line-height:1.15;
+  --page-title-margin:16px 0 22px;
+}
+.page-shell--editor .muted { color:var(--muted); font-size:.85rem; }
+@media(max-width:700px) {
+  .page-shell { padding:var(--page-padding-narrow, 26px 16px); }
+}

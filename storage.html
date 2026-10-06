@@ -7,6 +7,8 @@
   <title>バトル履歴 | DiesDuckBattle</title>
   <script src="js/siteTheme.js"></script>
   <script type="module" src="js/siteThemeAuth.js"></script>
+  <link rel="stylesheet" href="css/common-theme.css">
+  <link rel="stylesheet" href="css/common-page.css">
   <link rel="stylesheet" href="css/storage.css">
   <link rel="stylesheet" href="css/common-menu.css">
   <link rel="stylesheet" href="css/page-loading.css">
@@ -17,10 +19,11 @@
 <header id="common-menu" class="common-menu"><details class="common-menu__nav"><summary aria-label="ゲームメニューを開く"><span class="common-menu__icon" aria-hidden="true">☰</span></summary><nav aria-label="ゲームメニュー"></nav></details><details class="common-menu__account"><summary aria-label="アカウントメニューを開く" aria-disabled="true" tabindex="-1"><span data-identity role="status"></span><span data-account-arrow aria-hidden="true" hidden>▾</span></summary><div class="common-menu__account-dropdown"><div data-account-menu></div><p data-feedback role="status" hidden></p></div></details></header>
   <script src="js/menuDisplayCache.js"></script>
 
-  <main data-page-content class="wrap">
-    <header class="head">
-      <h1 class="title">💥バトル履歴💥</h1>
-      <p class="hint">保存済みの戦闘結果を30件ずつ表示します。</p>
+  <main data-page-content class="wrap page-shell">
+    <header class="head page-header">
+      <p class="page-eyebrow">DIES DUCK BATTLE</p>
+      <h1 class="title page-title">💥バトル履歴💥</h1>
+      <p class="hint page-muted">保存済みの戦闘結果を30件ずつ表示します。</p>
       <div class="tools">
         <label for="eno">指定ENo <input id="eno" type="text" inputmode="numeric" pattern="[0-9]*" size="8"></label>
         <label for="outcome">指定ENoの勝敗 <select id="outcome" disabled>
@@ -37,7 +40,7 @@
       </div>
     </header>
 
-    <p id="accountNotice" class="hint" hidden></p>
+    <p id="accountNotice" class="hint page-muted" hidden></p>
     <p id="favoriteError" class="empty error" role="alert" hidden>お気に入りを更新できませんでした。再度お試しください。</p>
     <div id="list" class="list" aria-live="polite"></div>
     <div id="empty" class="empty" hidden>履歴がありません。</div>

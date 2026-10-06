@@ -1,8 +1,6 @@
 body { margin:0; }
-.character-list-shell { box-sizing:border-box; max-width:1240px; width:calc(100% - 12px); margin:24px auto; margin-left:auto; margin-right:auto; padding:24px; color:var(--text); background:var(--shell-surface); box-shadow:0 0 28px #00000018; min-height:calc(100svh - var(--common-menu-height, 52px)); }
+.character-list-shell { --page-max-width:1240px; --page-margin-block:24px; --page-padding:24px; --page-padding-narrow:12px; --page-eyebrow-size:.8rem; }
 .character-list-shell * { box-sizing:border-box; }
-.character-list-shell h1 { margin:0 0 24px; }
-.character-list-shell .eyebrow { color:var(--muted); font-size:.8rem; letter-spacing:.12em; }
 .character-list-filters { display:flex; flex-wrap:wrap; gap:16px; padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:10px; }
 .character-list-filters label { display:flex; flex-direction:column; gap:6px; }
 .character-list-filters input,.character-list-filters select { font:inherit; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:5px; padding:8px; max-width:100%; }
@@ -21,5 +19,5 @@ body { margin:0; }
 .character-duck-icon { width:60px; height:60px; flex:0 0 60px; object-fit:cover; border-radius:4px; }
 .character-duck-name { overflow-wrap:anywhere; }
 @media(max-width:1140px) { .character-list-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-@media(max-width:760px) { .character-list-shell { padding:12px; margin:12px auto; } .character-list-grid { grid-template-columns:minmax(0,1fr); } .character-list-filters label { width:100%; } .character-list-filters input[type=search] { width:100%; } }
+@media(max-width:760px) { .character-list-shell { --page-padding:12px; --page-margin-block:12px; } .character-list-grid { grid-template-columns:minmax(0,1fr); } .character-list-filters label { width:100%; } .character-list-filters input[type=search] { width:100%; } }
 @media(max-width:370px) { .character-card { padding:12px; } .character-card-body { gap:10px; } .character-duck-identity { flex-wrap:wrap; } }
