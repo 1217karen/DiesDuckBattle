@@ -73,6 +73,7 @@ async function characterScreen({ siteTheme = null, storageThrows = false } = {})
     setItem(key, value) { if (storageThrows) throw Error("storage blocked"); themeWrites.push([key, value]); siteTheme = value; },
   };
   vm.runInNewContext(await source("siteTheme"), context);
+  context.diesDuckSiteTheme.bindAuth({ subscribe(fn) { fn({ sessionKnown: true, signedIn: true }); return () => {}; } });
   await vm.runInNewContext(`(async()=>{${await source("characterPage")}})()`, context);
   return { get, all, data, latest: () => latest, saved: () => saved, hydrate(data) { latest = structuredClone(data); hooks.hydrate(data); hooks.onState({ canSave: true, canEdit: true }); },
     pick(slot) { selectedCallback(slot); }, save: () => get("save").handlers.click(), controller,
