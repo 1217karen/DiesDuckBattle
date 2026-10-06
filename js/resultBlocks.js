@@ -156,7 +156,7 @@ export function buildBlocks(events, result, context) {
       continue;
     }
     const lines = render(event);
-    if (atTurnTail || event.type === "buffTick" || event.type === "buffExpired") {
+    if (atTurnTail || ["buffTick", "buffExpired", "timedRuleTick", "timedRuleExpired"].includes(event.type)) {
       if (lines.length) {
         tail ??= { side: "system", turn: event.turn, phase: event.phase, headerText: "", lines: [], stateAfter: cloneState(state) };
         addLines(event, lines, tail);
@@ -251,7 +251,11 @@ function eventToLines(event, context) {
     }
     case "cSkillActivated":
       return [{ kind: "note", text: `<span class="ap-charge-complete">APチャージ完了！</span><br>${actor}のチャージスキル！${renderSkillDisplayName(event.skill?.skillName, event.skill?.skillRuby)}` }];
-    case "timedRuleTriggered": return [{ kind: "note", text: `${actor}の持続スキル効果！` }];
+    case "timedRuleApplied": return [{ kind: "soft", text: `${target}は${escapeHTML(statusName(event.status))}付与のオーラを纏った！（${escapeHTML(event.duration?.remainingTurns)}ターン）` }];
+    case "timedRuleTriggered": return [{ kind: "note", text: `${actor}のオーラ効果！` }];
+    case "timedRuleTick": return event.after > 0
+      ? [{ kind: "meta center", text: `${target}のオーラ効果（${escapeHTML(statusName(event.status))} / 残り${escapeHTML(event.after)}T）` }] : [];
+    case "timedRuleExpired": return [{ kind: "meta", text: `${target}のオーラ効果が終了（${escapeHTML(statusName(event.status))}）` }];
     case "roll": {
       const summaries = { 1: "自分のAP+1", 2: "通常攻撃2回", 3: "自分のHP3回復", 4: "自分に反撃+1", 5: "相手のAP-1", 6: "DF無視攻撃＋反動3ダメージ" };
       const icon = snapshotIconHTML(context.presentations?.[event.actor]?.duckIconUrl, "logDuckIcon", FIXED_IMAGES.duckIcon);
@@ -314,7 +318,8 @@ function eventToLines(event, context) {
       const duration = event.duration?.kind === "phase" ? "この行動中" : `${escapeHTML(event.duration?.remainingTurns ?? event.turns)}T`;
       return [{ kind: "soft", text: `${target}に${event.duration?.kind === "phase" ? "行動中" : "ターン"}効果（${escapeHTML(event.stat)}${signed(event.amount)} / ${duration}）を追加！` }];
     }
-    case "buffTick": return [{ kind: "meta center", text: `${target}のターン効果（${escapeHTML(event.stat)}${signed(event.amount)}／残り${escapeHTML(event.after)}T）` }];
+    case "buffTick": return event.after > 0
+      ? [{ kind: "meta center", text: `${target}のターン効果（${escapeHTML(event.stat)}${signed(event.amount)}／残り${escapeHTML(event.after)}T）` }] : [];
     case "buffExpired": return [{ kind: "meta", text: `${target}の${event.duration?.kind === "phase" ? "行動中" : "ターン"}効果が終了（${escapeHTML(event.stat ?? "")}${signed(event.amount ?? 0)}）` }];
     case "chanceRoll": return [{ kind: "meta", text: `確率判定 ${event.success ? "成功" : "失敗"}！（${Math.round(Number(event.probability ?? 0) * 100)}%）` }];
     case "diceAdded": return [{ kind: "soft", text: `${target}にダイス追加：${escapeHTML((event.values ?? []).join("、"))}` }];

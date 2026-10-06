@@ -9,7 +9,7 @@ export function addTimedHitRule(eff, ctx, emit) {
     duration: { kind: "turns", remainingTurns: count }, effect: structuredClone(eff.effect),
     originSkill: originSkill ? { ...originSkill } : null };
   owner.timedHitRules.push(rule);
-  emit("timedRuleApplied", ctx.actor?.side ?? "system", { target: owner.side, id: rule.id, duration: { ...rule.duration } });
+  emit("timedRuleApplied", ctx.actor?.side ?? "system", { target: owner.side, id: rule.id, duration: { ...rule.duration }, status: rule.effect.status });
 }
 
 // 通常攻撃1回分のdamage・既存trigger・反撃が完了した位置だけから呼ぶ。
@@ -20,7 +20,7 @@ export function resolveTimedHitRules(owner, ctx, applyEffect) {
     if (rule.duration.remainingTurns <= 0) continue;
     const groupId = ctx.newGroupId();
     ctx.withOrigin({ originSkill: rule.originSkill, groupId }, () => {
-      ctx.push("timedRuleTriggered", owner.side, { id: rule.id, trigger: rule.trigger, groupId });
+      ctx.push("timedRuleTriggered", owner.side, { id: rule.id, trigger: rule.trigger, groupId, status: rule.effect.status });
       applyEffect(rule.effect, ctx);
     });
   }
@@ -30,9 +30,9 @@ export function tickTimedHitRules(owner, push) {
   owner.timedHitRules = (owner.timedHitRules ?? []).filter(rule => {
     const before = rule.duration.remainingTurns;
     rule.duration.remainingTurns--;
-    push("timedRuleTick", "system", { target: owner.side, id: rule.id, before, after: Math.max(0, rule.duration.remainingTurns) });
+    push("timedRuleTick", "system", { target: owner.side, id: rule.id, before, after: Math.max(0, rule.duration.remainingTurns), status: rule.effect.status });
     if (rule.duration.remainingTurns > 0) return true;
-    push("timedRuleExpired", "system", { target: owner.side, id: rule.id });
+    push("timedRuleExpired", "system", { target: owner.side, id: rule.id, status: rule.effect.status });
     return false;
   });
 }
