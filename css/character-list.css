@@ -1,4 +1,5 @@
-.character-list-shell { box-sizing:border-box; max-width:1240px; margin:24px auto; padding:24px; color:var(--text); }
+body { margin:0; }
+.character-list-shell { box-sizing:border-box; max-width:1240px; width:calc(100% - 12px); margin:24px auto; margin-left:auto; margin-right:auto; padding:24px; color:var(--text); background:var(--shell-surface); box-shadow:0 0 28px #00000018; min-height:calc(100svh - var(--common-menu-height, 52px)); }
 .character-list-shell * { box-sizing:border-box; }
 .character-list-shell h1 { margin:0 0 24px; }
 .character-list-shell .eyebrow { color:var(--muted); font-size:.8rem; letter-spacing:.12em; }
