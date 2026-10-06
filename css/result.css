@@ -75,7 +75,7 @@ body {
 .phaseHeader { width: 100%; box-sizing: border-box; padding: 8px 10px; font-size: var(--fs-18); font-weight: 700; }
 .phaseHeader.p1 { background: linear-gradient(90deg, rgba(227,91,91,.6), rgba(227,91,91,.08)); border-left: 6px solid var(--p1); }
 .phaseHeader.p2 { background: linear-gradient(90deg, rgba(74,134,232,.6), rgba(74,134,232,.08)); border-left: 6px solid var(--p2); }
-.phaseHeader.system { font: 400 var(--fs-20) var(--ff-display); background: var(--ui-surface); border-inline: 6px solid var(--line); }
+.phaseHeader.system { font: 400 var(--fs-20) var(--ff-display); background: #b7d7e3; border-inline: 6px solid #6fa8bb; color: #20282c; }
 .lines { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
 .line { width: 100%; box-sizing: border-box; padding: 2px 6px; white-space: pre-wrap; }
 .line.soft { background: color-mix(in srgb, var(--text) 3.5%, transparent); }
@@ -106,7 +106,8 @@ img.logDuckIcon { object-fit: contain; }
 .num.heal { color: var(--heal); }
 .num.buff { color: var(--buff); }
 .num.debuff { color: var(--debuff); }
-.line.victoryLine { padding: 14px 12px; text-align: center; font-weight: 900; border-radius: 12px; background: linear-gradient(90deg,rgba(255,214,102,.55),color-mix(in srgb, var(--panel) 75%, transparent),rgba(255,214,102,.55)); border: 2px solid rgba(160,120,0,.28); }
+.line.victoryLine { padding: 14px 12px; text-align: center; font-weight: 900; border-radius: 12px; background: linear-gradient(90deg,#aeb8c2,#eef2f4,#aeb8c2); border: 2px solid #8d99a3; color: #20282c; }
+:root[data-theme="dark"] .line.victoryLine { background: linear-gradient(90deg,#59636d,#65717c,#59636d); border-color: #7d8994; color: #f2f5f7; }
 .victoryWrap { display: flex; flex-direction: column; gap: 6px; }
 .victoryTop { font: 400 var(--fs-12) var(--ff-display); letter-spacing: .18em; }
 .victoryMain { font-size: var(--fs-20); letter-spacing: .04em; }
