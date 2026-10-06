@@ -16,7 +16,7 @@ test('random mode persistence and own-P1 current streak SQL boundary',{skip:!PGl
       create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
       grant usage on schema public,auth to authenticated,anon,service_role;
       grant execute on function auth.uid() to authenticated,anon,service_role;`);
-    for(const file of (await readdir(new URL('../supabase/migrations/',import.meta.url))).filter(f=>f.endsWith('.sql')&&f!==migration).sort())
+    for(const file of (await readdir(new URL('../supabase/migrations/',import.meta.url))).filter(f=>f.endsWith('.sql')&&f!==migration&&f<'20261006120000').sort())
       await db.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
     await db.exec(`insert into auth.users values ('${userA}'),('${userB}');
       insert into public.game_accounts(id) values ('${a}'),('${b}');
@@ -35,6 +35,7 @@ test('random mode persistence and own-P1 current streak SQL boundary',{skip:!PGl
     };
     await asUser(userA);const legacy=await save();
     await db.exec('reset role');await db.exec(await readFile(new URL('../supabase/migrations/'+migration,import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261006120000_character_list_and_best_streak.sql',import.meta.url),'utf8'));
     await asUser(userA);
     await t.test('no own P1 history is zero; legacy row/record default to manual',async()=>{
       assert.equal(await streak(a),0);await asUser(userB);assert.equal(await streak(b),0);await asUser(userA);

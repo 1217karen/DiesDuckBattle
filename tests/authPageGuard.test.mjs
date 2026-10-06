@@ -99,8 +99,8 @@ test("only the explicit protected page entry modules opt in; denied/loading auth
     if (file === "authPageGuard.js" || !file.endsWith(".js")) continue;
     if ((await readFile(new URL("../js/" + file, import.meta.url), "utf8")).includes("authPageGuard.js")) guarded.push(file);
   }
-  assert.deepEqual(guarded.sort(), ["characterPage.js", "profilePage.js", "select.js", "settingPage.js"]);
-  for (const page of ["select", "settingPage", "characterPage", "profilePage"]) {
+  assert.deepEqual(guarded.sort(), ["characterListPage.js", "characterPage.js", "profilePage.js", "select.js", "settingPage.js"]);
+  for (const page of ["select", "settingPage", "characterPage", "profilePage", "characterListPage"]) {
     const code = (await source(page)).replace(/^import .*;\r?\n/gm, "").replace(/^export /gm, "");
     const env = environment(), r = runtime();
     let touches = 0;
@@ -109,12 +109,12 @@ test("only the explicit protected page entry modules opt in; denied/loading auth
       requireLoginPage: () => requireLoginPage({ ...env, getRuntime: async () => r.auth }),
       document: forbidden, getSupabaseClient() { touches++; }, mountOnlineEditor() { touches++; },
       createSelectState() { touches++; }, createSettingState() { touches++; }, createEmptyPlayerPresentation() { touches++; },
-      createOnlineProfileService() { touches++; }, finishPageLoad() { touches++; },
+      createOnlineProfileService() { touches++; }, createOnlineCharacterListService() { touches++; }, finishPageLoad() { touches++; },
     });
     await new Promise(resolve => setImmediate(resolve)); assert.equal(touches, 0);
     r.emit(signedOut); await assert.rejects(running, /Login required/); assert.equal(touches, 0);
   }
-  for (const page of ["select", "setting", "character", "profile"]) {
+  for (const page of ["select", "setting", "character", "profile", "character-list"]) {
     const html = await readFile(new URL(`../${page}.html`, import.meta.url), "utf8");
     assert.doesNotMatch(html, /<body class="[^"]*auth-required-pending/);
     assert.match(html, /css\/common-menu.css/);

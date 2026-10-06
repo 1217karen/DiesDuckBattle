@@ -2,7 +2,7 @@ import { battlerNameError } from "./nameValidation.js";
 import { presentationTextIssues } from "./profileTextValidation.js";
 import { migratePlayerBuild } from "./playerBuildMigration.js";
 import { clonePlayerBuild, createEmptyPlayerBuild } from "./playerBuildModel.js";
-import { normalizePlayerPresentation, createEmptyPlayerPresentation, QUOTE_PATHS, QUOTE_TEXT_MAX, presentationForPersistence } from "./playerPresentationModel.js";
+import { PLAYER_PRESENTATION_SCHEMA_VERSION, normalizePlayerPresentation, createEmptyPlayerPresentation, QUOTE_PATHS, QUOTE_TEXT_MAX, presentationForPersistence } from "./playerPresentationModel.js";
 import { normalizePlayerPublicSettings } from "./playerPublicSettingsModel.js";
 
 export const isOnlineUuid = value => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value);
@@ -33,9 +33,11 @@ const upgradeDuckDisplays = values => object(values)
 
 /** Check each version in its original shape before migrating; never discard unknown data. */
 export function migrateOnlinePlayerPresentation(value) {
-  requireValue(object(value) && [1, 2, 3].includes(value.schemaVersion));
+  requireValue(object(value) && [1, 2, 3, 4].includes(value.schemaVersion));
   const normalized = normalizePlayerPresentation(value);
   const expected = structuredClone(normalized);
+  expected.schemaVersion = value.schemaVersion;
+  if (value.schemaVersion < 4) delete expected.battler.profile.showBestStreak;
   if (value.schemaVersion < 3) {
     expected.schemaVersion = value.schemaVersion;
     for (const path of QUOTE_PATHS) {
@@ -50,7 +52,7 @@ export function migrateOnlinePlayerPresentation(value) {
   }
   requireValue(same(expected, value.schemaVersion === 1 ? { ...value, ducks: upgradeDuckDisplays(value.ducks) } : value));
   // Legacy text is preserved on load, including historical values longer than the new limit.
-  if (value.schemaVersion === 3) for (const path of QUOTE_PATHS) {
+  if (value.schemaVersion >= 3) for (const path of QUOTE_PATHS) {
     const timing = path.reduce((v, k) => v[k], normalized.battler.quotes);
     requireValue(timing.lines.every(line => [...line.text].length <= QUOTE_TEXT_MAX));
   }
@@ -78,11 +80,11 @@ function encodePlayerData(data, forSave) {
     dtoVersion: 1,
     battler: {
       build: { schemaVersion: 3, ...build.battler },
-      presentation: { schemaVersion: 3, name: data.battlerName, ...presentation.battler, detachedDuckPresentation },
+      presentation: { schemaVersion: PLAYER_PRESENTATION_SCHEMA_VERSION, name: data.battlerName, ...presentation.battler, detachedDuckPresentation },
     },
     ducks: build.ducks.map(({ id, name, ...fields }) => ({ id,
       build: { schemaVersion: 3, ...fields },
-      presentation: { schemaVersion: 3, name, icon: presentation.ducks[id] ?? null },
+      presentation: { schemaVersion: PLAYER_PRESENTATION_SCHEMA_VERSION, name, icon: presentation.ducks[id] ?? null },
     })),
     publicDuckId: settings.publicDuckId,
   };
@@ -101,10 +103,10 @@ export function decodeOnlinePlayer(snapshot) {
   requireValue(object(b.presentation));
   const { schemaVersion: version, name: storedName, detachedDuckPresentation: detached, ...storedDisplay } = b.presentation;
   const migratedDisplay = migrateOnlinePlayerPresentation({ schemaVersion: version, battler: storedDisplay, ducks: detached });
-  b = { ...b, presentation: { schemaVersion: 3, name: storedName, ...migratedDisplay.battler, detachedDuckPresentation: migratedDisplay.ducks } };
+  b = { ...b, presentation: { schemaVersion: PLAYER_PRESENTATION_SCHEMA_VERSION, name: storedName, ...migratedDisplay.battler, detachedDuckPresentation: migratedDisplay.ducks } };
   const storedDucks = snapshot.ducks.map(d => {
     keys(d.presentation, ["schemaVersion", "name", "icon"]);
-    requireValue([1, 2, 3].includes(d.presentation.schemaVersion));
+    requireValue([1, 2, 3, 4].includes(d.presentation.schemaVersion));
     let icon = d.presentation.icon;
     if (icon !== null) {
       const empty = createEmptyPlayerPresentation();
@@ -113,21 +115,22 @@ export function decodeOnlinePlayer(snapshot) {
         const parent = path.slice(0,-1).reduce((v,k) => v[k], empty.battler.quotes);
         parent[path.at(-1)] = { text: "", iconSlot: null };
       }
+      if (empty.schemaVersion < 4) delete empty.battler.profile.showBestStreak;
       if (empty.schemaVersion === 1) delete empty.battler.profile;
       empty.ducks = { duck: icon };
       icon = migrateOnlinePlayerPresentation(empty).ducks.duck;
     }
-    return { ...d, presentation: { ...d.presentation, schemaVersion: 3, icon } };
+    return { ...d, presentation: { ...d.presentation, schemaVersion: PLAYER_PRESENTATION_SCHEMA_VERSION, icon } };
   });
   keys(b.build, ["schemaVersion", "bSelection", "dSelection", ...(b.build.schemaVersion === 3 ? ["skillLabels"] : [])]);
   keys(b.presentation, ["schemaVersion", "name", "standingImageUrl", "defaultIconUrl", "iconSlots", "quotes", "profile", "detachedDuckPresentation"]);
-  requireValue([2,3].includes(b.build.schemaVersion) && b.presentation.schemaVersion === 3 && object(b.presentation.detachedDuckPresentation));
+  requireValue([2,3].includes(b.build.schemaVersion) && b.presentation.schemaVersion === PLAYER_PRESENTATION_SCHEMA_VERSION && object(b.presentation.detachedDuckPresentation));
   const { schemaVersion: _bv, ...battler } = b.build;
   const { schemaVersion: _pv, name, detachedDuckPresentation, ...display } = b.presentation;
   const duckDisplay = { ...detachedDuckPresentation };
   const ducks = storedDucks.map(d => {
     requireValue(isOnlineUuid(d.id) && object(d.build) && d.build.schemaVersion === b.build.schemaVersion);
-    keys(d.presentation, ["schemaVersion", "name", "icon"]); requireValue(d.presentation.schemaVersion === 3);
+    keys(d.presentation, ["schemaVersion", "name", "icon"]); requireValue(d.presentation.schemaVersion === PLAYER_PRESENTATION_SCHEMA_VERSION);
     requireValue(!Object.hasOwn(duckDisplay, d.id));
     const { schemaVersion: _v, ...fields } = d.build;
     if (d.presentation.icon !== null) duckDisplay[d.id] = d.presentation.icon;
@@ -136,7 +139,7 @@ export function decodeOnlinePlayer(snapshot) {
   const migrated = migratePlayerBuild({ schemaVersion: b.build.schemaVersion, battler, ducks });
   requireValue(migrated.ok);
   const data = { build: migrated.build,
-    presentation: { schemaVersion: 3, battler: display, ducks: duckDisplay },
+    presentation: { schemaVersion: PLAYER_PRESENTATION_SCHEMA_VERSION, battler: display, ducks: duckDisplay },
     publicSettings: { schemaVersion: 1, publicDuckId: snapshot.publicDuckId }, battlerName: name };
   const comparisonData = structuredClone(data);
   // Quotes were already validated above; compare the remaining DTO independently

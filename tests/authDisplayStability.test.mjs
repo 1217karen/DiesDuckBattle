@@ -180,7 +180,7 @@ test("every common-menu HTML has identical prebuilt shell and early cache bootst
     assert.doesNotMatch(html, /ログイン状態を確認中…|auth-required-pending/);
     assert.ok(html.indexOf('src="js/menuDisplayCache.js"') < html.indexOf('src="js/commonMenu.js"'));
   }
-  assert.equal(count, 7);
+  assert.equal(count, 8);
 });
 
 test("getSession failure cannot discard successful INITIAL_SESSION; synchronous initial event wins over stale restore", async t => {

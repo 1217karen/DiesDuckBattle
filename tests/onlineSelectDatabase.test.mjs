@@ -53,9 +53,14 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
     await db.exec(await readFile(new URL('../supabase/migrations/20261001114619_online_battle_public_boundary.sql',import.meta.url),'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/20261004082650_skill_label_snapshot.sql',import.meta.url),'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/20261004101854_c_skill_cutin.sql',import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261004130000_online_battle_results.sql',import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261004140000_battle_history_favorites.sql',import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261004162107_random_battle_win_streak.sql',import.meta.url),'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/20261004152422_opponent_list_default_icon.sql',import.meta.url),'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/20261005110530_presentation_v2_battle_projection.sql',import.meta.url),'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/20261005173129_presentation_v3_public_compatibility.sql',import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261006120000_character_list_and_best_streak.sql',import.meta.url),'utf8'));
+
     await asUser(userA);
     await t.test('direct tables, guessed UUIDs and full draft RPC cannot retrieve foreign data',async()=>{
       assert.equal((await db.query('select * from public.battlers where game_account_id=$1',[b])).rows.length,0);
@@ -80,7 +85,7 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
       assert.doesNotMatch(JSON.stringify(row),/PRIVATE/);assert.deepEqual(row.ducks.map(d=>d.id),[duckB]);
       assert.equal(row.battler.presentation.schemaVersion,1);assert.equal(row.ducks[0].presentation.schemaVersion,1);
       assert.equal('profile' in row.battler.presentation,false);assert.equal('profile' in row.ducks[0].presentation.icon,false);
-      assert.equal(decodePublicOpponent(row,a).presentation.schemaVersion,3);
+      assert.equal(decodePublicOpponent(row,a).presentation.schemaVersion,4);
       assert.equal(decodePublicOpponent(row,a).publicDuckId,duckB);
       assert.equal(row.ducks[0].presentation.icon.cutinUrl,'https://example.invalid/cutin2.png');
       assert.equal(decodePublicOpponent(row,a).presentation.ducks[duckB].cutinUrl,row.ducks[0].presentation.icon.cutinUrl);
@@ -150,7 +155,7 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
       await db.exec(`reset role; update public.battlers set presentation=jsonb_set(presentation,'{name}','"latest"') where game_account_id='${b}';`);await asUser(userA);
       const pair=await prepare();
       assert.equal(decodeOnlinePlayer(pair.self).presentation.battler.profile.text,'PRIVATE-BATTLER-PROFILE');
-      assert.equal(decodePublicOpponent(pair.opponent,a).presentation.schemaVersion,3);
+      assert.equal(decodePublicOpponent(pair.opponent,a).presentation.schemaVersion,4);
       assert.doesNotMatch(JSON.stringify(pair.opponent),/PRIVATE|profile|featuredBattleId|flavorStats/);
       assert.equal(pair.opponent.battler.presentation.name,'latest');
       assert.equal(pair.opponent.ducks[0].presentation.icon.cutinUrl,'https://example.invalid/cutin2.png');

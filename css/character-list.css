@@ -1,0 +1,24 @@
+.character-list-shell { box-sizing:border-box; max-width:1240px; margin:24px auto; padding:24px; color:var(--text); }
+.character-list-shell * { box-sizing:border-box; }
+.character-list-shell h1 { margin:0 0 24px; }
+.character-list-shell .eyebrow { color:var(--muted); font-size:.8rem; letter-spacing:.12em; }
+.character-list-filters { display:flex; flex-wrap:wrap; gap:16px; padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:10px; }
+.character-list-filters label { display:flex; flex-direction:column; gap:6px; }
+.character-list-filters input,.character-list-filters select { font:inherit; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:5px; padding:8px; max-width:100%; }
+.character-list-filters input[type=search] { width:260px; }
+.character-list-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
+.character-card { display:block; padding:16px; border:2px solid #4F91B3; border-radius:10px; background:var(--panel); color:var(--text); text-decoration:none; box-shadow:0 3px 10px #0000000d; min-width:0; }
+.character-card:hover { background:var(--ui-hover); box-shadow:0 5px 16px #0000001a; }
+.character-card:focus-visible { outline:3px solid var(--text); outline-offset:4px; }
+.character-eno { color:var(--muted); font-size:.8rem; }
+.character-name { font-size:1.15rem; margin:4px 0 14px; overflow-wrap:anywhere; }
+.character-card-body { display:flex; align-items:flex-start; gap:14px; }
+.character-battler-icon { width:120px; height:120px; flex:0 0 120px; object-fit:cover; border-radius:5px; }
+.character-duck { min-width:0; flex:1; font-size:.85rem; }
+.character-duck p { margin:6px 0 0; overflow-wrap:anywhere; }
+.character-duck-identity { display:flex; align-items:center; gap:8px; }
+.character-duck-icon { width:60px; height:60px; flex:0 0 60px; object-fit:cover; border-radius:4px; }
+.character-duck-name { overflow-wrap:anywhere; }
+@media(max-width:1140px) { .character-list-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:760px) { .character-list-shell { padding:12px; margin:12px auto; } .character-list-grid { grid-template-columns:minmax(0,1fr); } .character-list-filters label { width:100%; } .character-list-filters input[type=search] { width:100%; } }
+@media(max-width:370px) { .character-card { padding:12px; } .character-card-body { gap:10px; } .character-duck-identity { flex-wrap:wrap; } }

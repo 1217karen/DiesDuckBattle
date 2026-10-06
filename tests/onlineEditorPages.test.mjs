@@ -126,7 +126,7 @@ test("all quote rows use one-line inputs, six inline controls and live slot/defa
   imageInputs[1].value="new-default.png";imageInputs[1].handlers.input();assert.equal(picker.children[0].src,"new-default.png");
   picker.handlers.click();page.pick(null);assert.equal(picker.title,"デフォルトアイコン");assert.equal(picker.children[0].src,"new-default.png");
   const quote=page.latest().presentation.battler.quotes.battleStart.lines[0];assert.deepEqual(Object.keys(quote),["text","iconSlot","opponentEno"]);
-  assert.equal(quote.iconSlot,null);assert.equal(page.latest().presentation.schemaVersion,3);
+  assert.equal(quote.iconSlot,null);assert.equal(page.latest().presentation.schemaVersion,4);
 });
 test("late image callback from prior account cannot block the newly hydrated account", async () => {
   const page = await characterScreen(), old = page.all().find(el => el.tagName === "img" && el.onerror);
@@ -266,7 +266,7 @@ test('loaded overlong detached profiles and hidden flavor labels block saving wi
  await page.save();assert.equal(page.saved(),undefined);assert.equal(label.attributes['aria-invalid'],'true');
  inputValue(label,'abcあいう');await page.save();assert.ok(page.saved());
 });
-const checkboxes = page => page.all().filter(e=>e.type==='checkbox');
+const checkboxes = page => page.all().filter(e=>e.type==='checkbox'&&e.attributes['aria-label']!=='キャラリストに最大連勝数を表示する');
 
 test('Battler multiline profile and shared toolbar save/rehydrate without touching existing data',async()=>{
   const page=await profileScreen(),before=structuredClone(page.latest());
@@ -422,4 +422,13 @@ test('v3 UI blocks invalid text and ENo, counts code points and tags, retains em
  primary.action.handlers.click();primary.action.handlers.click();assert.equal(extras.children.length,1);assert.equal(second.eno.value,'9223372036854775807');
  await page.save();assert.equal(page.saved().presentation.battler.quotes.battleStart.lines.length,1);
  page.hydrate(page.saved());const reloaded=page.all().find(e=>e.className==='quote-timing-block');assert.equal(quoteParts(reloaded.children[0]).action.className,'quote-toggle');
+});
+
+test('best streak checkbox changes only its profile field and survives save/rehydrate',async()=>{
+ const page=await profileScreen(),before=structuredClone(page.latest());
+ const find=()=>aria(page.get('battler-profile'),'キャラリストに最大連勝数を表示する');
+ assert.equal(find().checked,true);find().checked=false;find().handlers.change();await page.save();
+ const expected=structuredClone(before);expected.presentation.battler.profile.showBestStreak=false;
+ assert.deepEqual(page.saved(),expected);page.hydrate(page.saved());assert.equal(find().checked,false);
+ find().checked=true;find().handlers.change();await page.save();assert.deepEqual(page.saved(),before);
 });

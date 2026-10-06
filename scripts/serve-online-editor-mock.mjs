@@ -54,7 +54,13 @@ const server = createServer(async (req, res) => {
       return json({ eno, mode, saveCalls });
     }
     if (path === "/mock/rpc" && req.method === "POST") {
-      const { name, params } = body, id = params.p_game_account_id;
+      const { name, params = {} } = body, id = params.p_game_account_id;
+      if(name==="list_online_characters")return json({data:[...rows.values()].map(row=>{
+        const p=row.battler.presentation,d=row.ducks.find(d=>d.id===row.publicDuckId),profile=d?.presentation.icon?.profile;
+        return {eno:row.eno,battlerName:p.name,battlerIconUrl:p.defaultIconUrl??"",accent:p.profile?.theme.accent??"#4F91B3",
+          duck:d?{name:d.presentation.name,iconUrl:d.presentation.icon?.iconUrl??"",type:profile?.type??null,attributes:profile?.attributes??["","",""]}:null,
+          bestStreak:p.profile?.showBestStreak===false?null:0};
+      })});
       const projection=accountId=>{const row=structuredClone(rows.get(accountId));if(!row?.publicDuckId||accountIds().includes(accountId)||accountIds().length!==1)return null;
         row.ducks=row.ducks.filter(d=>d.id===row.publicDuckId);row.battler.presentation.detachedDuckPresentation={};return row;};
       if(name==="list_online_opponents")return json({data:[...rows.keys()].map(projection).filter(Boolean).map(r=>({id:r.gameAccountId,eno:r.eno,name:r.battler.presentation.name,publicDuckId:r.publicDuckId,defaultIconUrl:r.battler.presentation.defaultIconUrl}))});
@@ -78,7 +84,7 @@ const server = createServer(async (req, res) => {
     else if (path === "/mock-controls.js") content = `const channel=new BroadcastChannel('online-editor-mock');for(const b of document.querySelectorAll('button'))b.onclick=async()=>{const r=await fetch('/mock/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:b.dataset.action})});document.getElementById('status').textContent=JSON.stringify(await r.json());channel.postMessage('change');};`;
     else if (path === "/" || path === "/mock.html") { content = controls; type = "text/html"; }
     else {
-      if (!/^\/(setting\.html|character\.html|select\.html|result\.html|js\/[\w-]+\.js|css\/[\w-]+\.css|img\/(?:B00|B00_icon|B00_random|D00|D00_random|result_BG)\.png|supabase\/functions\/_shared\/(internal-email|registration-password|text-limits)\.mjs)$/.test(path)) return json({}, 404);
+      if (!/^\/(setting\.html|character\.html|character-list\.html|select\.html|result\.html|js\/[\w-]+\.js|css\/[\w-]+\.css|img\/(?:B00|B00_icon|B00_random|D00|D00_random|result_BG)\.png|supabase\/functions\/_shared\/(internal-email|registration-password|text-limits)\.mjs)$/.test(path)) return json({}, 404);
       content = await readFile(new URL(path.slice(1), root), path.endsWith(".png") ? undefined : "utf8");
       if (path === "/js/authRuntime.js") content = content.replace("https://esm.sh/@supabase/supabase-js@2.117.2?bundle", "/mock-sdk.js");
       type = path.endsWith(".png") ? "image/png" : path.endsWith(".html") ? "text/html" : path.endsWith(".css") ? "text/css" : "text/javascript";

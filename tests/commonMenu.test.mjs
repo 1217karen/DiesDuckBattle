@@ -14,12 +14,12 @@ test("guest menu hides select/settings/character/logout but preserves public des
   assert.equal(model.identity, "未ログイン");
   assert.equal(model.loggedIn, false);
   assert.deepEqual(model.items.filter(x => x.href).map(x => x.href), ["index.html", "storage.html"]);
-  assert.equal(model.items.filter(x => !x.href).length, 2);
+  assert.equal(model.items.filter(x => !x.href).length, 1);
 });
 test("signed-in menu displays exact DB name and ENo, never HTML markup", () => {
   const m = menuModel({ ...base, signedIn: true, accounts: [{ eno: "77", name: "<b>DBキャラ名</b>" }], enos: ["77"] });
   assert.equal(m.identity, "ENo.77｜<b>DBキャラ名</b>");
-  assert.equal(m.items.filter(x => x.href).length, 5);
+  assert.equal(m.items.filter(x => x.href).length, 6);
 });
 test("missing name, failed profile fetch, unknown session and multiple accounts have explicit states", () => {
   assert.match(menuModel({ ...base, signedIn: true, accounts: [{ eno: "77", name: null }] }).identity, /取得できません/);

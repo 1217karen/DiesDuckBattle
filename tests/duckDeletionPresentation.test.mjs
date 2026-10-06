@@ -14,7 +14,7 @@ function initial() {
  const build=createEmptyPlayerBuild();build.ducks=[a,b].map((id,i)=>({...createEmptyDuck({idFactory:()=>id}),name:'Duck'+i}));
  const presentation=createEmptyPlayerPresentation();
  presentation.battler.standingImageUrl='standing';presentation.battler.defaultIconUrl='default';presentation.battler.iconSlots[9]='tenth';presentation.battler.quotes.battleStart={ lines: [{text:' quote ',iconSlot:10, opponentEno:null}] };
- presentation.battler.profile={text:' Battler ',iconSlots:[1,10],theme:{background:'#123456',panel:'#234567',text:'#345678',accent:'#456789'},featuredBattleId:a};
+ presentation.battler.profile={text:' Battler ',iconSlots:[1,10],theme:{background:'#123456',panel:'#234567',text:'#345678',accent:'#456789'},featuredBattleId:a,showBestStreak:true};
  presentation.ducks[a]={iconUrl:'icon',cutinUrl:'cutin',profile:{text:' profile ',type:'attack',attributes:['炎','😀',''],statLabelPreset:'english',flavorStats:[{label:'test',value:6}]}};
  presentation.ducks[b]={...emptyDisplay(),iconUrl:'other',profile:{...createEmptyDuckProfile(),text:'other profile'}};
  presentation.ducks.orphan={...emptyDisplay(),profile:{...createEmptyDuckProfile(),text:'detached'}};
@@ -176,7 +176,7 @@ for (const deleted of [true, false]) test(`character rebase preserves other edit
  const presentation=character.snapshot().draft.presentation;
  presentation.battler.standingImageUrl='edited standing';presentation.battler.defaultIconUrl='edited icon';presentation.battler.iconSlots[2]='edited slot';
  presentation.battler.quotes.battleStart={ lines: [{text:' edited quote ',iconSlot:3, opponentEno:null}] };
- presentation.battler.profile={text:' edited Battler\n',iconSlots:[3],theme:{background:'#ABCDEF',panel:'#FEDCBA',text:'#102030',accent:'#405060'},featuredBattleId:b};
+ presentation.battler.profile={text:' edited Battler\n',iconSlots:[3],theme:{background:'#ABCDEF',panel:'#FEDCBA',text:'#102030',accent:'#405060'},featuredBattleId:b,showBestStreak:false};
  presentation.ducks[a].profile.text='stale target edit';
  presentation.ducks[b].profile.text='edited B';presentation.ducks.orphan.profile.text='edited orphan';
  character.edit({presentation,battlerName:'edited name'});

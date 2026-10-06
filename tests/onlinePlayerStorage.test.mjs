@@ -85,7 +85,7 @@ test("legacy v1 icon-only online data migrates to v2 with empty cut-ins and unch
   dto.ducks[0].presentation.schemaVersion=1;delete dto.ducks[0].presentation.icon.profile;delete dto.battler.presentation.detachedDuckPresentation.orphan.profile;
   delete dto.ducks[0].presentation.icon.cutinUrl;delete dto.battler.presentation.detachedDuckPresentation.orphan.cutinUrl;
   const read=decodeOnlinePlayer(dto);
-  assert.equal(read.presentation.schemaVersion,3);assert.equal(read.presentation.ducks[duckId].cutinUrl,"");
+  assert.equal(read.presentation.schemaVersion,4);assert.equal(read.presentation.ducks[duckId].cutinUrl,"");
   assert.equal(read.presentation.ducks.orphan.cutinUrl,"");assert.deepEqual(read.build,data.build);assert.deepEqual(data,before);
   for(const value of [5,null,{url:"bad"}]){
     const bad=structuredClone(dto);bad.ducks[0].presentation.icon.cutinUrl=value;assert.throws(()=>decodeOnlinePlayer(bad));
