@@ -1,5 +1,6 @@
 import { displayCache } from "./authDisplayCache.js";
 import { menuModel } from "./commonMenuModel.js";
+import { canonicalEno } from "../supabase/functions/_shared/internal-email.mjs";
 
 // State never contains a password, Auth email, token, or full SDK error.
 export function createAuthController(service, render, notifySuccess = () => {}) {
@@ -81,10 +82,22 @@ export function createAuthController(service, render, notifySuccess = () => {}) 
         }
       }
     },
-    register: input => action("register", async () => {
+    register: (input, { notify = true } = {}) => action("register", async () => {
       const result = await service.register(input);
-      if (result.ok) { state.registeredEno = result.eno; state.message = "登録が完了しました。ENoを控えてください。"; }
-      else state.message = result.message;
+      if (!result.ok) { state.message = result.message; return { ok: false }; }
+      const eno = canonicalEno(result.eno);
+      state.registeredEno = eno;
+      state.message = `登録は完了しました。ENo.${eno}でログインしてください。`;
+      // One attempt only, within this action's busy guard. Credentials stay local.
+      let login;
+      try { login = await service.login(eno, input.password); } catch { /* Registration remains successful. */ }
+      if (!login?.ok || !login.session) return { ok: true, signedIn: false, eno };
+      state.registeredEno = ""; state.message = "";
+      await applySession(login.session, "LOGIN");
+      if (notify) {
+        try { notifySuccess(`新規登録しました。あなたはENo.${eno}です。`); } catch { /* Notifications cannot change auth outcome. */ }
+      }
+      return { ok: true, signedIn: true, eno };
     }),
     login: (eno, password) => action("login", async () => {
       const result = await service.login(eno, password);

@@ -1,7 +1,8 @@
 import { battlerNameError } from "./nameValidation.js";
 import { authMarkup } from "./authMarkup.js";
 
-export function mountAuthView(root, controller, { onLoginSuccess = () => {} } = {}) {
+export function mountAuthView(root, controller, { onLoginSuccess = () => {},
+  onRegistrationSuccess = onLoginSuccess, registrationToast = true } = {}) {
   root.innerHTML = authMarkup;
 const byId = id => root.querySelector("#" + id);
 const passwords = () => root.querySelectorAll('input[type="password"]');
@@ -77,7 +78,8 @@ byId("register-form").onsubmit = async event => {
   const input = { characterName: byId("character-name").value,
     password: byId("register-password").value, confirmation: byId("confirm-password").value };
   passwords().forEach(el => { el.value = ""; });
-  await controller?.register(input);
+  const result = await controller?.register(input, { notify: registrationToast });
+  if (result?.ok && result.signedIn) onRegistrationSuccess(result);
 };
 byId("login-form").onsubmit = async event => {
   event.preventDefault();

@@ -126,7 +126,7 @@ test("busy guard rejects duplicate submissions and state never retains input sec
   await controller.register(input);
   assert.equal(count, 1); assert.equal(state.busy, "register");
   finish({ ok: true, eno: "123" }); await pending;
-  assert.equal(state.registeredEno, "123"); assert.ok(!JSON.stringify(state).includes(input.password));
+  assert.equal(state.registeredEno, ""); assert.equal(state.signedIn, true); assert.ok(!JSON.stringify(state).includes(input.password));
   controller.stop();
 });
 test("late account lookup cannot restore an ENo after signout", async () => {

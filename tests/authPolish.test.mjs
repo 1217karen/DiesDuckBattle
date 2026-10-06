@@ -6,6 +6,7 @@ import { readFile } from "node:fs/promises";
 import { createAuthController } from "../js/authController.js";
 import { menuModel } from "../js/commonMenuModel.js";
 import { authMarkup } from "../js/authMarkup.js";
+import { canonicalEno } from "../supabase/functions/_shared/internal-email.mjs";
 import { registrationInput, authMessages, createAuthService } from "../js/authService.js";
 import { registrationPasswordError } from "../supabase/functions/_shared/registration-password.mjs";
 import { registerAccount } from "../supabase/functions/_shared/registration.mjs";
@@ -45,7 +46,7 @@ test("server character requirement has a specific Japanese message", async () =>
 const source = async name => (await readFile(new URL("../js/" + name + ".js", import.meta.url), "utf8"))
   .replace(/^import .*;\r?\n/gm, "").replace("export function mountAuthView", "function mountAuthView");
 async function screen({ standalone = false } = {}) {
-  const elements = new Map(), copied = [];
+  const elements = new Map(), copied = [], notifications = [], redirects = [];
   let last, succeed = false, nextEno = "77";
   const document = { focused: null, getElementById: id => get(id), querySelectorAll: () => buttons,
     createElement: () => element() };
@@ -69,16 +70,16 @@ async function screen({ standalone = false } = {}) {
     register: async () => ({ ok: true, eno: nextEno }),
     login: async () => succeed ? { ok: true, session: { user: { id: "other-auth" } } }
       : { ok: false, message: "ENoまたはパスワードを確認してください。" }, logout: async () => {},
-  }, state => { last = state; });
+  }, state => { last = state; }, message => notifications.push(message));
   await controller.start();
   const context = { battlerNameError, finishPageLoad() {}, document, window: { addEventListener() {} }, navigator: { clipboard: { writeText: async v => copied.push(v) } },
-    consumeIndexNotice() {}, authMarkup, menuModel, getAuthRuntime: async () => controller, controller };
-  const code = await source("authView") + (standalone ? '\nmountAuthView(document.getElementById("auth-root"), controller);' : await source("indexPage"));
+    consumeIndexNotice() {}, canonicalEno, location: { replace: url => redirects.push(url) }, authMarkup, menuModel, getAuthRuntime: async () => controller, controller };
+  const code = await source("authView") + (standalone ? await source("authPage") : await source("indexPage"));
   await vm.runInNewContext("(async()=>{" + code + "})()", context);
   get("character-name").value = "バトラー";
   const submit = async id => get(id).onsubmit({ preventDefault() {} });
   return { get, buttons, controller, copied, submit, focused: () => document.focused, state: () => last,
-    succeed: () => { succeed = true; }, next: eno => { nextEno = eno; } };
+    notifications, redirects, succeed: () => { succeed = true; }, failLogin: () => { succeed = false; }, next: eno => { nextEno = eno; } };
 }
 
 test("registration stays visible; failed login keeps panel and dialog; successful other ENo clears all derivatives", async () => {
@@ -101,7 +102,7 @@ test("registration stays visible; failed login keeps panel and dialog; successfu
   // Hidden controls must no longer retain the previous copy/handoff target.
   await s.get("copy-eno").onclick(); assert.equal(s.copied.at(-1), "");
   s.get("go-login").onclick(); assert.equal(s.get("login-eno").value, "");
-  await s.controller.logout(); s.next("99"); s.buttons[1].handlers.click(); await s.submit("register-form");
+  await s.controller.logout(); s.failLogin(); s.next("99"); s.buttons[1].handlers.click(); await s.submit("register-form");
   assert.equal(s.get("auth-dialog").open, true); assert.equal(s.get("registered").hidden, false);
   assert.match(s.get("registered-eno").textContent, /99/); assert.match(s.get("home-feedback").textContent, /99/);
   await s.get("copy-eno").onclick(); s.get("go-login").onclick(); s.next("100");
@@ -115,6 +116,7 @@ test("success callback closes only INDEX modal and focuses visible status", asyn
   await s.submit("login-form");
   assert.equal(s.get("auth-dialog").open, false);
   assert.equal(s.focused(), s.get("home-status"));
+  assert.deepEqual(s.notifications, ["ログインしました。"]);
   // A fresh modal then manual close still follows the opener/password cleanup path.
   await s.controller.logout(); s.buttons[0].handlers.click(); s.get("login-password").value = "secret";
   s.get("auth-close").handlers.click(); assert.equal(s.get("login-password").value, "");
@@ -136,4 +138,25 @@ test('registration UI blocks overlong names and recovers at 15 code points',asyn
  assert.equal(field.value,'😀'.repeat(16));
  field.value='😀'.repeat(15);field.handlers.input();await s.submit('register-form');
  assert.equal(s.state().registeredEno,'77');
+});
+
+test('INDEX auto-registration login closes modal, resolves accounts and emits only registration toast',async()=>{
+ const s=await screen();s.buttons[1].handlers.click();s.succeed();
+ s.get('register-password').value='local-password1';s.get('confirm-password').value='local-password1';
+ await s.submit('register-form');
+ assert.equal(s.get('auth-dialog').open,false);assert.equal(s.focused(),s.get('home-status'));
+ assert.equal(s.state().signedIn,true);assert.deepEqual(s.state().enos,['88']);
+ assert.deepEqual(s.notifications,['新規登録しました。あなたはENo.77です。']);
+ assert.equal(s.get('register-password').value,'');assert.equal(s.get('confirm-password').value,'');
+ assert.equal(s.get('registered').hidden,true);assert.deepEqual(s.redirects,[]);
+});
+
+test('standalone registration redirects to INDEX notice only on auto-login success; failure retains manual handoff',async()=>{
+ const s=await screen({standalone:true});await s.submit('register-form');
+ assert.deepEqual(s.redirects,[]);assert.equal(s.get('registered').hidden,false);
+ assert.match(s.get('form-message').textContent,/登録は完了しました。ENo.77でログインしてください。/);
+ s.get('go-login').onclick();assert.equal(s.get('login-eno').value,'77');
+ s.succeed();s.next('00099');await s.submit('register-form');
+ assert.deepEqual(s.redirects,['index.html?notice=registered&eno=99']);assert.deepEqual(s.notifications,[]);
+ assert.equal(s.get('registered').hidden,true);assert.equal(s.state().registeredEno,'');
 });
