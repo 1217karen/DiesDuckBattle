@@ -426,6 +426,9 @@ test('v3 UI blocks invalid text and ENo, counts code points and tags, retains em
 
 test('best streak checkbox changes only its profile field and survives save/rehydrate',async()=>{
  const page=await profileScreen(),before=structuredClone(page.latest());
+ const root=page.get('battler-profile');
+ assert.deepEqual(root.children.map(e=>e.className),['profile-text-editor','profile-streak-visibility']);
+ assert.ok(descendants(root.children[0]).includes(aria(root,'プロフィールの文字装飾')));
  const find=()=>aria(page.get('battler-profile'),'キャラリストに最大連勝数を表示する');
  assert.equal(find().checked,true);find().checked=false;find().handlers.change();await page.save();
  const expected=structuredClone(before);expected.presentation.battler.profile.showBestStreak=false;

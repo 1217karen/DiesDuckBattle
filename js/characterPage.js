@@ -289,12 +289,14 @@ function profileTextEditor(labelText, value, onChange, limit, placeholder) {
 function renderBattlerProfile() {
   const target = document.querySelector("#battler-profile"); target.replaceChildren();
   const label = document.createElement("label"), checkbox = document.createElement("input");
+  label.className = "profile-streak-visibility";
   checkbox.type = "checkbox"; checkbox.checked = presentation.battler.profile.showBestStreak;
   checkbox.setAttribute("aria-label", "キャラリストに最大連勝数を表示する");
   checkbox.addEventListener("change", () => { presentation.battler.profile.showBestStreak = checkbox.checked; setDirty(); });
-  label.append(checkbox, document.createTextNode("キャラリストに最大連勝数を表示する")); target.append(label);
+  label.append(checkbox, document.createTextNode("キャラリストに最大連勝数を表示する"));
   target.append(profileTextEditor("バトラープロフィール", presentation.battler.profile.text,
     value => { presentation.battler.profile.text = value; }, BATTLER_PROFILE_MAX, "バトラーのプロフィールを入力"));
+  target.append(label);
 }
 
 function profileSelect(labelText, value, options, onChange) {
