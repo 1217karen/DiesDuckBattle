@@ -1,0 +1,41 @@
+body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+.rulebook-shell {
+  --rulebook-orange:#F08A24;
+  --rulebook-status:#B482FF;
+  box-sizing:border-box;
+  width:calc(100% - 12px);
+  max-width:1080px;
+  min-height:calc(100svh - var(--common-menu-height, 52px));
+  margin:0 auto;
+  padding:28px 24px 48px;
+  background:var(--shell-surface);
+  box-shadow:0 0 28px #00000018;
+  overflow-wrap:anywhere;
+}
+.rulebook-heading { text-align:center; }
+.rulebook-heading h1 { margin:0; font-size:26px; }
+.eyebrow { color:var(--muted); letter-spacing:.12em; font-size:12px; }
+.rulebook-tabs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:24px 0; }
+.rulebook-tabs button { min-width:0; min-height:56px; padding:12px; font-weight:800; font-size:18px; border-radius:8px; cursor:pointer; }
+.rulebook-tabs button[aria-selected="true"] { border-color:var(--accent); background:var(--ui-accent-surface); box-shadow:inset 0 -3px var(--accent); }
+.rulebook-shell [hidden] { display:none; }
+.rulebook-shell .toc { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:14px 0; }
+.rulebook-shell .chip { display:inline-flex; padding:6px 10px; border:1px solid var(--line); background:var(--ui-surface); border-radius:999px; text-decoration:none; color:var(--text); font-weight:800; font-size:13px; }
+.rulebook-shell .chip:hover { background:var(--ui-hover); }
+.rulebook-shell section { background:var(--panel); border:1px solid var(--line); margin:16px 0; padding:16px; scroll-margin-top:calc(var(--common-menu-height, 52px) + 12px); }
+.rulebook-shell h2 { margin:0 0 10px; font-size:18px; padding:6px 10px; border-left:6px solid var(--rulebook-orange); background:color-mix(in srgb,var(--rulebook-orange) 15%,var(--panel)); }
+.rulebook-shell .statusCard h2 { border-color:var(--rulebook-status); background:color-mix(in srgb,var(--rulebook-status) 15%,var(--panel)); }
+.rulebook-shell p, .rulebook-shell ul { line-height:1.65; margin:8px 0; }
+.rulebook-shell ul { padding-left:22px; }
+.rulebook-shell .small { font-size:12px; color:var(--muted); }
+.rulebook-shell .grid2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.rulebook-shell .box { border:1px solid var(--line); background:var(--ui-surface); padding:10px; min-width:0; }
+.rulebook-shell .boxTitle { font-weight:800; margin-bottom:6px; }
+.rulebook-shell .skillGroupTitle { font-size:16px; margin:18px 0 10px; }
+.rulebook-shell footer { text-align:center; color:var(--muted); margin-top:24px; }
+@media (max-width:700px) {
+  .rulebook-shell { padding:20px 12px 36px; }
+  .rulebook-shell .grid2 { grid-template-columns:minmax(0,1fr); }
+  .rulebook-tabs { gap:8px; }
+  .rulebook-tabs button { font-size:16px; }
+}

@@ -13,13 +13,13 @@ test("guest menu hides select/settings/character/logout but preserves public des
   const model = menuModel(base);
   assert.equal(model.identity, "未ログイン");
   assert.equal(model.loggedIn, false);
-  assert.deepEqual(model.items.filter(x => x.href).map(x => x.href), ["index.html", "storage.html"]);
-  assert.equal(model.items.filter(x => !x.href).length, 1);
+  assert.deepEqual(model.items.filter(x => x.href).map(x => x.href), ["index.html", "storage.html", "rulebook.html"]);
+  assert.equal(model.items.filter(x => !x.href).length, 0);
 });
 test("signed-in menu displays exact DB name and ENo, never HTML markup", () => {
   const m = menuModel({ ...base, signedIn: true, accounts: [{ eno: "77", name: "<b>DBキャラ名</b>" }], enos: ["77"] });
   assert.equal(m.identity, "ENo.77｜<b>DBキャラ名</b>");
-  assert.equal(m.items.filter(x => x.href).length, 6);
+  assert.equal(m.items.filter(x => x.href).length, 7);
 });
 test("missing name, failed profile fetch, unknown session and multiple accounts have explicit states", () => {
   assert.match(menuModel({ ...base, signedIn: true, accounts: [{ eno: "77", name: null }] }).identity, /取得できません/);
@@ -125,7 +125,7 @@ test("INDEX actual handlers hide pre-restore menus and manage modal close/focus/
   assert.equal(document.getElementById("home-game").hidden, false);
 });
 test("menu mount is restricted to requested pages and standalone auth shares the same form", async () => {
-  for (const page of ["index", "auth", "select", "setting", "character", "storage", "profile"]) {
+  for (const page of ["index", "auth", "select", "setting", "character", "storage", "profile", "rulebook"]) {
     const html = await readFile(new URL("../" + page + ".html", import.meta.url), "utf8");
     assert.match(html, /id="common-menu"/); assert.match(html, /js\/commonMenu.js/);
   }

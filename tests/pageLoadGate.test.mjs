@@ -111,7 +111,7 @@ for(const outcome of ['success','not-found','throw']) test('result sets up recor
  else { assert.match(f.get('logArea').children[0].textContent,/見つかりません|取得できません/); assert.equal(f.get('battle-header').hidden,true); }
 });
 test('HTML starts gated; markers preserve background/menu and layout; noscript lives outside hidden content',async()=>{
- for(const name of ['index','auth','select','setting','character','storage','result']){
+ for(const name of ['index','auth','select','setting','character','storage','result','rulebook']){
   const html=await read(name+'.html');assert.match(html,/<body class="[^"]*page-loading/);assert.match(html,/css\/page-loading.css/);
   assert.match(html,/<main data-page-content/);assert.match(html,/<noscript><p class="page-load-noscript">/);
   assert.ok(html.indexOf('page-load-noscript')<html.indexOf('<main'));

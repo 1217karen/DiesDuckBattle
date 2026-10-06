@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ルールブック | DiesDuckBattle</title>
+  <link rel="stylesheet" href="css/common-theme.css">
+  <link rel="stylesheet" href="css/rulebook.css">
+  <link rel="stylesheet" href="css/common-menu.css">
+  <link rel="stylesheet" href="css/page-loading.css">
+</head>
+<body class="has-common-menu page-loading">
+  <script src="js/pageLoadGate.js"></script>
+  <noscript><p class="page-load-noscript">このページを表示するにはJavaScriptを有効にしてください。</p></noscript>
+<header id="common-menu" class="common-menu"><details class="common-menu__nav"><summary aria-label="ゲームメニューを開く"><span class="common-menu__icon" aria-hidden="true">☰</span></summary><nav aria-label="ゲームメニュー"></nav></details><details class="common-menu__account"><summary aria-label="アカウントメニューを開く" aria-disabled="true" tabindex="-1"><span data-identity role="status"></span><span data-account-arrow aria-hidden="true" hidden>▾</span></summary><div class="common-menu__account-dropdown"><div data-account-menu></div><p data-feedback role="status" hidden></p></div></details></header>
+  <script src="js/menuDisplayCache.js"></script>
+  <main data-page-content class="rulebook-shell">
+    <header class="rulebook-heading">
+      <p class="eyebrow">DIES DUCK BATTLE</p>
+      <h1>ルールブック</h1>
+      <p class="small">最終更新：2026.10</p>
+    </header>
+    <div class="rulebook-tabs" role="tablist" aria-label="ルールブック">
+      <button id="tab-guide" type="button" role="tab" aria-selected="true" aria-controls="panel-guide" tabindex="0">ゲームガイド</button>
+      <button id="tab-battle" type="button" role="tab" aria-selected="false" aria-controls="panel-battle" tabindex="-1">バトルルール</button>
+    </div>
+    <div id="panel-guide" role="tabpanel" aria-labelledby="tab-guide" tabindex="0">
+      <nav class="toc" aria-label="ゲームガイドの目次">
+        <a class="chip" href="#guide-start">はじめかた</a>
+        <a class="chip" href="#guide-characters">バトラーとアヒル</a>
+        <a class="chip" href="#guide-setting">戦闘設定</a>
+        <a class="chip" href="#guide-display">表示設定</a>
+        <a class="chip" href="#guide-battle">対戦する</a>
+        <a class="chip" href="#guide-profile">プロフィール・キャラリスト</a>
+        <a class="chip" href="#guide-history">バトル履歴</a>
+</nav>
+      <section id="guide-start">
+        <h2>はじめかた</h2>
+        <p>ホームから新規登録・ログインして、ゲームを始められます。詳しい手順は今後このガイドに追加します。</p>
+      </section>
+      <section id="guide-characters">
+        <h2>バトラーとアヒル</h2>
+        <p>バトラーとアヒルを組み合わせて対戦します。各設定の説明は今後追加します。</p>
+      </section>
+      <section id="guide-setting">
+        <h2>戦闘設定</h2>
+        <p>戦闘設定では、アヒルのステータスやダイス、A/Cスキル、バトラーのB/Dスキルを設定できます。</p>
+      </section>
+      <section id="guide-display">
+        <h2>表示設定</h2>
+        <p>表示設定では、キャラクターの名前や画像、プロフィール、セリフなどを設定できます。</p>
+      </section>
+      <section id="guide-battle">
+        <h2>対戦する</h2>
+        <p>キャラクター選択画面から対戦へ進めます。詳しい操作手順は今後追加します。</p>
+      </section>
+      <section id="guide-profile">
+        <h2>プロフィール・キャラリスト</h2>
+        <p>プロフィールでキャラクターの情報を確認できます。キャラリストには公開されたキャラクターが並びます。</p>
+      </section>
+      <section id="guide-history">
+        <h2>バトル履歴</h2>
+        <p>バトル履歴から過去の対戦を確認できます。詳しい見方は今後追加します。</p>
+      </section>
+    </div>
+    <div id="panel-battle" role="tabpanel" aria-labelledby="tab-battle" tabindex="0" hidden>
+      <nav class="toc" aria-label="バトルルールの目次">
+        <a class="chip" href="#rule">基本ルール</a>
+        <a class="chip" href="#flow">戦闘の流れ</a>
+        <a class="chip" href="#stats">ステータス</a>
+        <a class="chip" href="#dice">ダイス</a>
+        <a class="chip" href="#skills">スキル</a>
+        <a class="chip" href="#attack">ダメージの種類</a>
+        <a class="chip" href="#status">状態変化</a>
+</nav>
+<section id="rule">
+        <h2>📖基本ルール📖</h2>
+        <p>
+          バトラーとアヒルで <b>アヒルバトル</b> をしよう！<br />
+          ターン終了時に <b>相手のHPを0</b> にした方の勝利だ！<br />
+          両方のHPが0になった場合は引き分けになるぞ！
+        </p>
+        <p class="small">
+          ※50ターンを超えた場合も引き分けになります。
+        </p>
+      </section>
+<section id="flow">
+        <h2>🌊戦闘の流れ🌊</h2>
+
+        <p>
+          バトルはターン制！<br />
+          <b>SPが高いほうが先攻</b>だ！同じならランダムで決まるぞ！
+        </p>
+
+        <ul>
+          <li><b>バトル開始</b></li>
+          <li><b>行動順決定</b></li>
+          <li><b>Ｄスキル発動</b></li>
+          <li><b>ターン開始</b>：両者AP +1</li>
+          <li><b>攻撃フェイズ</b>：SPの数だけ交互に行動</li>
+          <li><b>ターン終了</b>：勝敗判定</li>
+          <li>（ターン開始に戻る）</li>
+        </ul>
+
+        <div class="box">
+          <div class="boxTitle">攻撃フェイズの流れ</div>
+          <ul>
+            <li>フェイズ開始</li>
+            <li>Ｃスキル発動</li>
+            <li>ダイスロール</li>
+            <li>Ａスキル発動</li>
+            <li>通常攻撃</li>
+            <li>出目による追加効果</li>
+            <li>フェイズ終了</li>
+          </ul>
+        </div>
+      </section>
+<section id="stats">
+        <h2>🐤ステータス🐤</h2>
+        <p>アヒルにはそれぞれステータスが存在する！<br></p>
+        <div class="grid2">
+          <div class="box">
+            <div class="boxTitle">HP</div>
+            <p>
+              アヒルの <b>体力</b> だ！<br />
+              ターン終了時に0以下だと負けてしまうぞ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">AP</div>
+            <p>
+              Ｃスキルを発動するのに必要な <b>アヒルパワー</b> だ！<br />
+              ターン開始時に両方に+1されるぞ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">AT / DF</div>
+            <p>
+              アヒルの <b>攻撃力</b> と <b>防御力</b> だ！<br />
+              通常攻撃のダメージ計算に使用するぞ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">SP</div>
+            <p>
+              アヒルの <b>スピード力</b> だ！<br />
+              SPの数だけ１ターンの間に攻撃フェイズがくるぞ！
+            </p>
+          </div>
+           <p>連続行動は攻撃が当たりにくくなる！<br>
+           手堅い一撃を狙うか、手数で攻めるかは君次第！</p> </div>
+      </section>
+<section id="dice">
+        <h2>🎲ダイス🎲</h2>
+        <p>ダイスは出目によって異なる追加効果が発動！<br>
+        アヒルによってダイスの数字は異なるぞ！<br></p>
+
+        <ul>
+          <li><b>０</b>：追加効果なし（ハズレ）</li>
+          <li><b>１</b>：自分のAP +1</li>
+          <li><b>２</b>：通常攻撃2回</li>
+          <li><b>３</b>：自分のHPを3回復</li>
+          <li><b>４</b>：自分に反撃 +1</li>
+          <li><b>５</b>：相手のAP -1</li>
+          <li><b>６</b>：DF無視攻撃 ＋ 反動固定3ダメージ</li>
+        </ul>
+      </section>
+<section id="skills">
+        <h2>💥スキル💥</h2>
+
+        <p>スキルは全部で４種類！使いこなせ！</p>
+
+        <h3 class="skillGroupTitle">🐥アヒルが使用するスキル</h3>
+        <div class="grid2">
+          <div class="box">
+            <div class="boxTitle">Ａスキル</div>
+            <p>
+              アヒルスキルだ！<br />
+              ダイスの出目に応じて発動！<br />
+              アヒルごとの特性を見極めよう！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">Ｃスキル</div>
+            <p>
+              チャージスキルだ！<br />
+              必要なAPが溜まるとフェイズ開始時に発動！<br />
+              必殺技でバトルを一気に進めよう！<br>
+            </p>
+
+            <p class="small">
+              ※一部のスキルはターン終了時に発動します。
+            </p>
+          </div>
+        </div>
+
+        <h3 class="skillGroupTitle">👤バトラーが使用するスキル</h3>
+        <div class="grid2">
+          <div class="box">
+            <div class="boxTitle">Ｂスキル</div>
+            <p>
+              バトラースキルだ！<br />
+              様々な条件で発動！<br />
+              アヒルとの相性が勝利へのカギだ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">Ｄスキル</div>
+            <p>
+              ダイススキルだ！<br />
+              バトル開始時に発動！<br />
+              自分や相手のアヒルに出目を追加するぞ！
+            </p>
+          </div>
+        </div>
+      </section>
+<section id="attack">
+        <h2>🔥ダメージの種類🔥</h2>
+
+        <p>
+          「ダメージ」には２つの種類がある！
+        </p>
+
+        <div class="grid2">
+          <div class="box">
+            <div class="boxTitle">通常ダメージ</div>
+            <p>
+              ダイス由来の基本のダメージだ！<br />
+              計算式：<b>出目＋（AT − DF）</b><br />
+              AT−DFは<b>0未満にならない</b>！<br>
+              また、<b>ターンの最初の通常攻撃は出目に×２の補正</b>が入るぞ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">固定ダメージ</div>
+            <p>
+              スキルや状態異常などで発生するダメージだ！<br />
+              <b>DFを無視</b>して相手に直接ダメージを与えるぞ！<br />
+              「通常攻撃」や「通常ダメージ」が発動条件のスキルは、<b>固定ダメージでは発動しない</b>！気を付けよう！
+            </p>
+          </div>
+        </div>
+      </section>
+<section id="status" class="statusCard">
+        <h2>🌀状態変化🌀</h2>
+        <p>
+          アヒルに様々な効果を与える特殊効果だ！<br />
+          それぞれ３スタックまで付与できるぞ！<br>
+        </p>
+
+        <div class="grid2">
+          <div class="box">
+            <div class="boxTitle">⚡ 亀裂</div>
+            <p>
+              フェイズ開始時にスタック分の<b>固定ダメージ</b>を受けてしまう！<br />
+              フェイズ終了時に１ずつ解除されるぞ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">🌊 荒波</div>
+            <p>
+              フェイズ開始時に全スタックを消費して発動！<br />
+              確率で<b>ダイスロール</b>をキャンセルされてしまう！<br />
+              スタックが多いほど確率アップだ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">🌪️ 逆風</div>
+            <p>
+              ダイスロール後に全スタックを消費して発動！<br />
+              確率で<b>Ａスキル</b>をキャンセルされてしまう！<br />
+              スタックが多いほど確率アップだ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">🌫 湯気</div>
+            <p>
+              通常攻撃前に全スタックを消費して発動！<br />
+              確率で<b>通常攻撃</b>をキャンセルされてしまう！<br />
+              スタックが多いほど確率アップだ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">💨 追風</div>
+            <p>
+              １スタックにつき１度、<b>通常攻撃</b>を回避できる！<br />
+              固定ダメージは回避できないので気を付けよう！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">🎯 集中</div>
+            <p>
+              通常攻撃前に全スタックを消費して発動！<br />
+              <b>通常攻撃</b>のダメージ倍率をあげる！<br />
+              スタックが多いほど倍率アップだ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">🛡️ 反撃</div>
+            <p>
+              <b>通常ダメージ</b>を受けたとき、受けたダメージの半分を相手に返す！<br />
+              反撃は<b>固定ダメージ</b>だ！
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="boxTitle">🧼 清潔</div>
+            <p>
+              １スタックにつき１つ、<b>状態異常</b>を防ぐ！<br />
+              異常を撒いてくる相手への対抗手段にしよう！
+            </p>
+          </div>
+        </div>
+
+        <p class="small">
+          ※効果は予告なく変更される可能性があります。
+        </p>
+        突然バトルフィールドに変わった効果が発生することも！？<br>
+        真実は君とアヒルの目で確かめろ！
+      </section>
+    </div>
+<footer>
+  <div class="small">
+    本作は、WoodenRabbitWorks(うでらび)様制作のオリジナルキャラクター登録型ゲーム<br>
+    シマナガサレV3内の企画「アヒル島」を元にした非公式二次創作作品です。<br>
+    <br>
+    画像・UIデザイン・テキスト：1217karen<br>
+    プログラム：ChatGPT（OpenAI）を利用して作成<br>
+    キャラクター原案・デザイン：「アヒル島」企画参加者の皆様<br>
+    （各キャラクターの権利は各創作者に帰属します）<br>
+    <br>
+    <br>
+  </div>
+</footer>
+  </main>
+  <script src="js/pageEntry.js" data-page-src="js/rulebookPage.js"></script>
+  <script type="module" src="js/commonMenu.js"></script>
+</body>
+</html>

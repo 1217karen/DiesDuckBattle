@@ -4,7 +4,7 @@ export const gameMenuItems = Object.freeze([
   { label: "戦闘設定", href: "setting.html", login: true },
   { label: "表示設定", href: "character.html", login: true },
   { label: "バトル履歴", href: "storage.html" },
-  { label: "ルールブック（未実装）" },
+  { label: "ルールブック", href: "rulebook.html" },
   { label: "キャラリスト", href: "character-list.html", login: true },
 ]);
 export function menuModel(state) {
