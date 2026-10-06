@@ -21,7 +21,7 @@ const loadMessages = {
 };
 export function createSelectState(result, metadata = SELF_BATTLER) {
   const readable = result.ok && ["empty", "loaded"].includes(result.status);
-  return { build: readable ? clonePlayerBuild(result.build) : null,
+  return { build: readable ? clonePlayerBuild(result.build, { allowOverlongText: true }) : null,
     self: Object.freeze({ id: metadata.id, name: metadata.name }), selectedDuckId: null, opponent: null,
     loadStatus: result.status, message: readable ? "" : loadMessages[result.status] ?? "保存データを読み込めませんでした。" };
 }
@@ -39,7 +39,7 @@ export function selectOwnDuck(state, id) {
 }
 export function selectOpponent(state, opponent) {
   return { ...state, opponent: opponent ? { id: opponent.id, name: opponent.name,
-    build: clonePlayerBuild(opponent.build), presentation: clonePlayerPresentation(opponent.presentation),
+    build: clonePlayerBuild(opponent.build, { allowOverlongText: true }), presentation: clonePlayerPresentation(opponent.presentation),
     publicDuckId: opponent.publicDuckId } : null };
 }
 export function battleStartStatus(state) {

@@ -1,3 +1,4 @@
+import { battlerNameError } from "../js/nameValidation.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
@@ -70,10 +71,11 @@ async function screen({ standalone = false } = {}) {
       : { ok: false, message: "ENoまたはパスワードを確認してください。" }, logout: async () => {},
   }, state => { last = state; });
   await controller.start();
-  const context = { finishPageLoad() {}, document, window: { addEventListener() {} }, navigator: { clipboard: { writeText: async v => copied.push(v) } },
+  const context = { battlerNameError, finishPageLoad() {}, document, window: { addEventListener() {} }, navigator: { clipboard: { writeText: async v => copied.push(v) } },
     consumeIndexNotice() {}, authMarkup, menuModel, getAuthRuntime: async () => controller, controller };
   const code = await source("authView") + (standalone ? '\nmountAuthView(document.getElementById("auth-root"), controller);' : await source("indexPage"));
   await vm.runInNewContext("(async()=>{" + code + "})()", context);
+  get("character-name").value = "バトラー";
   const submit = async id => get(id).onsubmit({ preventDefault() {} });
   return { get, buttons, controller, copied, submit, focused: () => document.focused, state: () => last,
     succeed: () => { succeed = true; }, next: eno => { nextEno = eno; } };
@@ -125,4 +127,13 @@ test("standalone form needs no dialog; successful login clears prefilled registr
   s.get("go-login").onclick(); s.succeed(); await s.submit("login-form");
   assert.equal(s.get("registered").hidden, true); assert.equal(s.get("login-eno").value, "");
   assert.equal(s.state().registeredEno, "");
+});
+
+test('registration UI blocks overlong names and recovers at 15 code points',async()=>{
+ const s=await screen({standalone:true}),field=s.get('character-name');
+ field.value='😀'.repeat(16);field.handlers.input();await s.submit('register-form');
+ assert.equal(s.state().registeredEno,'');assert.match(s.get('character-name-error').textContent,/15/);
+ assert.equal(field.value,'😀'.repeat(16));
+ field.value='😀'.repeat(15);field.handlers.input();await s.submit('register-form');
+ assert.equal(s.state().registeredEno,'77');
 });

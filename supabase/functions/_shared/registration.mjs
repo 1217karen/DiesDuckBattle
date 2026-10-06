@@ -1,9 +1,10 @@
+import { battlerNameError } from "./text-limits.mjs";
 import { canonicalEno, internalEmailForEno } from "./internal-email.mjs";
 import { registrationPasswordError } from "./registration-password.mjs";
 
 export function validateRegistration(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)
-    || typeof input.characterName !== "string" || !input.characterName.trim()
+    || battlerNameError(input.characterName)
     || typeof input.password !== "string") {
     return null;
   }

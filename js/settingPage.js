@@ -1,6 +1,6 @@
 import { finishPageLoad } from "./pageLoad.js";
 import { SKILL_NAME_MAX, SKILL_RUBY_MAX } from "./skillLabels.js";
-import { hasName, duckNameIssues } from "./nameValidation.js";
+import { hasName, duckNameIssues, duckNameError, codePointLength } from "./nameValidation.js";
 import { effectSelectionFields } from "./effectSelectionCatalog.js";
 import { mountOnlineEditor } from "./onlineEditor.js";
 import { createEmptyDuckProfile } from "./playerPresentationModel.js";
@@ -55,7 +55,7 @@ function showDialog({ title, message, issues = [], onConfirm, confirmLabel = "�
     dialog.close(); if (version === dataVersion && online?.snapshot().canEdit) onConfirm();
   }, "primary"));
   const list = el("ul", null, "dialog-issues");
-  const sections = { name: "Duck名", stats: "ステータス", dice: "ダイス", ducks: "アヒル設定", build: "保存形式" };
+  const sections = { name: "アヒル名", stats: "ステータス", dice: "ダイス", ducks: "アヒル設定", build: "保存形式" };
   for (const issue of issues) list.append(el("li", `${issue.ownerName} / ${sections[issue.section] ?? issue.section + "スキル"}：${issueText(issue.section, issue.message)}`));
   dialog.append(heading, list, el("p", message), actions);
   dialog.addEventListener("close", () => { dialog.remove(); render(); }, { once: true });
@@ -106,8 +106,11 @@ function renderSkillLabels(box, category) {
   const group = el("div", null, "skill-label-controls");
   for (const [key, text, limit] of [["name", "スキル名（任意）", SKILL_NAME_MAX], ["ruby", "ルビ（任意）", SKILL_RUBY_MAX]]) {
     const input = el("input"); input.type = "text"; input.id = `skill-${category.toLowerCase()}-${key}`;
-    input.maxLength = limit; input.value = owner.skillLabels[category][key];
+    input.value = owner.skillLabels[category][key];
+    input.placeholder = key === "name" ? "スキル名を入力" : "ルビを入力";
+    input.setAttribute("aria-invalid", String(codePointLength(input.value) > limit));
     input.addEventListener("input", () => {
+      input.setAttribute("aria-invalid", String(codePointLength(input.value) > limit));
       const current = duckOwned ? selectedDuck(state) : state.build.battler;
       const skillLabels = { ...current.skillLabels, [category]: { ...current.skillLabels[category], [key]: input.value } };
       commit({ type: duckOwned ? "duck" : "battler", patch: { skillLabels } }, false);
@@ -559,8 +562,8 @@ function renderC(duck, box) {
 function renderDuck() {
   const box = $("duck-editor"); box.replaceChildren(); const duck = selectedDuck(state);
   if (!duck) { box.append(el("p", "アヒル設定はまだありません。「＋ 新規アヒル」から作成できます。", "empty")); return; }
-  const meta = el("div", null, "duck-meta"), name = el("input"); name.id = "duck-name"; name.value = duck.name; name.placeholder = "例：基本型"; name.required = true;
-  name.setAttribute("aria-invalid", String(!hasName(duck.name)));
+  const meta = el("div", null, "duck-meta"), name = el("input"); name.id = "duck-name"; name.value = duck.name; name.placeholder = "アヒル名を入力"; name.required = true;
+  name.setAttribute("aria-invalid", String(!!duckNameError(duck.name)));
   name.addEventListener("input", () => patchDuck({ name: name.value }, false));
   const actions = el("div", null, "actions");
   const isPublic = selectedPublicDuckId(state) === duck.id;
@@ -586,18 +589,21 @@ function renderDuck() {
     image.addEventListener("error", () => { iconBox.hidden = true; });
     image.src = iconUrl; iconBox.append(image); identity.append(iconBox);
   }
-  identity.append(labeled("Duck名", name));
+  const nameError = el("p", "", "issues"); nameError.id = "duck-name-error"; nameError.setAttribute("role", "status");
+  name.setAttribute("aria-describedby", "duck-name-error");
+  identity.append(labeled("アヒル名", name), nameError);
   meta.append(identity, actions); box.append(meta);
   renderStats(duck, box); renderA(duck, box); renderC(duck, box);
 }
 // Name requirements apply to editing/saving, not legacy loadouts or battle logic.
 function inspectSettingsForSave() {
   const inspection = inspectBuildForSave(state.build);
-  const invalid = [...inspection.invalid, ...duckNameIssues(state.build)];
+  const invalid = [...inspection.invalid, ...duckNameIssues(state.build).filter(issue => !inspection.invalid.some(old => old.code === issue.code && old.duckId === issue.duckId))];
   return { ...inspection, invalid, canSave: invalid.length === 0, complete: inspection.complete && invalid.length === 0 };
 }
 function renderSummaries() {
-  $("duck-name")?.setAttribute("aria-invalid", String(!hasName(selectedDuck(state)?.name)));
+  $("duck-name")?.setAttribute("aria-invalid", String(!!duckNameError(selectedDuck(state)?.name)));
+  if ($("duck-name-error")) $("duck-name-error").textContent = duckNameError(selectedDuck(state)?.name);
   const inspection = inspectSettingsForSave();
   $("save").classList.toggle("save-invalid", !inspection.canSave);
   $("save").setAttribute("aria-disabled", String(!inspection.canSave));

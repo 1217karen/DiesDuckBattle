@@ -33,7 +33,7 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
       data.presentation.ducks[duck].profile.text='PRIVATE-DUCK-PROFILE';
       data.presentation.ducks[duck].profile.type='attack';
       data.presentation.ducks[duck].profile.attributes=['火','',''];
-      data.presentation.ducks[duck].profile.flavorStats=[{label:'PRIVATE-FLAVOR',value:6}];
+      data.presentation.ducks[duck].profile.flavorStats=[{label:'PRIVATE-FL',value:6}];
       data.presentation.battler.quotes.battleStart.lines.push({text:'PRIVATE-extra',iconSlot:2,opponentEno:'9223372036854775807'});
       const snapshot=encodeOnlinePlayer(data);
       snapshot.battler.presentation.detachedDuckPresentation={hidden:{iconUrl:'PRIVATE-DETACHED',cutinUrl:'PRIVATE-DETACHED-CUTIN',profile:structuredClone(data.presentation.ducks[duck].profile)}};

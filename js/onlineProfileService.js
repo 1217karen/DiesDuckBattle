@@ -76,7 +76,7 @@ export function decodeOnlineProfile(value) {
     build.ducks = [{ ...createEmptyDuck({ idFactory: () => d.id }), name: d.name, stats: d.stats,
       aSelection: d.skills.A.selection, cSelection: d.skills.C.selection, skillLabels: { A: d.skills.A.label, C: d.skills.C.label } }];
   }
-  clonePlayerBuild(build);
+  clonePlayerBuild(build, { allowOverlongText: true });
   const result = structuredClone(value);
   result.eno = canonicalEno(value.eno); featured(result.featuredBattle);
   return result;

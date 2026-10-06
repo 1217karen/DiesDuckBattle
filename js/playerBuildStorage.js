@@ -25,6 +25,7 @@ export function createPlayerBuildStorage(storage) {
   function save(build) {
     const migrated=migratePlayerBuild(build);
     if(!migrated.ok) return {ok:false,status:"invalid-build"};
+    try { clonePlayerBuild(migrated.build); } catch { return {ok:false,status:"invalid-build"}; }
     const current=load();
     if(!current.ok) return {ok:false,status:current.status};
     try {target().setItem(PLAYER_BUILD_STORAGE_KEY,JSON.stringify(clonePlayerBuild(migrated.build)));}

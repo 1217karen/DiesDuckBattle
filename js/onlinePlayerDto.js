@@ -1,3 +1,5 @@
+import { battlerNameError } from "./nameValidation.js";
+import { presentationTextIssues } from "./profileTextValidation.js";
 import { migratePlayerBuild } from "./playerBuildMigration.js";
 import { clonePlayerBuild, createEmptyPlayerBuild } from "./playerBuildModel.js";
 import { normalizePlayerPresentation, createEmptyPlayerPresentation, QUOTE_PATHS, QUOTE_TEXT_MAX, presentationForPersistence } from "./playerPresentationModel.js";
@@ -56,13 +58,16 @@ export function migrateOnlinePlayerPresentation(value) {
 }
 
 // Validate persistence shape, not battle readiness. Never read local storage/catalogs.
-export function encodeOnlinePlayer(data) {
+export function encodeOnlinePlayer(data) { return encodePlayerData(data, true); }
+function encodePlayerData(data, forSave) {
   keys(data, ["build", "presentation", "publicSettings", "battlerName"]);
   requireValue(data.build.schemaVersion === 3 && typeof data.battlerName === "string");
-  const build = clonePlayerBuild(data.build);
+  const build = clonePlayerBuild(data.build, { allowOverlongText: !forSave });
+  if (forSave) requireValue(!battlerNameError(data.battlerName));
   requireValue(build.ducks.every(d => isOnlineUuid(d.id)));
   const presentation = presentationForPersistence(migrateOnlinePlayerPresentation(data.presentation));
   for (const path of QUOTE_PATHS) requireValue(path.reduce((v,k) => v[k], presentation.battler.quotes).lines.every(line => [...line.text].length <= QUOTE_TEXT_MAX));
+  if (forSave) requireValue(presentationTextIssues(presentation).length === 0);
   const settings = normalizePlayerPublicSettings(data.publicSettings);
   requireValue(same(settings, data.publicSettings));
   const ids = new Set(build.ducks.map(d => d.id));
@@ -137,7 +142,7 @@ export function decodeOnlinePlayer(snapshot) {
   // Quotes were already validated above; compare the remaining DTO independently
   // so loading legacy text never applies the new save-only length restriction.
   comparisonData.presentation.battler.quotes = createEmptyPlayerPresentation().battler.quotes;
-  const encoded = encodeOnlinePlayer(comparisonData);
+  const encoded = encodePlayerData(comparisonData, false);
   encoded.battler.presentation.quotes = structuredClone(display.quotes);
   if (b.build.schemaVersion === 2) {
     encoded.battler.build.schemaVersion = 2; delete encoded.battler.build.skillLabels;

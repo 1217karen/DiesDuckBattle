@@ -169,7 +169,7 @@ for (const deleted of [true, false]) test(`character rebase preserves other edit
   serverDraft.publicSettings.publicDuckId=null;
   setting.edit({build:serverDraft.build,publicSettings:serverDraft.publicSettings},{deleteDuckPresentationIds:[a]});
  } else {
-  serverDraft.build.ducks[0].name='latest build name';
+  serverDraft.build.ducks[0].name='latest name';
   setting.edit({build:serverDraft.build});
  }
  assert.equal((await setting.save()).ok,true);

@@ -1,8 +1,9 @@
+import { battlerNameError } from "../supabase/functions/_shared/text-limits.mjs";
 import { canonicalEno, internalEmailForEno } from "../supabase/functions/_shared/internal-email.mjs";
 import { registrationPasswordError } from "../supabase/functions/_shared/registration-password.mjs";
 
 export const authMessages = Object.freeze({
-  invalid_input: "キャラ名とパスワードを入力してください。",
+  invalid_input: "バトラー名とパスワードを入力してください。",
   password_mismatch: "パスワード確認が一致しません。",
   password_too_short: "パスワードは6文字以上で入力してください。",
   password_alphanumeric_required: "パスワードには半角英字と数字をそれぞれ1文字以上含めてください。",
@@ -16,8 +17,9 @@ const serverCodes = new Set(["game_account_creation_failed", "auth_user_creation
   "access_creation_failed", "battler_creation_failed", "registration_unavailable"]);
 
 export function registrationInput({ characterName, password, confirmation }) {
-  if (typeof characterName !== "string" || !characterName.trim()
-    || typeof password !== "string") return fail(authMessages.invalid_input);
+  const nameError = battlerNameError(characterName);
+  if (nameError) return fail(nameError);
+  if (typeof password !== "string") return fail(authMessages.invalid_input);
   const passwordError = registrationPasswordError(password);
   if (passwordError) return fail(authMessages[passwordError]);
   if (password !== confirmation) return fail(authMessages.password_mismatch);

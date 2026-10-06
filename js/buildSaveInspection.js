@@ -1,5 +1,5 @@
 import { resolveSelection, isDeferredSelectionIssue } from "./selectionNormalization.js";
-import { clonePlayerBuild, createEmptyPlayerBuild, createEmptyDuck } from "./playerBuildModel.js";
+import { clonePlayerBuild, playerBuildTextIssues, createEmptyPlayerBuild, createEmptyDuck } from "./playerBuildModel.js";
 import { createBuildRules } from "./buildRules.js";
 import { calculateBuildResources } from "./buildResources.js";
 import { DICE_FRAMES, getDiceFrame } from "./diceFrames.js";
@@ -231,9 +231,9 @@ export function saveInspectedBuild(state, repository, { approveIncomplete = fals
 export function inspectBuildForSave(build) {
   if (![2,3].includes(build?.schemaVersion)) return inspectLegacyBuildForSave(build);
   let legacy;
-  try { legacy = clonePlayerBuild(build); }
+  try { legacy = clonePlayerBuild(build, { allowOverlongText: true }); }
   catch { return {canSave:false,complete:false,incomplete:[],invalid:[{section:"build",duckId:null,ownerName:"設定全体",code:"INVALID_MODEL",path:"build",message:"保存形式が不正です。"}]}; }
-  const invalid=[],incomplete=[],deferred=[];
+  const invalid=playerBuildTextIssues(legacy),incomplete=[],deferred=[];
   function convert(category, value, catalog, duck=null, index=0) {
     const resolved=resolveSelection(category,value,catalog,{force:true});
     const owner={section:category,duckId:duck?.id??null,ownerName:duck?(duck.name||`アヒル ${index+1}`):"BATTLER"};

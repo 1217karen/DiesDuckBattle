@@ -38,7 +38,7 @@ test("skill metadata ownership, selection independence and Duck duplication",()=
   assert.deepEqual(build.ducks[0].skillLabels,before);
 });
 
-for(const [name,ruby,valid] of [["名".repeat(15)," ".repeat(50),true],["名".repeat(16),"",false],["","ル".repeat(51),false],["😀".repeat(15),"ル".repeat(50),true],[null,"",false],["",42,false]]) {
+for(const [name,ruby,valid] of [["名".repeat(20)," ".repeat(50),true],["名".repeat(21),"",false],["","ル".repeat(51),false],["😀".repeat(20),"ル".repeat(50),true],[null,"",false],["",42,false]]) {
   test(`model enforces name/ruby limits: ${String(name).length}/${String(ruby).length}/${valid}`,()=>{
     assert.equal(validSkillLabel({name,ruby}),valid);
     const b=draft();b.ducks[0].skillLabels.A={name,ruby};
@@ -81,7 +81,7 @@ test("online v3 roundtrip preserves labels, v2 loads with blank labels and saves
   assert.equal(JSON.stringify(v2),before);assert.equal(loaded.build.schemaVersion,3);
   assert.deepEqual(loaded.build.ducks[0].skillLabels.A,{name:"",ruby:""});
   assert.equal(encodeOnlinePlayer(loaded).battler.build.schemaVersion,3);
-  dto.ducks[0].build.skillLabels.A.ruby="x".repeat(51);assert.throws(()=>decodeOnlinePlayer(dto));
+  dto.ducks[0].build.skillLabels.A.ruby="x".repeat(51);assert.equal(decodeOnlinePlayer(dto).build.ducks[0].skillLabels.A.ruby,"x".repeat(51));assert.throws(()=>encodeOnlinePlayer(decodeOnlinePlayer(dto)));
 });
 
 async function currentBuild(){return migratePlayerBuild((await getOpponent("dev-opponent-2")).build).build;}
@@ -130,7 +130,7 @@ for(const category of ["A","B","C","D"])test(`${category} result uses the common
 test("passive B names use the same renderer and oversized record labels are not rendered",async()=>{
   const html=textFor({type:"passiveModifierChanged",actor:"P1",turn:1,phase:1,skill:{category:"B",skillName:label.name,skillRuby:label.ruby},before:{AT:0,DF:0},after:{AT:1,DF:0}});
   assert.ok(html.includes(renderSkillDisplayName(label.name,label.ruby)));
-  assert.equal(renderSkillDisplayName("x".repeat(16),""),"");assert.equal(renderSkillDisplayName("ok","x".repeat(51)),"");
+  assert.equal(renderSkillDisplayName("x".repeat(21),""),"");assert.equal(renderSkillDisplayName("ok","x".repeat(51)),"");
   const css=await readFile(new URL("../css/result.css",import.meta.url),"utf8");
   assert.match(css,/\.skill-display-name\s*\{[^}]*font-size:\s*1\.2em/s);
   assert.match(css,/\.skill-display-name rt\s*\{[^}]*white-space:\s*pre/s);

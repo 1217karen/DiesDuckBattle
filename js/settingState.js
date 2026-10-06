@@ -18,7 +18,7 @@ export function createSettingState(result, publicResult = {
   ok: true, status: "empty", settings: createEmptyPlayerPublicSettings()
 }) {
   const editable = result.ok && ["empty", "loaded"].includes(result.status);
-  const build = editable ? clonePlayerBuild(result.build) : null;
+  const build = editable ? clonePlayerBuild(result.build, { allowOverlongText: true }) : null;
   const publicEditable = publicResult.ok && ["empty", "loaded"].includes(publicResult.status);
   const publicSettings = publicEditable ? clonePlayerPublicSettings(publicResult.settings) : null;
   return { build, publicSettings, selectedDuckId: build?.ducks[0]?.id ?? null,

@@ -1,3 +1,4 @@
+import { battlerNameError } from "./nameValidation.js";
 import { authMarkup } from "./authMarkup.js";
 
 export function mountAuthView(root, controller, { onLoginSuccess = () => {} } = {}) {
@@ -5,6 +6,15 @@ export function mountAuthView(root, controller, { onLoginSuccess = () => {} } = 
 const byId = id => root.querySelector("#" + id);
 const passwords = () => root.querySelectorAll('input[type="password"]');
 let registeredEno = "";
+const nameInput = byId("character-name");
+function validateName() {
+  const message = battlerNameError(nameInput.value);
+  nameInput.setAttribute("aria-invalid", String(!!message));
+  byId("character-name-error").textContent = message;
+  byId("register-form").querySelector('button[type="submit"]').disabled = !!message;
+  return !message;
+}
+nameInput.addEventListener("input", validateName);
 function switchForm(mode) {
   passwords().forEach(input => { input.value = ""; });
   for (const name of ["register", "login"]) {
@@ -21,6 +31,7 @@ function render(state) {
     byId(name + "-form").querySelector('button[type="submit"]').textContent =
       state.busy === name ? "送信中…" : name === "register" ? "登録する" : "ログインする";
   }
+  validateName();
   byId("logout").hidden = !state.signedIn;
   byId("logout").disabled = disabled;
   byId("go-login").disabled = disabled;
@@ -62,6 +73,7 @@ byId("copy-eno").onclick = async () => {
 };
 byId("register-form").onsubmit = async event => {
   event.preventDefault();
+  if (!validateName()) return;
   const input = { characterName: byId("character-name").value,
     password: byId("register-password").value, confirmation: byId("confirm-password").value };
   passwords().forEach(el => { el.value = ""; });

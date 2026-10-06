@@ -1,6 +1,7 @@
+import { BATTLER_PROFILE_MAX, DUCK_PROFILE_MAX, profileTextError, flavorLabelError, presentationTextIssues } from "./profileTextValidation.js";
 import { finishPageLoad } from "./pageLoad.js";
 import { presentCSkill } from "./cSkillPresentation.js";
-import { hasName } from "./nameValidation.js";
+import { battlerNameError } from "./nameValidation.js";
 import { FIXED_IMAGES, setImageFromCandidates } from "./fixedImages.js";
 import { mountOnlineEditor } from "./onlineEditor.js";
 import { createEmptyDuckProfile, createEmptyPlayerPresentation, getQuoteIconUrlCandidates, presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine } from "./playerPresentationModel.js";
@@ -38,10 +39,12 @@ const saveButton = document.querySelector("#save");
 const validationMessage = document.querySelector("#image-validation-message");
 
 function profileValidationMessage() {
+  const issue = presentationTextIssues(presentation)[0];
+  if (issue) return issue.duckId === null ? issue.message : (ducks.find(d => d.id === issue.duckId)?.name || "名前未設定のアヒル") + "の" + issue.message;
   for (const duck of ducks) {
     const attributes = presentation.ducks[duck.id]?.profile.attributes ?? [];
     const index = attributes.findIndex(value => [...value].length > 1);
-    if (index !== -1) return `${duck.name || "名前未設定のDuck"}の属性${index + 1}は1文字まで入力できます。`;
+    if (index !== -1) return `${duck.name || "名前未設定のアヒル"}の属性${index + 1}は1文字まで入力できます。`;
   }
   return "";
 }
@@ -55,12 +58,13 @@ function quoteValidationMessage() {
 }
 function updateValidation() {
   const summary = imageValidationSummary(imageStates.values());
-  const validName = hasName(battlerNameInput.value);
+  const nameError = battlerNameError(battlerNameInput.value);
+  const validName = !nameError;
   battlerNameInput.setAttribute("aria-invalid", String(!validName));
   const profileError = profileValidationMessage() || quoteValidationMessage();
   saveButton.disabled = !validName || !summary.canSave || !!profileError || !onlineState?.canSave;
   document.querySelector("#profile-validation-message").textContent = profileError;
-  validationMessage.textContent = validName ? summary.message : "バトラー名を入力してください（空白のみは使用できません）。";
+  validationMessage.textContent = nameError || summary.message;
 }
 
 function setDirty() { online?.edit({ presentation: presentationForPersistence(presentation) }); }
@@ -264,22 +268,28 @@ function duckPresentation(id) {
   return presentation.ducks[id] ??= { iconUrl: "", cutinUrl: "", profile: createEmptyDuckProfile() };
 }
 
-function profileTextEditor(labelText, value, onChange) {
+function profileTextEditor(labelText, value, onChange, limit, placeholder) {
   const root = document.createElement("div"); root.className = "profile-text-editor";
   const label = document.createElement("label"); label.append(document.createTextNode(labelText));
-  const input = document.createElement("textarea"); input.value = value; input.rows = 6;
+  const input = document.createElement("textarea"); input.value = value; input.rows = 6; input.placeholder = placeholder;
   input.setAttribute("aria-label", labelText);
-  const change = value => { onChange(value); setDirty(); };
+  const error = document.createElement("span"); error.className = "profile-field-error"; error.setAttribute("role", "status");
+  const validate = () => {
+    const message = profileTextError(input.value, limit, labelText);
+    input.setAttribute("aria-invalid", String(!!message)); error.textContent = message;
+  };
+  const change = value => { onChange(value); validate(); setDirty(); updateValidation(); };
+  validate();
   input.addEventListener("input", () => change(input.value));
   label.append(input);
-  root.append(label, createQuoteToolbar(input, change, document, { ariaLabel: "プロフィールの文字装飾" }));
+  root.append(label, createQuoteToolbar(input, change, document, { ariaLabel: "プロフィールの文字装飾" }), error);
   return root;
 }
 
 function renderBattlerProfile() {
   const target = document.querySelector("#battler-profile"); target.replaceChildren();
-  target.append(profileTextEditor("Battlerプロフィール本文", presentation.battler.profile.text,
-    value => { presentation.battler.profile.text = value; }));
+  target.append(profileTextEditor("バトラープロフィール", presentation.battler.profile.text,
+    value => { presentation.battler.profile.text = value; }, BATTLER_PROFILE_MAX, "バトラーのプロフィールを入力"));
 }
 
 function profileSelect(labelText, value, options, onChange) {
@@ -334,16 +344,21 @@ function duckProfileEditor(duck) {
     stats.forEach((stat, index) => {
       const row = document.createElement("div"); row.className = "flavor-row";
       const label = document.createElement("label"); label.append(document.createTextNode("名前"));
-      const input = document.createElement("input"); input.type = "text"; input.value = stat.label;
+      const input = document.createElement("input"); input.type = "text"; input.value = stat.label; input.placeholder = "例：食欲";
       input.setAttribute("aria-label", `フレーバーステータス${index + 1}の名前`);
-      input.addEventListener("input", () => { profile().flavorStats[index].label = input.value; setDirty(); });
-      label.append(input);
+      const error = document.createElement("span"); error.className = "profile-field-error"; error.setAttribute("role", "status");
+      const validate = () => {
+        const message = flavorLabelError(input.value);
+        input.setAttribute("aria-invalid", String(!!message)); error.textContent = message;
+      };
+      input.addEventListener("input", () => { profile().flavorStats[index].label = input.value; validate(); setDirty(); updateValidation(); });
+      validate(); label.append(input, error);
       const value = profileSelect(`フレーバーステータス${index + 1}の値`, String(stat.value),
         Array.from({ length: 7 }, (_, i) => [String(i), String(i)]), next => { profile().flavorStats[index].value = Number(next); });
       const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "削除";
       remove.setAttribute("aria-label", `フレーバーステータス${index + 1}を削除`);
       remove.addEventListener("click", () => {
-        profile().flavorStats.splice(index, 1); renderRows(); setDirty(); add.focus();
+        profile().flavorStats.splice(index, 1); renderRows(); setDirty(); updateValidation(); add.focus();
       });
       row.append(label, value, remove); rows.append(row);
     });
@@ -354,7 +369,7 @@ function duckProfileEditor(duck) {
     profile().flavorStats.push({ label: "", value: 0 }); renderRows(); setDirty();
   });
   renderRows(); flavor.append(rows, add);
-  root.append(heading, fields, flavor, profileTextEditor("Duckプロフィール本文", initial.text, value => { profile().text = value; }));
+  root.append(heading, fields, flavor, profileTextEditor("アヒルプロフィール", initial.text, value => { profile().text = value; }, DUCK_PROFILE_MAX, "アヒルのプロフィールを入力"));
   return root;
 }
 
@@ -374,7 +389,7 @@ function renderDuckSelect() {
   duckEditors.clear(); select.disabled = false;
   for (const duck of ducks) {
     const id = duck.id;
-    const field = makeImageField({ label:`${duck.name || "名前未設定のDuck"} アイコンURL`, value:presentation.ducks[id]?.iconUrl ?? "", fallback:FIXED_IMAGES.duckIcon, previewClass:"duck-preview",
+    const field = makeImageField({ label:`${duck.name || "名前未設定のアヒル"} アイコンURL`, value:presentation.ducks[id]?.iconUrl ?? "", fallback:FIXED_IMAGES.duckIcon, previewClass:"duck-preview",
       onInput:value => { duckPresentation(id).iconUrl = value; } });
     const editor = document.createElement("div"); editor.className = "duck-presentation-editor";
     const cutin = document.createElement("section"); cutin.className = "duck-cutin";
@@ -389,7 +404,7 @@ function renderDuckSelect() {
   }
   if (!ducks.length) { const option = new Option("Duck未登録", ""); select.append(option); select.disabled = true; selectedDuckId = ""; }
   else {
-    ducks.forEach(duck => select.append(new Option(duck.name.trim() || "名前未設定のDuck", duck.id)));
+    ducks.forEach(duck => select.append(new Option(duck.name.trim() || "名前未設定のアヒル", duck.id)));
     selectedDuckId = ducks.some(duck => duck.id === selectedDuckId) ? selectedDuckId : ducks[0].id;
     select.value = selectedDuckId;
   }
@@ -398,7 +413,7 @@ function renderDuckSelect() {
 }
 
 saveButton.addEventListener("click", async () => {
-  if (!hasName(battlerNameInput.value) || !online?.snapshot().canSave || !imageValidationSummary(imageStates.values()).canSave || profileValidationMessage() || quoteValidationMessage()) { updateValidation(); return; }
+  if (battlerNameError(battlerNameInput.value) || !online?.snapshot().canSave || !imageValidationSummary(imageStates.values()).canSave || profileValidationMessage() || quoteValidationMessage()) { updateValidation(); return; }
   const result = await online.save();
   if (result?.ok) { presentation = presentationForPersistence(presentation); renderQuotes(); updateValidation(); }
 });

@@ -1,4 +1,5 @@
-import { emptySkillLabels, validSkillLabel } from "./skillLabels.js";
+import { DUCK_NAME_MAX, codePointLength } from "./nameValidation.js";
+import { emptySkillLabels, validSkillLabel, skillLabelShape, SKILL_NAME_MAX, SKILL_RUBY_MAX } from "./skillLabels.js";
 export const PLAYER_BUILD_SCHEMA_VERSION = 3;
 
 const record = value => value !== null && typeof value === "object"
@@ -102,15 +103,16 @@ function selection(value, category, version) {
   }
 }
 
-function labels(value, categories) {
+function labels(value, categories, allowOverlongText) {
   fields(value, categories, "skillLabels");
-  for (const key of categories) requireShape(validSkillLabel(value[key]), `skillLabels.${key}`);
+  for (const key of categories) requireShape((allowOverlongText ? skillLabelShape : validSkillLabel)(value[key]), `skillLabels.${key}`);
 }
-function checkDuck(duck, version = PLAYER_BUILD_SCHEMA_VERSION) {
+function checkDuck(duck, version = PLAYER_BUILD_SCHEMA_VERSION, allowOverlongText = false) {
   fields(duck, ["id", "name", "stats", "diceFrame", "dice", "aSelection", "cSelection", ...(version >= 3 ? ["skillLabels"] : [])], "duck");
-  if (version >= 3) labels(duck.skillLabels, ["A", "C"]);
+  if (version >= 3) labels(duck.skillLabels, ["A", "C"], allowOverlongText);
   requireShape(typeof duck.id === "string" && duck.id.trim().length > 0, "duck.id");
   requireShape(typeof duck.name === "string", "duck.name");
+  if (version >= 3 && !allowOverlongText) requireShape(codePointLength(duck.name) <= DUCK_NAME_MAX, "duck.name length");
   fields(duck.stats, ["AT", "DF", "SP"], "duck.stats");
   requireShape(Object.values(duck.stats).every(nullableNumber), "duck.stats values");
   requireShape(nullableString(duck.diceFrame), "duck.diceFrame");
@@ -120,16 +122,16 @@ function checkDuck(duck, version = PLAYER_BUILD_SCHEMA_VERSION) {
 }
 
 /** Validate only persistence shape and return a completely detached copy. */
-export function clonePlayerBuild(build) {
+export function clonePlayerBuild(build, { allowOverlongText = false } = {}) {
   const copy = cloneData(build);
   fields(copy, ["schemaVersion", "battler", "ducks"], "root");
   requireShape([1, 2, PLAYER_BUILD_SCHEMA_VERSION].includes(copy.schemaVersion), "schemaVersion");
   fields(copy.battler, ["bSelection", "dSelection", ...(copy.schemaVersion >= 3 ? ["skillLabels"] : [])], "battler");
-  if (copy.schemaVersion >= 3) labels(copy.battler.skillLabels, ["B", "D"]);
+  if (copy.schemaVersion >= 3) labels(copy.battler.skillLabels, ["B", "D"], allowOverlongText);
   selection(copy.battler.bSelection, "B", copy.schemaVersion);
   selection(copy.battler.dSelection, "D", copy.schemaVersion);
   requireShape(Array.isArray(copy.ducks), "ducks");
-  copy.ducks.forEach(duck => checkDuck(duck, copy.schemaVersion));
+  copy.ducks.forEach(duck => checkDuck(duck, copy.schemaVersion, allowOverlongText));
   requireShape(new Set(copy.ducks.map(duck => duck.id)).size === copy.ducks.length, "duplicate duck ID");
   return copy;
 }
@@ -153,9 +155,9 @@ export function createEmptyDuck({ idFactory = generateDuckId } = {}) {
 
 /** Add a detached Duck (or create a new draft when omitted). */
 export function addDuck(build, duck = createEmptyDuck()) {
-  const next = clonePlayerBuild(build);
+  const next = clonePlayerBuild(build, { allowOverlongText: true });
   next.ducks.push(duck);
-  return clonePlayerBuild(next);
+  return clonePlayerBuild(next, { allowOverlongText: true });
 }
 
 function duckIndex(build, id) {
@@ -165,32 +167,46 @@ function duckIndex(build, id) {
 }
 
 export function duplicateDuck(build, id, { idFactory = generateDuckId } = {}) {
-  const next = clonePlayerBuild(build);
+  const next = clonePlayerBuild(build, { allowOverlongText: true });
   const duck = next.ducks[duckIndex(next, id)];
   next.ducks.push({ ...duck, id: idFactory() });
-  return clonePlayerBuild(next);
+  return clonePlayerBuild(next, { allowOverlongText: true });
 }
 
 /** Patch fields; stats/selection/dice are replaced as whole values. ID is immutable. */
 export function updateDuck(build, id, patch) {
-  const next = clonePlayerBuild(build);
+  const next = clonePlayerBuild(build, { allowOverlongText: true });
   const data = cloneData(patch);
   fields(data, ["name", "stats", "diceFrame", "dice", "aSelection", "cSelection", "skillLabels"], "duck patch", []);
   const index = duckIndex(next, id);
   next.ducks[index] = { ...next.ducks[index], ...data };
-  return clonePlayerBuild(next);
+  return clonePlayerBuild(next, { allowOverlongText: true });
 }
 
 export function deleteDuck(build, id) {
-  const next = clonePlayerBuild(build);
+  const next = clonePlayerBuild(build, { allowOverlongText: true });
   next.ducks.splice(duckIndex(next, id), 1);
   return next;
 }
 
 export function updateBattler(build, patch) {
-  const next = clonePlayerBuild(build);
+  const next = clonePlayerBuild(build, { allowOverlongText: true });
   const data = cloneData(patch);
   fields(data, ["bSelection", "dSelection", "skillLabels"], "battler patch", []);
   next.battler = { ...next.battler, ...data };
-  return clonePlayerBuild(next);
+  return clonePlayerBuild(next, { allowOverlongText: true });
+}
+
+/** Content errors stay separate from structural validation and required-name UI rules. */
+export function playerBuildTextIssues(build) {
+  const issues = [];
+  for (const owner of [build.battler, ...build.ducks]) {
+    const duckId = owner === build.battler ? null : owner.id;
+    const ownerName = duckId === null ? "BATTLER" : owner.name || "名前未設定のアヒル";
+    if (duckId !== null && codePointLength(owner.name) > DUCK_NAME_MAX) issues.push({section:"name",duckId,ownerName,code:"NAME_TOO_LONG",path:"name",message:`アヒル名は${DUCK_NAME_MAX}文字まで入力できます。`});
+    for (const [section, label] of Object.entries(owner.skillLabels ?? {})) for (const [key, limit, caption] of [["name",SKILL_NAME_MAX,"スキル名"],["ruby",SKILL_RUBY_MAX,"スキルルビ"]]) {
+      if (codePointLength(label[key]) > limit) issues.push({section,duckId,ownerName,code:"LABEL_TOO_LONG",path:`skillLabels.${section}.${key}`,message:`${caption}は${limit}文字まで入力できます。`});
+    }
+  }
+  return issues;
 }

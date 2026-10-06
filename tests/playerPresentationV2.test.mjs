@@ -7,9 +7,9 @@ import { player, a, da } from './onlineSelectFixture.mjs';
 
 const populated = async () => {
   const {data} = await player(a, '1', da);
-  data.presentation.battler.profile = { text:'  [b]本文[/b]\n'.repeat(1000), iconSlots:[1,3,7,10],
+  data.presentation.battler.profile = { text:'  [b]本文[/b]\n'.repeat(10), iconSlots:[1,3,7,10],
     theme:{background:'#abcdef',panel:'#123456',text:'#fedcba',accent:'#ABCDEF'}, featuredBattleId:da };
-  data.presentation.ducks[da].profile = {text:'Duck本文',type:'technical',attributes:['炎','😀',''],statLabelPreset:'hiragana',flavorStats:[{label:'長い名前'.repeat(1000),value:0},{label:'',value:6}]};
+  data.presentation.ducks[da].profile = {text:'Duck本文',type:'technical',attributes:['炎','😀',''],statLabelPreset:'hiragana',flavorStats:[{label:'食欲',value:0},{label:'',value:6}]};
   data.presentation.ducks.detached = {iconUrl:'',cutinUrl:'private',profile:{...createEmptyDuckProfile(),text:'独立',type:'heal'}};
   return data;
 };

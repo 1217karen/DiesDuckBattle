@@ -310,7 +310,7 @@ test("skill label inputs are under each heading; Duck/Battler ownership, whitesp
  const input=(id,value)=>{const e=p.get(id);assert.ok(e);e.value=value;e.handlers.input();};
  for(const category of ["a","b","c","d"]){
   const name=p.get(`skill-${category}-name`),rt=p.get(`skill-${category}-ruby`);
-  assert.equal(name.tagName,"input");assert.equal(name.type,"text");assert.equal(name.maxLength,15);assert.equal(rt.maxLength,50);
+  assert.equal(name.tagName,"input");assert.equal(name.type,"text");assert.equal(name.maxLength,undefined);assert.equal(rt.maxLength,undefined);assert.equal(name.placeholder,"スキル名を入力");assert.equal(rt.placeholder,"ルビを入力");
   const card=name.parent.parent.parent;assert.equal(card.children[1],name.parent.parent);
   input(`skill-${category}-name`,`${category}雷`);input(`skill-${category}-ruby`,ruby);
  }
@@ -325,4 +325,19 @@ test("skill label inputs are under each heading; Duck/Battler ownership, whitesp
  assert.deepEqual(b,before);
  const reloaded=await page(saved);assert.equal(reloaded.get("skill-a-ruby").value,ruby);
  reloaded.get("duck-tab-1").handlers.click();assert.equal(reloaded.get("skill-a-ruby").value,"末尾   ");assert.equal(reloaded.get("skill-b-ruby").value,ruby);
+});
+
+test('text limits preserve setting drafts and block overlong names and skill labels',async()=>{
+ const p=await page(initial());
+ const input=(id,value)=>{const e=p.get(id);e.value=value;e.handlers.input();return p.get(id);};
+ for(const [id,max] of [['duck-name',15],['skill-a-name',20],['skill-a-ruby',50]]){
+  let e=input(id,'😀'.repeat(max));assert.equal(e.attributes['aria-invalid'],'false');
+  e=input(id,'😀'.repeat(max+1));assert.equal(e.attributes['aria-invalid'],'true');
+  assert.equal(e.value,'😀'.repeat(max+1));assert.equal(p.get('save').attributes['aria-disabled'],'true');
+  input(id,id==='duck-name'?'アヒル':'');
+ }
+ assert.equal(p.get('duck-name').placeholder,'アヒル名を入力');
+ const old=initial();old.ducks[0].name='旧'.repeat(16);const loaded=await page(old);
+ assert.equal(loaded.get('duck-name').value,old.ducks[0].name);
+ assert.equal(loaded.get('duck-name').attributes['aria-invalid'],'true');
 });

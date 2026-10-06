@@ -9,7 +9,7 @@ export function migratePlayerBuild(value) {
   if (Number.isInteger(value?.schemaVersion) && value.schemaVersion > 0 && ![1,2,3].includes(value.schemaVersion))
     return {ok:false,status:"unsupported-version",build:null};
   let copy;
-  try { copy=clonePlayerBuild(value); }
+  try { copy=clonePlayerBuild(value, { allowOverlongText: true }); }
   catch { return {ok:false,status:"corrupt",build:null}; }
   if(copy.schemaVersion===3) return {ok:true,status:"current",build:copy};
   const fromVersion=copy.schemaVersion;
@@ -25,6 +25,6 @@ export function migratePlayerBuild(value) {
     copy.battler.skillLabels=emptySkillLabels(["B","D"]);
     for(const duck of copy.ducks) duck.skillLabels=emptySkillLabels(["A","C"]);
     copy.schemaVersion=3;
-    return {ok:true,status:"migrated",build:clonePlayerBuild(copy),fromVersion};
+    return {ok:true,status:"migrated",build:clonePlayerBuild(copy, { allowOverlongText: true }),fromVersion};
   } catch { return {ok:false,status:"migration-required",build:null}; }
 }

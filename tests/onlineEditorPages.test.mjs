@@ -1,7 +1,8 @@
+import { BATTLER_PROFILE_MAX, DUCK_PROFILE_MAX, profileTextError, flavorLabelError, presentationTextIssues } from "../js/profileTextValidation.js";
 import { createQuoteEnoLookup } from "../js/quoteEnoLookup.js";
 import { presentCSkill } from "../js/cSkillPresentation.js";
 import { createQuoteToolbar } from "../js/quoteRichTextToolbar.js";
-import { hasName } from "../js/nameValidation.js";
+import { hasName, battlerNameError } from "../js/nameValidation.js";
 import { FIXED_IMAGES, setImageFromCandidates } from "../js/fixedImages.js";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -61,7 +62,7 @@ async function characterScreen() {
   const controller = { snapshot: () => ({ canSave: true, canEdit: true }),
     edit(patch) { latest = { ...latest, ...structuredClone(patch) }; },
     async save() { saved = structuredClone(latest); return { ok: true }; } };
-  const context = { presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine, createQuoteEnoLookup, getSupabaseClient: async()=>({}), createOnlineProfileService: ()=>({getProfile:async()=>({ok:false,status:"profile-not-found"})}), finishPageLoad() {}, requireLoginPage: async () => {}, presentCSkill, hasName, FIXED_IMAGES, setImageFromCandidates, getQuoteIconUrlCandidates, createQuoteToolbar, document, structuredClone, createEmptyDuckProfile, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
+  const context = { BATTLER_PROFILE_MAX, DUCK_PROFILE_MAX, profileTextError, flavorLabelError, presentationTextIssues, battlerNameError, presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine, createQuoteEnoLookup, getSupabaseClient: async()=>({}), createOnlineProfileService: ()=>({getProfile:async()=>({ok:false,status:"profile-not-found"})}), finishPageLoad() {}, requireLoginPage: async () => {}, presentCSkill, hasName, FIXED_IMAGES, setImageFromCandidates, getQuoteIconUrlCandidates, createQuoteToolbar, document, structuredClone, createEmptyDuckProfile, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
     Option: function (name, value) { const el = new Element("option"); el.textContent = name; el.value = value; return el; },
     createIconPicker: () => ({ open(args) { selectedCallback = args.select; }, close() { selectedCallback = null; } }),
     mountOnlineEditor: async args => { assert.deepEqual(Array.from(args.sections), ["presentation", "battlerName"]); hooks = args; latest = structuredClone(data); args.hydrate(data); args.onState({ canSave: true, canEdit: true }); return controller; } };
@@ -236,7 +237,35 @@ async function profileScreen() {
   return page;
 }
 const duckRoot = (page,index=0) => page.get('duck-icon-editor').children[index];
-const battlerText = page => aria(page.get('battler-profile'),'Battlerプロフィール本文');
+const battlerText = page => aria(page.get('battler-profile'),'バトラープロフィール');
+test('name and profile limits retain input, count emoji, and validate toolbar insertion',async()=>{
+ const page=await profileScreen(),name=page.get('battler-name');
+ inputValue(name,'😀'.repeat(15));assert.equal(page.get('save').disabled,false);
+ inputValue(name,'😀'.repeat(16));assert.equal(name.attributes['aria-invalid'],'true');
+ await page.save();assert.equal(page.saved(),undefined);assert.equal(name.value,'😀'.repeat(16));
+ inputValue(name,'バトラー');const field=battlerText(page);
+ inputValue(field,'😀'.repeat(2000));assert.equal(field.attributes['aria-invalid'],'false');
+ field.selectionStart=0;field.selectionEnd=2;
+ aria(page.get('battler-profile'),'プロフィールの文字装飾').children[0].handlers.click();
+ assert.equal(field.attributes['aria-invalid'],'true');assert.equal(page.get('save').disabled,true);
+ assert.match(field.value,/<b>😀<\/b>/);await page.save();assert.equal(page.saved(),undefined);
+ inputValue(field,'修正済み');await page.save();assert.equal(page.saved().presentation.battler.profile.text,'修正済み');
+});
+test('loaded overlong detached profiles and hidden flavor labels block saving without losing values',async()=>{
+ const page=await profileScreen(),data=structuredClone(page.latest());
+ data.presentation.ducks.orphan.profile=createEmptyDuckProfile();
+ data.presentation.ducks.orphan.profile.text='😀'.repeat(301);page.hydrate(data);
+ assert.equal(page.get('save').disabled,true);await page.save();assert.equal(page.saved(),undefined);
+ const detached=aria(duckRoot(page,2),'アヒルプロフィール');
+ assert.equal(detached.value,'😀'.repeat(301));assert.equal(detached.attributes['aria-invalid'],'true');
+ inputValue(detached,'😀'.repeat(300));assert.equal(page.get('save').disabled,false);
+ descendants(duckRoot(page)).find(e=>e.tagName==='button'&&e.textContent==='＋ フレーバーステータス').handlers.click();
+ const label=aria(duckRoot(page),'フレーバーステータス1の名前');inputValue(label,'あいうえおか');
+ page.get('duck-select').value='orphan';page.get('duck-select').onchange();
+ assert.equal(page.get('save').disabled,true);assert.match(page.get('profile-validation-message').textContent,/一羽目/);
+ await page.save();assert.equal(page.saved(),undefined);assert.equal(label.attributes['aria-invalid'],'true');
+ inputValue(label,'abcあいう');await page.save();assert.ok(page.saved());
+});
 const checkboxes = page => page.all().filter(e=>e.type==='checkbox');
 
 test('Battler multiline profile and shared toolbar save/rehydrate without touching existing data',async()=>{
@@ -275,7 +304,7 @@ test('Duck profiles are independent including detached Duck; text, types and lab
   for(const [index,text]of [[0,'  一\n羽  '],[1,' 二羽\n'],[2,' detached編集 ']]) {
     select.value=index===2?'orphan':ids[index];select.onchange();
     assert.equal(duckRoot(page,index).hidden,false);
-    const input=aria(duckRoot(page,index),'Duckプロフィール本文');inputValue(input,text);
+    const input=aria(duckRoot(page,index),'アヒルプロフィール');inputValue(input,text);
     input.selectionStart=0;input.selectionEnd=0;aria(duckRoot(page,index),'プロフィールの文字装飾').children[4].handlers.click();
   }
   const own=aria(duckRoot(page),'タイプ');
@@ -289,7 +318,7 @@ test('Duck profiles are independent including detached Duck; text, types and lab
     assert.equal(aria(duckRoot(page),'ステータス表記').value,preset);
   }
   for(const [index,text]of [[0,'  一\n羽  '],[1,' 二羽\n'],[2,' detached編集 ']])
-    assert.equal(aria(duckRoot(page,index),'Duckプロフィール本文').value,'<small></small>'+text);
+    assert.equal(aria(duckRoot(page,index),'アヒルプロフィール').value,'<small></small>'+text);
   assert.deepEqual(page.latest().build,before.build);assert.deepEqual(page.latest().publicSettings,before.publicSettings);
   assert.deepEqual(page.latest().presentation.battler,before.presentation.battler);
   assert.equal(page.latest().presentation.ducks.orphan.cutinUrl,'');
@@ -317,7 +346,7 @@ test('attributes count code points, block direct save while invalid even on hidd
   page.get('battler-name').value=' ';page.get('battler-name').handlers.input();assert.equal(page.get('save').disabled,true);
 });
 
-test('flavor stats add up to two, preserve empty/unlimited labels and values 0..6, delete without reordering',async()=>{
+test('flavor stats add up to two, preserve empty/width-limited labels and values 0..6, delete without reordering',async()=>{
   const page=await profileScreen(),id=page.latest().build.ducks[0].id;
   const add=()=>descendants(duckRoot(page)).find(e=>e.tagName==='button'&&e.textContent==='＋ フレーバーステータス');
   const rows=()=>descendants(duckRoot(page)).filter(e=>e.className==='flavor-row');
@@ -325,7 +354,7 @@ test('flavor stats add up to two, preserve empty/unlimited labels and values 0..
   assert.deepEqual(page.latest().presentation.ducks[id].profile.flavorStats,[{label:'',value:0}]);
   add().handlers.click();assert.equal(rows().length,2);assert.equal(add().disabled,true);
   add().handlers.click();assert.equal(rows().length,2);
-  inputValue(aria(duckRoot(page),'フレーバーステータス1の名前'),'  長い名前'.repeat(200));
+  inputValue(aria(duckRoot(page),'フレーバーステータス1の名前'),'  食欲  ');
   inputValue(aria(duckRoot(page),'フレーバーステータス2の名前'),'二行目');
   for(let value=0;value<=6;value++){
     inputValue(aria(duckRoot(page),'フレーバーステータス2の値'),String(value),'change');await page.save();
@@ -345,7 +374,7 @@ test('profile edits preserve all images, quotes, theme, featured battle and othe
  data.presentation.ducks[id]={iconUrl:'duck.png',cutinUrl:'cutin.png',profile:createEmptyDuckProfile()};
  page.hydrate(data);
  for(const image of page.all().filter(e=>e.tagName==='img'&&e.onload)){image.naturalWidth=20;image.naturalHeight=20;image.onload();}
- inputValue(battlerText(page),'Battler');inputValue(aria(duckRoot(page),'Duckプロフィール本文'),'Duck');
+ inputValue(battlerText(page),'Battler');inputValue(aria(duckRoot(page),'アヒルプロフィール'),'Duck');
  await page.save();const expected=structuredClone(data);expected.presentation.battler.profile.text='Battler';expected.presentation.ducks[id].profile.text='Duck';
  assert.deepEqual(page.saved(),expected);assert.doesNotThrow(()=>encodeOnlinePlayer(page.saved()));
  const url=page.all().find(e=>e.type==='url'&&e.value==='duck.png');inputValue(url,'bad.png');

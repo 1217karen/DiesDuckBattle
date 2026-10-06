@@ -41,7 +41,7 @@ export function compileBattleLoadout(build, { duckId, battlerId, battlerName } =
   // Compilers receive an isolated snapshot, never the caller's editable state.
   const upgraded = migratePlayerBuild({ ...build, ducks: [build.ducks.find(d => d?.id === duckId)] });
   if (!upgraded.ok) return { ok: false, inspection: failure("INVALID_MODEL", "保存モデルを移行できません。", duckId) };
-  const snapshot = clonePlayerBuild(upgraded.build);
+  const snapshot = clonePlayerBuild(upgraded.build, { allowOverlongText: true });
   const source = snapshot.ducks[0];
   const b = compileBSkill(snapshot.battler.bSelection);
   const d = compileDSkill(snapshot.battler.dSelection);
