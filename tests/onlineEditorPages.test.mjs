@@ -36,8 +36,9 @@ test("common logout respects async editor cancellation and confirmation; unregis
   remove(); accepted = false; await controller.logout(); assert.equal(calls, 2);
 });
 
-async function characterScreen() {
-  const elements = new Map(); let hooks, selectedCallback, latest, saved;
+async function characterScreen({ siteTheme = null, storageThrows = false } = {}) {
+  const elements = new Map(); let hooks, selectedCallback, latest, saved, editCount = 0;
+  const themeWrites = [];
   class Element {
     constructor(tag = "div") { this.tagName = tag; this.children = []; this.handlers = {}; this.dataset = {}; this.attributes = {}; this.hidden = false; this.disabled = false; }
     append(...nodes) { for (const node of nodes) { node.parent = this; this.children.push(node); } }
@@ -60,15 +61,22 @@ async function characterScreen() {
   data.build.ducks.push(createEmptyDuck()); data.publicSettings.publicDuckId = data.build.ducks[0].id;
   data.presentation.ducks.orphan = { iconUrl: "https://example.invalid/orphan.png", cutinUrl: "", profile: createEmptyDuckProfile() };
   const controller = { snapshot: () => ({ canSave: true, canEdit: true }),
-    edit(patch) { latest = { ...latest, ...structuredClone(patch) }; },
+    edit(patch) { editCount++; latest = { ...latest, ...structuredClone(patch) }; },
     async save() { saved = structuredClone(latest); return { ok: true }; } };
   const context = { BATTLER_PROFILE_MAX, DUCK_PROFILE_MAX, profileTextError, flavorLabelError, presentationTextIssues, battlerNameError, presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine, createQuoteEnoLookup, getSupabaseClient: async()=>({}), createOnlineProfileService: ()=>({getProfile:async()=>({ok:false,status:"profile-not-found"})}), finishPageLoad() {}, requireLoginPage: async () => {}, presentCSkill, hasName, FIXED_IMAGES, setImageFromCandidates, getQuoteIconUrlCandidates, createQuoteToolbar, document, structuredClone, createEmptyDuckProfile, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
     Option: function (name, value) { const el = new Element("option"); el.textContent = name; el.value = value; return el; },
     createIconPicker: () => ({ open(args) { selectedCallback = args.select; }, close() { selectedCallback = null; } }),
     mountOnlineEditor: async args => { assert.deepEqual(Array.from(args.sections), ["presentation", "battlerName"]); hooks = args; latest = structuredClone(data); args.hydrate(data); args.onState({ canSave: true, canEdit: true }); return controller; } };
+  document.documentElement = { dataset: {} };
+  context.localStorage = {
+    getItem() { if (storageThrows) throw Error("storage blocked"); return siteTheme; },
+    setItem(key, value) { if (storageThrows) throw Error("storage blocked"); themeWrites.push([key, value]); siteTheme = value; },
+  };
+  vm.runInNewContext(await source("siteTheme"), context);
   await vm.runInNewContext(`(async()=>{${await source("characterPage")}})()`, context);
   return { get, all, data, latest: () => latest, saved: () => saved, hydrate(data) { latest = structuredClone(data); hooks.hydrate(data); hooks.onState({ canSave: true, canEdit: true }); },
-    pick(slot) { selectedCallback(slot); }, save: () => get("save").handlers.click(), controller };
+    pick(slot) { selectedCallback(slot); }, save: () => get("save").handlers.click(), controller,
+    document, themeWrites, editCount: () => editCount };
 }
 test("actual character handlers preserve full DTO, quotes, ten icon slots, detached Duck URLs and image validation gates", async () => {
   const page = await characterScreen();
@@ -427,11 +435,33 @@ test('v3 UI blocks invalid text and ENo, counts code points and tags, retains em
 test('best streak checkbox changes only its profile field and survives save/rehydrate',async()=>{
  const page=await profileScreen(),before=structuredClone(page.latest());
  const root=page.get('battler-profile');
- assert.deepEqual(root.children.map(e=>e.className),['profile-text-editor','profile-streak-visibility']);
+ assert.deepEqual(root.children.map(e=>e.className),['profile-text-editor','profile-streak-visibility','site-theme-setting']);
  assert.ok(descendants(root.children[0]).includes(aria(root,'プロフィールの文字装飾')));
  const find=()=>aria(page.get('battler-profile'),'キャラリストに最大連勝数を表示する');
  assert.equal(find().checked,true);find().checked=false;find().handlers.change();await page.save();
  const expected=structuredClone(before);expected.presentation.battler.profile.showBestStreak=false;
  assert.deepEqual(page.saved(),expected);page.hydrate(page.saved());assert.equal(find().checked,false);
  find().checked=true;find().handlers.change();await page.save();assert.deepEqual(page.saved(),before);
+});
+
+for (const theme of ['light','dark']) test('site theme radio starts at saved '+theme+' and never edits online presentation',async()=>{
+ const page=await characterScreen({siteTheme:theme}),before=structuredClone(page.latest()),edits=page.editCount();
+ const radios=()=>page.all().filter(e=>e.tagName==='input'&&e.type==='radio'&&e.name==='site-theme');
+ assert.equal(radios().length,2);assert.equal(radios().find(e=>e.value===theme).checked,true);
+ const root=page.get('battler-profile');assert.equal(root.children[2].className,'site-theme-setting');
+ const next=theme==='light'?'dark':'light',radio=radios().find(e=>e.value===next);
+ radio.checked=true;radio.handlers.change();
+ assert.equal(page.document.documentElement.dataset.theme,next);
+ assert.deepEqual(page.themeWrites,[['diesduck-site-theme',next]]);
+ assert.equal(page.editCount(),edits);assert.deepEqual(page.latest(),before);
+ assert.deepEqual(page.latest().presentation.battler.profile.theme,before.presentation.battler.profile.theme);
+ assert.equal(page.saved(),undefined);
+ page.hydrate(before);assert.equal(radios().find(e=>e.value===next).checked,true);
+});
+test('site theme radios still work when localStorage throws',async()=>{
+ const page=await characterScreen({storageThrows:true}),before=structuredClone(page.latest()),edits=page.editCount();
+ const radio=page.all().find(e=>e.type==='radio'&&e.name==='site-theme'&&e.value==='dark');
+ radio.checked=true;assert.doesNotThrow(()=>radio.handlers.change());
+ assert.equal(page.document.documentElement.dataset.theme,'dark');
+ assert.deepEqual(page.latest(),before);assert.equal(page.editCount(),edits);
 });
