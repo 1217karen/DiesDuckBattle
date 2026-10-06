@@ -323,7 +323,7 @@ function eventToLines(event, context) {
     case "buffExpired": return [{ kind: "meta", text: `${target}の${event.duration?.kind === "phase" ? "行動中" : "ターン"}効果が終了（${escapeHTML(event.stat ?? "")}${signed(event.amount ?? 0)}）` }];
     case "chanceRoll": return [{ kind: "meta", text: `確率判定 ${event.success ? "成功" : "失敗"}！（${Math.round(Number(event.probability ?? 0) * 100)}%）` }];
     case "diceAdded": return [{ kind: "soft", text: `${target}にダイス追加：${escapeHTML((event.values ?? []).join("、"))}` }];
-    case "revived": return [{ kind: "note", text: `${target}がHP ${amount("heal", event.hpAfter)}で復活した！` }];
+    case "revived": return [{ kind: "soft", text: `${target}がHP ${amount("heal", event.hpAfter)}で復活した！` }];
     case "headwindResult": case "roughWaveResult": case "steamResult": {
       const [status, label, message] = {
         headwindResult: ["Headwind", "逆風", `${target}に逆風が吹き荒れる…… ${event.success ? "耐えきれなかった" : "耐えた"}！`],
