@@ -566,9 +566,9 @@ function renderDuck() {
   const meta = el("div", null, "duck-meta"), name = el("input"); name.id = "duck-name"; name.value = duck.name; name.placeholder = "アヒル名を入力"; name.required = true;
   name.setAttribute("aria-invalid", String(!!duckNameError(duck.name)));
   name.addEventListener("input", () => patchDuck({ name: name.value }, false));
-  const actions = el("div", null, "actions");
+  const actions = el("div", null, "actions duck-actions");
   const isPublic = selectedPublicDuckId(state) === duck.id;
-  const publicButton = button(isPublic ? "公開中" : "公開用に設定", () => commit({ type: "set-public", id: duck.id }), isPublic ? "public-active" : "");
+  const publicButton = button(isPublic ? "公開中" : "公開アヒルに設定", () => commit({ type: "set-public", id: duck.id }), isPublic ? "public-active" : "");
   publicButton.disabled = isPublic || !state.publicSettings;
   if (!state.publicSettings) publicButton.title = "公開用設定を読み込めないため変更できません";
   actions.append(publicButton, button("複製", () => commit({ type: "duplicate" })), button("削除", () => {
@@ -590,10 +590,10 @@ function renderDuck() {
     image.addEventListener("error", () => { iconBox.hidden = true; });
     image.src = iconUrl; iconBox.append(image); identity.append(iconBox);
   }
-  const nameError = el("p", "", "issues"); nameError.id = "duck-name-error"; nameError.setAttribute("role", "status");
+  const nameError = el("p", "", "issues"); nameError.id = "duck-name-error"; nameError.hidden = true; nameError.setAttribute("role", "status");
   name.setAttribute("aria-describedby", "duck-name-error");
   identity.append(labeled("アヒル名", name), nameError);
-  meta.append(identity, actions); box.append(meta);
+  meta.append(identity); box.append(actions, meta);
   renderStats(duck, box); renderA(duck, box); renderC(duck, box);
 }
 // Name requirements apply to editing/saving, not legacy loadouts or battle logic.

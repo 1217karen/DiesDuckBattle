@@ -196,3 +196,25 @@ for (const deleted of [true, false]) test(`character rebase preserves other edit
  if(deleted)assert.equal(Object.hasOwn(db.row().battler.presentation.detachedDuckPresentation,a),false);
  assert.equal(character.snapshot().draft.presentation.ducks.orphan.profile.text,'edited orphan');
 });
+
+test('Duck toolbar and operations precede the name, retain selection/public actions and hide only inline name feedback',async()=>{
+ const html=await readFile(new URL('../setting.html',import.meta.url),'utf8');
+ assert.match(html,/<div class="duck-toolbar"><button id="add-duck"[^>]*>＋ 新規アヒル<\/button><div id="duck-tabs"/);
+ const p=await page(),root=p.get('duck-editor');
+ assert.equal(root.children[0].className,'actions duck-actions');assert.equal(root.children[1].className,'duck-meta');
+ assert.deepEqual(root.children[0].children.map(e=>e.textContent),['公開中','複製','削除']);
+ p.get('duck-tabs').children[1].handlers.click();
+ assert.equal(p.get('duck-name').value,'Duck1');assert.equal(p.button('公開アヒルに設定',root).disabled,false);
+ p.button('公開アヒルに設定',root).handlers.click();assert.equal(p.controller.snapshot().draft.publicSettings.publicDuckId,b);assert.equal(p.button('公開中',root).disabled,true);
+ p.button('複製',root).handlers.click();
+ const duplicate=p.controller.snapshot().draft.build.ducks.at(-1);
+ assert.notEqual(duplicate.id,b);assert.equal(p.get('duck-name').value,duplicate.name);
+ p.get('add-duck').handlers.click();
+ const added=p.controller.snapshot().draft.build.ducks.at(-1);
+ assert.notEqual(added.id,duplicate.id);assert.equal(p.get('duck-tabs').children.at(-1).attributes['aria-pressed'],'true');
+ const name=p.get('duck-name');name.value='　 ';name.handlers.input();
+ assert.equal(name.attributes['aria-invalid'],'true');assert.equal(p.get('duck-name-error').hidden,true);assert.match(p.get('duck-name-error').textContent,/アヒル名を入力/);
+ assert.equal(p.get('save').attributes['aria-disabled'],'true');
+ const calls=p.db.calls.filter(c=>c.name==='save_online_player').length;
+ p.get('save').handlers.click();assert.equal(p.db.calls.filter(c=>c.name==='save_online_player').length,calls);assert.match(p.dialog().textContent,/アヒル名/);
+});
