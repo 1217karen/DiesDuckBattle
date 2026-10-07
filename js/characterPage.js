@@ -7,7 +7,7 @@ import { mountOnlineEditor } from "./onlineEditor.js";
 import { createEmptyDuckProfile, createEmptyPlayerPresentation, getQuoteIconUrlCandidates, presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine } from "./playerPresentationModel.js";
 import { createQuoteToolbar } from "./quoteRichTextToolbar.js";
 import { createIconPicker } from "./iconPicker.js";
-import { IMAGE_LIMITS, createImageValidation, imageValidationSummary } from "./characterImageValidation.js";
+import { createImageValidation, imageValidationSummary } from "./characterImageValidation.js";
 import { requireLoginPage } from "./authPageGuard.js";
 
 import { getSupabaseClient } from "./authRuntime.js";
