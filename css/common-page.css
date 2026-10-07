@@ -35,7 +35,7 @@
 }
 /* The two editor pages already share these dimensions and heading styles. */
 .page-shell--editor {
-  --page-padding:46px 28px 40px;
+  --page-padding: 10px 28px 40px;
   --page-padding-narrow:26px 16px;
   --page-eyebrow-color:var(--accent);
   --page-eyebrow-size:.75rem;

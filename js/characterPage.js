@@ -196,9 +196,9 @@ function renderQuotes() {
   for (const group of quoteGroups) target.append(quoteGroupEditor(group, presentation.battler.quotes, "battler"));
 }
 
-function quoteGroupEditor(group, quotes, prefix, onEdit = () => {}) {
+function quoteGroupEditor(group, quotes, prefix, onEdit = () => {}, showTitle = true) {
     const card = document.createElement("div"); card.className = "card quote-group";
-    const heading = document.createElement("h3"); heading.textContent = group.title; card.append(heading);
+    if (showTitle) { const heading = document.createElement("h3"); heading.textContent = group.title; card.append(heading); }
     for (const [label, path] of group.rows) {
       const timing = path.reduce((value, key) => value[key], quotes);
       const block = document.createElement("div"); block.className = "quote-timing-block";
@@ -312,6 +312,7 @@ function profileTextEditor(labelText, value, onChange, limit, placeholder, singl
 
 function renderBattlerProfile() {
   const target = document.querySelector("#battler-profile"); target.replaceChildren();
+  const heading = document.createElement("h3"); heading.textContent = "プロフィール"; target.append(heading);
   const label = document.createElement("label"), checkbox = document.createElement("input");
   label.className = "profile-streak-visibility";
   checkbox.type = "checkbox"; checkbox.checked = presentation.battler.profile.showBestStreak;
@@ -464,7 +465,7 @@ function renderDuckSelect() {
       for (const [category, root] of [["A", aQuotes], ["C", cQuotes]]) {
         const group = quoteGroupEditor(
           { title: category + "スキルセリフ", rows: [[category, ["skill", category]]] }, quotes, "duck-" + id,
-          () => { duckPresentation(id).quotes = quotes; });
+          () => { duckPresentation(id).quotes = quotes; }, false);
         group.className = "quote-group";
         root.replaceChildren(group);
       }

@@ -23,7 +23,9 @@ textarea { min-height:78px; resize:vertical; }
 button { border-radius:7px; padding:9px 16px; cursor:pointer; font-size:.86rem; }
 button:disabled { opacity:.4; cursor:not-allowed; }
 button.primary { font-weight:750; padding:13px 28px; }
-.quote-group h3 { color:var(--accent); margin-bottom:14px; }
+#editor h3 { color:var(--accent); }
+#editor h3 > label { font:inherit; color:inherit; }
+.quote-group h3 { margin-bottom:14px; }
 .quote-row { display:grid; grid-template-columns:90px 60px minmax(0,1fr); gap:12px; align-items:center; margin:11px 0; }
 .quote-label { color:var(--muted); font-size:.84rem; }.quote-picker { width:60px; height:60px; min-height:60px; padding:0; overflow:hidden; }
 .quote-picker img { display:block; width:100%; height:100%; object-fit:contain; }

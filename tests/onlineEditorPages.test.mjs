@@ -436,8 +436,9 @@ test('v3 UI blocks invalid text and ENo, counts code points and tags, retains em
 test('best streak checkbox changes only its profile field and survives save/rehydrate',async()=>{
  const page=await profileScreen(),before=structuredClone(page.latest());
  const root=page.get('battler-profile');
- assert.deepEqual(root.children.map(e=>e.className),['profile-text-editor','profile-message-tail','profile-text-editor','profile-streak-visibility','site-theme-setting']);
- assert.ok(descendants(root.children[2]).includes(aria(root,'プロフィールの文字装飾')));
+ assert.equal(root.children[0].tagName,'h3');assert.equal(root.children[0].textContent,'プロフィール');
+ assert.deepEqual(root.children.slice(1).map(e=>e.className),['profile-text-editor','profile-message-tail','profile-text-editor','profile-streak-visibility','site-theme-setting']);
+ assert.ok(descendants(root.children[3]).includes(aria(root,'プロフィールの文字装飾')));
  const find=()=>aria(page.get('battler-profile'),'キャラリストに最大連勝数を表示する');
  assert.equal(find().checked,true);find().checked=false;find().handlers.change();await page.save();
  const expected=structuredClone(before);expected.presentation.battler.profile.showBestStreak=false;
@@ -449,7 +450,7 @@ for (const theme of ['light','dark']) test('site theme radio starts at saved '+t
  const page=await characterScreen({siteTheme:theme}),before=structuredClone(page.latest()),edits=page.editCount();
  const radios=()=>page.all().filter(e=>e.tagName==='input'&&e.type==='radio'&&e.name==='site-theme');
  assert.equal(radios().length,2);assert.equal(radios().find(e=>e.value===theme).checked,true);
- const root=page.get('battler-profile');assert.equal(root.children[4].className,'site-theme-setting');
+ const root=page.get('battler-profile');assert.equal(root.children[5].className,'site-theme-setting');
  const next=theme==='light'?'dark':'light',radio=radios().find(e=>e.value===next);
  radio.checked=true;radio.handlers.change();
  assert.equal(page.document.documentElement.dataset.theme,next);
@@ -472,9 +473,9 @@ test('message input and tail use dirty/save validation and preserve sibling data
  const input=aria(page.get('battler-profile'),'プロフィールメッセージ');
  const tail=aria(page.get('battler-profile'),'吹き出しとして表示する');
  assert.equal(input.tagName,'input');assert.equal(input.type,'text');assert.equal(input.value,'');assert.equal(tail.checked,false);
- assert.equal(descendants(page.get('battler-profile').children[0]).some(e=>e.attributes['aria-label']==='プロフィールの文字装飾'),false);
+ assert.equal(descendants(page.get('battler-profile').children[1]).some(e=>e.attributes['aria-label']==='プロフィールの文字装飾'),false);
  input.value='😀'.repeat(101);input.handlers.input();assert.equal(page.get('save').disabled,true);
- assert.equal(input.attributes['aria-invalid'],'true');assert.match(page.get('battler-profile').children[0].textContent,/100文字/);
+ assert.equal(input.attributes['aria-invalid'],'true');assert.match(page.get('battler-profile').children[1].textContent,/100文字/);
  await page.save();assert.equal(page.saved(),undefined);
  input.value='<b>hello</b>';input.handlers.input();tail.checked=true;tail.handlers.change();
  assert.ok(page.editCount()>edits);assert.equal(page.get('save').disabled,false);await page.save();
@@ -510,7 +511,7 @@ test('Duck cards group their controls and switch icon, profile and quotes togeth
  const html=await readFile(new URL('../character.html',import.meta.url),'utf8');
  const section=html.split('<section aria-labelledby="duck-heading">')[1].split('</section>')[0];
  assert.equal((section.match(/class="card /g)||[]).length,3);
- assert.match(section,/<div class="card duck-card">\s*<h3>対象アヒル・アイコン<\/h3>\s*<label>対象アヒル<select id="duck-select">[\s\S]*id="duck-icon-editor"/);
+ assert.match(section,/<div class="card duck-card">\s*<label>対象アヒル<select id="duck-select">[\s\S]*id="duck-icon-editor"/);
  assert.match(section,/<div class="card duck-profile-card">\s*<h3>プロフィール<\/h3>\s*<div id="duck-profile-editor"/);
  assert.match(section,/<div class="card duck-quotes-card">\s*<h3>セリフ・カットイン<\/h3>\s*<div id="duck-quotes-editor"/);
  const page=await profileScreen(),before=structuredClone(page.latest()),ids=[...before.build.ducks.map(d=>d.id),'orphan'];
@@ -532,4 +533,21 @@ test('Duck cards group their controls and switch icon, profile and quotes togeth
  assert.deepEqual(page.latest(),before); // Merely switching never allocates or edits presentation data.
  page.hydrate(null);
  for(const kind of ['icon','profile','quotes'])assert.equal(page.get(`duck-${kind}-editor`).children.length,0);
+});
+
+test('character subheadings retain label association and Battler titles while Duck A/C titles are omitted',async()=>{
+ const html=await readFile(new URL('../character.html',import.meta.url),'utf8');
+ const css=await readFile(new URL('../css/character.css',import.meta.url),'utf8');
+ assert.match(html,/<h3><label for="battler-name">バトラー名<\/label><\/h3><input id="battler-name"/);
+ assert.doesNotMatch(html,/<h3>対象アヒル・アイコン<\/h3>/);
+ assert.match(css,/#editor h3\s*\{ color:var\(--accent\); \}/);
+ const page=await profileScreen();
+ assert.deepEqual(page.get('quotes').children.map(card=>card.children[0].textContent),['戦闘開始','ターン開始','フェイズ開始','スキル発動','戦闘終了']);
+ for(const root of page.get('duck-quotes-editor').children){
+  assert.equal(descendants(root.children[0]).some(e=>e.tagName==='h3'),false);
+  assert.equal(descendants(root.children[1]).some(e=>e.tagName==='h3'),false);
+  assert.ok(aria(root.children[0],'Aスキルセリフ Aのセリフ'));
+  assert.ok(aria(root.children[1],'Cスキルセリフ Cのセリフ'));
+  assert.equal(root.children[2].children[0].tagName,'h3');
+ }
 });
