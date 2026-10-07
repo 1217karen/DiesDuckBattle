@@ -11,7 +11,7 @@ body {
   font: 16px/1.8 var(--font-base);
 }
 .profile-page, .profile-page * { box-sizing: border-box; }
-.profile-page { max-width: 1360px; margin: 0 auto; padding: 0px 24px 64px; overflow-wrap: anywhere; }
+.profile-page { max-width: 1360px; margin: 0 auto; padding: 10px 24px 64px; overflow-wrap: anywhere; }
 .profile-header { margin-bottom: 10px; border-bottom: 3px solid var(--profile-accent); }
 .profile-header h1 {
   font-size: clamp(1.4rem, 3vw, 2rem);
@@ -73,7 +73,7 @@ body {
 .profile-error { padding: 24px; background: var(--profile-panel); border: 1px solid var(--profile-line); border-radius: 12px; }
 /* Below this width, 500px standing + 156px rail + gap/padding need one column. */
 @media (max-width: 1160px) {
-  .profile-page { padding: 24px 16px 40px; }
+  .profile-page { padding: 10px 16px 40px; }
   .profile-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "visual" "text" "duck" "favorite"; }
   .profile-card { padding: 20px; }
 }
