@@ -101,14 +101,31 @@ function makePreview(kind, onValidation, className = "", fallback = FIXED_IMAGES
   return { box, update };
 }
 
-function makeImageField({ label, value, kind = "icon", previewClass = "", compact = false, fallback = kind === "standing" ? FIXED_IMAGES.battlerStanding : FIXED_IMAGES.battlerIcon, onInput }) {
+function makeImageField({ label, prefix = "", value, kind = "icon", previewClass = "", compact = false, fallback = kind === "standing" ? FIXED_IMAGES.battlerStanding : FIXED_IMAGES.battlerIcon, onInput }) {
   const version = dataVersion;
   const root = document.createElement("div"); root.className = `image-field${compact ? " compact" : ""}${kind === "cutin" ? " cutin-field" : ""}`;
-  const field = document.createElement("label"); field.append(document.createTextNode(label));
-  const input = document.createElement("input"); input.type = "url"; input.value = value; input.placeholder = "https://example.com/image.png";
-  const limit = IMAGE_LIMITS[kind];
-  const hint = document.createElement("span"); hint.textContent = `最大${limit.width}×${limit.height}px（縦横比自由）`;
-  const status = document.createElement("span"); status.className = "image-validation"; status.setAttribute("role", "status");
+const field = document.createElement("label");
+const inputRow = document.createElement("div");
+inputRow.className = "image-input-row";
+
+const input = document.createElement("input");
+input.type = "url";
+input.value = value;
+input.placeholder = "https://example.com/image.png";
+input.setAttribute("aria-label", label);
+
+if (prefix) {
+  const prefixNode = document.createElement("span");
+  prefixNode.className = "image-input-prefix";
+  prefixNode.textContent = prefix;
+  inputRow.append(prefixNode);
+}
+
+inputRow.append(input);
+
+const status = document.createElement("span");
+status.className = "image-validation";
+status.setAttribute("role", "status");
   const preview = makePreview(kind, result => {
     if (version !== dataVersion) return;
     imageStates.set(root, result); root.dataset.validation = result.status;
@@ -117,7 +134,7 @@ function makeImageField({ label, value, kind = "icon", previewClass = "", compac
   }, previewClass, fallback);
   preview.update(value);
   input.addEventListener("input", () => { preview.update(input.value); onInput(input.value); setDirty(); });
-  field.append(hint, input, status);
+  field.append(inputRow, status);
   if (kind === "cutin") root.append(field, preview.box); else root.append(preview.box, field);
   return root;
 }
@@ -140,7 +157,7 @@ function renderBattlerImages() {
   };
   presentation.battler.iconSlots.forEach((value, index) => {
     const slot = index + 1;
-    const field = makeImageField({ label:`${slot} URL`, value, compact:true, onInput:next => { presentation.battler.iconSlots[index] = next; refreshQuoteIcons(); } });
+    const field = makeImageField({ label:`追加アイコン ${slot}`, prefix:String(slot), value, compact:true, onInput:next => { presentation.battler.iconSlots[index] = next; refreshQuoteIcons(); } });
     const label = document.createElement("label"); label.className = "profile-icon-choice";
     const checkbox = document.createElement("input"); checkbox.type = "checkbox";
     checkbox.setAttribute("aria-label", `追加アイコン${slot}をプロフィールに表示`);
