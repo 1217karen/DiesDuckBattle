@@ -141,11 +141,11 @@ status.setAttribute("role", "status");
 
 function renderBattlerImages() {
   const target = document.querySelector("#battler-images"); target.replaceChildren();
-  const standingCard = document.createElement("div"); standingCard.className = "card"; standingCard.innerHTML = "<h3>立ち絵</h3>";
+  const standingCard = document.createElement("div"); standingCard.className = "card"; standingCard.innerHTML = '<h3>立ち絵 <span class="muted">（500×800px）</span></h3>';
   standingCard.append(makeImageField({ label:"URL", value:presentation.battler.standingImageUrl, kind:"standing", previewClass:"standing", onInput:value => { presentation.battler.standingImageUrl = value; } }));
-  const defaultCard = document.createElement("div"); defaultCard.className = "card"; defaultCard.innerHTML = "<h3>デフォルトアイコン</h3>";
+  const defaultCard = document.createElement("div"); defaultCard.className = "card"; defaultCard.innerHTML = '<h3>デフォルトアイコン <span class="muted">（120×120px）</span></h3>';
   defaultCard.append(makeImageField({ label:"URL", value:presentation.battler.defaultIconUrl, onInput:value => { presentation.battler.defaultIconUrl = value; refreshQuoteIcons(); } }));
-  const slotsCard = document.createElement("div"); slotsCard.className = "card additional-icons"; slotsCard.innerHTML = "<h3>追加アイコン</h3><p class=\"muted\">セリフから参照する固定10枠です。プロフィールには最大4枠を選択できます。</p>";
+  const slotsCard = document.createElement("div"); slotsCard.className = "card additional-icons"; slotsCard.innerHTML = '<h3>追加アイコン <span class="muted">（120×120px）</span></h3><p class="muted">セリフから参照する固定10枠です。プロフィールには最大4枠を選択できます。</p>';
   const grid = document.createElement("div"); grid.className = "icon-slots";
   const checkboxes = [];
   const syncChecks = () => {
@@ -428,18 +428,21 @@ function renderDuckSelect() {
   duckEditors.clear(); select.disabled = false;
   for (const duck of ducks) {
     const id = duck.id;
+    const iconHeading = document.createElement("h3");
+    iconHeading.innerHTML = 'アイコン <span class="muted">（60×60px）</span>';
     const field = makeImageField({ label:`${duck.name || "名前未設定のアヒル"} アイコンURL`, value:presentation.ducks[id]?.iconUrl ?? "", fallback:FIXED_IMAGES.duckIcon, previewClass:"duck-preview",
       onInput:value => { duckPresentation(id).iconUrl = value; } });
     const editor = document.createElement("div"); editor.className = "duck-presentation-editor";
     const cutin = document.createElement("section"); cutin.className = "duck-cutin";
-    const heading = document.createElement("h3"); heading.textContent = "Cスキルカットイン";
+    const heading = document.createElement("h3");
+    heading.innerHTML = 'Cスキルカットイン <span class="muted">（480×480px）</span>';
     const description = document.createElement("p"); description.className = "muted c-skill-description";
     const skill = presentCSkill(duck.cSelection);
     description.textContent = skill.text ?? (duck.cSelection == null ? "Cスキル未設定" : "Cスキル設定未完了");
     cutin.append(heading, description, makeImageField({ label:"URL", kind:"cutin", previewClass:"cutin-preview", fallback:null,
       value:presentation.ducks[id]?.cutinUrl ?? "",
       onInput:value => { duckPresentation(id).cutinUrl = value; } }));
-    editor.append(field, cutin, duckProfileEditor(duck)); duckEditors.set(id, editor); target.append(editor);
+    editor.append(iconHeading, field, cutin, duckProfileEditor(duck)); duckEditors.set(id, editor); target.append(editor);
   }
   if (!ducks.length) { const option = new Option("Duck未登録", ""); select.append(option); select.disabled = true; selectedDuckId = ""; }
   else {
