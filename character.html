@@ -20,17 +20,14 @@
   <script src="js/menuDisplayCache.js"></script>
   <main data-page-content class="character-shell page-shell page-shell--editor">
     <header class="page-header">
-      <p class="eyebrow page-eyebrow">DIES DUCK BATTLE</p>
       <h1 class="page-title">CHARACTER SETTING</h1>
       <p>立ち絵・アイコン・プロフィール・戦闘セリフを登録します。</p>
-      <p class="muted">ログイン中のENoへ表示設定を保存します。</p>
-      <a class="back-link" href="setting.html">← 戦闘設定へ</a>
     </header>
-    <p id="load-message" role="status"></p>
-    <section id="online-edit-status" class="online-edit-status" aria-label="オンライン保存状態"></section>
-    <p class="muted">この画面はオンライン設定を編集します。保存後、キャラクター選択で再読み込みして対戦に使用できます。</p>
+
+    <p id="load-message" role="status" hidden></p>
+    <section id="online-edit-status" class="online-edit-status" aria-label="オンライン保存状態" hidden></section>
+
     <noscript>表示設定ページを使用するにはJavaScriptを有効にしてください。</noscript>
-    <div id="editor" hidden>
       <section aria-labelledby="battler-heading">
         <div class="section-heading"><span>01</span><div><h2 id="battler-heading">BATTLER</h2><p>バトラー名・立ち絵・アイコン・プロフィール</p></div></div>
         <div class="card"><label for="battler-name">バトラー名</label><input id="battler-name" type="text" placeholder="バトラー名を入力" required aria-describedby="image-validation-message" autocomplete="off" disabled></div>
