@@ -59,6 +59,28 @@ button.primary { font-weight:750; padding:13px 28px; }
 .profile-icon-choice { grid-column:2; flex-direction:row; align-items:center; gap:8px; color:var(--text); }
 .profile-icon-choice input { width:20px; min-height:20px; height:20px; accent-color:var(--accent); }
 .profile-icon-choice input:disabled { opacity:.45; cursor:not-allowed; }
+.image-field.compact > label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 6px;
+}
+
+.image-field.compact > label > .image-input-row {
+  grid-column: 1 / -1;
+}
+
+.image-field.compact > label > .profile-icon-choice {
+  grid-column: 1;
+  grid-row: 2;
+  margin: 0;
+}
+
+.image-field.compact > label > .image-validation {
+  grid-column: 2;
+  grid-row: 2;
+}
 .profile-text-editor { min-width:0; margin-top:16px; }
 .profile-text-editor textarea { min-height:150px; }
 .profile-streak-visibility { flex-direction:row; align-items:center; gap:8px; margin-top:12px; }
