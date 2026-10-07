@@ -1,4 +1,4 @@
-# 公開プロフィール取得 v1
+# 公開プロフィール取得 v2
 
 `createOnlineProfileService(client).getProfile(eno)` が
 `public.get_online_profile(p_eno bigint)` を呼び出す。成功時は
@@ -8,7 +8,7 @@
 ## レスポンス
 
 ```text
-profileVersion: 1 (Presentation schemaVersionとは独立)
+profileVersion: 2 (Presentation schemaVersionとは独立)
 accountId: UUID
 eno: decimal string
 isOwner: boolean
@@ -17,6 +17,8 @@ battler:
   profileIcons: [{ slot: integer 1..10, url: string }] (昇順・重複なし・最大4件)
   profile:
     text: string
+    message: string (プレーンテキスト、保存時100 code point以内)
+    messageTail: boolean
     theme: { background, panel, text, accent } (#RRGGBB)
   skills: { B: skill, D: skill }
 duck: null | {
@@ -47,13 +49,14 @@ ENoとbattleNoはbigintの精度を保つ文字列。decoderもcanonical decimal
 - 公開Duck未設定でもBattlerを返し、Duckはnull。設定されている場合は対象accountの公開Duck1羽だけ。
 - JSONBの全体返却は行わない。スキルselection内部も既知のキー・option axesだけを公開する。
   build v2/v3をサポートし、v2のlabelは空name/ruby。合法性やbattle-ready判定はしない。
-- Presentation v1はprofile初期値、v2は保存profileを投影する。Duckのiconがnullなら空表示情報。
+- Presentation v1はprofile初期値、v2〜v5は保存profileを投影する。v1〜v4のmessage/messageTailは空文字/falseを補う。Duckのiconがnullなら空表示情報。
   登録直後のbuild `{}` + presentation `{name}` は空画像・空profile・null selection。
   未知versionや構造破損は拒否する。公開scalar値の不正はdecoderでも拒否し、初期値に丸めない。
 - Featured Battleはbattleが存在し、対象accountのfavorite行が現在存在する場合だけ返す。
   参加者であることは要求しない。未設定・削除済み・favorite解除済みならnull。
   未検証featuredBattleId、他favorite、events、loadoutは返さない。
-- 保存データ、対戦用public_battle_data、既存table grants/RLSは変更しない。
+- 保存presentationはv5。v1〜v4は厳密な元の形を照合して移行し、未知fieldは拒否する。
+  public_battle_dataとlist_charactersもv5に対応する。既存table grants/RLS・関数ACLは変更しない。
 
 ## Client boundary
 

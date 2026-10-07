@@ -1,4 +1,4 @@
-export const PLAYER_PRESENTATION_SCHEMA_VERSION = 4;
+export const PLAYER_PRESENTATION_SCHEMA_VERSION = 5;
 export const BATTLER_ICON_SLOT_COUNT = 10;
 
 export const QUOTE_PATHS = [
@@ -36,7 +36,7 @@ export function presentationForPersistence(value) {
 
 
 export function createEmptyBattlerProfile() {
-  return { text: "", iconSlots: [], theme: { background: "#DCEEF3", panel: "#FFFFFF", text: "#20282C", accent: "#4F91B3" }, featuredBattleId: null, showBestStreak: true };
+  return { message: "", messageTail: false, text: "", iconSlots: [], theme: { background: "#DCEEF3", panel: "#FFFFFF", text: "#20282C", accent: "#4F91B3" }, featuredBattleId: null, showBestStreak: true };
 }
 export function createEmptyDuckProfile() {
   return { text: "", type: null, attributes: ["", "", ""], statLabelPreset: "default", flavorStats: [] };
@@ -44,6 +44,8 @@ export function createEmptyDuckProfile() {
 function normalizeBattlerProfile(value) {
   const result = createEmptyBattlerProfile();
   result.text = text(value?.text);
+  result.message = text(value?.message);
+  if (typeof value?.messageTail === "boolean") result.messageTail = value.messageTail;
   if (typeof value?.showBestStreak === "boolean") result.showBestStreak = value.showBestStreak;
   result.iconSlots = [...new Set((Array.isArray(value?.iconSlots) ? value.iconSlots : []).filter(v => iconSlot(v) !== null))].sort((a,b) => a-b).slice(0,4);
   for (const key of Object.keys(result.theme)) {

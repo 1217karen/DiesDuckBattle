@@ -25,7 +25,7 @@ for(const type of [null,'attack','defense','speed','heal','technical','normal'])
 for(const preset of ['default','kanji','english','hiragana'])
   test(`profile preset ${preset}`,()=>{const p=profileFixture();p.duck.profile.statLabelPreset=preset;assert.equal(decodeOnlineProfile(p).duck.profile.statLabelPreset,preset);});
 const invalid = {
-  future:p=>p.profileVersion=2, unknown:p=>p.private='secret', uuid:p=>p.accountId='bad', eno:p=>p.eno=0,
+  future:p=>p.profileVersion=3, unknown:p=>p.private='secret', uuid:p=>p.accountId='bad', eno:p=>p.eno=0,
   owner:p=>p.isOwner=1, name:p=>p.battler.name=null, theme:p=>p.battler.profile.theme.accent='red',
   themeField:p=>p.battler.profile.theme.mode='light', iconRange:p=>p.battler.profileIcons[0].slot=0,
   iconRangeHigh:p=>p.battler.profileIcons[0].slot=11, iconDuplicate:p=>p.battler.profileIcons[1].slot=1,

@@ -75,6 +75,7 @@ export function renderProfile(document, profile) {
   }
   positionIcons();
   visual.append(rail);
+  if (b.profile.message !== "") battler.append(el("p", `profile-message${b.profile.messageTail ? " has-tail" : ""}`, b.profile.message));
   battler.append(visual, skillList({ B: b.skills.B, D: b.skills.D }));
   const text = card("profile-text-card", "BATTLER PROFILE"); text.append(profileText(b.profile.text));
   const duck = card("duck-card", "MY DUCK"), d = profile.duck;

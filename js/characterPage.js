@@ -1,4 +1,4 @@
-import { BATTLER_PROFILE_MAX, DUCK_PROFILE_MAX, profileTextError, flavorLabelError, presentationTextIssues } from "./profileTextValidation.js";
+import { PROFILE_MESSAGE_MAX, BATTLER_PROFILE_MAX, DUCK_PROFILE_MAX, profileTextError, flavorLabelError, presentationTextIssues } from "./profileTextValidation.js";
 import { finishPageLoad } from "./pageLoad.js";
 import { presentCSkill } from "./cSkillPresentation.js";
 import { battlerNameError } from "./nameValidation.js";
@@ -286,10 +286,12 @@ function duckPresentation(id) {
   return presentation.ducks[id] ??= { iconUrl: "", cutinUrl: "", profile: createEmptyDuckProfile() };
 }
 
-function profileTextEditor(labelText, value, onChange, limit, placeholder) {
+function profileTextEditor(labelText, value, onChange, limit, placeholder, singleLine = false) {
   const root = document.createElement("div"); root.className = "profile-text-editor";
   const label = document.createElement("label"); label.append(document.createTextNode(labelText));
-  const input = document.createElement("textarea"); input.value = value; input.rows = 6; input.placeholder = placeholder;
+  const input = document.createElement(singleLine ? "input" : "textarea"); input.value = value;
+  if (singleLine) input.type = "text"; else input.rows = 6;
+  input.placeholder = placeholder;
   input.setAttribute("aria-label", labelText);
   const error = document.createElement("span"); error.className = "profile-field-error"; error.setAttribute("role", "status");
   const validate = () => {
@@ -300,7 +302,9 @@ function profileTextEditor(labelText, value, onChange, limit, placeholder) {
   validate();
   input.addEventListener("input", () => change(input.value));
   label.append(input);
-  root.append(label, createQuoteToolbar(input, change, document, { ariaLabel: "プロフィールの文字装飾" }), error);
+  root.append(label);
+  if (!singleLine) root.append(createQuoteToolbar(input, change, document, { ariaLabel: "プロフィールの文字装飾" }));
+  root.append(error);
   return root;
 }
 
@@ -312,6 +316,14 @@ function renderBattlerProfile() {
   checkbox.setAttribute("aria-label", "キャラリストに最大連勝数を表示する");
   checkbox.addEventListener("change", () => { presentation.battler.profile.showBestStreak = checkbox.checked; setDirty(); });
   label.append(checkbox, document.createTextNode("キャラリストに最大連勝数を表示する"));
+  target.append(profileTextEditor("プロフィールメッセージ", presentation.battler.profile.message,
+    value => { presentation.battler.profile.message = value; }, PROFILE_MESSAGE_MAX, "プロフィールメッセージを入力", true));
+  const tailLabel = document.createElement("label"), tail = document.createElement("input");
+  tailLabel.className = "profile-message-tail";
+  tail.setAttribute("aria-label", "吹き出しとして表示する");
+  tail.type = "checkbox"; tail.checked = presentation.battler.profile.messageTail;
+  tail.addEventListener("change", () => { presentation.battler.profile.messageTail = tail.checked; setDirty(); updateValidation(); });
+  tailLabel.append(tail, document.createTextNode("吹き出しとして表示する")); target.append(tailLabel);
   target.append(profileTextEditor("バトラープロフィール", presentation.battler.profile.text,
     value => { presentation.battler.profile.text = value; }, BATTLER_PROFILE_MAX, "バトラーのプロフィールを入力"));
   target.append(label, siteThemeSetting());

@@ -33,10 +33,11 @@ const upgradeDuckDisplays = values => object(values)
 
 /** Check each version in its original shape before migrating; never discard unknown data. */
 export function migrateOnlinePlayerPresentation(value) {
-  requireValue(object(value) && [1, 2, 3, 4].includes(value.schemaVersion));
+  requireValue(object(value) && [1, 2, 3, 4, 5].includes(value.schemaVersion));
   const normalized = normalizePlayerPresentation(value);
   const expected = structuredClone(normalized);
   expected.schemaVersion = value.schemaVersion;
+  if (value.schemaVersion < 5) { delete expected.battler.profile.message; delete expected.battler.profile.messageTail; }
   if (value.schemaVersion < 4) delete expected.battler.profile.showBestStreak;
   if (value.schemaVersion < 3) {
     expected.schemaVersion = value.schemaVersion;
@@ -106,7 +107,7 @@ export function decodeOnlinePlayer(snapshot) {
   b = { ...b, presentation: { schemaVersion: PLAYER_PRESENTATION_SCHEMA_VERSION, name: storedName, ...migratedDisplay.battler, detachedDuckPresentation: migratedDisplay.ducks } };
   const storedDucks = snapshot.ducks.map(d => {
     keys(d.presentation, ["schemaVersion", "name", "icon"]);
-    requireValue([1, 2, 3, 4].includes(d.presentation.schemaVersion));
+    requireValue([1, 2, 3, 4, 5].includes(d.presentation.schemaVersion));
     let icon = d.presentation.icon;
     if (icon !== null) {
       const empty = createEmptyPlayerPresentation();
@@ -115,6 +116,7 @@ export function decodeOnlinePlayer(snapshot) {
         const parent = path.slice(0,-1).reduce((v,k) => v[k], empty.battler.quotes);
         parent[path.at(-1)] = { text: "", iconSlot: null };
       }
+      if (empty.schemaVersion < 5) { delete empty.battler.profile.message; delete empty.battler.profile.messageTail; }
       if (empty.schemaVersion < 4) delete empty.battler.profile.showBestStreak;
       if (empty.schemaVersion === 1) delete empty.battler.profile;
       empty.ducks = { duck: icon };

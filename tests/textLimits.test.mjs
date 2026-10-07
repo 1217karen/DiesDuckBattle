@@ -45,7 +45,7 @@ for(const char of ['a','😀'])test(`profile boundaries and tags count code poin
 });
 for(const version of [1,2,3])test(`old v${version} oversized stored data loads losslessly but cannot be saved`,async()=>{
  const {data}=await player(a,'1',da);const dto=encodeOnlinePlayer(data);
- delete dto.battler.presentation.profile.showBestStreak;dto.battler.presentation.schemaVersion=version;dto.ducks[0].presentation.schemaVersion=version;
+ delete dto.battler.presentation.profile.showBestStreak;delete dto.battler.presentation.profile.message;delete dto.battler.presentation.profile.messageTail;dto.battler.presentation.schemaVersion=version;dto.ducks[0].presentation.schemaVersion=version;
  dto.battler.presentation.name='😀'.repeat(16);dto.ducks[0].presentation.name='あ'.repeat(16);
  dto.battler.build.skillLabels.B={name:'a'.repeat(21),ruby:'😀'.repeat(51)};
  if(version<3)for(const path of QUOTE_PATHS){const p=path.slice(0,-1).reduce((v,k)=>v[k],dto.battler.presentation.quotes);const first=p[path.at(-1)].lines[0];p[path.at(-1)]={text:first.text,iconSlot:first.iconSlot};}

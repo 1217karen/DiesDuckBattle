@@ -87,3 +87,30 @@ body {
 }
 
 .profile-header h1, .profile-card h2 { font-family:var(--font-heading-ja); }
+
+.profile-message {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto 24px;
+  padding: 12px 24px;
+  border: 1px solid var(--profile-accent);
+  border-radius: 999px;
+  background: var(--profile-bg);
+  color: var(--profile-text);
+  text-align: center;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.profile-message.has-tail::after {
+  content: "";
+  position: absolute;
+  bottom: -7px;
+  left: calc(50% - 6px);
+  width: 12px;
+  height: 12px;
+  background: var(--profile-bg);
+  border-right: 1px solid var(--profile-accent);
+  border-bottom: 1px solid var(--profile-accent);
+  transform: rotate(45deg);
+}

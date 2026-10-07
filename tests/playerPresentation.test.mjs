@@ -10,7 +10,7 @@ function memoryStorage(initial = {}) {
 
 test("presentationの初期値は固定10枠と全セリフを持つ", () => {
   const value = createEmptyPlayerPresentation();
-  assert.equal(value.schemaVersion,4);
+  assert.equal(value.schemaVersion,5);
   assert.deepEqual(value.battler.iconSlots, Array(10).fill(""));
   assert.deepEqual(value.battler.quotes.phaseStart.second, { lines:[{ text:"", iconSlot:null, opponentEno:null }] });
   assert.deepEqual(value.battler.quotes.skill.D, { lines:[{ text:"", iconSlot:null, opponentEno:null }] });
@@ -56,7 +56,7 @@ test("不正JSONでもloadは初期値を返して画面を継続できる", () 
 test("v1 old Duck icons gain empty cut-ins; normalized cut-ins are independent Duck data",()=>{
   const raw={schemaVersion:1,ducks:{old:{iconUrl:"old.png"},a:{iconUrl:"a.png",cutinUrl:"a-cutin.png"},b:{iconUrl:"b.png",cutinUrl:"b-cutin.png"}}};
   const before=structuredClone(raw),value=normalizePlayerPresentation(raw);
-  assert.deepEqual(raw,before);assert.equal(value.schemaVersion,4);
+  assert.deepEqual(raw,before);assert.equal(value.schemaVersion,5);
   assert.deepEqual(value.ducks.old,{ iconUrl:"old.png",cutinUrl:"", profile:createEmptyDuckProfile() });
   assert.deepEqual(value.ducks.a,{...raw.ducks.a,profile:createEmptyDuckProfile()});assert.deepEqual(value.ducks.b,{...raw.ducks.b,profile:createEmptyDuckProfile()});
 });

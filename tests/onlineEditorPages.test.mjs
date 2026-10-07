@@ -1,4 +1,4 @@
-import { BATTLER_PROFILE_MAX, DUCK_PROFILE_MAX, profileTextError, flavorLabelError, presentationTextIssues } from "../js/profileTextValidation.js";
+import { PROFILE_MESSAGE_MAX, BATTLER_PROFILE_MAX, DUCK_PROFILE_MAX, profileTextError, flavorLabelError, presentationTextIssues } from "../js/profileTextValidation.js";
 import { createQuoteEnoLookup } from "../js/quoteEnoLookup.js";
 import { presentCSkill } from "../js/cSkillPresentation.js";
 import { createQuoteToolbar } from "../js/quoteRichTextToolbar.js";
@@ -63,7 +63,7 @@ async function characterScreen({ siteTheme = null, storageThrows = false } = {})
   const controller = { snapshot: () => ({ canSave: true, canEdit: true }),
     edit(patch) { editCount++; latest = { ...latest, ...structuredClone(patch) }; },
     async save() { saved = structuredClone(latest); return { ok: true }; } };
-  const context = { BATTLER_PROFILE_MAX, DUCK_PROFILE_MAX, profileTextError, flavorLabelError, presentationTextIssues, battlerNameError, presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine, createQuoteEnoLookup, getSupabaseClient: async()=>({}), createOnlineProfileService: ()=>({getProfile:async()=>({ok:false,status:"profile-not-found"})}), finishPageLoad() {}, requireLoginPage: async () => {}, presentCSkill, hasName, FIXED_IMAGES, setImageFromCandidates, getQuoteIconUrlCandidates, createQuoteToolbar, document, structuredClone, createEmptyDuckProfile, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
+  const context = { PROFILE_MESSAGE_MAX, BATTLER_PROFILE_MAX, DUCK_PROFILE_MAX, profileTextError, flavorLabelError, presentationTextIssues, battlerNameError, presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine, createQuoteEnoLookup, getSupabaseClient: async()=>({}), createOnlineProfileService: ()=>({getProfile:async()=>({ok:false,status:"profile-not-found"})}), finishPageLoad() {}, requireLoginPage: async () => {}, presentCSkill, hasName, FIXED_IMAGES, setImageFromCandidates, getQuoteIconUrlCandidates, createQuoteToolbar, document, structuredClone, createEmptyDuckProfile, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
     Option: function (name, value) { const el = new Element("option"); el.textContent = name; el.value = value; return el; },
     createIconPicker: () => ({ open(args) { selectedCallback = args.select; }, close() { selectedCallback = null; } }),
     mountOnlineEditor: async args => { assert.deepEqual(Array.from(args.sections), ["presentation", "battlerName"]); hooks = args; latest = structuredClone(data); args.hydrate(data); args.onState({ canSave: true, canEdit: true }); return controller; } };
@@ -91,7 +91,7 @@ test("actual character handlers preserve full DTO, quotes, ten icon slots, detac
   image.naturalWidth = 20; image.naturalHeight = 20; image.onload(); assert.equal(page.get("save").disabled, false);
   const slot10 = inputs()[11]; slot10.value = "https://example.invalid/slot10.png"; slot10.handlers.input();
   image = page.all().find(el => el.tagName === "img" && el.src === slot10.value); image.naturalWidth = 250; image.naturalHeight = 250; image.onload();
-  const quote = page.all().find(el => el.tagName === "input" && el.type === "text"); quote.value = "オンラインセリフ"; quote.handlers.input();
+  const quote = page.all().find(el => el.tagName === "input" && el.type === "text" && el.attributes["aria-label"] !== "プロフィールメッセージ"); quote.value = "オンラインセリフ"; quote.handlers.input();
   page.all().find(el => el.className === "quote-picker").handlers.click(); page.pick(10);
   const beforeRename = structuredClone(page.latest().presentation);
   page.get("battler-name").value = "変更後のバトラー"; page.get("battler-name").handlers.input();
@@ -100,7 +100,7 @@ test("actual character handlers preserve full DTO, quotes, ten icon slots, detac
   const saved = page.saved(); assert.deepEqual(saved.build, page.data.build); assert.deepEqual(saved.publicSettings, page.data.publicSettings); assert.equal(saved.battlerName, "変更後のバトラー");
   assert.equal(saved.presentation.battler.iconSlots[9], slot10.value); assert.deepEqual(saved.presentation.battler.quotes.battleStart, { lines:[{ text: quote.value, iconSlot: 10, opponentEno:null }] });
   assert.equal(saved.presentation.ducks.orphan.iconUrl, orphanInput.value);
-  page.hydrate(saved); assert.equal(page.get("battler-name").value, "変更後のバトラー"); assert.equal(page.all().find(el => el.tagName === "input" && el.type === "text").value, "オンラインセリフ");
+  page.hydrate(saved); assert.equal(page.get("battler-name").value, "変更後のバトラー"); assert.equal(page.all().find(el => el.tagName === "input" && el.type === "text" && el.attributes["aria-label"] !== "プロフィールメッセージ").value, "オンラインセリフ");
   assert.equal(page.all().find(el => el.className === "quote-picker").title, "追加アイコン 10");
   assert.equal(page.all().find(el => el.className === "quote-picker").children[0].src,slot10.value);
 });
@@ -135,7 +135,7 @@ test("all quote rows use one-line inputs, six inline controls and live slot/defa
   imageInputs[1].value="new-default.png";imageInputs[1].handlers.input();assert.equal(picker.children[0].src,"new-default.png");
   picker.handlers.click();page.pick(null);assert.equal(picker.title,"デフォルトアイコン");assert.equal(picker.children[0].src,"new-default.png");
   const quote=page.latest().presentation.battler.quotes.battleStart.lines[0];assert.deepEqual(Object.keys(quote),["text","iconSlot","opponentEno"]);
-  assert.equal(quote.iconSlot,null);assert.equal(page.latest().presentation.schemaVersion,4);
+  assert.equal(quote.iconSlot,null);assert.equal(page.latest().presentation.schemaVersion,5);
 });
 test("late image callback from prior account cannot block the newly hydrated account", async () => {
   const page = await characterScreen(), old = page.all().find(el => el.tagName === "img" && el.onerror);
@@ -275,7 +275,7 @@ test('loaded overlong detached profiles and hidden flavor labels block saving wi
  await page.save();assert.equal(page.saved(),undefined);assert.equal(label.attributes['aria-invalid'],'true');
  inputValue(label,'abcあいう');await page.save();assert.ok(page.saved());
 });
-const checkboxes = page => page.all().filter(e=>e.type==='checkbox'&&e.attributes['aria-label']!=='キャラリストに最大連勝数を表示する');
+const checkboxes = page => page.all().filter(e=>e.type==='checkbox'&&e.parent.className==='profile-icon-choice');
 
 test('Battler multiline profile and shared toolbar save/rehydrate without touching existing data',async()=>{
   const page=await profileScreen(),before=structuredClone(page.latest());
@@ -436,8 +436,8 @@ test('v3 UI blocks invalid text and ENo, counts code points and tags, retains em
 test('best streak checkbox changes only its profile field and survives save/rehydrate',async()=>{
  const page=await profileScreen(),before=structuredClone(page.latest());
  const root=page.get('battler-profile');
- assert.deepEqual(root.children.map(e=>e.className),['profile-text-editor','profile-streak-visibility','site-theme-setting']);
- assert.ok(descendants(root.children[0]).includes(aria(root,'プロフィールの文字装飾')));
+ assert.deepEqual(root.children.map(e=>e.className),['profile-text-editor','profile-message-tail','profile-text-editor','profile-streak-visibility','site-theme-setting']);
+ assert.ok(descendants(root.children[2]).includes(aria(root,'プロフィールの文字装飾')));
  const find=()=>aria(page.get('battler-profile'),'キャラリストに最大連勝数を表示する');
  assert.equal(find().checked,true);find().checked=false;find().handlers.change();await page.save();
  const expected=structuredClone(before);expected.presentation.battler.profile.showBestStreak=false;
@@ -449,7 +449,7 @@ for (const theme of ['light','dark']) test('site theme radio starts at saved '+t
  const page=await characterScreen({siteTheme:theme}),before=structuredClone(page.latest()),edits=page.editCount();
  const radios=()=>page.all().filter(e=>e.tagName==='input'&&e.type==='radio'&&e.name==='site-theme');
  assert.equal(radios().length,2);assert.equal(radios().find(e=>e.value===theme).checked,true);
- const root=page.get('battler-profile');assert.equal(root.children[2].className,'site-theme-setting');
+ const root=page.get('battler-profile');assert.equal(root.children[4].className,'site-theme-setting');
  const next=theme==='light'?'dark':'light',radio=radios().find(e=>e.value===next);
  radio.checked=true;radio.handlers.change();
  assert.equal(page.document.documentElement.dataset.theme,next);
@@ -465,4 +465,22 @@ test('site theme radios still work when localStorage throws',async()=>{
  radio.checked=true;assert.doesNotThrow(()=>radio.handlers.change());
  assert.equal(page.document.documentElement.dataset.theme,'dark');
  assert.deepEqual(page.latest(),before);assert.equal(page.editCount(),edits);
+});
+
+test('message input and tail use dirty/save validation and preserve sibling data on rehydrate',async()=>{
+ const page=await profileScreen(),before=structuredClone(page.latest()),edits=page.editCount();
+ const input=aria(page.get('battler-profile'),'プロフィールメッセージ');
+ const tail=aria(page.get('battler-profile'),'吹き出しとして表示する');
+ assert.equal(input.tagName,'input');assert.equal(input.type,'text');assert.equal(input.value,'');assert.equal(tail.checked,false);
+ assert.equal(descendants(page.get('battler-profile').children[0]).some(e=>e.attributes['aria-label']==='プロフィールの文字装飾'),false);
+ input.value='😀'.repeat(101);input.handlers.input();assert.equal(page.get('save').disabled,true);
+ assert.equal(input.attributes['aria-invalid'],'true');assert.match(page.get('battler-profile').children[0].textContent,/100文字/);
+ await page.save();assert.equal(page.saved(),undefined);
+ input.value='<b>hello</b>';input.handlers.input();tail.checked=true;tail.handlers.change();
+ assert.ok(page.editCount()>edits);assert.equal(page.get('save').disabled,false);await page.save();
+ const expected=structuredClone(before);expected.presentation.battler.profile.message=input.value;expected.presentation.battler.profile.messageTail=true;
+ assert.deepEqual(page.saved(),expected);page.hydrate(page.saved());
+ assert.equal(aria(page.get('battler-profile'),'プロフィールメッセージ').value,input.value);
+ const loaded=aria(page.get('battler-profile'),'吹き出しとして表示する');assert.equal(loaded.checked,true);
+ loaded.checked=false;loaded.handlers.change();await page.save();assert.equal(page.saved().presentation.battler.profile.messageTail,false);
 });

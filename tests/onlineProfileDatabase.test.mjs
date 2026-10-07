@@ -27,7 +27,7 @@ test('dedicated authenticated public profile DB boundary',{skip:!PGlite&&'Set PG
       insert into public.battlers(game_account_id,presentation) values ('${a}','{"name":"registration"}'),('${b}','{"name":"B"}'),('${third}','{"name":"third"}');`);
     const {data}=await player(b,'2',duckB);
     const bp=data.presentation.battler.profile;
-    bp.text=' raw [b]profile[/b]\n ';bp.iconSlots=[1,3];bp.theme.accent='#abcdef';
+    bp.message="<b>hello</b>";bp.messageTail=true;bp.text=' raw [b]profile[/b]\n ';bp.iconSlots=[1,3];bp.theme.accent='#abcdef';
     data.presentation.battler.standingImageUrl='standing.png';
     data.presentation.battler.iconSlots[0]='one.png';data.presentation.battler.iconSlots[1]='SECRET-unselected';
     data.presentation.battler.quotes.battleStart.lines[0].text='SECRET-quotes';
@@ -64,10 +64,10 @@ test('dedicated authenticated public profile DB boundary',{skip:!PGlite&&'Set PG
       assert.doesNotMatch(JSON.stringify(raw), /SECRET-option|unknownOption/);
       await restore(); await asUser(userA);
     });
-    await t.test('foreign profile uses v1 API contract with lossless v2 fields and selected empty URL',async()=>{
+    await t.test('foreign profile uses v2 API contract with lossless v2 fields and selected empty URL',async()=>{
       const raw=await get(),p=decodeOnlineProfile(raw);assert.deepEqual(p,raw);
       assert.equal(p.isOwner,false);assert.equal(p.accountId,b);assert.equal(p.eno,'2');
-      assert.deepEqual(p.battler.profile,{text:bp.text,theme:bp.theme});
+      assert.deepEqual(p.battler.profile,{text:bp.text,theme:bp.theme,message:bp.message,messageTail:bp.messageTail});
       assert.deepEqual(p.battler.profileIcons,[{slot:1,url:'one.png'},{slot:3,url:''}]);
       assert.deepEqual(p.duck.profile,dp);assert.deepEqual(p.duck.stats,data.build.ducks[0].stats);
       for(const [key,selection,label] of [['B',data.build.battler.bSelection,data.build.battler.skillLabels.B],['D',data.build.battler.dSelection,data.build.battler.skillLabels.D]])
@@ -76,6 +76,21 @@ test('dedicated authenticated public profile DB boundary',{skip:!PGlite&&'Set PG
         assert.deepEqual(p.duck.skills[key],{selection,label});
       assert.equal(p.featuredBattle,null);
       assert.doesNotMatch(JSON.stringify(p),/SECRET|cutinUrl|quotes|dice|diceFrame|detached|save_revision|auth_user|featuredBattleId/);
+    });
+    await t.test('v2 contract defaults for v2-v4, strict v5 message types and unknown profile fields',async()=>{
+      for(const version of [2,3,4]) {
+        await db.exec('reset role');
+        await db.query("update public.battlers set presentation=jsonb_set(presentation #- '{profile,message}' #- '{profile,messageTail}','{schemaVersion}',$1::jsonb) where game_account_id=$2",[String(version),b]);
+        await asUser(userA);const p=decodeOnlineProfile(await get());
+        assert.equal(p.profileVersion,2);assert.equal(p.battler.profile.message,'');assert.equal(p.battler.profile.messageTail,false);assert.equal(p.battler.profile.text,bp.text);
+        await restore();
+      }
+      for(const [field,v] of [['message',null],['message',42],['messageTail',null],['messageTail','true'],['messageTail',1]]) {
+        await db.exec('reset role');await db.query('update public.battlers set presentation=jsonb_set(presentation,$1::text[],$2::jsonb) where game_account_id=$3',[['profile',field],JSON.stringify(v),b]);
+        await asUser(userA);await assert.rejects(get(),{code:'22023'});await restore();
+      }
+      await db.query("update public.battlers set presentation=jsonb_set(presentation,'{profile,private}','\"SECRET-profile\"') where game_account_id=$1",[b]);
+      await asUser(userA);assert.doesNotMatch(JSON.stringify(decodeOnlineProfile(await get())),/SECRET/);await restore();await asUser(userA);
     });
     await t.test('own, multiple-access, zero-access callers; isOwner is per target',async()=>{
       await asUser(userB);assert.equal((await get()).isOwner,true);
@@ -94,7 +109,7 @@ test('dedicated authenticated public profile DB boundary',{skip:!PGlite&&'Set PG
     await t.test('registration name-only data returns defaults and no Duck',async()=>{
       const p=decodeOnlineProfile(await value('select public.get_online_profile(1) data'));
       assert.equal(p.battler.name,'registration');assert.equal(p.duck,null);assert.equal(p.featuredBattle,null);
-      const {text,theme}=createEmptyBattlerProfile();assert.deepEqual(p.battler.profile,{text,theme});
+      const {text,theme,message,messageTail}=createEmptyBattlerProfile();assert.deepEqual(p.battler.profile,{text,theme,message,messageTail});
       assert.deepEqual(p.battler.profileIcons,[]);assert.equal(p.battler.skills.B.selection,null);
     });
     await t.test('unpublished full Battler is still public; partial build stats are accepted',async()=>{
@@ -108,7 +123,7 @@ test('dedicated authenticated public profile DB boundary',{skip:!PGlite&&'Set PG
         update public.battlers set presentation=jsonb_set(presentation-'profile','{schemaVersion}','1'),build=jsonb_set(build-'skillLabels','{schemaVersion}','2') where game_account_id='${b}';
         update public.ducks set presentation=jsonb_set(presentation #- '{icon,profile}','{schemaVersion}','1'),build=jsonb_set(build-'skillLabels','{schemaVersion}','2') where id='${duckB}';`);
       await asUser(userB);const p=decodeOnlineProfile(await get());
-      const {text,theme}=createEmptyBattlerProfile();assert.deepEqual(p.battler.profile,{text,theme});assert.deepEqual(p.duck.profile,createEmptyDuckProfile());
+      const {text,theme,message,messageTail}=createEmptyBattlerProfile();assert.deepEqual(p.battler.profile,{text,theme,message,messageTail});assert.deepEqual(p.duck.profile,createEmptyDuckProfile());
       assert.deepEqual(p.battler.skills.B.label,{name:'',ruby:''});assert.deepEqual(p.duck.skills.A.label,{name:'',ruby:''});
       assert.equal((await value('select presentation data from public.battlers where game_account_id=$1',[b])).schemaVersion,1);
       await restore();await asUser(userB);

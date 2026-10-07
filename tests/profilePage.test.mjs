@@ -186,3 +186,15 @@ test('layout reserves natural standing width, five fixed zigzag rows, overlaid f
   assert.match(css,/@media \(max-width: 760px\)[\s\S]*flex-direction: column/);
   assert.match(css,/repeat\(5, 90px\)/);assert.doesNotMatch(css,/overflow:\s*hidden|align-items: center; gap: 16px; margin-bottom/);
 });
+
+test('profile message is omitted when empty; plain text pill precedes visual with optional tail',async()=>{
+ assert.equal(byClass((await page()).main,'profile-message').length,0);
+ for(const tail of [false,true]){
+  const profile=profileFixture();profile.battler.profile.message='<img src=x onerror=alert(1)>[b]hello[/b]';profile.battler.profile.messageTail=tail;
+  const {main,result}=await page({profile});assert.equal(result.ok,true);
+  const pill=byClass(main,'profile-message')[0];assert.equal(pill.textContent,profile.battler.profile.message);
+  assert.equal(pill.innerHTML,undefined);assert.equal(pill.children.length,0);
+  assert.equal(pill.className.includes('has-tail'),tail);
+  const card=byClass(main,'battler-card')[0];assert.equal(card.children[0],pill);assert.equal(card.children[1].className,'battler-visual');
+ }
+});

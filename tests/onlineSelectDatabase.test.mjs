@@ -61,6 +61,7 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
     await db.exec(await readFile(new URL('../supabase/migrations/20261005173129_presentation_v3_public_compatibility.sql',import.meta.url),'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/20261006120000_character_list_and_best_streak.sql',import.meta.url),'utf8'));
 
+    await db.exec(await readFile(new URL('../supabase/migrations/20261007111246_profile_message.sql',import.meta.url),'utf8'));
     await asUser(userA);
     await t.test('direct tables, guessed UUIDs and full draft RPC cannot retrieve foreign data',async()=>{
       assert.equal((await db.query('select * from public.battlers where game_account_id=$1',[b])).rows.length,0);
@@ -83,9 +84,10 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
       assert.doesNotMatch(JSON.stringify(list),/PRIVATE|quotes|iconSlots|cutinUrl|duck2/);
       const row=await value('select public.get_online_opponent($1) data',[b]);
       assert.doesNotMatch(JSON.stringify(row),/PRIVATE/);assert.deepEqual(row.ducks.map(d=>d.id),[duckB]);
+      assert.deepEqual(row.battler.presentation.quotes.battleStart,{text:'開始2',iconSlot:null});
       assert.equal(row.battler.presentation.schemaVersion,1);assert.equal(row.ducks[0].presentation.schemaVersion,1);
       assert.equal('profile' in row.battler.presentation,false);assert.equal('profile' in row.ducks[0].presentation.icon,false);
-      assert.equal(decodePublicOpponent(row,a).presentation.schemaVersion,4);
+      assert.equal(decodePublicOpponent(row,a).presentation.schemaVersion,5);
       assert.equal(decodePublicOpponent(row,a).publicDuckId,duckB);
       assert.equal(row.ducks[0].presentation.icon.cutinUrl,'https://example.invalid/cutin2.png');
       assert.equal(decodePublicOpponent(row,a).presentation.ducks[duckB].cutinUrl,row.ducks[0].presentation.icon.cutinUrl);
@@ -155,7 +157,7 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
       await db.exec(`reset role; update public.battlers set presentation=jsonb_set(presentation,'{name}','"latest"') where game_account_id='${b}';`);await asUser(userA);
       const pair=await prepare();
       assert.equal(decodeOnlinePlayer(pair.self).presentation.battler.profile.text,'PRIVATE-BATTLER-PROFILE');
-      assert.equal(decodePublicOpponent(pair.opponent,a).presentation.schemaVersion,4);
+      assert.equal(decodePublicOpponent(pair.opponent,a).presentation.schemaVersion,5);
       assert.doesNotMatch(JSON.stringify(pair.opponent),/PRIVATE|profile|featuredBattleId|flavorStats/);
       assert.equal(pair.opponent.battler.presentation.name,'latest');
       assert.equal(pair.opponent.ducks[0].presentation.icon.cutinUrl,'https://example.invalid/cutin2.png');

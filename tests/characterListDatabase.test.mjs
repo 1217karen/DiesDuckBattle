@@ -26,6 +26,7 @@ test('character list privacy, record atomicity, backfill and ACL in local Postgr
  return value('select public.save_online_battle_result($1,$2,$3,$4,$5::jsonb) data',[p1.battlerId,p1.duckId,p2.battlerId,p2.duckId,JSON.stringify({p1,p2,selectionMode:mode,result,events:[{type:'battleEnd',result:bad?'draw':result}]})]);};
  await asUser(user);for(let i=0;i<3;i++)await save();await save('manual');await save();await save();await save('random','draw');await save();await save('random','P2_win');
  await db.exec('reset role');await db.exec(await readFile(new URL('../supabase/migrations/'+migration,import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/20261007111246_profile_message.sql',import.meta.url),'utf8'));
  const best=async(id=a)=>{await db.exec('reset role');return value('select best_random_win_streak data from public.game_account_records where game_account_id=$1',[id]);};
  const list=async()=>{await asUser(user);return decodeOnlineCharacters(await value('select public.list_online_characters() data'));};
  await t.test('backfill separates manual/draw/loss, defaults zero and includes registration/self/no public Duck',async()=>{
@@ -51,10 +52,17 @@ test('character list privacy, record atomicity, backfill and ACL in local Postgr
  await db.exec('reset role');await db.query('update public.battlers set build=$2,presentation=$3 where game_account_id=$1',[a,JSON.stringify(dto.battler.build),JSON.stringify(dto.battler.presentation)]);
  await db.query('update public.ducks set build=$2,presentation=$3 where id=$1',[da,JSON.stringify(dto.ducks[0].build),JSON.stringify(dto.ducks[0].presentation)]);
  await db.query('update public.game_accounts set public_duck_id=$2 where id=$1',[a,da]);
- await t.test('v4 whitelist hides private data and best; only accent and public Duck fields',async()=>{
+ await t.test('v5 whitelist hides private data and best; only accent and public Duck fields',async()=>{
  const rows=await list(),v=rows[0];assert.equal(v.bestStreak,null);assert.equal(v.accent,'#123ABC');assert.deepEqual(v.duck,{name:data.build.ducks[0].name,iconUrl:data.presentation.ducks[da].iconUrl,type:'attack',attributes:['炎','','🔥']});
  assert.doesNotMatch(JSON.stringify(rows),/SECRET|cutin|skills|stats|flavorStats|detached|accountId|background|showBestStreak/);
  await db.exec('reset role');await db.query("update public.battlers set presentation=jsonb_set(presentation,'{profile,showBestStreak}','true') where game_account_id=$1",[a]);assert.equal((await list())[0].bestStreak,4);
+ });
+ await t.test('v4 and v5 preserve the same explicit best streak privacy',async()=>{
+ for(const version of [4,5])for(const visible of [true,false,null,'true']){
+  await db.exec('reset role');
+  await db.query("update public.battlers set presentation=jsonb_set(jsonb_set(presentation,'{schemaVersion}',$2::jsonb),'{profile,showBestStreak}',$3::jsonb) where game_account_id=$1",[a,String(version),JSON.stringify(visible)]);
+  assert.equal((await list())[0].bestStreak,visible===true?4:null);
+ }
  });
  await t.test('legacy versions default public and invalid accent falls back; stale ownership never substitutes private Duck',async()=>{
  for(const version of [1,2,3]){await db.exec('reset role');await db.query("update public.battlers set presentation=jsonb_set(presentation,'{schemaVersion}',$2::jsonb) where game_account_id=$1",[a,String(version)]);assert.equal((await list())[0].bestStreak,4);}

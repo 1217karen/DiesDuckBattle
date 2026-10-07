@@ -3,7 +3,7 @@ import { clonePlayerBuild, createEmptyPlayerBuild, createEmptyDuck } from "./pla
 import { canonicalEno } from "../supabase/functions/_shared/internal-email.mjs";
 import { onlineFailure } from "./onlinePlayerStorage.js";
 
-export const PUBLIC_PROFILE_VERSION = 1;
+export const PUBLIC_PROFILE_VERSION = 2;
 const requireValue = ok => { if (!ok) throw new TypeError("Invalid public profile"); };
 const object = v => v !== null && typeof v === "object" && !Array.isArray(v);
 const keys = (v, names) => requireValue(object(v) && Reflect.ownKeys(v).length === names.length && names.every(k => Object.hasOwn(v, k)));
@@ -59,7 +59,8 @@ export function decodeOnlineProfile(value) {
   array(b.profileIcons, 4);
   let last = 0;
   b.profileIcons.forEach(i => { keys(i, ["slot", "url"]); string(i.url); requireValue(Number.isInteger(i.slot) && i.slot > last && i.slot <= 10); last = i.slot; });
-  keys(b.profile, ["text", "theme"]); string(b.profile.text);
+  keys(b.profile, ["text", "theme", "message", "messageTail"]); string(b.profile.text);
+  string(b.profile.message); requireValue(typeof b.profile.messageTail === "boolean");
   keys(b.profile.theme, ["background", "panel", "text", "accent"]);
   Object.values(b.profile.theme).forEach(c => requireValue(typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c)));
   keys(b.skills, ["B", "D"]); skill(b.skills.B); skill(b.skills.D);
