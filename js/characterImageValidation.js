@@ -10,7 +10,7 @@ export function validateImageDimensions(kind, width, height) {
   if (kind === "cutin" && width < 480 && height <= 480) return { status: "warning", message: `現在の画像：${width}×${height}px。横幅が480px未満です。結果画面では小さく表示されます。` };
   return width <= limit.width && height <= limit.height
     ? { status: "valid", message: `現在の画像：${width}×${height}px` }
-    : { status: "invalid", message: `${limit.label}は${limit.width}×${limit.height}px以内の画像を指定してください。現在の画像：${width}×${height}px` };
+    : { status: "invalid", message: `画像サイズが大きすぎます。現在の画像：${width}×${height}px` };
 }
 
 /** Each preview request owns its callbacks. Late results cannot replace newer validation. */
