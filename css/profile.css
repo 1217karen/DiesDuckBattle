@@ -15,7 +15,7 @@ body {
 .profile-header { margin-bottom: 10px; border-bottom: 3px solid var(--profile-accent); }
 .profile-header h1 {
   font-size: clamp(1.4rem, 3vw, 2rem);
-  margin: 0 0 16px;
+  margin: 0 0 6px;
   color: var(--profile-accent);
 }
 .profile-grid { display: grid; gap: 24px; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-areas: "visual duck" "text text" "favorite favorite"; align-items: start; }
