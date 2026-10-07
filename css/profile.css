@@ -25,15 +25,27 @@ body {
 .profile-text-card { grid-area: text; }
 .duck-card { grid-area: duck; }
 .featured-battle { grid-area: favorite; }
-.battler-visual { display: flex; justify-content: center; align-items: flex-start; gap: 16px; }
+.battler-visual { container-type: inline-size; display: flex; justify-content: center; align-items: flex-start; gap: min(16px, calc(100% * 16 / 672)); }
 .battler-standing-wrap { min-width: 0; display: flex; justify-content: center; }
 .battler-standing { display: block; width: auto; height: auto; max-width: min(100%, 500px); max-height: 800px; }
-.profile-icon-rail { display: grid; grid-template-rows: repeat(5, 120px); align-self: center; align-content: start; flex: 0 0 156px; gap: 14px; width: 156px; }
+/* Scale from the desktop group width: 500px standing + 156px rail + 16px gap. */
+.profile-icon-rail {
+  --profile-icon-size: min(120px, calc(100cqw * 120 / 672));
+  --profile-rail-width: min(156px, calc(100cqw * 156 / 672));
+  --profile-icon-gap: min(14px, calc(100cqw * 14 / 672));
+  display: grid;
+  grid-template-rows: repeat(5, var(--profile-icon-size));
+  align-self: center;
+  align-content: start;
+  flex: 0 0 var(--profile-rail-width);
+  gap: var(--profile-icon-gap);
+  width: var(--profile-rail-width);
+}
 .profile-icon-rail img {
   grid-row: var(--icon-position);
   justify-self: start;
-  width: 120px;
-  height: 120px;
+  width: var(--profile-icon-size);
+  height: var(--profile-icon-size);
   object-fit: contain;
   border: 1px solid var(--profile-line);
   border-radius: 8px;
@@ -71,18 +83,13 @@ body {
 .battle-person { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
 .battle-meta { color: var(--profile-muted); margin: 0 0 16px; }
 .profile-error { padding: 24px; background: var(--profile-panel); border: 1px solid var(--profile-line); border-radius: 12px; }
-/* Below this width, 500px standing + 156px rail + gap/padding need one column. */
+/* Below this width, stack the cards while keeping the Battler visual in a row. */
 @media (max-width: 1160px) {
   .profile-page { padding: 10px 16px 40px; }
   .profile-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "visual" "text" "duck" "favorite"; }
   .profile-card { padding: 20px; }
 }
-@media (max-width: 760px) {
-  .battler-visual { flex-direction: column; }
-}
 @media (max-width: 420px) {
-  .profile-icon-rail { grid-template-rows: repeat(5, 90px); width: 120px; flex-basis: auto; }
-  .profile-icon-rail img { width: 90px; height: 90px; }
   .battle-participants { grid-template-columns: minmax(0, 1fr); }
 }
 

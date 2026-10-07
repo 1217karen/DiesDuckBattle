@@ -175,16 +175,22 @@ test('section headings and themed separators distinguish Battler visuals and Duc
   assert.match(css,/\.battler-card > \.skill-list, \.duck-card > \.skill-list, \.stat-section, \.duck-profile\s*\{[^}]*border-top: 1px solid var\(--profile-line\)/);
 });
 
-test('layout reserves natural standing width, five fixed zigzag rows, overlaid five-step marks and responsive order',async()=>{
+test('layout keeps standing and five zigzag icons side by side while scaling to available width',async()=>{
   const css=await readFile(new URL('../css/profile.css',import.meta.url),'utf8');
   assert.match(css,/max-width: 1360px/);assert.match(css,/grid-template-columns: minmax\(0, 2fr\) minmax\(0, 1fr\)/);
   assert.match(css,/\.battler-visual\s*\{[^}]*align-items: flex-start/);
-  assert.match(css,/grid-template-rows: repeat\(5, 120px\)/);assert.match(css,/width: 120px;\s*height: 120px/);
+  assert.match(css,/container-type: inline-size/);
+  assert.match(css,/gap: min\(16px, calc\(100% \* 16 \/ 672\)\)/);
+  assert.match(css,/--profile-icon-size: min\(120px, calc\(100cqw \* 120 \/ 672\)\)/);
+  assert.match(css,/--profile-rail-width: min\(156px, calc\(100cqw \* 156 \/ 672\)\)/);
+  assert.match(css,/--profile-icon-gap: min\(14px, calc\(100cqw \* 14 \/ 672\)\)/);
+  assert.match(css,/grid-template-rows: repeat\(5, var\(--profile-icon-size\)\)/);
+  assert.match(css,/width: var\(--profile-icon-size\);\s*height: var\(--profile-icon-size\)/);
   assert.match(css,/img\[data-icon-position="2"\], \.profile-icon-rail img\[data-icon-position="4"\]\s*\{ justify-self: end/);
   assert.match(css,/\.stat-track::after\s*\{[^}]*repeating-linear-gradient[^}]*20%[^}]*var\(--profile-line\)/);
   assert.match(css,/@media \(max-width: 1160px\)[\s\S]*"visual" "text" "duck" "favorite"/);
-  assert.match(css,/@media \(max-width: 760px\)[\s\S]*flex-direction: column/);
-  assert.match(css,/repeat\(5, 90px\)/);assert.doesNotMatch(css,/overflow:\s*hidden|align-items: center; gap: 16px; margin-bottom/);
+  assert.doesNotMatch(css,/flex-direction: column|flex-wrap: wrap/);
+  assert.match(css,/flex: 0 0 var\(--profile-rail-width\)/);assert.doesNotMatch(css,/overflow:\s*hidden|align-items: center; gap: 16px; margin-bottom/);
 });
 
 test('profile message is omitted when empty; plain text pill precedes visual with optional tail',async()=>{
