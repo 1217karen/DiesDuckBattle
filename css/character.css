@@ -94,6 +94,9 @@ button.primary { font-weight:750; padding:13px 28px; }
 .quote-eno-status { font-size:.78rem; overflow-wrap:anywhere; }
 .quote-error { color:var(--warn); font-size:.78rem; }
 .quote-editor input[aria-invalid="true"] { border-color:var(--warn); }
+.image-input-row { display: flex; align-items: center; gap: 8px; }
+.image-input-row input { flex: 1; min-width: 0; }
+.image-input-prefix { flex: 0 0 auto; color: var(--muted); font-size: .82rem; }
 @media(max-width:700px) {
   .quote-row { grid-template-columns:28px 48px minmax(0,1fr); gap:6px; }
   .quote-label { grid-column:1 / -1; }
