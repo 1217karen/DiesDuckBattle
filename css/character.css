@@ -101,7 +101,7 @@ button.primary { font-weight:750; padding:13px 28px; }
 .site-theme-options { display:flex; flex-wrap:wrap; gap:18px; }
 .site-theme-options label { flex-direction:row; align-items:center; gap:8px; }
 .site-theme-options input[type="radio"] { flex:0 0 20px; width:20px; height:20px; min-height:20px; padding:0; margin:0; accent-color:var(--accent); }
-.duck-profile { margin-top:24px; border-top:1px solid var(--line); padding-top:18px; }
+.duck-quotes-card .quote-group { margin-top:24px; }
 .profile-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
 .profile-attributes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
 .profile-field-error, #profile-validation-message { color:var(--warn); }

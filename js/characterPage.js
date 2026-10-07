@@ -360,7 +360,6 @@ function duckProfileEditor(duck) {
   const initial = presentation.ducks[id]?.profile ?? createEmptyDuckProfile();
   const profile = () => duckPresentation(id).profile;
   const root = document.createElement("section"); root.className = "duck-profile";
-  const heading = document.createElement("h3"); heading.textContent = "プロフィール";
   const fields = document.createElement("div"); fields.className = "profile-fields";
   fields.append(profileSelect("タイプ", initial.type ?? "", [
     ["", "未設定"], ["attack", "アタック"], ["defense", "ディフェンス"], ["speed", "スピード"],
@@ -423,7 +422,7 @@ function duckProfileEditor(duck) {
     profile().flavorStats.push({ label: "", value: 0 }); renderRows(); setDirty();
   });
   renderRows(); flavor.append(rows, add);
-  root.append(heading, fields, flavor, profileTextEditor("アヒルプロフィール", initial.text, value => { profile().text = value; }, DUCK_PROFILE_MAX, "アヒルのプロフィールを入力"));
+  root.append(fields, flavor, profileTextEditor("アヒルプロフィール", initial.text, value => { profile().text = value; }, DUCK_PROFILE_MAX, "アヒルのプロフィールを入力"));
   return root;
 }
 
@@ -431,7 +430,7 @@ function duckProfileEditor(duck) {
 function renderDuckEditor() {
   const message = document.querySelector("#duck-message");
   message.textContent = selectedDuckId ? "" : "戦闘設定に保存済みのDuckがありません。";
-  for (const [id, field] of duckEditors) field.hidden = id !== selectedDuckId;
+  for (const [id, fields] of duckEditors) for (const field of fields) field.hidden = id !== selectedDuckId;
 }
 
 function renderDuckSelect() {
@@ -440,6 +439,8 @@ function renderDuckSelect() {
   const known = new Set(ducks.map(duck => duck.id));
   for (const id of Object.keys(presentation.ducks)) if (!known.has(id)) ducks.push({ id, name: `${id}（戦闘設定なし）` });
   const target = document.querySelector("#duck-icon-editor"); target.replaceChildren();
+  const profileTarget = document.querySelector("#duck-profile-editor"); profileTarget.replaceChildren();
+  const quotesTarget = document.querySelector("#duck-quotes-editor"); quotesTarget.replaceChildren();
   duckEditors.clear(); duckQuoteRenderers.clear(); select.disabled = false;
   for (const duck of ducks) {
     const id = duck.id;
@@ -460,12 +461,21 @@ function renderDuckSelect() {
     const aQuotes = document.createElement("section"), cQuotes = document.createElement("section");
     const renderDuckQuotes = () => {
       const quotes = presentation.ducks[id]?.quotes ?? createEmptyDuckQuotes();
-      for (const [category, root] of [["A", aQuotes], ["C", cQuotes]]) root.replaceChildren(quoteGroupEditor(
-        { title: category + "スキルセリフ", rows: [[category, ["skill", category]]] }, quotes, "duck-" + id,
-        () => { duckPresentation(id).quotes = quotes; }));
+      for (const [category, root] of [["A", aQuotes], ["C", cQuotes]]) {
+        const group = quoteGroupEditor(
+          { title: category + "スキルセリフ", rows: [[category, ["skill", category]]] }, quotes, "duck-" + id,
+          () => { duckPresentation(id).quotes = quotes; });
+        group.className = "quote-group";
+        root.replaceChildren(group);
+      }
     };
     duckQuoteRenderers.set(id, renderDuckQuotes); renderDuckQuotes();
-    editor.append(iconHeading, field, duckProfileEditor(duck), aQuotes, cQuotes, cutin); duckEditors.set(id, editor); target.append(editor);
+    const profileEditor = duckProfileEditor(duck);
+    const quotesEditor = document.createElement("div"); quotesEditor.className = "duck-quotes";
+    editor.append(iconHeading, field);
+    quotesEditor.append(aQuotes, cQuotes, cutin);
+    duckEditors.set(id, [editor, profileEditor, quotesEditor]);
+    target.append(editor); profileTarget.append(profileEditor); quotesTarget.append(quotesEditor);
   }
   if (!ducks.length) { const option = new Option("Duck未登録", ""); select.append(option); select.disabled = true; selectedDuckId = ""; }
   else {
@@ -494,7 +504,7 @@ online = await mountOnlineEditor({
     presentation = data ? structuredClone(data.presentation) : createEmptyPlayerPresentation();
     ducks = data ? data.build.ducks.map(({ id, name, cSelection }) => ({ id, name, cSelection })) : [];
     if (data) { renderBattlerImages(); renderBattlerProfile(); renderQuotes(); renderDuckSelect(); }
-    else for (const id of ["battler-images", "battler-profile", "quotes", "duck-icon-editor", "duck-select"]) document.getElementById(id).replaceChildren();
+    else for (const id of ["battler-images", "battler-profile", "quotes", "duck-icon-editor", "duck-profile-editor", "duck-quotes-editor", "duck-select"]) document.getElementById(id).replaceChildren();
   },
   onState(state) { onlineState = state; battlerNameInput.disabled = !state.canEdit; if (!state.canEdit) picker.close(); updateValidation(); },
 });

@@ -201,7 +201,7 @@ test("Duck cut-in editor merges sibling URLs, switches Ducks, and uses common C 
   const before=structuredClone(data.build);page.hydrate(data);assert.deepEqual(page.latest().build,before);
   const editors=page.get("duck-icon-editor").children;assert.equal(editors.length,2);
   assert.equal(editors[0].hidden,false);assert.equal(editors[1].hidden,true);
-  const icon=editors[0].children[1],cutin=editors[0].children[5],description=cutin.children[1],field=cutin.children[2];
+  const icon=editors[0].children[1],cutin=page.get("duck-quotes-editor").children[0].children[2],description=cutin.children[1],field=cutin.children[2];
   assert.equal(description.textContent,presentCSkill(first.cSelection).text);
   assert.equal(field.className,"image-field cutin-field");assert.equal(field.children[0].className,"image-field-control");
   assert.equal(field.children[1].className,"preview cutin-preview");assert.equal(field.children[1].children.length,1); // no fallback
@@ -213,9 +213,9 @@ test("Duck cut-in editor merges sibling URLs, switches Ducks, and uses common C 
   assert.deepEqual(page.latest().presentation.ducks[second.id],data.presentation.ducks[second.id]);assert.deepEqual(page.latest().build,before);
   page.get("duck-select").value=second.id;page.get("duck-select").onchange();
   assert.equal(editors[0].hidden,true);assert.equal(editors[1].hidden,false);
-  assert.equal(editors[1].children[5].children[1].textContent,"Cスキル未設定");
+  assert.equal(page.get("duck-quotes-editor").children[1].children[2].children[1].textContent,"Cスキル未設定");
   data.build.ducks[0].cSelection={mode:"normal",structure:{kind:"flat",effects:[null]}};page.hydrate(data);
-  assert.equal(page.get("duck-icon-editor").children[0].children[5].children[1].textContent,"Cスキル設定未完了");
+  assert.equal(page.get("duck-quotes-editor").children[0].children[2].children[1].textContent,"Cスキル設定未完了");
   assert.deepEqual(page.latest().build,data.build);
 });
 
@@ -245,7 +245,7 @@ async function profileScreen() {
   page.hydrate(data);
   return page;
 }
-const duckRoot = (page,index=0) => page.get('duck-icon-editor').children[index];
+const duckRoot = (page,index=0,kind="profile") => page.get(`duck-${kind}-editor`).children[index];
 const battlerText = page => aria(page.get('battler-profile'),'バトラープロフィール');
 test('name and profile limits retain input, count emoji, and validate toolbar insertion',async()=>{
  const page=await profileScreen(),name=page.get('battler-name');
@@ -487,21 +487,49 @@ test('message input and tail use dirty/save validation and preserve sibling data
 
 test('Duck A/C order, switching, extra ENo/icon controls, validation and rehydration',async()=>{
  const page=await profileScreen(),before=structuredClone(page.latest()),ids=before.build.ducks.map(d=>d.id);
- const root=duckRoot(page),a=aria(root,'Aスキルセリフ Aのセリフ'),c=aria(root,'Cスキルセリフ Cのセリフ');
- assert.equal(root.children[1].className,'image-field');assert.equal(root.children[2].className,'duck-profile');
- assert.ok(descendants(root.children[3]).includes(a));assert.ok(descendants(root.children[4]).includes(c));assert.equal(root.children[5].className,'duck-cutin');
+ const root=duckRoot(page,0,"quotes"),a=aria(root,'Aスキルセリフ Aのセリフ'),c=aria(root,'Cスキルセリフ Cのセリフ');
+ assert.equal(duckRoot(page,0,'icon').children[1].className,'image-field');assert.equal(duckRoot(page).className,'duck-profile');
+ assert.ok(descendants(root.children[0]).includes(a));assert.ok(descendants(root.children[1]).includes(c));assert.equal(root.children[2].className,'duck-cutin');
  assert.equal(aria(page.get('quotes'),'スキル発動 Aのセリフ'),undefined);assert.equal(aria(page.get('quotes'),'スキル発動 Cのセリフ'),undefined);
  inputValue(a,'first A');inputValue(c,'first C');
  const toggle=aria(root,'Aスキルセリフ Aの追加セリフ');toggle.handlers.click();
  const texts=descendants(root).filter(e=>e.attributes['aria-label']==='Aスキルセリフ Aのセリフ');inputValue(texts[1],'<b>extra</b>');
  const eno=aria(root,'Aスキルセリフ Aの対象ENo');inputValue(eno,'01');assert.equal(page.get('save').disabled,true);inputValue(eno,'15');
- const pickers=descendants(root.children[3]).filter(e=>e.className==='quote-picker');pickers[1].handlers.click();page.pick(10);
+ const pickers=descendants(root.children[0]).filter(e=>e.className==='quote-picker');pickers[1].handlers.click();page.pick(10);
  assert.equal(page.latest().presentation.ducks[ids[0]].quotes.skill.A.lines[1].iconSlot,10);
- page.get('duck-select').value=ids[1];page.get('duck-select').onchange();assert.equal(root.hidden,true);assert.equal(duckRoot(page,1).hidden,false);
- inputValue(aria(duckRoot(page,1),'Aスキルセリフ Aのセリフ'),'second A');
+ page.get('duck-select').value=ids[1];page.get('duck-select').onchange();assert.equal(root.hidden,true);assert.equal(duckRoot(page,1,'quotes').hidden,false);
+ inputValue(aria(duckRoot(page,1,'quotes'),'Aスキルセリフ Aのセリフ'),'second A');
  inputValue(c,'😀'.repeat(201));assert.equal(page.get('save').disabled,true);await page.save();assert.equal(page.saved(),undefined);
  inputValue(c,'first C');await page.save();assert.deepEqual(page.saved().presentation.battler,before.presentation.battler);
- page.hydrate(page.saved());assert.equal(aria(duckRoot(page),'Aスキルセリフ Aのセリフ').value,'first A');assert.equal(aria(duckRoot(page,1),'Aスキルセリフ Aのセリフ').value,'second A');
+ page.hydrate(page.saved());assert.equal(aria(duckRoot(page,0,'quotes'),'Aスキルセリフ Aのセリフ').value,'first A');assert.equal(aria(duckRoot(page,1,'quotes'),'Aスキルセリフ Aのセリフ').value,'second A');
  const first=page.saved().presentation.ducks[ids[0]].quotes;assert.deepEqual(first.skill.A.lines[1],{text:'<b>extra</b>',iconSlot:10,opponentEno:'15'});
  assert.equal(page.saved().presentation.ducks.orphan.profile.text,'detached');
+});
+
+test('Duck cards group their controls and switch icon, profile and quotes together, including detached Ducks',async()=>{
+ const html=await readFile(new URL('../character.html',import.meta.url),'utf8');
+ const section=html.split('<section aria-labelledby="duck-heading">')[1].split('</section>')[0];
+ assert.equal((section.match(/class="card /g)||[]).length,3);
+ assert.match(section,/<div class="card duck-card">\s*<h3>対象アヒル・アイコン<\/h3>\s*<label>対象アヒル<select id="duck-select">[\s\S]*id="duck-icon-editor"/);
+ assert.match(section,/<div class="card duck-profile-card">\s*<h3>プロフィール<\/h3>\s*<div id="duck-profile-editor"/);
+ assert.match(section,/<div class="card duck-quotes-card">\s*<h3>セリフ・カットイン<\/h3>\s*<div id="duck-quotes-editor"/);
+ const page=await profileScreen(),before=structuredClone(page.latest()),ids=[...before.build.ducks.map(d=>d.id),'orphan'];
+ for(const [index,id] of ids.entries()){
+  page.get('duck-select').value=id;page.get('duck-select').onchange();
+  for(const kind of ['icon','profile','quotes']){
+   const roots=page.get(`duck-${kind}-editor`).children;
+   assert.equal(roots.length,3);assert.deepEqual(roots.map(root=>root.hidden),ids.map((_,i)=>i!==index));
+  }
+  assert.equal(duckRoot(page,index,'icon').children[1].className,'image-field');
+  const profile=duckRoot(page,index),quotes=duckRoot(page,index,'quotes');
+  const labels=descendants(profile).filter(e=>e.tagName==='input'||e.tagName==='select'||e.tagName==='textarea').map(e=>e.attributes['aria-label']);
+  assert.deepEqual(labels,['タイプ','属性1','属性2','属性3','ステータス表記','アヒルプロフィール']);
+  assert.ok(aria(quotes.children[0],'Aスキルセリフ Aのセリフ'));
+  assert.ok(aria(quotes.children[1],'Cスキルセリフ Cのセリフ'));
+  assert.equal(quotes.children[2].className,'duck-cutin');
+  assert.equal(quotes.children[0].children[0].className,'quote-group');
+ }
+ assert.deepEqual(page.latest(),before); // Merely switching never allocates or edits presentation data.
+ page.hydrate(null);
+ for(const kind of ['icon','profile','quotes'])assert.equal(page.get(`duck-${kind}-editor`).children.length,0);
 });
