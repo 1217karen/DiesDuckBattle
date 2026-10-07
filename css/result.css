@@ -11,7 +11,6 @@
   --heal: #2e9b4f;
   --buff: #f08a24;
   --debuff: #7a7a7a;
-  --ff-base: system-ui, -apple-system, "Kosugi Maru", sans-serif;
   --ff-display: "Roboto Slab", system-ui, sans-serif;
   --fs-10: clamp(10px, .9vw, 12px);
   --fs-12: clamp(12px, 1vw, 13px);
@@ -24,7 +23,7 @@
 html, body { height: 100%; margin: 0; }
 body {
   color: var(--text);
-  font: 400 var(--fs-14)/1.35 var(--ff-base);
+  font: 400 var(--fs-14)/1.35 var(--font-base);
   background-color: var(--bg);
   background-image: var(--theme-background-image);
   background-repeat: repeat;
@@ -127,7 +126,7 @@ img.logDuckIcon { object-fit: contain; }
 .errorMessage { align-self: center; width: 90%; padding: 24px; box-sizing: border-box; text-align: center; background: color-mix(in srgb, var(--panel) 85%, transparent); border-left: 6px solid var(--p1); }
 .footer { position: fixed; inset: auto 0 0; height: var(--footer-h); padding: 6px var(--gutter); box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; z-index: 10; background: var(--panel); }
 .footerActions { display: flex; gap: 10px; align-items: center; }
-.btn, .btn.primary { appearance: none; border: 0; box-shadow: inset 0 0 0 1px var(--line); border-radius: 10px; padding: 8px 12px; min-width: 96px; font: 900 var(--fs-14)/1.15 var(--ff-base); cursor: pointer; background: var(--ui-surface); color: var(--text); }
+.btn, .btn.primary { appearance: none; border: 0; box-shadow: inset 0 0 0 1px var(--line); border-radius: 10px; padding: 8px 12px; min-width: 96px; font: 900 var(--fs-14)/1.15 var(--font-base); cursor: pointer; background: var(--ui-surface); color: var(--text); }
 .btn:hover, .btn.primary:hover { background: var(--ui-hover); }
 .btn:active { transform: translateY(1px); }
 .btn:disabled { cursor: default; opacity: .45; }

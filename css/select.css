@@ -1,7 +1,7 @@
 /* base/select.css: three columns, red/blue sides, lower info panels and burst VS. */
 :root { --p1:#d33; --p2:#39f; --text:#eee; --border:#ffffff26; --midW:clamp(92px,20vw,200px); --duckSize:60px; }
 * { box-sizing:border-box; }
-body { margin:0; color:var(--text); background:#222; font-family:system-ui,sans-serif; }
+body { margin:0; color:var(--text); background:#222;  }
 #bg { position:fixed; inset:0; z-index:-1; background:linear-gradient(90deg,#ff000033,transparent 38%,transparent 62%,#0078ff33),radial-gradient(circle at 50% 20%,#ffffff14,transparent 45%),linear-gradient(180deg,#0000001a,#0000008c); }
 .screen { position:relative; height:100dvh; min-height:780px; padding:0 15px 15px; }
 .selectTitle { position:absolute; top:8px; left:0; width:100%; text-align:center; margin:0; font-size:clamp(32px,7vw,70px); line-height:1; letter-spacing:.08em; font-weight:900; font-family:"Iceberg",sans-serif; pointer-events:none; }
@@ -52,3 +52,5 @@ button.silhouette { width:100%; border:0; background:transparent; color:inherit;
 
 .infoPanel__name { margin:0 0 4px; font-weight:700; font-size:1.05em; overflow-wrap:anywhere; }
 .infoPanel__name:empty { display:none; }
+
+.tray__header h2 { font-family:var(--font-heading-ja); }

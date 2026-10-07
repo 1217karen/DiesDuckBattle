@@ -1,5 +1,5 @@
 * { box-sizing:border-box; }
-body { margin:0; font-family:system-ui,"Noto Sans JP",sans-serif; line-height:1.65; }
+body { margin:0;  line-height:1.65; }
 h2,h3,h4,p { margin:0 0 12px; }
 h2 { font-size:1.45rem; letter-spacing:.06em; }
 h3 { font-size:1rem; letter-spacing:.045em; }
@@ -181,3 +181,5 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
   --skill-tint: #6fba821c;
   --skill-heading: #326b40;
 }
+
+.section-heading h2 { font-family:var(--font-heading-ja); }

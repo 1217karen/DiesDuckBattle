@@ -1,4 +1,4 @@
-:root { font-family: system-ui, sans-serif; color: #192b33; background: #eef3f4; line-height: 1.6; }
+:root { color: #192b33; background: #eef3f4; line-height: 1.6; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { max-width: 1400px; padding: 24px; margin: auto; }
@@ -38,3 +38,5 @@ th { position: sticky; top: 0; background: #edf4f3; }
 td:last-child { overflow-wrap: anywhere; min-width: 230px; }
 tr.highlight { background: #edf8f5; }
 @media (max-width: 900px) { main, .debug-grid { grid-template-columns: 1fr; } body { padding: 12px; } }
+
+h1 { font-family:var(--font-heading-ja); }

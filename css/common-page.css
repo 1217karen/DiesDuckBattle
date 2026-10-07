@@ -18,6 +18,7 @@
   font-weight:var(--page-eyebrow-weight, inherit);
 }
 .page-title {
+  font-family:var(--font-heading-ja);
   margin:var(--page-title-margin, 0 0 24px);
   font-size:var(--page-title-size, 2em);
   letter-spacing:var(--page-title-spacing, normal);

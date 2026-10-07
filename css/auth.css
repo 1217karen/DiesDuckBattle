@@ -28,3 +28,5 @@
 .auth-dialog__head { display:flex; justify-content:space-between; align-items:center; gap:12px; position:sticky; top:-20px; padding:12px 0; background:#181818; z-index:1; }
 .auth-dialog__head h2 { margin:0; font-size:1.2rem; }
 .auth-dialog__head button { padding:10px 16px; color:#eee; background:#333; border:1px solid #777; border-radius:6px; font:inherit; }
+
+.auth h1, .auth-dialog__head h2 { font-family:var(--font-heading-ja); }

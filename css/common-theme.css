@@ -1,3 +1,5 @@
+@import url("common-fonts.css");
+
 /* Shared palette for the two editor pages. Light is the default. */
 :root {
   color-scheme: light;

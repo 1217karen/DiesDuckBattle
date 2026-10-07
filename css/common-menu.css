@@ -4,7 +4,7 @@ body.has-common-menu { padding-top: var(--common-menu-height); }
 body.auth-required-pending > :not(.common-menu) { visibility: hidden !important; }
 body.auth-required-pending > :not(.common-menu) * { visibility: hidden !important; }
 .common-menu, .common-menu * { box-sizing: border-box; }
-.common-menu { position: fixed; inset: 0 0 auto; z-index: 100; height: var(--common-menu-height); display:flex; justify-content:space-between; align-items:start; background: #171b20; color: #eee; border-bottom: 1px solid #ffffff40; font: 14px/1.5 system-ui, sans-serif; text-align: left; }
+.common-menu { position: fixed; inset: 0 0 auto; z-index: 100; height: var(--common-menu-height); display:flex; justify-content:space-between; align-items:start; background: #171b20; color: #eee; border-bottom: 1px solid #ffffff40; font: 14px/1.5 var(--font-base); text-align: left; }
 .common-menu summary { display: flex; align-items: center; gap: 12px; height: var(--common-menu-height); padding: 8px 16px; cursor: pointer; list-style: none; }
 .common-menu summary::-webkit-details-marker { display:none; }
 .common-menu summary::marker { content:""; }
@@ -34,7 +34,7 @@ body.has-common-menu .home { min-height:calc(100svh - var(--common-menu-height))
 
 /* Transient feedback stacks above the bottom edge without capturing input or focus. */
 .common-toast-container { position:fixed; z-index:200; bottom:16px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; gap:8px; width:min(92vw, 420px); pointer-events:none; }
-.common-toast { box-sizing:border-box; padding:10px 14px; border:1px solid #ffffff29; border-radius:8px; background:rgba(24,28,38,.96); color:#f3f6fb; box-shadow:0 10px 24px #00000047; font:14px/1.5 system-ui,sans-serif; overflow-wrap:anywhere; opacity:0; transform:translateY(8px); transition:opacity .2s ease, transform .2s ease; }
+.common-toast { box-sizing:border-box; padding:10px 14px; border:1px solid #ffffff29; border-radius:8px; background:rgba(24,28,38,.96); color:#f3f6fb; box-shadow:0 10px 24px #00000047; font:14px/1.5 var(--font-base); overflow-wrap:anywhere; opacity:0; transform:translateY(8px); transition:opacity .2s ease, transform .2s ease; }
 .common-toast.is-visible { opacity:1; transform:translateY(0); }
 .common-toast.is-hiding { opacity:0; transform:translateY(8px); }
 .common-toast[data-kind="info"] { border-color:rgba(120,180,255,.48); background:rgba(30,48,72,.95); }

@@ -1,5 +1,5 @@
 /* Aスキル仕様確認用・開発ページに限定したスタイル。 */
-:root { color-scheme: light; font-family: system-ui, sans-serif; color: #243331; background: #f3f5f2; }
+:root { color-scheme: light; color: #243331; background: #f3f5f2; }
 * { box-sizing: border-box; }
 body { margin: 0 auto; max-width: 1440px; padding: 28px; }
 header { margin-bottom: 24px; }
@@ -39,3 +39,5 @@ summary { cursor: pointer; }
 #startup { color: #a33132; }
 @media (max-width: 900px) { main { grid-template-columns: 1fr; } body { padding: 16px; } }
 @media (max-width: 550px) { .effect-controls { grid-template-columns: 1fr; } .dice-slots { grid-template-columns: repeat(3, 1fr); } }
+
+h1 { font-family:var(--font-heading-ja); }

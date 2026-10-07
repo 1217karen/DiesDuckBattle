@@ -1,5 +1,5 @@
 :root { --icon:60px; --gap:12px; --border:var(--line); --fs-small:12px; }
-body { margin:0; font-family:system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif; }
+body { margin:0;  }
 .wrap { --page-max-width:980px; --page-padding:16px 12px 40px; --page-padding-narrow:16px 12px 40px; --page-title-size:20px; --page-title-weight:900; --page-title-margin:6px 0; }
 .head { margin-bottom:12px; }
 .title, .head > .page-eyebrow { text-align:center; }
