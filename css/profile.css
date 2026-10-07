@@ -106,7 +106,7 @@ body {
   content: "";
   position: absolute;
   bottom: -7px;
-  left: calc(30% - 6px);
+  left: calc(35% - 6px);
   width: 12px;
   height: 12px;
   background: var(--profile-bg);
