@@ -148,5 +148,11 @@ button.primary { font-weight:750; padding:13px 28px; }
 
 .section-heading h2, .picker-header h2 { font-family:var(--font-heading-ja); }
 
-.profile-message-tail { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.profile-message-tail {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
 .profile-text-editor input[type="text"] { box-sizing: border-box; width: 100%; }
