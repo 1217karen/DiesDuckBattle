@@ -5,7 +5,7 @@
   max-width:var(--page-max-width, 1080px);
   min-height:calc(100svh - var(--common-menu-height, 52px));
   margin:var(--page-margin-block, 0px) auto;
-  padding:var(--page-padding, 40px 28px);
+  padding:var(--page-padding, 20px 28px);
   background:var(--shell-surface);
   box-shadow:0 0 28px #00000018;
   color:var(--text);
