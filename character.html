@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>表示設定 | DiesDuckBattle</title>
+  <title>キャラクター設定 | DiesDuckBattle</title>
   <script src="js/siteTheme.js"></script>
   <script type="module" src="js/siteThemeAuth.js"></script>
   <link rel="stylesheet" href="css/common-theme.css">
@@ -23,7 +23,7 @@
   <script src="js/menuDisplayCache.js"></script>
   <main data-page-content class="character-shell page-shell page-shell--editor">
     <header class="page-header">
-      <h1 class="page-title">CHARACTER SETTING</h1>
+      <h1 class="page-title">キャラクター設定</h1>
       <p>立ち絵・アイコン・プロフィール・戦闘セリフ等を登録します。</p>
     </header>
 
@@ -32,16 +32,16 @@
 
     <noscript>表示設定ページを使用するにはJavaScriptを有効にしてください。</noscript>
       <section aria-labelledby="battler-heading">
-        <div class="section-heading"><span>01</span><div><h2 id="battler-heading">BATTLER</h2><p>バトラー名・立ち絵・アイコン・プロフィール</p></div></div>
+        <div class="section-heading"><span>01</span><div><h2 id="battler-heading">バトラー設定</h2><p>立ち絵・アイコン・プロフィール等</p></div></div>
         <div class="card"><label for="battler-name">バトラー名</label><input id="battler-name" type="text" placeholder="バトラー名を入力" required aria-describedby="image-validation-message" autocomplete="off" disabled></div>
         <div id="battler-images" class="image-settings"></div>
         <div id="battler-profile" class="card"></div>
       </section>
 
       <section aria-labelledby="duck-heading">
-        <div class="section-heading"><span>02</span><div><h2 id="duck-heading">DUCK</h2><p>保存済みのDuckごとの画像・プロフィール</p></div></div>
+        <div class="section-heading"><span>02</span><div><h2 id="duck-heading">アヒル設定</h2><p>保存済みのアヒルごとのアイコン・プロフィール等</p></div></div>
         <div class="card duck-card">
-          <label>対象Duck<select id="duck-select"></select></label>
+          <label>対象アヒル<select id="duck-select"></select></label>
           <div id="duck-icon-editor"></div>
           <p id="duck-message" class="muted"></p>
         </div>
