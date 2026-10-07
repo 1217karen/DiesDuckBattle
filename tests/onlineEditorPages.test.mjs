@@ -153,6 +153,7 @@ test("shared browser adapter wires unload warning, cancellable discard dialog an
       setAttribute() {}, addEventListener(event, cb) { this.handlers[event] = cb; }, focus() { document.activeElement = this; },
       showModal() { this.open = true; }, close(value = "") { this.open = false; this.returnValue = value; this.handlers.close?.(); }, remove() { this.isConnected = false; },
     }; },
+    querySelector() { return null; },
     querySelectorAll() { return this.body.children.filter(node => node.tagName === "dialog" && node.open); },
     addEventListener(event, cb) { events.set(event, cb); }, removeEventListener(event) { events.delete(event); },
   };

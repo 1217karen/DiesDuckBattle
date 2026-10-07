@@ -48,7 +48,7 @@ test("history keeps filter, pager and error IDs and uses the theme for ordinary 
 });
 test("editor save bars, rulebook tabs and character-list columns retain their own layout", async () => {
   for (const page of ["setting","character"]) {
-    assert.match(await read("css/" + page + ".css"), /\.save-bar\s*\{ position:sticky; bottom:0/);
+    assert.match(await read("css/" + page + ".css"), /\.save-bar\s*\{ position:static; bottom:0/);
     assert.match(await read(page + ".html"), /class="save-bar"/);
   }
   assert.match(await read("rulebook.html"), /role="tablist"/);

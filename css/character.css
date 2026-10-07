@@ -33,7 +33,8 @@ button.primary { font-weight:750; padding:13px 28px; }
 .quote-toolbar { display:flex; flex-wrap:wrap; gap:5px; margin-top:5px; }
 .quote-toolbar button { min-width:30px; min-height:28px; padding:2px 8px; font-size:.8rem; }
 .duck-card>label { max-width:480px; margin-bottom:17px; }.duck-card .image-field { max-width:720px; }
-.save-bar { position:sticky; bottom:0; display:flex; justify-content:space-between; align-items:center; gap:18px; padding:18px 22px; margin-top:28px; border:1px solid var(--line); border-radius:10px; background:var(--panel); box-shadow:0 -8px 32px #00000018; }
+.save-bar { position:static; bottom:0; display:flex; justify-content:space-between; align-items:center; gap:18px; padding:18px 22px; margin-top:28px; border:1px solid var(--line); border-radius:10px; background:var(--panel); box-shadow:0 -8px 32px #00000018; }
+@media(min-width:701px) { .save-bar.is-dirty { position:sticky; bottom:0; } }
 .save-bar p { margin:2px 0 0; font-size:.75rem; }.save-bar strong { font-size:.85rem; }.save-bar button { flex-shrink:0; }
 #load-message { color:var(--warn); } [hidden] { display:none !important; }
 .icon-picker { width:min(700px,92vw); max-height:82vh; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px; }

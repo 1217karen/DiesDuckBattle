@@ -24,6 +24,7 @@ function confirmEdit(message) {
 /** Browser wiring is shared; editors only hydrate and patch their own DTO sections. */
 export async function mountOnlineEditor({ sections, allowDuckPresentationDeletion = false, hydrate, onState = () => {} }) {
   const root = document.getElementById("online-edit-status"), editor = document.getElementById("editor");
+  const saveBar = document.querySelector(".save-bar");
   const save = document.getElementById("save"), loadMessage = document.getElementById("load-message");
   const node = (tag, text) => { const el = document.createElement(tag); el.textContent = text; return el; };
   const target = node("strong", "保存対象を確認中…");
@@ -72,6 +73,7 @@ export async function mountOnlineEditor({ sections, allowDuckPresentationDeletio
         serverText.textContent = `サーバー（revision ${state.latest.revision}）\n${JSON.stringify(state.latest.data, null, 2)}`;
       } else { draftText.textContent = ""; serverText.textContent = ""; details.open = false; }
       document.getElementById("save-message").textContent = state.dirty ? "未保存の変更があります" : "変更はありません";
+      saveBar?.classList.toggle("is-dirty", state.dirty);
       onState(state);
     });
     reload.addEventListener("click", () => void controller.load());
