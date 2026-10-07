@@ -16,9 +16,6 @@
 <body class="has-common-menu page-loading">
   <script src="js/pageLoadGate.js"></script>
   <noscript>表示設定ページを使用するにはJavaScriptを有効にしてください。</noscript>
-
-  <div id="editor" hidden>
-    <section aria-labelledby="battler-heading">
 <header id="common-menu" class="common-menu"><details class="common-menu__nav"><summary aria-label="ゲームメニューを開く"><span class="common-menu__icon" aria-hidden="true">☰</span></summary><nav aria-label="ゲームメニュー"></nav></details><details class="common-menu__account"><summary aria-label="アカウントメニューを開く" aria-disabled="true" tabindex="-1"><span data-identity role="status"></span><span data-account-arrow aria-hidden="true" hidden>▾</span></summary><div class="common-menu__account-dropdown"><div data-account-menu></div><p data-feedback role="status" hidden></p></div></details></header>
   <script src="js/menuDisplayCache.js"></script>
   <main data-page-content class="character-shell page-shell page-shell--editor">
@@ -31,6 +28,8 @@
     <section id="online-edit-status" class="online-edit-status" aria-label="オンライン保存状態" hidden></section>
 
     <noscript>表示設定ページを使用するにはJavaScriptを有効にしてください。</noscript>
+
+    <div id="editor" hidden>
       <section aria-labelledby="battler-heading">
         <div class="section-heading"><span>01</span><div><h2 id="battler-heading">バトラー設定</h2><p>立ち絵・アイコン・プロフィール等</p></div></div>
         <div class="card"><label for="battler-name">バトラー名</label><input id="battler-name" type="text" placeholder="バトラー名を入力" required aria-describedby="image-validation-message" autocomplete="off" disabled></div>
