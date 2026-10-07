@@ -83,7 +83,7 @@ export function renderProfile(document, profile) {
   else {
     const heading = el("div", "duck-heading");
     heading.append(image(d.iconUrl, FIXED_IMAGES.duckIcon, "duck-icon", "Duckアイコン"), el("h3", "duck-name", d.name));
-    duck.append(heading, el("p", "duck-meta", `${types[d.profile.type] ?? "未設定"} / ${d.profile.attributes.filter(Boolean).join("・") || "未設定"}`), skillList({ A: d.skills.A, C: d.skills.C }));
+    duck.append(heading, el("p", "duck-meta", `${types[d.profile.type] ? `${types[d.profile.type]}タイプ` : "タイプ：未設定"} / 属性：${d.profile.attributes.filter(Boolean).join("・") || "未設定"}`), skillList({ A: d.skills.A, C: d.skills.C }));
     const stats = el("div", "stat-section"); stats.setAttribute("aria-label", "ステータス");
     stats.append(el("h3", "profile-section-heading", "STATUS"));
     ["AT", "DF", "SP"].forEach((key, i) => stats.append(row(labels[d.profile.statLabelPreset][i], profileStatLevel(key, d.stats[key]), d.stats[key] === null)));
