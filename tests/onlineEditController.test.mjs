@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { createOnlineEditController } from "../js/onlineEditController.js";
 import { onlineFailure } from "../js/onlinePlayerStorage.js";
 import { createEmptyPlayerBuild, createEmptyDuck } from "../js/playerBuildModel.js";
-import { createEmptyPlayerPresentation } from "../js/playerPresentationModel.js";
+import { createEmptyDuckPresentation, createEmptyPlayerPresentation } from "../js/playerPresentationModel.js";
 import { createSettingState, changeSetting } from "../js/settingState.js";
 import { inspectBuildForSave } from "../js/buildSaveInspection.js";
 const clone = structuredClone;
@@ -63,6 +63,7 @@ test("separate tabs conflict, retain draft, compare, explicitly rebase own secti
   assert.deepEqual(setting.snapshot().latest.data.presentation, presentation);
   f.accept(false); assert.equal(await setting.adoptLatest(true), false); f.accept(true);
   assert.equal(await setting.adoptLatest(true), true); assert.equal(setting.snapshot().dirty, true);
+  presentation.ducks[build.ducks[0].id]=createEmptyDuckPresentation();
   assert.deepEqual(setting.snapshot().draft.presentation, presentation); await setting.save();
   await character.load(); assert.equal(character.snapshot().draft.build.ducks.length, 1);
   assert.deepEqual(character.snapshot().draft.presentation, presentation); assert.equal(character.snapshot().draft.battlerName, "DB名2");
@@ -71,8 +72,8 @@ test("character rebase preserves newly added Duck/public choice/build/name", asy
   const f = fixture(), s = f.make(), c = f.make(["presentation"]); await s.load(); await c.load();
   const build = s.snapshot().draft.build; const duck = createEmptyDuck(); build.ducks.push(duck);
   s.edit({ build, publicSettings: { schemaVersion: 1, publicDuckId: duck.id } }); await s.save();
-  const presentation = c.snapshot().draft.presentation; presentation.battler.quotes.skill.A.lines[0].text = "保持";
-  presentation.battler.quotes.skill.A.lines.push({text:'追加も保持',iconSlot:2,opponentEno:'15'}); c.edit({ presentation });
+  const presentation = c.snapshot().draft.presentation; presentation.battler.quotes.skill.B.lines[0].text = "保持";
+  presentation.battler.quotes.skill.B.lines.push({text:'追加も保持',iconSlot:2,opponentEno:'15'}); c.edit({ presentation });
   assert.equal((await c.save()).status, "conflict"); await c.compare(); await c.adoptLatest(true); await c.save();
   assert.deepEqual(f.rows.get("2").data.build, build); assert.equal(f.rows.get("2").data.publicSettings.publicDuckId, duck.id);
 });

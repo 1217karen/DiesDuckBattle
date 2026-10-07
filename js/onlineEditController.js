@@ -1,6 +1,20 @@
+import { createEmptyDuckPresentation } from "./playerPresentationModel.js";
 import { onlineFailure } from "./onlinePlayerStorage.js";
 
 const copy = value => structuredClone(value);
+/** Merge changed object fields; quote line arrays remain atomic editing units. */
+function rebasePresentation(base, draft, latest) {
+  if (JSON.stringify(base) === JSON.stringify(draft)) return copy(latest);
+  const record = value => value !== null && typeof value === "object" && !Array.isArray(value);
+  if (!record(base) || !record(draft) || !record(latest)) return copy(draft);
+  const result = copy(latest);
+  for (const key of new Set([...Object.keys(base), ...Object.keys(draft)])) {
+    if (JSON.stringify(base[key]) === JSON.stringify(draft[key])) continue;
+    if (!Object.hasOwn(draft, key)) delete result[key];
+    else result[key] = rebasePresentation(base[key], draft[key], latest[key]);
+  }
+  return result;
+}
 const sameScope = (a, b) => a?.authUserId === b?.authUserId && a?.account?.id === b?.account?.id && a?.account?.eno === b?.account?.eno;
 const scopeErrors = new Set(["not-signed-in", "no-access", "selection-required", "forbidden", "session-changed"]);
 
@@ -69,6 +83,11 @@ export function createOnlineEditController({ storage, sections, allowDuckPresent
         || !Array.isArray(patch.build?.ducks) || deleteDuckPresentationIds.some(id => typeof id !== "string"
           || !state.draft.build.ducks.some(d => d.id === id) || patch.build.ducks.some(d => d.id === id)))) return false;
       const draft = { ...state.draft, ...copy(patch) };
+      if (patch.build) {
+        const prior = new Set(state.draft.build.ducks.map(duck => duck.id));
+        draft.presentation = copy(draft.presentation);
+        for (const duck of patch.build.ducks) if (!prior.has(duck.id)) draft.presentation.ducks[duck.id] ??= createEmptyDuckPresentation();
+      }
       if (deleteDuckPresentationIds.length) {
         draft.presentation = copy(state.draft.presentation);
         for (const id of deleteDuckPresentationIds) {
@@ -138,11 +157,16 @@ export function createOnlineEditController({ storage, sections, allowDuckPresent
       const result = state.latest, draft = copy(result.data);
       if (keepEdits) for (const key of sections) draft[key] = copy(state.draft[key]);
       if (keepEdits && sections.includes("presentation")) {
+        draft.presentation = rebasePresentation(state.base.data.presentation, state.draft.presentation, result.data.presentation);
         // Do not resurrect Ducks removed since loading; preserve pre-existing detached entries.
         const latestDuckIds = new Set(result.data.build.ducks.map(duck => duck.id));
         for (const { id } of state.base.data.build.ducks) {
           if (!latestDuckIds.has(id)) delete draft.presentation.ducks[id];
         }
+      }
+      if (keepEdits && sections.includes("build")) {
+        const prior = new Set(state.base.data.build.ducks.map(duck => duck.id));
+        for (const duck of draft.build.ducks) if (!prior.has(duck.id)) draft.presentation.ducks[duck.id] ??= createEmptyDuckPresentation();
       }
       if (keepEdits) for (const id of deletedDuckPresentationIds) delete draft.presentation.ducks[id];
       install(result, draft, keepEdits); emit(); return true;

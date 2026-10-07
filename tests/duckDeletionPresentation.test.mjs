@@ -1,3 +1,4 @@
+import { createEmptyDuckQuotes } from "../js/playerPresentationModel.js";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -9,14 +10,15 @@ import { createEmptyPlayerBuild, createEmptyDuck } from '../js/playerBuildModel.
 import { createEmptyPlayerPresentation, createEmptyDuckProfile } from '../js/playerPresentationModel.js';
 const account='11111111-1111-4111-8111-111111111111', a='22222222-2222-4222-8222-222222222222', b='33333333-3333-4333-8333-333333333333';
 const clone=structuredClone;
-const emptyDisplay=()=>({iconUrl:'',cutinUrl:'',profile:createEmptyDuckProfile()});
+const emptyDisplay=()=>({iconUrl:'',cutinUrl:'',quotes:createEmptyDuckQuotes(),profile:createEmptyDuckProfile()});
 function initial() {
  const build=createEmptyPlayerBuild();build.ducks=[a,b].map((id,i)=>({...createEmptyDuck({idFactory:()=>id}),name:'Duck'+i}));
  const presentation=createEmptyPlayerPresentation();
  presentation.battler.standingImageUrl='standing';presentation.battler.defaultIconUrl='default';presentation.battler.iconSlots[9]='tenth';presentation.battler.quotes.battleStart={ lines: [{text:' quote ',iconSlot:10, opponentEno:null}] };
  presentation.battler.profile={text:' Battler ',iconSlots:[1,10],theme:{background:'#123456',panel:'#234567',text:'#345678',accent:'#456789'},featuredBattleId:a,message:"",messageTail:false,showBestStreak:true};
- presentation.ducks[a]={iconUrl:'icon',cutinUrl:'cutin',profile:{text:' profile ',type:'attack',attributes:['炎','😀',''],statLabelPreset:'english',flavorStats:[{label:'test',value:6}]}};
+ presentation.ducks[a]={iconUrl:'icon',cutinUrl:'cutin',quotes:createEmptyDuckQuotes(),profile:{text:' profile ',type:'attack',attributes:['炎','😀',''],statLabelPreset:'english',flavorStats:[{label:'test',value:6}]}};
  presentation.ducks[b]={...emptyDisplay(),iconUrl:'other',profile:{...createEmptyDuckProfile(),text:'other profile'}};
+ presentation.ducks[a].quotes.skill.A.lines[0].text='delete A';presentation.ducks[a].quotes.skill.C.lines.push({text:'delete C extra',iconSlot:10,opponentEno:'15'});
  presentation.ducks.orphan={...emptyDisplay(),profile:{...createEmptyDuckProfile(),text:'detached'}};
  return {build,presentation,publicSettings:{schemaVersion:1,publicDuckId:a},battlerName:'Battler'};
 }
@@ -74,7 +76,7 @@ for(const published of [false,true])for(const kind of ['missing','empty','popula
  if(kind==='missing')delete data.presentation.ducks[a];if(kind==='empty')data.presentation.ducks[a]=emptyDisplay();
  const p=await page(data),before=p.controller.snapshot().draft;
  const message=p.openDelete().textContent;
- assert.equal(message.includes('プロフィール情報も削除'),kind==='populated');assert.equal(message.includes('対戦相手として選択されなくなります'),published);
+ assert.equal(message.includes('プロフィール情報・A/Cセリフも削除'),kind==='populated');assert.equal(message.includes('対戦相手として選択されなくなります'),published);
  assert.match(message,/保存するまで確定しません/);assert.equal(p.all().filter(e=>e.tagName==='dialog').length,1);
  assert.deepEqual(p.controller.snapshot().draft,before);p.cancel();assert.deepEqual(p.controller.snapshot().draft,before);assert.equal(p.edits.length,0);
  p.openDelete();p.confirmDelete();
@@ -91,12 +93,13 @@ for(const published of [false,true])for(const kind of ['missing','empty','popula
 });
 
 for(const [key,change]of [
+ ['A quote',d=>d.quotes.skill.A.lines[0].text='A'],['C quote',d=>d.quotes.skill.C.lines[0].text='C'],
  ['icon',d=>d.iconUrl='icon'],['cutin',d=>d.cutinUrl='cutin'],['spaces',d=>d.profile.text='  \n'],
  ['type',d=>d.profile.type='normal'],['attributes',d=>d.profile.attributes[2]='😀'],
  ['preset',d=>d.profile.statLabelPreset='kanji'],['flavor',d=>d.profile.flavorStats=[{label:'',value:0}]]
 ])test(`non-default warning detects ${key}`,async()=>{
  const data=initial();data.presentation.ducks[a]=emptyDisplay();change(data.presentation.ducks[a]);
- const p=await page(data);assert.match(p.openDelete().textContent,/アイコン・カットイン・プロフィール情報も削除/);p.cancel();
+ const p=await page(data);assert.match(p.openDelete().textContent,/アイコン・カットイン・プロフィール情報・A\/Cセリフも削除/);p.cancel();
 });
 
 test('discard restores deletion and clears pending intent; cancelling reload preserves dirty draft',async()=>{

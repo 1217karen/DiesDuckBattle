@@ -142,6 +142,7 @@ const patchBattler = patch => commit({ type: "battler", patch });
 function hasDuckDisplayData(id) {
   const display = displayPresentation?.ducks?.[id];
   if (!display) return false;
+  if (Object.values(display.quotes?.skill ?? {}).some(timing => timing.lines.some(line => line.text !== "" || line.iconSlot !== null || line.opponentEno !== null))) return true;
   if (display.iconUrl || display.cutinUrl) return true;
   return Object.entries(createEmptyDuckProfile()).some(([key, empty]) =>
     JSON.stringify(display.profile?.[key] ?? empty) !== JSON.stringify(empty));
@@ -573,7 +574,7 @@ function renderDuck() {
   actions.append(publicButton, button("複製", () => commit({ type: "duplicate" })), button("削除", () => {
     const current = selectedDuck(state), displayName = current.name || "名前未設定のアヒル";
     const displayWarning = hasDuckDisplayData(current.id)
-      ? "このアヒルに登録されているアイコン・カットイン・プロフィール情報も削除されます。\n\n" : "";
+      ? "このアヒルに登録されているアイコン・カットイン・プロフィール情報・A/Cセリフも削除されます。\n\n" : "";
     if (selectedPublicDuckId(state) === current.id) {
       showDialog({ title: "公開中のアヒルを削除", confirmLabel: "削除する", message:
         `「${displayName}」は現在、公開用アヒルに設定されています。\n\n削除すると公開用アヒルが未設定になり、他のプレイヤーから対戦相手として選択されなくなります。\n\n${displayWarning}削除しますか？ 保存するまで確定しません。`,

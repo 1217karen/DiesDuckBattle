@@ -4,7 +4,7 @@ import { presentCSkill } from "./cSkillPresentation.js";
 import { battlerNameError } from "./nameValidation.js";
 import { FIXED_IMAGES, setImageFromCandidates } from "./fixedImages.js";
 import { mountOnlineEditor } from "./onlineEditor.js";
-import { createEmptyDuckProfile, createEmptyPlayerPresentation, getQuoteIconUrlCandidates, presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine } from "./playerPresentationModel.js";
+import { createEmptyDuckPresentation, createEmptyDuckQuotes, quoteTimings, createEmptyDuckProfile, createEmptyPlayerPresentation, getQuoteIconUrlCandidates, presentationForPersistence, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine } from "./playerPresentationModel.js";
 import { createQuoteToolbar } from "./quoteRichTextToolbar.js";
 import { createIconPicker } from "./iconPicker.js";
 import { createImageValidation, imageValidationSummary } from "./characterImageValidation.js";
@@ -22,7 +22,7 @@ const quoteGroups = [
   { title: "戦闘開始", rows: [["戦闘開始", ["battleStart"]]] },
   { title: "ターン開始", rows: [["拮抗", ["turn", "even"]], ["優勢", ["turn", "lead"]], ["劣勢", ["turn", "behind"]]] },
   { title: "フェイズ開始", rows: [["1回目", ["phaseStart", "first"]], ["2回目", ["phaseStart", "second"]], ["3回目", ["phaseStart", "third"]]] },
-  { title: "スキル発動", rows: [["A", ["skill", "A"]], ["B", ["skill", "B"]], ["C", ["skill", "C"]], ["D", ["skill", "D"]]] },
+  { title: "スキル発動", rows: [["B", ["skill", "B"]], ["D", ["skill", "D"]]] },
   { title: "戦闘終了", rows: [["勝利", ["battleEnd", "win"]], ["敗北", ["battleEnd", "lose"]], ["引分", ["battleEnd", "draw"]]] }
 ];
 let online, onlineState;
@@ -33,6 +33,7 @@ let ducks = [];
 let selectedDuckId = "";
 const imageStates = new Map();
 const duckEditors = new Map();
+const duckQuoteRenderers = new Map();
 const battlerNameInput = document.querySelector("#battler-name");
 battlerNameInput.addEventListener("input", () => { online?.edit({ battlerName: battlerNameInput.value }); updateValidation(); });
 const saveButton = document.querySelector("#save");
@@ -50,7 +51,7 @@ function profileValidationMessage() {
 }
 
 function quoteValidationMessage() {
-  for (const path of QUOTE_PATHS) for (const line of quoteAt(path).lines) {
+  for (const timing of quoteTimings(presentation)) for (const line of timing.lines) {
     if ([...line.text].length > QUOTE_TEXT_MAX) return "セリフは装飾タグ込み200文字まで入力できます。";
     if (line.opponentEno !== null && !isQuoteEno(line.opponentEno)) return "ENoは先頭に0のない正整数（9223372036854775807以下）で入力してください。";
   }
@@ -68,7 +69,6 @@ function updateValidation() {
 }
 
 function setDirty() { online?.edit({ presentation: presentationForPersistence(presentation) }); }
-function quoteAt(path) { return path.reduce((value, key) => value[key], presentation.battler.quotes); }
 function pickerLabel(slot) {
   return slot === null ? "デフォルトアイコン" : `追加アイコン ${slot}`;
 }
@@ -193,14 +193,17 @@ function renderQuotes() {
   for (const lookup of quoteLookups) lookup.dispose();
   quoteLookups.clear();
   const target = document.querySelector("#quotes"); target.replaceChildren();
-  for (const group of quoteGroups) {
+  for (const group of quoteGroups) target.append(quoteGroupEditor(group, presentation.battler.quotes, "battler"));
+}
+
+function quoteGroupEditor(group, quotes, prefix, onEdit = () => {}) {
     const card = document.createElement("div"); card.className = "card quote-group";
     const heading = document.createElement("h3"); heading.textContent = group.title; card.append(heading);
     for (const [label, path] of group.rows) {
-      const timing = quoteAt(path);
+      const timing = path.reduce((value, key) => value[key], quotes);
       const block = document.createElement("div"); block.className = "quote-timing-block";
       const extras = document.createElement("div"); extras.className = "quote-extras"; extras.hidden = true;
-      extras.id = "quote-extras-" + path.join("-");
+      extras.id = "quote-extras-" + prefix + "-" + path.join("-");
       const toggle = document.createElement("button"); toggle.type = "button";
       toggle.setAttribute("aria-controls", extras.id);
       toggle.setAttribute("aria-label", group.title + " " + label + "の追加セリフ");
@@ -211,7 +214,7 @@ function renderQuotes() {
         block.className = "quote-timing-block" + (extras.hidden ? "" : " is-open");
       };
       const rowLookups = new Set();
-      const changed = () => { sync(); setDirty(); updateValidation(); };
+      const changed = () => { onEdit(); sync(); setDirty(); updateValidation(); };
       const makeRow = (line, primary) => {
         const row = document.createElement("div"); row.className = "quote-row";
         const caption = document.createElement("span"); caption.className = "quote-label"; caption.textContent = primary ? label : "";
@@ -277,13 +280,12 @@ function renderQuotes() {
       });
       block.append(makeRow(timing.lines[0], true), extras); renderExtras(); sync(); card.append(block);
     }
-    target.append(card);
-  }
+    return card;
 }
 
 // Allocate only on edit: opening the page must not create absent Duck displays.
 function duckPresentation(id) {
-  return presentation.ducks[id] ??= { iconUrl: "", cutinUrl: "", profile: createEmptyDuckProfile() };
+  return presentation.ducks[id] ??= createEmptyDuckPresentation();
 }
 
 function profileTextEditor(labelText, value, onChange, limit, placeholder, singleLine = false) {
@@ -438,7 +440,7 @@ function renderDuckSelect() {
   const known = new Set(ducks.map(duck => duck.id));
   for (const id of Object.keys(presentation.ducks)) if (!known.has(id)) ducks.push({ id, name: `${id}（戦闘設定なし）` });
   const target = document.querySelector("#duck-icon-editor"); target.replaceChildren();
-  duckEditors.clear(); select.disabled = false;
+  duckEditors.clear(); duckQuoteRenderers.clear(); select.disabled = false;
   for (const duck of ducks) {
     const id = duck.id;
     const iconHeading = document.createElement("h3");
@@ -455,7 +457,15 @@ function renderDuckSelect() {
     cutin.append(heading, description, makeImageField({ label:"URL", kind:"cutin", previewClass:"cutin-preview", fallback:null,
       value:presentation.ducks[id]?.cutinUrl ?? "",
       onInput:value => { duckPresentation(id).cutinUrl = value; } }));
-    editor.append(iconHeading, field, cutin, duckProfileEditor(duck)); duckEditors.set(id, editor); target.append(editor);
+    const aQuotes = document.createElement("section"), cQuotes = document.createElement("section");
+    const renderDuckQuotes = () => {
+      const quotes = presentation.ducks[id]?.quotes ?? createEmptyDuckQuotes();
+      for (const [category, root] of [["A", aQuotes], ["C", cQuotes]]) root.replaceChildren(quoteGroupEditor(
+        { title: category + "スキルセリフ", rows: [[category, ["skill", category]]] }, quotes, "duck-" + id,
+        () => { duckPresentation(id).quotes = quotes; }));
+    };
+    duckQuoteRenderers.set(id, renderDuckQuotes); renderDuckQuotes();
+    editor.append(iconHeading, field, duckProfileEditor(duck), aQuotes, cQuotes, cutin); duckEditors.set(id, editor); target.append(editor);
   }
   if (!ducks.length) { const option = new Option("Duck未登録", ""); select.append(option); select.disabled = true; selectedDuckId = ""; }
   else {
@@ -470,7 +480,7 @@ function renderDuckSelect() {
 saveButton.addEventListener("click", async () => {
   if (battlerNameError(battlerNameInput.value) || !online?.snapshot().canSave || !imageValidationSummary(imageStates.values()).canSave || profileValidationMessage() || quoteValidationMessage()) { updateValidation(); return; }
   const result = await online.save();
-  if (result?.ok) { presentation = presentationForPersistence(presentation); renderQuotes(); updateValidation(); }
+  if (result?.ok) { presentation = presentationForPersistence(presentation); renderQuotes(); for (const render of duckQuoteRenderers.values()) render(); updateValidation(); }
 });
 
 online = await mountOnlineEditor({
@@ -480,7 +490,7 @@ online = await mountOnlineEditor({
     for (const lookup of quoteLookups) lookup.dispose();
     quoteLookups.clear();
     battlerNameInput.value = data?.battlerName ?? "";
-    picker.close(); imageStates.clear(); duckEditors.clear(); selectedDuckId = "";
+    picker.close(); imageStates.clear(); duckEditors.clear(); duckQuoteRenderers.clear(); selectedDuckId = "";
     presentation = data ? structuredClone(data.presentation) : createEmptyPlayerPresentation();
     ducks = data ? data.build.ducks.map(({ id, name, cSelection }) => ({ id, name, cSelection })) : [];
     if (data) { renderBattlerImages(); renderBattlerProfile(); renderQuotes(); renderDuckSelect(); }

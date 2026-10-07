@@ -1,3 +1,4 @@
+import { createEmptyDuckQuotes } from "../js/playerPresentationModel.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -37,8 +38,8 @@ test("local Postgres migration/RLS/RPC integration (no network)", { skip: !PGlit
     });
     let state = empty(); state.build.ducks.push(createEmptyDuck({ idFactory: () => d1 }), createEmptyDuck({ idFactory: () => d2 }));
     state.build.ducks[0].name = "同名"; state.build.ducks[1].name = "同名";
-    state.presentation.ducks[d1] = { iconUrl: "https://example.invalid/icon.png", cutinUrl: "https://example.invalid/cutin.png", profile: createEmptyDuckProfile() };
-    state.presentation.ducks["orphan-local-id"] = { iconUrl: "https://example.invalid/orphan.png", cutinUrl: "private-cutin.png", profile: createEmptyDuckProfile() };
+    state.presentation.ducks[d1] = { iconUrl: "https://example.invalid/icon.png", cutinUrl: "https://example.invalid/cutin.png", quotes:createEmptyDuckQuotes(),profile: createEmptyDuckProfile() };
+    state.presentation.ducks["orphan-local-id"] = { iconUrl: "https://example.invalid/orphan.png", cutinUrl: "private-cutin.png", quotes:createEmptyDuckQuotes(),profile: createEmptyDuckProfile() };
     state.publicSettings.publicDuckId = d1;
     await t.test("incomplete builds, order, icons and UUIDs roundtrip atomically", async () => {
       const before = await load(a); const result = await save(a, before.revision, encodeOnlinePlayer(state));

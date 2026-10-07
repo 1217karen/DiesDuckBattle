@@ -1,3 +1,4 @@
+import { createEmptyDuckQuotes } from "../js/playerPresentationModel.js";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
@@ -31,7 +32,7 @@ test('dedicated authenticated public profile DB boundary',{skip:!PGlite&&'Set PG
     data.presentation.battler.standingImageUrl='standing.png';
     data.presentation.battler.iconSlots[0]='one.png';data.presentation.battler.iconSlots[1]='SECRET-unselected';
     data.presentation.battler.quotes.battleStart.lines[0].text='SECRET-quotes';
-    data.presentation.ducks.orphan={iconUrl:'SECRET-detached',cutinUrl:'',profile:createEmptyDuckProfile()};
+    data.presentation.ducks.orphan={iconUrl:'SECRET-detached',cutinUrl:'',quotes:createEmptyDuckQuotes(),profile:createEmptyDuckProfile()};
     const dp=data.presentation.ducks[duckB].profile;
     Object.assign(dp,{text:' duck\n ',type:'technical',attributes:['🔥','炎',''],statLabelPreset:'kanji',flavorStats:[{label:'',value:0},{label:'味',value:6}]});
     data.presentation.ducks[duckB].cutinUrl='SECRET-cutin';

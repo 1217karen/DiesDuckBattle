@@ -1,3 +1,5 @@
+import { legacyDtoQuoteOwnership } from './legacyPresentationFixture.mjs';
+import { createEmptyDuckQuotes } from "../js/playerPresentationModel.js";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BATTLER_NAME_MAX, DUCK_NAME_MAX, battlerNameError, duckNameError, duckNameIssues, codePointLength } from '../js/nameValidation.js';
@@ -8,7 +10,7 @@ import { migratePlayerBuild } from '../js/playerBuildMigration.js';
 import { createPlayerBuildStorage, PLAYER_BUILD_STORAGE_KEY } from '../js/playerBuildStorage.js';
 import { createPlayerPresentationStorage, PLAYER_PRESENTATION_STORAGE_KEY } from '../js/playerPresentationStorage.js';
 import { encodeOnlinePlayer, decodeOnlinePlayer } from '../js/onlinePlayerDto.js';
-import { createEmptyDuckProfile, QUOTE_PATHS } from '../js/playerPresentationModel.js';
+import { createEmptyDuckProfile, LEGACY_QUOTE_PATHS as QUOTE_PATHS } from '../js/playerPresentationModel.js';
 import { registrationInput, createAuthService } from '../js/authService.js';
 import { validateRegistration, registerAccount } from '../supabase/functions/_shared/registration.mjs';
 import { createRegistrationHandler } from '../supabase/functions/_shared/registration-handler.mjs';
@@ -40,12 +42,12 @@ for(const char of ['a','😀'])test(`profile boundaries and tags count code poin
  data.presentation.battler.profile.text+='<b></b>';assert.throws(()=>encodeOnlinePlayer(data));assert.equal(data.presentation.battler.profile.text,char.repeat(2000)+'<b></b>');
  data.presentation.battler.profile.text=char.repeat(2001);assert.throws(()=>encodeOnlinePlayer(data));data.presentation.battler.profile.text='';
  data.presentation.ducks[da].profile.text=char.repeat(301);assert.throws(()=>encodeOnlinePlayer(data));data.presentation.ducks[da].profile.text='';
- data.presentation.ducks.detached={iconUrl:'',cutinUrl:'',profile:{...createEmptyDuckProfile(),text:'a'.repeat(301)}};assert.throws(()=>encodeOnlinePlayer(data));
+ data.presentation.ducks.detached={iconUrl:'',cutinUrl:'',quotes:createEmptyDuckQuotes(),profile:{...createEmptyDuckProfile(),text:'a'.repeat(301)}};assert.throws(()=>encodeOnlinePlayer(data));
  data.presentation.ducks.detached.profile.text='';data.presentation.ducks.detached.profile.flavorStats=[{label:'あ'.repeat(6),value:6}];assert.throws(()=>encodeOnlinePlayer(data));
 });
 for(const version of [1,2,3])test(`old v${version} oversized stored data loads losslessly but cannot be saved`,async()=>{
  const {data}=await player(a,'1',da);const dto=encodeOnlinePlayer(data);
- delete dto.battler.presentation.profile.showBestStreak;delete dto.battler.presentation.profile.message;delete dto.battler.presentation.profile.messageTail;dto.battler.presentation.schemaVersion=version;dto.ducks[0].presentation.schemaVersion=version;
+ legacyDtoQuoteOwnership(dto);delete dto.battler.presentation.profile.showBestStreak;delete dto.battler.presentation.profile.message;delete dto.battler.presentation.profile.messageTail;dto.battler.presentation.schemaVersion=version;dto.ducks[0].presentation.schemaVersion=version;
  dto.battler.presentation.name='😀'.repeat(16);dto.ducks[0].presentation.name='あ'.repeat(16);
  dto.battler.build.skillLabels.B={name:'a'.repeat(21),ruby:'😀'.repeat(51)};
  if(version<3)for(const path of QUOTE_PATHS){const p=path.slice(0,-1).reduce((v,k)=>v[k],dto.battler.presentation.quotes);const first=p[path.at(-1)].lines[0];p[path.at(-1)]={text:first.text,iconSlot:first.iconSlot};}
@@ -57,7 +59,7 @@ for(const version of [1,2,3])test(`old v${version} oversized stored data loads l
  }
  const before=structuredClone(dto),loaded=decodeOnlinePlayer(dto);assert.deepEqual(dto,before);
  assert.equal(loaded.battlerName,dto.battler.presentation.name);assert.equal(loaded.build.ducks[0].name,dto.ducks[0].presentation.name);assert.deepEqual(loaded.build.battler.skillLabels.B,dto.battler.build.skillLabels.B);
- if(version>1){assert.equal(loaded.presentation.battler.profile.text,dto.battler.presentation.profile.text);assert.deepEqual(loaded.presentation.ducks.orphan,dto.battler.presentation.detachedDuckPresentation.orphan);}
+ if(version>1){assert.equal(loaded.presentation.battler.profile.text,dto.battler.presentation.profile.text);assert.deepEqual(loaded.presentation.ducks.orphan,{...dto.battler.presentation.detachedDuckPresentation.orphan,quotes:createEmptyDuckQuotes()});}
  assert.throws(()=>encodeOnlinePlayer(loaded));
  const buildStore=memory(PLAYER_BUILD_STORAGE_KEY,loaded.build),repo=createPlayerBuildStorage(buildStore);assert.deepEqual(repo.load().build,loaded.build);assert.equal(repo.save(loaded.build).ok,false);assert.equal(buildStore.writes,0);
  const draft=updateDuck(loaded.build,da,{name:' 改名 '});assert.equal(draft.ducks[0].name,' 改名 ');assert.equal(draft.battler.skillLabels.B.name,'a'.repeat(21));

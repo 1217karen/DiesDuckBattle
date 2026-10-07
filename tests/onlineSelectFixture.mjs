@@ -1,3 +1,4 @@
+import { createEmptyDuckQuotes } from "../js/playerPresentationModel.js";
 import { getOpponent } from '../js/opponentSource.js';
 import { migratePlayerBuild } from '../js/playerBuildMigration.js';
 import { createEmptyDuckProfile, createEmptyPlayerPresentation } from '../js/playerPresentationModel.js';
@@ -10,7 +11,7 @@ export async function player(id, eno, duckId) {
   const presentation=createEmptyPlayerPresentation();
   presentation.battler.defaultIconUrl='https://example.invalid/'+eno+'.png';
   presentation.battler.quotes.battleStart.lines[0].text='開始'+eno;
-  presentation.ducks[duckId]={ iconUrl:'https://example.invalid/duck'+eno+'.png',cutinUrl:'https://example.invalid/cutin'+eno+'.png', profile:createEmptyDuckProfile() };
+  presentation.ducks[duckId]={ iconUrl:'https://example.invalid/duck'+eno+'.png',cutinUrl:'https://example.invalid/cutin'+eno+'.png', quotes:createEmptyDuckQuotes(),profile:createEmptyDuckProfile() };
   const data={build,presentation,publicSettings:{schemaVersion:1,publicDuckId:duckId},battlerName:'DB名'+eno};
   return {data,snapshot:{...encodeOnlinePlayer(data),gameAccountId:id,eno,revision:'0'}};
 }

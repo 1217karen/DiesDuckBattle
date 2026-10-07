@@ -2,7 +2,7 @@ import { battlerNameError } from "./nameValidation.js";
 import { presentationTextIssues } from "./profileTextValidation.js";
 import { migratePlayerBuild } from "./playerBuildMigration.js";
 import { clonePlayerBuild, createEmptyPlayerBuild } from "./playerBuildModel.js";
-import { PLAYER_PRESENTATION_SCHEMA_VERSION, normalizePlayerPresentation, createEmptyPlayerPresentation, QUOTE_PATHS, QUOTE_TEXT_MAX, presentationForPersistence } from "./playerPresentationModel.js";
+import { PLAYER_PRESENTATION_SCHEMA_VERSION, normalizePlayerPresentation, createEmptyPlayerPresentation, LEGACY_QUOTE_PATHS, normalizeQuoteTiming, normalizeDuckPresentation, createEmptyDuckPresentation, createEmptyDuckQuotes, quoteTimings, QUOTE_TEXT_MAX, presentationForPersistence } from "./playerPresentationModel.js";
 import { normalizePlayerPublicSettings } from "./playerPublicSettingsModel.js";
 
 export const isOnlineUuid = value => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value);
@@ -32,16 +32,21 @@ const upgradeDuckDisplays = values => object(values)
 
 
 /** Check each version in its original shape before migrating; never discard unknown data. */
-export function migrateOnlinePlayerPresentation(value) {
-  requireValue(object(value) && [1, 2, 3, 4, 5].includes(value.schemaVersion));
+export function migrateOnlinePlayerPresentation(value, duckIds = []) {
+  requireValue(object(value) && [1, 2, 3, 4, 5, 6].includes(value.schemaVersion));
   const normalized = normalizePlayerPresentation(value);
   const expected = structuredClone(normalized);
   expected.schemaVersion = value.schemaVersion;
+  if (value.schemaVersion < 6) {
+    expected.battler.quotes.skill.A = normalizeQuoteTiming(value.battler?.quotes?.skill?.A);
+    expected.battler.quotes.skill.C = normalizeQuoteTiming(value.battler?.quotes?.skill?.C);
+    for (const duck of Object.values(expected.ducks)) delete duck.quotes;
+  }
   if (value.schemaVersion < 5) { delete expected.battler.profile.message; delete expected.battler.profile.messageTail; }
   if (value.schemaVersion < 4) delete expected.battler.profile.showBestStreak;
   if (value.schemaVersion < 3) {
     expected.schemaVersion = value.schemaVersion;
-    for (const path of QUOTE_PATHS) {
+    for (const path of LEGACY_QUOTE_PATHS) {
       const parent = path.slice(0, -1).reduce((v, k) => v[k], expected.battler.quotes);
       const line = parent[path.at(-1)].lines[0];
       parent[path.at(-1)] = { text: line.text, iconSlot: line.iconSlot };
@@ -53,11 +58,12 @@ export function migrateOnlinePlayerPresentation(value) {
   }
   requireValue(same(expected, value.schemaVersion === 1 ? { ...value, ducks: upgradeDuckDisplays(value.ducks) } : value));
   // Legacy text is preserved on load, including historical values longer than the new limit.
-  if (value.schemaVersion >= 3) for (const path of QUOTE_PATHS) {
-    const timing = path.reduce((v, k) => v[k], normalized.battler.quotes);
-    requireValue(timing.lines.every(line => [...line.text].length <= QUOTE_TEXT_MAX));
+  if (value.schemaVersion >= 3) {
+    const timings = value.schemaVersion < 6
+      ? LEGACY_QUOTE_PATHS.map(path => path.reduce((v,k) => v[k], expected.battler.quotes)) : quoteTimings(normalized);
+    for (const timing of timings) requireValue(timing.lines.every(line => [...line.text].length <= QUOTE_TEXT_MAX));
   }
-  return normalized;
+  return normalizePlayerPresentation(value, duckIds);
 }
 
 // Validate persistence shape, not battle readiness. Never read local storage/catalogs.
@@ -68,8 +74,8 @@ function encodePlayerData(data, forSave) {
   const build = clonePlayerBuild(data.build, { allowOverlongText: !forSave });
   if (forSave) requireValue(!battlerNameError(data.battlerName));
   requireValue(build.ducks.every(d => isOnlineUuid(d.id)));
-  const presentation = presentationForPersistence(migrateOnlinePlayerPresentation(data.presentation));
-  for (const path of QUOTE_PATHS) requireValue(path.reduce((v,k) => v[k], presentation.battler.quotes).lines.every(line => [...line.text].length <= QUOTE_TEXT_MAX));
+  const presentation = presentationForPersistence(migrateOnlinePlayerPresentation(data.presentation, build.ducks.map(d => d.id)));
+  for (const timing of quoteTimings(presentation)) requireValue(timing.lines.every(line => [...line.text].length <= QUOTE_TEXT_MAX));
   if (forSave) requireValue(presentationTextIssues(presentation).length === 0);
   const settings = normalizePlayerPublicSettings(data.publicSettings);
   requireValue(same(settings, data.publicSettings));
@@ -107,20 +113,21 @@ export function decodeOnlinePlayer(snapshot) {
   b = { ...b, presentation: { schemaVersion: PLAYER_PRESENTATION_SCHEMA_VERSION, name: storedName, ...migratedDisplay.battler, detachedDuckPresentation: migratedDisplay.ducks } };
   const storedDucks = snapshot.ducks.map(d => {
     keys(d.presentation, ["schemaVersion", "name", "icon"]);
-    requireValue([1, 2, 3, 4, 5].includes(d.presentation.schemaVersion));
+    requireValue([1, 2, 3, 4, 5, 6].includes(d.presentation.schemaVersion));
     let icon = d.presentation.icon;
     if (icon !== null) {
-      const empty = createEmptyPlayerPresentation();
-      empty.schemaVersion = d.presentation.schemaVersion;
-      if (empty.schemaVersion < 3) for (const path of QUOTE_PATHS) {
-        const parent = path.slice(0,-1).reduce((v,k) => v[k], empty.battler.quotes);
-        parent[path.at(-1)] = { text: "", iconSlot: null };
-      }
-      if (empty.schemaVersion < 5) { delete empty.battler.profile.message; delete empty.battler.profile.messageTail; }
-      if (empty.schemaVersion < 4) delete empty.battler.profile.showBestStreak;
-      if (empty.schemaVersion === 1) delete empty.battler.profile;
-      empty.ducks = { duck: icon };
-      icon = migrateOnlinePlayerPresentation(empty).ducks.duck;
+      const normalized = normalizeDuckPresentation(icon), expected = structuredClone(normalized);
+      if (d.presentation.schemaVersion < 6) delete expected.quotes;
+      if (d.presentation.schemaVersion === 1) delete expected.profile;
+      requireValue(same(expected, d.presentation.schemaVersion === 1 ? upgradeDuckDisplay(icon) : icon));
+      if (d.presentation.schemaVersion === 6) for (const timing of Object.values(normalized.quotes.skill))
+        requireValue(timing.lines.every(line => [...line.text].length <= QUOTE_TEXT_MAX));
+      icon = normalized;
+    }
+    // The Battler and Duck versions are independent. Only legacy Ducks inherit legacy A/C.
+    if (version < 6 && d.presentation.schemaVersion < 6) {
+      icon ??= createEmptyDuckPresentation();
+      icon.quotes = { skill: { A: normalizeQuoteTiming(storedDisplay.quotes.skill.A), C: normalizeQuoteTiming(storedDisplay.quotes.skill.C) } };
     }
     return { ...d, presentation: { ...d.presentation, schemaVersion: PLAYER_PRESENTATION_SCHEMA_VERSION, icon } };
   });
@@ -147,7 +154,10 @@ export function decodeOnlinePlayer(snapshot) {
   // Quotes were already validated above; compare the remaining DTO independently
   // so loading legacy text never applies the new save-only length restriction.
   comparisonData.presentation.battler.quotes = createEmptyPlayerPresentation().battler.quotes;
+  for (const duck of Object.values(comparisonData.presentation.ducks)) duck.quotes = createEmptyDuckQuotes();
   const encoded = encodePlayerData(comparisonData, false);
+  for (const [id, duck] of Object.entries(encoded.battler.presentation.detachedDuckPresentation)) duck.quotes = structuredClone(duckDisplay[id].quotes);
+  for (const duck of encoded.ducks) if (duck.presentation.icon) duck.presentation.icon.quotes = structuredClone(duckDisplay[duck.id].quotes);
   encoded.battler.presentation.quotes = structuredClone(display.quotes);
   if (b.build.schemaVersion === 2) {
     encoded.battler.build.schemaVersion = 2; delete encoded.battler.build.skillLabels;

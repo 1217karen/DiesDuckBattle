@@ -1,7 +1,8 @@
-export const PLAYER_PRESENTATION_SCHEMA_VERSION = 5;
+export const PLAYER_PRESENTATION_SCHEMA_VERSION = 6;
 export const BATTLER_ICON_SLOT_COUNT = 10;
 
-export const QUOTE_PATHS = [
+// v1-v5 and the battle snapshot contain all fourteen timings.
+export const LEGACY_QUOTE_PATHS = [
   ["battleStart"],
   ["turn", "even"], ["turn", "lead"], ["turn", "behind"],
   ["phaseStart", "first"], ["phaseStart", "second"], ["phaseStart", "third"],
@@ -9,6 +10,15 @@ export const QUOTE_PATHS = [
   ["battleEnd", "win"], ["battleEnd", "lose"], ["battleEnd", "draw"]
 ];
 
+export const DUCK_QUOTE_PATHS = [["skill", "A"], ["skill", "C"]];
+// Current Battler ownership; A/C belong to each Duck.
+export const QUOTE_PATHS = LEGACY_QUOTE_PATHS.filter(path => !(path[0] === "skill" && ["A", "C"].includes(path[1])));
+export function quoteTimings(presentation) {
+  return [
+    ...QUOTE_PATHS.map(path => path.reduce((v, k) => v[k], presentation.battler.quotes)),
+    ...Object.values(presentation.ducks).flatMap(duck => DUCK_QUOTE_PATHS.map(path => path.reduce((v, k) => v[k], duck.quotes)))
+  ];
+}
 const isRecord = value => value !== null && typeof value === "object" && !Array.isArray(value);
 const text = value => typeof value === "string" ? value : "";
 const iconSlot = value => Number.isInteger(value) && value >= 1 && value <= BATTLER_ICON_SLOT_COUNT
@@ -18,7 +28,7 @@ export function isQuoteEno(value) {
   return typeof value === "string" && /^[1-9][0-9]{0,18}$/.test(value) && BigInt(value) <= 9223372036854775807n;
 }
 export const createEmptyQuoteLine = () => ({ text: "", iconSlot: null, opponentEno: null });
-const quote = value => {
+export const normalizeQuoteTiming = value => {
   const lines = Array.isArray(value?.lines) && value.lines.length ? value.lines : [value];
   return { lines: lines.map((line, index) => ({ text: text(line?.text), iconSlot: iconSlot(line?.iconSlot),
     opponentEno: index > 0 && isQuoteEno(line?.opponentEno) ? line.opponentEno : null })) };
@@ -27,8 +37,7 @@ const quote = value => {
 /** Copy a draft for persistence without removing empty editor rows in place. */
 export function presentationForPersistence(value) {
   const result = structuredClone(value);
-  for (const path of QUOTE_PATHS) {
-    const timing = path.reduce((v, k) => v[k], result.battler.quotes);
+  for (const timing of quoteTimings(result)) {
     timing.lines = timing.lines.filter((line, index) => index === 0 || line.text !== "");
   }
   return result;
@@ -71,14 +80,24 @@ function normalizeDuckProfile(value) {
 
 function emptyQuotes() {
   return {
-    battleStart: quote(),
-    turn: { even: quote(), lead: quote(), behind: quote() },
-    phaseStart: { first: quote(), second: quote(), third: quote() },
-    skill: { A: quote(), B: quote(), C: quote(), D: quote() },
-    battleEnd: { win: quote(), lose: quote(), draw: quote() }
+    battleStart: normalizeQuoteTiming(),
+    turn: { even: normalizeQuoteTiming(), lead: normalizeQuoteTiming(), behind: normalizeQuoteTiming() },
+    phaseStart: { first: normalizeQuoteTiming(), second: normalizeQuoteTiming(), third: normalizeQuoteTiming() },
+    skill: { B: normalizeQuoteTiming(), D: normalizeQuoteTiming() },
+    battleEnd: { win: normalizeQuoteTiming(), lose: normalizeQuoteTiming(), draw: normalizeQuoteTiming() }
   };
 }
 
+export function createEmptyDuckQuotes() {
+  return { skill: { A: normalizeQuoteTiming(), C: normalizeQuoteTiming() } };
+}
+export function createEmptyDuckPresentation() {
+  return { iconUrl: "", cutinUrl: "", profile: createEmptyDuckProfile(), quotes: createEmptyDuckQuotes() };
+}
+export function normalizeDuckPresentation(value) {
+  return { iconUrl: text(value?.iconUrl), cutinUrl: text(value?.cutinUrl), profile: normalizeDuckProfile(value?.profile),
+    quotes: { skill: { A: normalizeQuoteTiming(value?.quotes?.skill?.A), C: normalizeQuoteTiming(value?.quotes?.skill?.C) } } };
+}
 export function createEmptyPlayerPresentation() {
   return {
     schemaVersion: PLAYER_PRESENTATION_SCHEMA_VERSION,
@@ -94,7 +113,7 @@ export function createEmptyPlayerPresentation() {
 }
 
 /** Tolerant boundary for local drafts: unknown/missing values become safe defaults. */
-export function normalizePlayerPresentation(value) {
+export function normalizePlayerPresentation(value, duckIds = []) {
   const result = createEmptyPlayerPresentation();
   const battler = isRecord(value?.battler) ? value.battler : {};
   result.battler.profile = normalizeBattlerProfile(battler.profile);
@@ -113,12 +132,19 @@ export function normalizePlayerPresentation(value) {
       target = target[path[index]];
     }
     const key = path.at(-1);
-    target[key] = quote(source?.[key]);
+    target[key] = normalizeQuoteTiming(source?.[key]);
   }
   if (isRecord(value?.ducks)) {
     for (const [duckId, data] of Object.entries(value.ducks)) {
       if (["__proto__", "prototype", "constructor"].includes(duckId)) continue;
-      result.ducks[duckId] = { iconUrl: text(data?.iconUrl), cutinUrl: text(data?.cutinUrl), profile: normalizeDuckProfile(data?.profile) };
+      result.ducks[duckId] = normalizeDuckPresentation(data);
+    }
+  }
+  if ([1, 2, 3, 4, 5].includes(value?.schemaVersion)) {
+    for (const id of new Set([...Object.keys(result.ducks), ...duckIds])) {
+      if (["__proto__", "prototype", "constructor"].includes(id)) continue;
+      const duck = result.ducks[id] ??= createEmptyDuckPresentation();
+      duck.quotes = { skill: { A: normalizeQuoteTiming(sourceQuotes.skill?.A), C: normalizeQuoteTiming(sourceQuotes.skill?.C) } };
     }
   }
   return result;

@@ -10,7 +10,7 @@ import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 import { createAuthController } from "../js/authController.js";
 import { createOnlineEditController } from "../js/onlineEditController.js";
-import { createEmptyDuckProfile, createEmptyPlayerPresentation, getQuoteIconUrlCandidates, presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine } from "../js/playerPresentationModel.js";
+import { createEmptyDuckQuotes, createEmptyDuckPresentation, quoteTimings, createEmptyDuckProfile, createEmptyPlayerPresentation, getQuoteIconUrlCandidates, presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine } from "../js/playerPresentationModel.js";
 import { createEmptyPlayerBuild, createEmptyDuck } from "../js/playerBuildModel.js";
 import { IMAGE_LIMITS, createImageValidation, imageValidationSummary } from "../js/characterImageValidation.js";
 import { encodeOnlinePlayer } from "../js/onlinePlayerDto.js";
@@ -59,11 +59,11 @@ async function characterScreen({ siteTheme = null, storageThrows = false } = {})
     createElement: tag => new Element(tag), createTextNode: text => { const el = new Element("text"); el.textContent = text; return el; } };
   const data = { build: createEmptyPlayerBuild(), presentation: createEmptyPlayerPresentation(), publicSettings: { schemaVersion: 1, publicDuckId: null }, battlerName: "DB名2" };
   data.build.ducks.push(createEmptyDuck()); data.publicSettings.publicDuckId = data.build.ducks[0].id;
-  data.presentation.ducks.orphan = { iconUrl: "https://example.invalid/orphan.png", cutinUrl: "", profile: createEmptyDuckProfile() };
+  data.presentation.ducks.orphan = { iconUrl: "https://example.invalid/orphan.png", cutinUrl: "", quotes:createEmptyDuckQuotes(),profile: createEmptyDuckProfile() };
   const controller = { snapshot: () => ({ canSave: true, canEdit: true }),
     edit(patch) { editCount++; latest = { ...latest, ...structuredClone(patch) }; },
     async save() { saved = structuredClone(latest); return { ok: true }; } };
-  const context = { PROFILE_MESSAGE_MAX, BATTLER_PROFILE_MAX, DUCK_PROFILE_MAX, profileTextError, flavorLabelError, presentationTextIssues, battlerNameError, presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine, createQuoteEnoLookup, getSupabaseClient: async()=>({}), createOnlineProfileService: ()=>({getProfile:async()=>({ok:false,status:"profile-not-found"})}), finishPageLoad() {}, requireLoginPage: async () => {}, presentCSkill, hasName, FIXED_IMAGES, setImageFromCandidates, getQuoteIconUrlCandidates, createQuoteToolbar, document, structuredClone, createEmptyDuckProfile, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
+  const context = { PROFILE_MESSAGE_MAX, BATTLER_PROFILE_MAX, DUCK_PROFILE_MAX, profileTextError, flavorLabelError, presentationTextIssues, battlerNameError, presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine, createQuoteEnoLookup, getSupabaseClient: async()=>({}), createOnlineProfileService: ()=>({getProfile:async()=>({ok:false,status:"profile-not-found"})}), finishPageLoad() {}, requireLoginPage: async () => {}, presentCSkill, hasName, FIXED_IMAGES, setImageFromCandidates, getQuoteIconUrlCandidates, createQuoteToolbar, document, structuredClone, createEmptyDuckQuotes, createEmptyDuckPresentation, quoteTimings, createEmptyDuckProfile, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
     Option: function (name, value) { const el = new Element("option"); el.textContent = name; el.value = value; return el; },
     createIconPicker: () => ({ open(args) { selectedCallback = args.select; }, close() { selectedCallback = null; } }),
     mountOnlineEditor: async args => { assert.deepEqual(Array.from(args.sections), ["presentation", "battlerName"]); hooks = args; latest = structuredClone(data); args.hydrate(data); args.onState({ canSave: true, canEdit: true }); return controller; } };
@@ -111,7 +111,7 @@ test("all quote rows use one-line inputs, six inline controls and live slot/defa
   data.presentation.battler.defaultIconUrl="default.png";
   data.presentation.battler.iconSlots[2]="third.png";
   data.presentation.battler.quotes.battleStart={ lines: [{text:"  雷アタック  ",iconSlot:null, opponentEno:null}] };
-  data.presentation.battler.quotes.skill.A.lines[0].iconSlot=4; // Empty slot retains its ID, shows default.
+  data.presentation.battler.quotes.skill.B.lines[0].iconSlot=4; // Empty slot retains its ID, shows default.
   page.hydrate(data);
   const rows=page.all().filter(e=>e.className==="quote-row");assert.equal(rows.length,14);
   assert.ok(rows.every(row=>!row.children.some(e=>e.tagName==="textarea")));
@@ -135,7 +135,7 @@ test("all quote rows use one-line inputs, six inline controls and live slot/defa
   imageInputs[1].value="new-default.png";imageInputs[1].handlers.input();assert.equal(picker.children[0].src,"new-default.png");
   picker.handlers.click();page.pick(null);assert.equal(picker.title,"デフォルトアイコン");assert.equal(picker.children[0].src,"new-default.png");
   const quote=page.latest().presentation.battler.quotes.battleStart.lines[0];assert.deepEqual(Object.keys(quote),["text","iconSlot","opponentEno"]);
-  assert.equal(quote.iconSlot,null);assert.equal(page.latest().presentation.schemaVersion,5);
+  assert.equal(quote.iconSlot,null);assert.equal(page.latest().presentation.schemaVersion,6);
 });
 test("late image callback from prior account cannot block the newly hydrated account", async () => {
   const page = await characterScreen(), old = page.all().find(el => el.tagName === "img" && el.onerror);
@@ -197,25 +197,25 @@ test("Duck cut-in editor merges sibling URLs, switches Ducks, and uses common C 
   const page=await characterScreen(),data=structuredClone(page.data),first=data.build.ducks[0];
   first.name="一羽目";first.cSelection={mode:"normal",structure:{kind:"flat",effects:[{effectId:"heal-self",options:{amount:"healAmount-30"}}]}};
   const second=createEmptyDuck();second.name="二羽目";data.build.ducks.push(second);
-  data.presentation.ducks={ [first.id]:{iconUrl:"first-icon.png",cutinUrl:"first-cutin.png",profile:createEmptyDuckProfile()},[second.id]:{iconUrl:"second-icon.png",cutinUrl:"second-cutin.png",profile:createEmptyDuckProfile()} };
+  data.presentation.ducks={ [first.id]:{iconUrl:"first-icon.png",cutinUrl:"first-cutin.png",quotes:createEmptyDuckQuotes(),profile:createEmptyDuckProfile()},[second.id]:{iconUrl:"second-icon.png",cutinUrl:"second-cutin.png",quotes:createEmptyDuckQuotes(),profile:createEmptyDuckProfile()} };
   const before=structuredClone(data.build);page.hydrate(data);assert.deepEqual(page.latest().build,before);
   const editors=page.get("duck-icon-editor").children;assert.equal(editors.length,2);
   assert.equal(editors[0].hidden,false);assert.equal(editors[1].hidden,true);
-  const [icon,cutin]=editors[0].children,description=cutin.children[1],field=cutin.children[2];
+  const icon=editors[0].children[1],cutin=editors[0].children[5],description=cutin.children[1],field=cutin.children[2];
   assert.equal(description.textContent,presentCSkill(first.cSelection).text);
-  assert.equal(field.className,"image-field cutin-field");assert.equal(field.children[0].tagName,"label");
+  assert.equal(field.className,"image-field cutin-field");assert.equal(field.children[0].className,"image-field-control");
   assert.equal(field.children[1].className,"preview cutin-preview");assert.equal(field.children[1].children.length,1); // no fallback
-  const cutinInput=field.children[0].children.find(e=>e.tagName==="input");
+  const cutinInput=descendants(field).find(e=>e.tagName==="input");
   cutinInput.value="new-cutin.png";cutinInput.handlers.input();
-  assert.deepEqual(page.latest().presentation.ducks[first.id],{iconUrl:"first-icon.png",cutinUrl:"new-cutin.png",profile:createEmptyDuckProfile()});
-  const iconInput=icon.children[1].children.find(e=>e.tagName==="input");iconInput.value="new-icon.png";iconInput.handlers.input();
-  assert.deepEqual(page.latest().presentation.ducks[first.id],{iconUrl:"new-icon.png",cutinUrl:"new-cutin.png",profile:createEmptyDuckProfile()});
+  assert.deepEqual(page.latest().presentation.ducks[first.id],{iconUrl:"first-icon.png",cutinUrl:"new-cutin.png",quotes:createEmptyDuckQuotes(),profile:createEmptyDuckProfile()});
+  const iconInput=descendants(icon).find(e=>e.tagName==="input");iconInput.value="new-icon.png";iconInput.handlers.input();
+  assert.deepEqual(page.latest().presentation.ducks[first.id],{iconUrl:"new-icon.png",cutinUrl:"new-cutin.png",quotes:createEmptyDuckQuotes(),profile:createEmptyDuckProfile()});
   assert.deepEqual(page.latest().presentation.ducks[second.id],data.presentation.ducks[second.id]);assert.deepEqual(page.latest().build,before);
   page.get("duck-select").value=second.id;page.get("duck-select").onchange();
   assert.equal(editors[0].hidden,true);assert.equal(editors[1].hidden,false);
-  assert.equal(editors[1].children[1].children[1].textContent,"Cスキル未設定");
+  assert.equal(editors[1].children[5].children[1].textContent,"Cスキル未設定");
   data.build.ducks[0].cSelection={mode:"normal",structure:{kind:"flat",effects:[null]}};page.hydrate(data);
-  assert.equal(page.get("duck-icon-editor").children[0].children[1].children[1].textContent,"Cスキル設定未完了");
+  assert.equal(page.get("duck-icon-editor").children[0].children[5].children[1].textContent,"Cスキル設定未完了");
   assert.deepEqual(page.latest().build,data.build);
 });
 
@@ -227,7 +227,7 @@ test("editing a new Duck image creates a complete v2 display and preserves detac
   const fields=page.all().filter(e=>e.tagName==='input'&&e.type==='url');
   fields[12].value='new.png';fields[12].handlers.input();
   const display=page.latest().presentation.ducks[id];
-  assert.deepEqual(display,{iconUrl:'new.png',cutinUrl:'',profile:createEmptyDuckProfile()});
+  assert.deepEqual(display,{iconUrl:'new.png',cutinUrl:'',quotes:createEmptyDuckQuotes(),profile:createEmptyDuckProfile()});
   assert.equal(page.latest().presentation.ducks.orphan.profile.text,'保持する本文');
   assert.doesNotThrow(()=>encodeOnlinePlayer(page.latest()));
 });
@@ -380,7 +380,7 @@ test('profile edits preserve all images, quotes, theme, featured battle and othe
  const page=await profileScreen(),data=structuredClone(page.latest()),id=data.build.ducks[0].id;
  data.presentation.battler.standingImageUrl='standing.png';data.presentation.battler.defaultIconUrl='default.png';data.presentation.battler.iconSlots[3]='slot.png';
  data.presentation.battler.quotes.battleStart.lines[0].text=' quote ';
- data.presentation.ducks[id]={iconUrl:'duck.png',cutinUrl:'cutin.png',profile:createEmptyDuckProfile()};
+ data.presentation.ducks[id]={iconUrl:'duck.png',cutinUrl:'cutin.png',quotes:createEmptyDuckQuotes(),profile:createEmptyDuckProfile()};
  page.hydrate(data);
  for(const image of page.all().filter(e=>e.tagName==='img'&&e.onload)){image.naturalWidth=20;image.naturalHeight=20;image.onload();}
  inputValue(battlerText(page),'Battler');inputValue(aria(duckRoot(page),'アヒルプロフィール'),'Duck');
@@ -483,4 +483,25 @@ test('message input and tail use dirty/save validation and preserve sibling data
  assert.equal(aria(page.get('battler-profile'),'プロフィールメッセージ').value,input.value);
  const loaded=aria(page.get('battler-profile'),'吹き出しとして表示する');assert.equal(loaded.checked,true);
  loaded.checked=false;loaded.handlers.change();await page.save();assert.equal(page.saved().presentation.battler.profile.messageTail,false);
+});
+
+test('Duck A/C order, switching, extra ENo/icon controls, validation and rehydration',async()=>{
+ const page=await profileScreen(),before=structuredClone(page.latest()),ids=before.build.ducks.map(d=>d.id);
+ const root=duckRoot(page),a=aria(root,'Aスキルセリフ Aのセリフ'),c=aria(root,'Cスキルセリフ Cのセリフ');
+ assert.equal(root.children[1].className,'image-field');assert.equal(root.children[2].className,'duck-profile');
+ assert.ok(descendants(root.children[3]).includes(a));assert.ok(descendants(root.children[4]).includes(c));assert.equal(root.children[5].className,'duck-cutin');
+ assert.equal(aria(page.get('quotes'),'スキル発動 Aのセリフ'),undefined);assert.equal(aria(page.get('quotes'),'スキル発動 Cのセリフ'),undefined);
+ inputValue(a,'first A');inputValue(c,'first C');
+ const toggle=aria(root,'Aスキルセリフ Aの追加セリフ');toggle.handlers.click();
+ const texts=descendants(root).filter(e=>e.attributes['aria-label']==='Aスキルセリフ Aのセリフ');inputValue(texts[1],'<b>extra</b>');
+ const eno=aria(root,'Aスキルセリフ Aの対象ENo');inputValue(eno,'01');assert.equal(page.get('save').disabled,true);inputValue(eno,'15');
+ const pickers=descendants(root.children[3]).filter(e=>e.className==='quote-picker');pickers[1].handlers.click();page.pick(10);
+ assert.equal(page.latest().presentation.ducks[ids[0]].quotes.skill.A.lines[1].iconSlot,10);
+ page.get('duck-select').value=ids[1];page.get('duck-select').onchange();assert.equal(root.hidden,true);assert.equal(duckRoot(page,1).hidden,false);
+ inputValue(aria(duckRoot(page,1),'Aスキルセリフ Aのセリフ'),'second A');
+ inputValue(c,'😀'.repeat(201));assert.equal(page.get('save').disabled,true);await page.save();assert.equal(page.saved(),undefined);
+ inputValue(c,'first C');await page.save();assert.deepEqual(page.saved().presentation.battler,before.presentation.battler);
+ page.hydrate(page.saved());assert.equal(aria(duckRoot(page),'Aスキルセリフ Aのセリフ').value,'first A');assert.equal(aria(duckRoot(page,1),'Aスキルセリフ Aのセリフ').value,'second A');
+ const first=page.saved().presentation.ducks[ids[0]].quotes;assert.deepEqual(first.skill.A.lines[1],{text:'<b>extra</b>',iconSlot:10,opponentEno:'15'});
+ assert.equal(page.saved().presentation.ducks.orphan.profile.text,'detached');
 });

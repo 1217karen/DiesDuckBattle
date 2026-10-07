@@ -1,5 +1,22 @@
 # オンライン保存層と戦闘・表示設定の画面接続
 
+## Presentation v6（現行）
+
+Battler共通セリフは `presentation.battler.quotes`、Duck固有A/Cは
+`presentation.ducks[id].quotes.skill.A/C` に保存する。Duck DTOでは既存の
+`ducks.presentation.icon` 内に画像・profile・quotesをまとめる。追加列は不要。
+
+v1〜v5は元の形をstrict検証してから、旧Battler A/Cをbuild Duck（表示未登録も含む）と
+既存detached Duckへ独立コピーする。読み込みはDBへ書き戻さず、次回保存でv6になる。
+新規Duckは空A/Cを持ち、削除時にはそのDuckの表示情報全体を削除する。
+
+戦闘snapshotの `quotes.skill.A/B/C/D` は維持し、選択DuckのA/CとBattlerのB/Dを合成する。
+セリフアイコンは引き続きBattlerのデフォルト／追加枠を使用する。
+公開対戦RPCは公開Duckの基本A/Cだけを既存v1投影へ合成し、他Duck・追加行・ENoを公開しない。
+公開プロフィールv2とキャラ一覧はセリフを返さない。RLS・ACL・関数の実行権限は維持する。
+
+以下は導入時の保存設計と運用履歴。
+
 setting.html / character.htmlからオンライン保存APIへ接続済みです。既存localStorage層とそのデータは変更しません。
 ブラウザの既存Supabase clientを `createOnlinePlayerStorage(client)` に渡します。publishable key＋sessionのみで動作します。
 authRuntimeの `getSupabaseClient()` が、認証とオンライン編集に同じclientを渡します。

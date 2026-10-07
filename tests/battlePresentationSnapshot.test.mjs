@@ -1,14 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildBattlePresentationSnapshot } from "../js/battlePresentationSnapshot.js";
-import { createEmptyPlayerPresentation } from "../js/playerPresentationModel.js";
+import { createEmptyDuckPresentation, createEmptyPlayerPresentation } from "../js/playerPresentationModel.js";
 
 function fixture() {
   const value = createEmptyPlayerPresentation();
   value.battler.defaultIconUrl = "https://example.com/default.png";
   value.battler.iconSlots[2] = "https://example.com/third.png";
   value.battler.standingImageUrl = "https://example.com/standing.png";
-  value.ducks.first = { iconUrl: "https://example.com/first-duck.png" };
+  value.ducks.first = { ...createEmptyDuckPresentation(), iconUrl: "https://example.com/first-duck.png" };
   value.ducks.second = { iconUrl: "https://example.com/second-duck.png" };
   return value;
 }
@@ -34,7 +34,7 @@ const at = (value, path) => path.reduce((node, key) => node[key], value);
 
 test("all 14 quotes retain text and resolve slot 3 to iconSlots[2]", () => {
   const value = fixture();
-  for (const path of paths) Object.assign(at(value.battler.quotes, path).lines[0], { text: `セリフ ${path.join(".")}`, iconSlot: 3 });
+  for (const path of paths) Object.assign(at(path[0]==="skill" && ["A","C"].includes(path[1]) ? value.ducks.first.quotes : value.battler.quotes, path).lines[0], { text: `セリフ ${path.join(".")}`, iconSlot: 3 });
   const before = structuredClone(value);
   const snapshot = buildBattlePresentationSnapshot(value, "first");
   for (const path of paths) assert.deepEqual(at(snapshot.quotes, path), {

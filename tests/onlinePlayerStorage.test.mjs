@@ -1,4 +1,6 @@
-import { QUOTE_PATHS } from "../js/playerPresentationModel.js";
+import { legacyQuoteOwnership, legacyDtoQuoteOwnership } from './legacyPresentationFixture.mjs';
+import { createEmptyDuckQuotes } from "../js/playerPresentationModel.js";
+import { LEGACY_QUOTE_PATHS as QUOTE_PATHS } from "../js/playerPresentationModel.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createEmptyPlayerBuild, createEmptyDuck } from "../js/playerBuildModel.js";
@@ -29,7 +31,7 @@ test("lossless draft DTO includes incomplete selections, duplicate names, dice, 
   d.stats.AT=-1;d.dice=[6,6,0,-1,2,3];data.build.ducks.push(d);data.build.battler.bSelection={type:null};
   data.presentation.battler.standingImageUrl="https://example.invalid/full.png";
   data.presentation.battler.iconSlots[9]="slot10";data.presentation.battler.quotes.battleStart={ lines: [{text:"hello",iconSlot:10, opponentEno:null}] };
-  data.presentation.ducks[duckId]={ iconUrl:"duck",cutinUrl:"cutin", profile:createEmptyDuckProfile() };data.presentation.ducks.orphan={ iconUrl:"still preserved",cutinUrl:"private-cutin", profile:createEmptyDuckProfile() };
+  data.presentation.ducks[duckId]={ iconUrl:"duck",cutinUrl:"cutin", quotes:createEmptyDuckQuotes(),profile:createEmptyDuckProfile() };data.presentation.ducks.orphan={ iconUrl:"still preserved",cutinUrl:"private-cutin", quotes:createEmptyDuckQuotes(),profile:createEmptyDuckProfile() };
   data.publicSettings.publicDuckId=duckId;
   const dto=encodeOnlinePlayer(data);assert.deepEqual(decodeOnlinePlayer(dto),data);
   dto.ducks[0].build.stats.AT=99;assert.equal(data.build.ducks[0].stats.AT,-1);
@@ -76,16 +78,18 @@ test("session changes during a load discard the returned data",async()=>{
 
 test("legacy v1 icon-only online data migrates to v2 with empty cut-ins and unchanged selections",()=>{
   const data=empty();data.build.ducks.push(createEmptyDuck({idFactory:()=>duckId}));
+  legacyQuoteOwnership(data.presentation);
   for (const path of QUOTE_PATHS) { const p=path.slice(0,-1).reduce((v,k)=>v[k],data.presentation.battler.quotes); p[path.at(-1)]={text:"",iconSlot:null}; }
   data.presentation.schemaVersion=1;delete data.presentation.battler.profile;
   data.presentation.ducks[duckId]={iconUrl:"old.png"};data.presentation.ducks.orphan={iconUrl:"private-old.png"};
   const before=structuredClone(data),dto=encodeOnlinePlayer(data);
+  legacyDtoQuoteOwnership(dto);
   for (const path of QUOTE_PATHS) { const p=path.slice(0,-1).reduce((v,k)=>v[k],dto.battler.presentation.quotes); p[path.at(-1)]={text:"",iconSlot:null}; }
   dto.battler.presentation.schemaVersion=1;delete dto.battler.presentation.profile;
   dto.ducks[0].presentation.schemaVersion=1;delete dto.ducks[0].presentation.icon.profile;delete dto.battler.presentation.detachedDuckPresentation.orphan.profile;
   delete dto.ducks[0].presentation.icon.cutinUrl;delete dto.battler.presentation.detachedDuckPresentation.orphan.cutinUrl;
   const read=decodeOnlinePlayer(dto);
-  assert.equal(read.presentation.schemaVersion,5);assert.equal(read.presentation.ducks[duckId].cutinUrl,"");
+  assert.equal(read.presentation.schemaVersion,6);assert.equal(read.presentation.ducks[duckId].cutinUrl,"");
   assert.equal(read.presentation.ducks.orphan.cutinUrl,"");assert.deepEqual(read.build,data.build);assert.deepEqual(data,before);
   for(const value of [5,null,{url:"bad"}]){
     const bad=structuredClone(dto);bad.ducks[0].presentation.icon.cutinUrl=value;assert.throws(()=>decodeOnlinePlayer(bad));
@@ -95,8 +99,8 @@ test("legacy v1 icon-only online data migrates to v2 with empty cut-ins and unch
 test("online storage save/load round-trips cut-ins including detached private display data",async()=>{
   const f=fixture();const loaded=await f.storage.load();const data=loaded.data;
   data.build.ducks.push(createEmptyDuck({idFactory:()=>duckId}));
-  data.presentation.ducks[duckId]={ iconUrl:"duck.png",cutinUrl:"cutin.png", profile:createEmptyDuckProfile() };
-  data.presentation.ducks.orphan={ iconUrl:"orphan.png",cutinUrl:"private.png", profile:createEmptyDuckProfile() };
+  data.presentation.ducks[duckId]={ iconUrl:"duck.png",cutinUrl:"cutin.png", quotes:createEmptyDuckQuotes(),profile:createEmptyDuckProfile() };
+  data.presentation.ducks.orphan={ iconUrl:"orphan.png",cutinUrl:"private.png", quotes:createEmptyDuckQuotes(),profile:createEmptyDuckProfile() };
   data.presentation.battler.profile.text='保存する本文';
   data.presentation.battler.profile.iconSlots=[1,10];
   data.presentation.ducks[duckId].profile.type='speed';

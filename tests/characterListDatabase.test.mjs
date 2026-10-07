@@ -27,6 +27,7 @@ test('character list privacy, record atomicity, backfill and ACL in local Postgr
  await asUser(user);for(let i=0;i<3;i++)await save();await save('manual');await save();await save();await save('random','draw');await save();await save('random','P2_win');
  await db.exec('reset role');await db.exec(await readFile(new URL('../supabase/migrations/'+migration,import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../supabase/migrations/20261007111246_profile_message.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/20261007135040_duck_skill_quotes.sql',import.meta.url),'utf8'));
  const best=async(id=a)=>{await db.exec('reset role');return value('select best_random_win_streak data from public.game_account_records where game_account_id=$1',[id]);};
  const list=async()=>{await asUser(user);return decodeOnlineCharacters(await value('select public.list_online_characters() data'));};
  await t.test('backfill separates manual/draw/loss, defaults zero and includes registration/self/no public Duck',async()=>{
@@ -57,8 +58,8 @@ test('character list privacy, record atomicity, backfill and ACL in local Postgr
  assert.doesNotMatch(JSON.stringify(rows),/SECRET|cutin|skills|stats|flavorStats|detached|accountId|background|showBestStreak/);
  await db.exec('reset role');await db.query("update public.battlers set presentation=jsonb_set(presentation,'{profile,showBestStreak}','true') where game_account_id=$1",[a]);assert.equal((await list())[0].bestStreak,4);
  });
- await t.test('v4 and v5 preserve the same explicit best streak privacy',async()=>{
- for(const version of [4,5])for(const visible of [true,false,null,'true']){
+ await t.test('v4-v6 preserve the same explicit best streak privacy',async()=>{
+ for(const version of [4,5,6])for(const visible of [true,false,null,'true']){
   await db.exec('reset role');
   await db.query("update public.battlers set presentation=jsonb_set(jsonb_set(presentation,'{schemaVersion}',$2::jsonb),'{profile,showBestStreak}',$3::jsonb) where game_account_id=$1",[a,String(version),JSON.stringify(visible)]);
   assert.equal((await list())[0].bestStreak,visible===true?4:null);

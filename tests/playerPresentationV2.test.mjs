@@ -1,6 +1,8 @@
+import { legacyDtoQuoteOwnership } from './legacyPresentationFixture.mjs';
+import { createEmptyDuckQuotes } from "../js/playerPresentationModel.js";
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createEmptyPlayerPresentation, createEmptyBattlerProfile, createEmptyDuckProfile, normalizePlayerPresentation, QUOTE_PATHS } from '../js/playerPresentationModel.js';
+import { createEmptyPlayerPresentation, createEmptyBattlerProfile, createEmptyDuckProfile, normalizePlayerPresentation, LEGACY_QUOTE_PATHS as QUOTE_PATHS } from '../js/playerPresentationModel.js';
 import { encodeOnlinePlayer, decodeOnlinePlayer, migrateOnlinePlayerPresentation } from '../js/onlinePlayerDto.js';
 import { buildBattlePresentationSnapshot } from '../js/battlePresentationSnapshot.js';
 import { player, a, da } from './onlineSelectFixture.mjs';
@@ -10,12 +12,12 @@ const populated = async () => {
   data.presentation.battler.profile = { text:'  [b]本文[/b]\n'.repeat(10), iconSlots:[1,3,7,10],
     theme:{background:'#abcdef',panel:'#123456',text:'#fedcba',accent:'#ABCDEF'}, featuredBattleId:da,message:"",messageTail:false,showBestStreak:true };
   data.presentation.ducks[da].profile = {text:'Duck本文',type:'technical',attributes:['炎','😀',''],statLabelPreset:'hiragana',flavorStats:[{label:'食欲',value:0},{label:'',value:6}]};
-  data.presentation.ducks.detached = {iconUrl:'',cutinUrl:'private',profile:{...createEmptyDuckProfile(),text:'独立',type:'heal'}};
+  data.presentation.ducks.detached = {iconUrl:'',cutinUrl:'private',quotes:createEmptyDuckQuotes(),profile:{...createEmptyDuckProfile(),text:'独立',type:'heal'}};
   return data;
 };
 
 test('v2 complete defaults and independently allocated profiles', () => {
-  const p=createEmptyPlayerPresentation();assert.equal(p.schemaVersion,5);
+  const p=createEmptyPlayerPresentation();assert.equal(p.schemaVersion,6);
   assert.deepEqual(p.battler.profile,{text:'',iconSlots:[],theme:{background:'#DCEEF3',panel:'#FFFFFF',text:'#20282C',accent:'#4F91B3'},featuredBattleId:null,message:"",messageTail:false,showBestStreak:true});
   const n=normalizePlayerPresentation({ducks:{a:{},b:{}}});
   assert.deepEqual(n.ducks.a.profile,{text:'',type:null,attributes:['','',''],statLabelPreset:'default',flavorStats:[]});
@@ -26,7 +28,7 @@ test('v2 complete defaults and independently allocated profiles', () => {
 test('v1 explicit migration preserves every display field; next save is v2',async()=>{
   const data=await populated();data.presentation.battler.standingImageUrl='standing';
   data.presentation.battler.iconSlots=Array.from({length:10},(_,i)=>String(i));
-  const dto=encodeOnlinePlayer(data);dto.battler.presentation.schemaVersion=1;delete dto.battler.presentation.profile;
+  const dto=encodeOnlinePlayer(data);legacyDtoQuoteOwnership(dto);dto.battler.presentation.schemaVersion=1;delete dto.battler.presentation.profile;
   for(const d of dto.ducks){d.presentation.schemaVersion=1;delete d.presentation.icon.profile;}
   for(const d of Object.values(dto.battler.presentation.detachedDuckPresentation))delete d.profile;
   for (const path of QUOTE_PATHS) {
@@ -34,10 +36,10 @@ test('v1 explicit migration preserves every display field; next save is v2',asyn
     parent[path.at(-1)]={text:line.text,iconSlot:line.iconSlot};
   }
   const before=structuredClone(dto),loaded=decodeOnlinePlayer(dto);
-  assert.deepEqual(dto,before);assert.equal(loaded.presentation.schemaVersion,5);
+  assert.deepEqual(dto,before);assert.equal(loaded.presentation.schemaVersion,6);
   const expected=structuredClone(data);expected.presentation.battler.profile=createEmptyBattlerProfile();
   for(const d of Object.values(expected.presentation.ducks))d.profile=createEmptyDuckProfile();
-  assert.deepEqual(loaded,expected);assert.equal(encodeOnlinePlayer(loaded).battler.presentation.schemaVersion,5);
+  assert.deepEqual(loaded,expected);assert.equal(encodeOnlinePlayer(loaded).battler.presentation.schemaVersion,6);
 });
 
 test('v2 lossless roundtrip includes detached profile, empty selected URLs and no shared objects',async()=>{
@@ -72,7 +74,7 @@ for(const [kind,mutations] of [['battler',badBattler],['duck',badDuck]])for(cons
 }
 
 test('strict versions, nested unknowns, missing v2 profile and legacy unknowns never normalize away',async()=>{
- for(const version of [0,6,99,'2',null]){const data=await populated();data.presentation.schemaVersion=version;assert.throws(()=>encodeOnlinePlayer(data));}
+ for(const version of [0,7,99,'2',null]){const data=await populated();data.presentation.schemaVersion=version;assert.throws(()=>encodeOnlinePlayer(data));}
  for(const mutate of [d=>d.battler.presentation.schemaVersion=99,d=>d.ducks[0].presentation.schemaVersion=99,
   d=>delete d.battler.presentation.profile,d=>delete d.ducks[0].presentation.icon.profile,
   d=>d.battler.presentation.detachedDuckPresentation.detached.profile.unknown=1,

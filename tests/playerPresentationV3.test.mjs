@@ -1,6 +1,7 @@
+import { legacyQuoteOwnership } from './legacyPresentationFixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PLAYER_PRESENTATION_SCHEMA_VERSION, QUOTE_PATHS, QUOTE_TEXT_MAX, createEmptyPlayerPresentation, presentationForPersistence } from '../js/playerPresentationModel.js';
+import { PLAYER_PRESENTATION_SCHEMA_VERSION, LEGACY_QUOTE_PATHS, QUOTE_PATHS, QUOTE_TEXT_MAX, createEmptyPlayerPresentation, presentationForPersistence } from '../js/playerPresentationModel.js';
 import { migrateOnlinePlayerPresentation, encodeOnlinePlayer, decodeOnlinePlayer } from '../js/onlinePlayerDto.js';
 import { buildBattlePresentationSnapshot } from '../js/battlePresentationSnapshot.js';
 import { createQuoteEnoLookup } from '../js/quoteEnoLookup.js';
@@ -9,13 +10,13 @@ const at=(p,path)=>path.reduce((v,k)=>v[k],p.battler.quotes);
 const extra=(text='extra',opponentEno='15')=>({text,iconSlot:10,opponentEno});
 
 test('v3 defaults: all timings have independent primary lines with null ENo',()=>{
- assert.equal(PLAYER_PRESENTATION_SCHEMA_VERSION,5);assert.equal(QUOTE_TEXT_MAX,200);
+ assert.equal(PLAYER_PRESENTATION_SCHEMA_VERSION,6);assert.equal(QUOTE_TEXT_MAX,200);
  const p=createEmptyPlayerPresentation();for(const path of QUOTE_PATHS)assert.deepEqual(at(p,path),{lines:[{text:'',iconSlot:null,opponentEno:null}]});
  at(p,QUOTE_PATHS[0]).lines[0].text='change';assert.equal(at(p,QUOTE_PATHS[1]).lines[0].text,'');
 });
 for(const version of [1,2])test(`v${version} strictly migrates every text/icon without truncation or profile loss`,async()=>{
- const {data}=await player(a,'1',da);const p=data.presentation;p.schemaVersion=version;delete p.battler.profile.showBestStreak;delete p.battler.profile.message;delete p.battler.profile.messageTail;
- for(const [i,path] of QUOTE_PATHS.entries()){
+ const {data}=await player(a,'1',da);const p=data.presentation;legacyQuoteOwnership(p);p.schemaVersion=version;delete p.battler.profile.showBestStreak;delete p.battler.profile.message;delete p.battler.profile.messageTail;
+ for(const [i,path] of LEGACY_QUOTE_PATHS.entries()){
   const parent=path.slice(0,-1).reduce((v,k)=>v[k],p.battler.quotes);
   parent[path.at(-1)]={text:' <b>😀</b>\n'.repeat(30)+i,iconSlot:i%10+1};
  }
@@ -23,8 +24,8 @@ for(const version of [1,2])test(`v${version} strictly migrates every text/icon w
  else{p.battler.profile.text='profile';p.ducks[da].profile.text='Duck';}
  const before=structuredClone(p),m=migrateOnlinePlayerPresentation(p);assert.deepEqual(p,before);
  for(const path of QUOTE_PATHS){const old=at(p,path);assert.deepEqual(at(m,path).lines,[{...old,opponentEno:null}]);}
- if(version===2){assert.deepEqual(m.battler.profile,{...p.battler.profile,message:"",messageTail:false,showBestStreak:true});assert.deepEqual(m.ducks,p.ducks);}
- const valid=structuredClone(p);for(const path of QUOTE_PATHS)at(valid,path).text='valid';
+ if(version===2){assert.deepEqual(m.battler.profile,{...p.battler.profile,message:"",messageTail:false,showBestStreak:true});for(const [id,d] of Object.entries(p.ducks)){const {quotes,...display}=m.ducks[id];assert.deepEqual(display,d);for(const category of ['A','C'])assert.deepEqual(quotes.skill[category].lines,[{...p.battler.quotes.skill[category],opponentEno:null}]);}}
+ const valid=structuredClone(p);for(const path of LEGACY_QUOTE_PATHS)at(valid,path).text='valid';
  const dto=encodeOnlinePlayer({...data,presentation:valid});
  dto.battler.presentation={...dto.battler.presentation,...p.battler,schemaVersion:version};
  if(version===1)delete dto.battler.presentation.profile;
@@ -51,7 +52,7 @@ test('exact 200 code points and tags, max bigint, whitespace, empty pruning and 
  const {data}=await player(a,'1',da);const p=data.presentation;
  for(const path of QUOTE_PATHS)at(p,path).lines=[{text:'😀'.repeat(200),iconSlot:1,opponentEno:null},extra('',null),extra(' ',null),extra('\n','9223372036854775807'),extra('<b>'+'a'.repeat(193)+'</b>')];
  const before=structuredClone(p),encoded=encodeOnlinePlayer(data),loaded=decodeOnlinePlayer(encoded);
- assert.deepEqual(p,before);assert.equal(encoded.battler.presentation.schemaVersion,5);assert.equal(encoded.ducks[0].presentation.schemaVersion,5);
+ assert.deepEqual(p,before);assert.equal(encoded.battler.presentation.schemaVersion,6);assert.equal(encoded.ducks[0].presentation.schemaVersion,6);
  assert.deepEqual(loaded.presentation,presentationForPersistence(p));
  for(const path of QUOTE_PATHS)assert.equal(at(loaded.presentation,path).lines.length,4);
  const snap=buildBattlePresentationSnapshot(p,da);
