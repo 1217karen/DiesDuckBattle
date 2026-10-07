@@ -74,7 +74,7 @@ export function createOnlineSelectController({ service, results = createBattleRe
     cancelSelection() { if (["list", "opponent"].includes(busy)) { generation++; busy = ""; emit(); } },
     load: () => task("load", async current => {
       const loaded = await service.loadSelf(); if (!current()) return { ok: false, status: "stale" };
-      if (!loaded.ok) return fail(loaded); install(loaded); randomWinStreak = null;
+      if (!loaded.ok) return fail(loaded); install(loaded, loaded.data.publicSettings.publicDuckId); randomWinStreak = null;
       const streak = await refreshStreak(current); return streak.ok ? loaded : streak;
     }),
     chooseOwn(id) { if (!busy && base && !blocked) { state = selectOwnDuck(state, id); emit(); } },

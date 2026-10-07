@@ -74,7 +74,7 @@ test("UI consumes source contract, not fixture data; runner invokes compiler for
 test("VS snapshots latest online presentation before engine execution, detached from later changes", async () => {
   const {state,opponent}=await setup();
   const current={battler:{defaultIconUrl:"current.png",iconSlots:["third.png"],quotes:{battleStart:{text:"開始",iconSlot:1}}},ducks:{"self-duck":{iconUrl:"selected.png"}}};
-  const loaded={ok:true,account:{id:state.self.id,eno:"88"},authUserId:"auth-A",data:{build:state.build,presentation:current,battlerName:"DB名"}};
+  const loaded={ok:true,account:{id:state.self.id,eno:"88"},authUserId:"auth-A",data:{publicSettings:{schemaVersion:1,publicDuckId:null},build:state.build,presentation:current,battlerName:"DB名"}};
   const expectedP1=buildBattlePresentationSnapshot(current,"self-duck"),expectedP2=buildBattlePresentationSnapshot(opponent.presentation,opponent.publicDuckId);
   const results=createBattleResultStorage(battleResultRpcFixture("vs-1"));
   let latestBattle;

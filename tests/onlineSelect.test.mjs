@@ -21,6 +21,45 @@ async function setup(options={}) {
   return {...f,service,c,results};
 }
 async function ready(f) {assert.equal((await f.c.load()).ok,true);f.c.chooseOwn(da);assert.equal((await f.c.chooseOpponent(b)).ok,true);}
+test('initial load selects the ready public Duck without changing or saving player data',async()=>{
+  const f=await setup(), before=structuredClone(f.rows);
+  const loaded=await f.c.load();
+  assert.equal(loaded.ok,true);assert.equal(f.c.snapshot().state.selectedDuckId,da);
+  assert.equal(loaded.data.publicSettings.publicDuckId,da);
+  assert.deepEqual(f.rows,before);
+  assert.deepEqual(f.calls.map(([name])=>name),['load_online_player','get_online_random_win_streak']);
+});
+for(const kind of ['incomplete','invalid','missing','unset'])test('initial public Duck selection has no fallback: '+kind,async()=>{
+  const f=await setup(), loaded=await f.service.loadSelf();
+  const alternative=structuredClone(loaded.data.build.ducks[0]);alternative.id=privateDuck;
+  loaded.data.build.ducks.push(alternative);
+  if(kind==='incomplete')loaded.data.build.ducks[0].aSelection=null;
+  if(kind==='invalid')loaded.data.build.ducks[0].stats.AT=100;
+  if(kind==='missing')loaded.data.publicSettings.publicDuckId=db;
+  if(kind==='unset')loaded.data.publicSettings.publicDuckId=null;
+  const before=structuredClone(loaded), persisted=structuredClone(f.rows);
+  // Exercise the controller boundary, including stale IDs rejected by the persistence decoder.
+  const c=createOnlineSelectController({service:{
+    loadSelf:async()=>loaded,
+    getRandomWinStreak:async()=>({ok:true,randomWinStreak:0}),
+  }});
+  assert.equal((await c.load()).ok,true);assert.equal(c.snapshot().state.selectedDuckId,null);
+  c.chooseOwn(privateDuck);assert.equal(c.snapshot().state.selectedDuckId,privateDuck);
+  assert.deepEqual(loaded,before);assert.deepEqual(f.rows,persisted);
+});
+test('manual selection overrides the public Duck and survives fresh battle preparation',async()=>{
+  const f=await setup(), row=f.rows.get(a), alternative=structuredClone(row.ducks[0]);
+  alternative.id=privateDuck;row.ducks.push(alternative);
+  const before=structuredClone(row);
+  assert.equal((await f.c.load()).ok,true);assert.equal(f.c.snapshot().state.selectedDuckId,da);
+  f.c.chooseOwn(privateDuck);assert.equal(f.c.snapshot().state.selectedDuckId,privateDuck);
+  assert.equal((await f.c.chooseOpponent(b)).ok,true);
+  assert.equal((await f.c.start()).ok,true);
+  assert.equal(f.c.snapshot().state.selectedDuckId,privateDuck);
+  assert.equal((await f.results.load('online-test')).record.p1.duckId,privateDuck);
+  assert.equal(f.calls.filter(([name])=>name==='prepare_online_battle').length,1);
+  assert.deepEqual(row,before);assert.equal(row.publicDuckId,da);
+});
 for(const [kind,status] of [['logout','not-signed-in'],['zero','no-access'],['multiple','selection-required']])test('SELECT blocks '+kind,async()=>{
   const f=await setup();if(kind==='logout')f.user(null);else f.access(kind==='zero'?[]:[a,b]);
   assert.equal((await f.c.load()).status,status);assert.equal(f.c.snapshot().canStart,false);assert.equal(f.calls.length,0);
