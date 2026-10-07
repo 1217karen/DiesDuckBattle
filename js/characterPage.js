@@ -104,7 +104,8 @@ function makePreview(kind, onValidation, className = "", fallback = FIXED_IMAGES
 function makeImageField({ label, prefix = "", value, kind = "icon", previewClass = "", compact = false, fallback = kind === "standing" ? FIXED_IMAGES.battlerStanding : FIXED_IMAGES.battlerIcon, onInput }) {
   const version = dataVersion;
   const root = document.createElement("div"); root.className = `image-field${compact ? " compact" : ""}${kind === "cutin" ? " cutin-field" : ""}`;
-const field = document.createElement("label");
+const field = document.createElement("div");
+field.className = "image-field-control";
 const inputRow = document.createElement("div");
 inputRow.className = "image-input-row";
 
