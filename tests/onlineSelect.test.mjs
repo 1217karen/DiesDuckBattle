@@ -21,6 +21,14 @@ async function setup(options={}) {
   return {...f,service,c,results};
 }
 async function ready(f) {assert.equal((await f.c.load()).ok,true);f.c.chooseOwn(da);assert.equal((await f.c.chooseOpponent(b)).ok,true);}
+test('opponent list computes readiness from public build and keeps incomplete opponents visible',async()=>{
+  const f=await setup();await f.c.load();
+  assert.equal((await f.c.listOpponents()).opponents[0].ready,true);
+  f.rows.get(b).ducks[0].build.aSelection=null;
+  const listed=await f.c.listOpponents();assert.equal(listed.ok,true);assert.equal(listed.opponents.length,1);
+  assert.equal(listed.opponents[0].ready,false);assert.deepEqual(listed.opponents[0].reasons,[]);
+  assert.equal((await f.c.chooseOpponent(b)).status,'not-ready');assert.equal(f.c.snapshot().state.opponent,null);
+});
 test('initial load selects the ready public Duck without changing or saving player data',async()=>{
   const f=await setup(), before=structuredClone(f.rows);
   const loaded=await f.c.load();
@@ -84,7 +92,7 @@ test('opponent list validates the default icon URL and returns only list fields'
   const f=await setup(); await f.c.load();
   let listed=await f.c.listOpponents();
   assert.equal(listed.opponents[0].defaultIconUrl,'https://example.invalid/89.png');
-  assert.deepEqual(Object.keys(listed.opponents[0]).sort(),['defaultIconUrl','eno','id','name','publicDuckId']);
+  assert.deepEqual(Object.keys(listed.opponents[0]).sort(),['defaultIconUrl','eno','id','name','publicDuckId','ready','reasons']);
   for(const value of ['',null,undefined]) {
     f.rows.get(b).battler.presentation.defaultIconUrl=value;
     listed=await f.c.listOpponents(); assert.equal(listed.ok,true); assert.equal(listed.opponents[0].defaultIconUrl,'');

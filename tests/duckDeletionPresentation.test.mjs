@@ -20,10 +20,13 @@ function initial() {
  presentation.ducks[b]={...emptyDisplay(),iconUrl:'other',profile:{...createEmptyDuckProfile(),text:'other profile'}};
  presentation.ducks[a].quotes.skill.A.lines[0].text='delete A';presentation.ducks[a].quotes.skill.C.lines.push({text:'delete C extra',iconSlot:10,opponentEno:'15'});
  presentation.ducks.orphan={...emptyDisplay(),profile:{...createEmptyDuckProfile(),text:'detached'}};
- return {build,presentation,publicSettings:{schemaVersion:1,publicDuckId:a},battlerName:'Battler'};
+ return {build,presentation,publicSettings:{schemaVersion:1,publicDuckId:b},battlerName:'Battler'};
 }
 function database(data) {
- let row={...encodeOnlinePlayer(data),gameAccountId:account,eno:'7',revision:'0'};
+ const seed=clone(data);
+ // Simulate historical unpublished rows without allowing the normal encoder to save them.
+ if(seed.build.ducks.length && seed.publicSettings.publicDuckId===null)seed.publicSettings.publicDuckId=seed.build.ducks[0].id;
+ let row={...encodeOnlinePlayer(seed),publicDuckId:data.publicSettings.publicDuckId,gameAccountId:account,eno:'7',revision:'0'};
  const calls=[];
  const client={auth:{getSession:async()=>({data:{session:{user:{id:'auth'}}}})},
   from:()=>({select:()=>({eq:async()=>({data:[{game_account_id:account,game_accounts:{eno:'7'}}]})})}),
@@ -72,9 +75,14 @@ async function page(data=initial()) {
 }
 
 for(const published of [false,true])for(const kind of ['missing','empty','populated'])test(`delete confirmation ${published}/${kind}; cancel is inert and confirm is one atomic edit`,async()=>{
- const data=initial();if(!published)data.publicSettings.publicDuckId=b;
+ const data=initial();data.publicSettings.publicDuckId=published?a:b;
  if(kind==='missing')delete data.presentation.ducks[a];if(kind==='empty')data.presentation.ducks[a]=emptyDisplay();
  const p=await page(data),before=p.controller.snapshot().draft;
+ if(published) {
+  assert.equal(p.button('削除',p.get('duck-editor')).disabled,true);
+  assert.match(p.button('削除',p.get('duck-editor')).title,/公開中/);
+  assert.equal(p.openDelete(),undefined);assert.deepEqual(p.controller.snapshot().draft,before);return;
+ }
  const message=p.openDelete().textContent;
  assert.equal(message.includes('プロフィール情報・A/Cセリフも削除'),kind==='populated');assert.equal(message.includes('対戦相手として選択されなくなります'),published);
  assert.match(message,/保存するまで確定しません/);assert.equal(p.all().filter(e=>e.tagName==='dialog').length,1);
@@ -82,7 +90,7 @@ for(const published of [false,true])for(const kind of ['missing','empty','popula
  p.openDelete();p.confirmDelete();
  assert.equal(p.edits.length,1);assert.equal(p.controller.snapshot().dirty,true);
  const after=p.controller.snapshot().draft,expected=clone(data);expected.build.ducks=expected.build.ducks.filter(d=>d.id!==a);delete expected.presentation.ducks[a];
- if(published)expected.publicSettings.publicDuckId=null;
+
  assert.deepEqual(after,expected);assert.doesNotThrow(()=>encodeOnlinePlayer(after));
  for(const event of p.observed.filter(s=>s.dirty)) {assert.equal(event.draft.build.ducks.some(d=>d.id===a),false);assert.equal(Object.hasOwn(event.draft.presentation.ducks,a),false);}
  assert.equal(p.db.calls.filter(c=>c.name==='save_online_player').length,0);
@@ -134,7 +142,7 @@ test('delete conflict rebase removes only target from latest presentation, even 
  await p.controller.compare();await p.controller.adoptLatest(true);
  const final=clone(latest);delete final.ducks[a];assert.deepEqual(p.controller.snapshot().draft.presentation,final);
  await p.controller.save();assert.deepEqual(p.controller.snapshot().deletedDuckPresentationIds,[]);
- await character.load();assert.deepEqual(character.snapshot().draft.presentation,final);assert.equal(character.snapshot().draft.publicSettings.publicDuckId,null);
+ await character.load();assert.deepEqual(character.snapshot().draft.presentation,final);assert.equal(character.snapshot().draft.publicSettings.publicDuckId,b);
  assert.equal(Object.hasOwn(p.db.row().battler.presentation.detachedDuckPresentation,a),false);
 });
 
@@ -169,7 +177,7 @@ for (const deleted of [true, false]) test(`character rebase preserves other edit
  const serverDraft=setting.snapshot().draft;
  if(deleted) {
   serverDraft.build.ducks=serverDraft.build.ducks.filter(d=>d.id!==a);
-  serverDraft.publicSettings.publicDuckId=null;
+  serverDraft.publicSettings.publicDuckId=b;
   setting.edit({build:serverDraft.build,publicSettings:serverDraft.publicSettings},{deleteDuckPresentationIds:[a]});
  } else {
   serverDraft.build.ducks[0].name='latest name';
@@ -200,7 +208,8 @@ for (const deleted of [true, false]) test(`character rebase preserves other edit
 test('Duck toolbar and operations precede the name, retain selection/public actions and hide only inline name feedback',async()=>{
  const html=await readFile(new URL('../setting.html',import.meta.url),'utf8');
  assert.match(html,/<div class="duck-toolbar"><button id="add-duck"[^>]*>＋ 新規アヒル<\/button><div id="duck-tabs"/);
- const p=await page(),root=p.get('duck-editor');
+ const data=initial();data.publicSettings.publicDuckId=a;
+ const p=await page(data),root=p.get('duck-editor');
  assert.equal(root.children[0].className,'actions duck-actions');assert.equal(root.children[1].className,'duck-meta');
  assert.deepEqual(root.children[0].children.map(e=>e.textContent),['公開中','複製','削除']);
  p.get('duck-tabs').children[1].handlers.click();
@@ -217,4 +226,46 @@ test('Duck toolbar and operations precede the name, retain selection/public acti
  assert.equal(p.get('save').attributes['aria-disabled'],'true');
  const calls=p.db.calls.filter(c=>c.name==='save_online_player').length;
  p.get('save').handlers.click();assert.equal(p.db.calls.filter(c=>c.name==='save_online_player').length,calls);assert.match(p.dialog().textContent,/アヒル名/);
+});
+
+
+test('public incomplete save warns, cancellation does not save, confirmation saves normally',async()=>{
+ const p=await page();p.get('duck-name').value='changed';p.get('duck-name').handlers.input();
+ p.get('save').handlers.click();assert.match(p.dialog().textContent,/公開アヒルの設定が未完成/);
+ p.button('キャンセル',p.dialog()).handlers.click();
+ assert.equal(p.db.calls.filter(c=>c.name==='save_online_player').length,0);
+ p.get('save').handlers.click();p.button('このまま保存',p.dialog()).handlers.click();
+ await new Promise(r=>setImmediate(r));assert.equal(p.db.calls.filter(c=>c.name==='save_online_player').length,1);
+ assert.equal(p.db.row().publicDuckId,b);
+});
+
+test('complete public Duck saves without warning even when a private Duck is incomplete',async()=>{
+ const {player}=await import('./onlineSelectFixture.mjs');
+ const data=initial(),complete=(await player(account,'7',b)).data;
+ data.build.battler=complete.build.battler;data.build.ducks[1]=complete.build.ducks[0];
+ const p=await page(data);p.get('duck-name').value='private draft';p.get('duck-name').handlers.input();
+ p.get('save').handlers.click();await new Promise(r=>setImmediate(r));
+ assert.equal(p.dialog(),undefined);assert.equal(p.db.calls.filter(c=>c.name==='save_online_player').length,1);
+});
+
+test('switching the public Duck enables deletion of the former representative',async()=>{
+ const data=initial();data.publicSettings.publicDuckId=a;const p=await page(data);
+ assert.equal(p.button('削除',p.get('duck-editor')).disabled,true);
+ p.get('duck-tabs').children[1].handlers.click();p.button('公開アヒルに設定',p.get('duck-editor')).handlers.click();
+ p.get('duck-tabs').children[0].handlers.click();assert.equal(p.button('削除',p.get('duck-editor')).disabled,false);
+ assert.ok(p.openDelete());p.confirmDelete();assert.equal(p.controller.snapshot().draft.publicSettings.publicDuckId,b);
+});
+
+
+test('legacy unpublished data loads unchanged, requires publication on save, and first addition to zero Ducks is public',async()=>{
+ const legacy=initial();legacy.publicSettings.publicDuckId=null;
+ const p=await page(legacy);assert.equal(p.controller.snapshot().draft.publicSettings.publicDuckId,null);
+ assert.equal(p.controller.snapshot().dirty,false);p.get('save').handlers.click();
+ assert.match(p.dialog().textContent,/公開アヒルを設定/);assert.equal(p.db.calls.filter(c=>c.name==='save_online_player').length,0);
+ const empty=initial();empty.build.ducks=[];empty.publicSettings.publicDuckId=null;
+ const old=await page(empty);old.get('add-duck').handlers.click();
+ const first=old.controller.snapshot().draft.build.ducks[0].id;
+ assert.equal(old.controller.snapshot().draft.publicSettings.publicDuckId,first);
+ assert.equal(old.button('削除',old.get('duck-editor')).disabled,true);
+ old.get('add-duck').handlers.click();assert.equal(old.controller.snapshot().draft.publicSettings.publicDuckId,first);
 });

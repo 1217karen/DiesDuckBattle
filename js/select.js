@@ -73,7 +73,7 @@ async function openTray(kind, opener) {
       if (version !== requestVersion || !tray.open) return;
       if (!result.ok) { showMessage(result.message ?? "相手一覧を読み込めませんでした。"); return; }
       if (!opponents.length) { showMessage("選択できる相手がいません。"); return; }
-      renderChoices(el("trayGrid"), opponents.map(o => ({ ...o, ready:true, reasons:[] })), state.opponent?.id, async id => {
+      renderChoices(el("trayGrid"), opponents, state.opponent?.id, async id => {
         const pickVersion = ++requestVersion; showMessage("相手を読み込み中…");
         try {
           const picked = await online.chooseOpponent(id);

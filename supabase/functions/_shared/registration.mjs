@@ -1,6 +1,7 @@
 import { battlerNameError } from "./text-limits.mjs";
 import { canonicalEno, internalEmailForEno } from "./internal-email.mjs";
 import { registrationPasswordError } from "./registration-password.mjs";
+import { createRegistrationPlayer } from "./registration-player.mjs";
 
 export function validateRegistration(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)
@@ -53,10 +54,16 @@ export async function registerAccount(input, { client, log = () => {}, uuid = ()
       auth_user_id: authUserId, game_account_id: gameAccountId,
     }));
     stage = "battler";
+    const initial = createRegistrationPlayer(valid.characterName, uuid);
     checked(await client.from("battlers").insert({
-      game_account_id: gameAccountId, presentation: { name: valid.characterName },
-      // build defaults to {}; no Ducks are created.
+      game_account_id: gameAccountId, ...initial.battler,
     }));
+    stage = "duck";
+    checked(await client.from("ducks").insert({
+      ...initial.ducks[0], game_account_id: gameAccountId, sort_order: 0,
+    }));
+    stage = "public_setting";
+    checked(await client.from("game_accounts").update({ public_duck_id: initial.publicDuckId }).eq("id", gameAccountId));
     return { status: 201, body: { ok: true, eno } };
   } catch (error) {
     // Preserve the original failure stage/status even when cleanup also fails.

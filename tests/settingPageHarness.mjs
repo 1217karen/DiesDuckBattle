@@ -6,7 +6,7 @@ export async function loadSettingPage(build, onSave, mount) {
   const file = new URL("../js/settingPage.js", import.meta.url);
   globalThis.__mountSettingForTest = mount ?? (async ({ hydrate, onState }) => {
     let data = { build: structuredClone(build), presentation: createEmptyPlayerPresentation(),
-      publicSettings: { schemaVersion: 1, publicDuckId: null }, battlerName: "mock DB name" };
+      publicSettings: { schemaVersion: 1, publicDuckId: build.ducks[0]?.id ?? null }, battlerName: "mock DB name" };
     let dirty = false;
     const emit = () => {
       document.getElementById("save-message").textContent = dirty ? "未保存の変更があります" : "変更はありません";

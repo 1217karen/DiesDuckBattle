@@ -1,6 +1,14 @@
 import { createOnlinePlayerStorage, onlineFailure } from "./onlinePlayerStorage.js";
 import { decodeOnlinePlayer, isOnlineUuid } from "./onlinePlayerDto.js";
 import { canonicalEno } from "../supabase/functions/_shared/internal-email.mjs";
+import { migratePlayerBuild } from "./playerBuildMigration.js";
+import { inspectBattleLoadout } from "./battleLoadoutCompiler.js";
+
+export function publicOpponentReady(build, duckId) {
+  const migrated = migratePlayerBuild(build);
+  return !!(migrated.ok && migrated.build.ducks.length === 1 && migrated.build.ducks[0].id === duckId
+    && inspectBattleLoadout(migrated.build, duckId).ready);
+}
 
 export const selectFailure = status => ({ ok: false, status, message: {
   "public-unavailable": "相手の公開Duckが解除・変更されたか、選択したDuckがなくなりました。読み込み直して選び直してください。",
@@ -55,7 +63,7 @@ export function createOnlineSelectService(client, ownStorage = createOnlinePlaye
         if (!isOnlineUuid(row.id) || !isOnlineUuid(row.publicDuckId) || typeof row.name !== "string") throw new TypeError();
         if (row.defaultIconUrl != null && typeof row.defaultIconUrl !== "string") throw new TypeError();
         return { id: row.id, eno: canonicalEno(row.eno), name: row.name, publicDuckId: row.publicDuckId,
-          defaultIconUrl: row.defaultIconUrl ?? "" };
+          defaultIconUrl: row.defaultIconUrl ?? "", ready: publicOpponentReady(row.battleBuild, row.publicDuckId), reasons: [] };
       }) };
     }),
     getOpponent(base, id) {

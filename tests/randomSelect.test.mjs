@@ -18,6 +18,22 @@ async function ready(f,mode='random') {
   assert.equal((await (mode==='random'?f.c.chooseRandomOpponent():f.c.chooseOpponent(b))).ok,true);
 }
 
+test('random selects only ready opponents and reports all-incomplete separately from no publication',async()=>{
+  const f=await setup();
+  const other=structuredClone(f.rows.get(b));other.gameAccountId='66666666-6666-4666-8666-666666666666';other.eno='90';
+  f.rows.set(other.gameAccountId,other);f.rows.get(b).ducks[0].build.aSelection=null;
+  await f.c.load();const listed=await f.c.listOpponents();
+  assert.deepEqual(listed.opponents.map(o=>o.ready),[false,true]);
+  assert.equal((await f.c.chooseRandomOpponent()).ok,true);assert.equal(f.c.snapshot().state.opponent.id,other.gameAccountId);
+  other.ducks[0].build.cSelection=null;
+  assert.equal((await f.c.chooseRandomOpponent()).status,'no-ready-opponents');
+  assert.match(f.c.snapshot().message,/戦闘可能な相手がいません/);
+});
+for(const mode of ['manual','random'])test('latest opponent becoming incomplete blocks battle: '+mode,async()=>{
+  const f=await setup();await ready(f,mode);f.rows.get(b).ducks[0].build.cSelection=null;
+  assert.equal((await f.c.start()).status,'not-ready');assert.equal(f.saved.length,0);
+});
+
 test('random selects from public list, retains real data, allows same opponent and manual/random transitions',async()=>{
   const f=await setup(); await ready(f);
   const before=f.c.snapshot();assert.equal(before.selectionMode,'random');assert.equal(before.state.opponent.id,b);

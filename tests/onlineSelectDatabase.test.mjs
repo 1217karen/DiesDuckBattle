@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { a,b,da,db as duckB,privateDuck,player } from './onlineSelectFixture.mjs';
-import { decodePublicOpponent } from '../js/onlineSelectService.js';
+import { publicOpponentReady, decodePublicOpponent } from '../js/onlineSelectService.js';
 import { decodeOnlinePlayer } from '../js/onlinePlayerDto.js';
 import { encodeOnlinePlayer } from '../js/onlinePlayerDto.js';
 let PGlite;
@@ -66,6 +66,7 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
 
     await db.exec(await readFile(new URL('../supabase/migrations/20261007111246_profile_message.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../supabase/migrations/20261007135040_duck_skill_quotes.sql',import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261007160358_representative_duck.sql',import.meta.url),'utf8'));
     await asUser(userA);
     await t.test('direct tables, guessed UUIDs and full draft RPC cannot retrieve foreign data',async()=>{
       assert.equal((await db.query('select * from public.battlers where game_account_id=$1',[b])).rows.length,0);
@@ -83,7 +84,9 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
     });
     await t.test('public projection allows only published Duck and fixed battle fields',async()=>{
       const list=await value('select public.list_online_opponents() data');assert.deepEqual(list.map(r=>r.id),[b]);
-      assert.deepEqual(Object.keys(list[0]).sort(),['defaultIconUrl','eno','id','name','publicDuckId']);
+      assert.deepEqual(Object.keys(list[0]).sort(),['battleBuild','defaultIconUrl','eno','id','name','publicDuckId']);
+      assert.equal(publicOpponentReady(list[0].battleBuild, duckB),true);
+      assert.equal(list[0].battleBuild.ducks.length,1);
       assert.equal(list[0].defaultIconUrl,'https://example.invalid/2.png');
       assert.doesNotMatch(JSON.stringify(list),/PRIVATE|quotes|iconSlots|cutinUrl|duck2/);
       const row=await value('select public.get_online_opponent($1) data',[b]);
@@ -101,6 +104,32 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
       assert.equal(decodePublicOpponent(row,a).presentation.ducks[duckB].cutinUrl,row.ducks[0].presentation.icon.cutinUrl);
       assert.equal(await value('select public.get_online_opponent($1) data',[a]),null);
       assert.equal(await value('select public.get_online_opponent($1) data',[privateDuck]),null);
+    });
+    await t.test('save RPC rejects missing public Duck atomically, permits incomplete public and empty legacy drafts',async()=>{
+      const before=await value('select public.load_online_player($1) data',[a]);
+      const payload=encodeOnlinePlayer(decodeOnlinePlayer(before));payload.publicDuckId=null;
+      await assert.rejects(db.query('select public.save_online_player($1,$2,$3::jsonb)',[a,before.revision,JSON.stringify(payload)]),{code:'22023'});
+      assert.deepEqual(await value('select public.load_online_player($1) data',[a]),before);
+      await db.exec('begin');
+      try {
+        payload.publicDuckId=da;payload.ducks[0].build.aSelection=null;
+        await db.query('select public.save_online_player($1,$2,$3::jsonb)',[a,before.revision,JSON.stringify(payload)]);
+        const partial=await value('select public.load_online_player($1) data',[a]);
+        assert.equal(decodeOnlinePlayer(partial).publicSettings.publicDuckId,da);
+        payload.ducks=[];payload.publicDuckId=null;
+        await db.query('select public.save_online_player($1,$2,$3::jsonb)',[a,partial.revision,JSON.stringify(payload)]);
+        assert.equal(decodeOnlinePlayer(await value('select public.load_online_player($1) data',[a])).build.ducks.length,0);
+      } finally {await db.exec('rollback');}
+    });
+    await t.test('incomplete public Duck remains listed without exposing other Ducks or private presentation',async()=>{
+      await db.exec('reset role; begin');
+      try {
+        await db.query("update public.ducks set build=jsonb_set(build,'{aSelection}','null') where id=$1",[duckB]);
+        await asUser(userA);const list=await value('select public.list_online_opponents() data');
+        assert.equal(list.length,1);assert.equal(publicOpponentReady(list[0].battleBuild,duckB),false);
+        assert.deepEqual(list[0].battleBuild.ducks.map(d=>d.id),[duckB]);
+        assert.doesNotMatch(JSON.stringify(list),/PRIVATE|quotes|profile|iconSlots|cutinUrl/);
+      } finally {await db.exec('rollback');await asUser(userA);}
     });
     await t.test('v6 null display remains battle-readable; mixed legacy Battler uses selected v6 Duck quotes',async()=>{
       await db.exec('reset role');

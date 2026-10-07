@@ -21,6 +21,15 @@ const add = state => apply(state, { type: "add" });
 const patch = (state, values) => apply(state, { type: "duck", patch: values });
 const sp = (state, frame) => apply(state, { type: "sp", frame });
 
+test("only the first added Duck becomes public automatically; old unpublished builds are not changed on load", () => {
+  const empty=setup().state, first=add(empty), second=add(first);
+  assert.equal(first.publicSettings.publicDuckId,first.selectedDuckId);
+  assert.equal(second.publicSettings.publicDuckId,first.selectedDuckId);
+  const legacy=createSettingState({ok:true,status:'loaded',build:second.build});
+  assert.equal(legacy.publicSettings.publicDuckId,null);assert.equal(legacy.dirty,false);
+  assert.equal(add(legacy).publicSettings.publicDuckId,null);
+});
+
 test("empty storage creates editable page state without writing or creating a Duck", () => {
   const { state, memory } = setup();
   assert.equal(state.loadStatus, "empty"); assert.equal(state.dirty, false);
@@ -49,7 +58,7 @@ test("multiple Ducks retain immediate edits across switches and selection alone 
   state = { ...state, dirty: false };
   assert.equal(apply(state, { type: "select", id: ids[1] }).dirty, false);
 });
-test("duplicate selects fresh ID, delete preserves other Ducks and Battler, zero Ducks allowed", () => {
+test("duplicate selects fresh ID, delete preserves other Ducks and Battler, public Duck cannot be deleted", () => {
   let state = patch(add(setup().state), { name: "基本型", aSelection: { triggerId: "exact:0", effects: [] } });
   state = apply(state, { type: "battler", patch: { dSelection: { optionId: "add-self-0" } } });
   const original = selectedDuck(state);
@@ -61,8 +70,8 @@ test("duplicate selects fresh ID, delete preserves other Ducks and Battler, zero
   assert.equal(state.build.ducks[0].name, "基本型");
   state = apply(state, { type: "delete" });
   assert.equal(state.selectedDuckId, original.id); assert.equal(state.build.ducks.length, 1);
-  state = apply(state, { type: "delete" });
-  assert.equal(state.selectedDuckId, null); assert.deepEqual(state.build.ducks, []);
+  assert.throws(() => apply(state, { type: "delete" }), /公開中/);
+  assert.equal(state.build.ducks.length, 1);
   assert.deepEqual(state.build.battler.dSelection, { optionId: "add-self-0" });
 });
 test("公開Duckは1体だけ切替でき、削除と複製が公開設定へ正しく連動する", () => {
@@ -81,9 +90,8 @@ test("公開Duckは1体だけ切替でき、削除と複製が公開設定へ正
   assert.equal(selectedPublicDuckId(state), b);
   assert.notEqual(state.selectedDuckId, b);
   state = apply(state, { type: "select", id: b });
-  state = apply(state, { type: "delete" });
-  assert.equal(state.publicSettings.publicDuckId, null);
-  assert.equal(selectedPublicDuckId(state), null);
+  assert.throws(() => apply(state, { type: "delete" }), /公開中/);
+  assert.equal(selectedPublicDuckId(state), b);
 });
 
 test("存在しない保存済み公開IDは画面上で未設定になり、公開変更はdirtyにする", () => {
@@ -91,7 +99,7 @@ test("存在しない保存済み公開IDは画面上で未設定になり、公
     ok: true, status: "loaded", settings: { schemaVersion: 1, publicDuckId: "missing" }
   });
   state = add(state);
-  assert.equal(selectedPublicDuckId(state), null);
+  assert.equal(selectedPublicDuckId(state), state.selectedDuckId);
   state = { ...state, dirty: false };
   state = apply(state, { type: "set-public", id: state.selectedDuckId });
   assert.equal(state.dirty, true);

@@ -81,6 +81,7 @@ function encodePlayerData(data, forSave) {
   requireValue(same(settings, data.publicSettings));
   const ids = new Set(build.ducks.map(d => d.id));
   requireValue(settings.publicDuckId === null || ids.has(settings.publicDuckId));
+  if (forSave) requireValue(ids.size === 0 || settings.publicDuckId !== null);
   // Existing display editor permits icons for Ducks absent from the battle build.
   const detachedDuckPresentation = Object.fromEntries(Object.entries(presentation.ducks).filter(([id]) => !ids.has(id)));
   return {

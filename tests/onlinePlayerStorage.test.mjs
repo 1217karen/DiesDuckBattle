@@ -77,7 +77,7 @@ test("session changes during a load discard the returned data",async()=>{
 });
 
 test("legacy v1 icon-only online data migrates to v2 with empty cut-ins and unchanged selections",()=>{
-  const data=empty();data.build.ducks.push(createEmptyDuck({idFactory:()=>duckId}));
+  const data=empty();data.build.ducks.push(createEmptyDuck({idFactory:()=>duckId}));data.publicSettings.publicDuckId=duckId;
   legacyQuoteOwnership(data.presentation);
   for (const path of QUOTE_PATHS) { const p=path.slice(0,-1).reduce((v,k)=>v[k],data.presentation.battler.quotes); p[path.at(-1)]={text:"",iconSlot:null}; }
   data.presentation.schemaVersion=1;delete data.presentation.battler.profile;
@@ -98,7 +98,7 @@ test("legacy v1 icon-only online data migrates to v2 with empty cut-ins and unch
 });
 test("online storage save/load round-trips cut-ins including detached private display data",async()=>{
   const f=fixture();const loaded=await f.storage.load();const data=loaded.data;
-  data.build.ducks.push(createEmptyDuck({idFactory:()=>duckId}));
+  data.build.ducks.push(createEmptyDuck({idFactory:()=>duckId}));data.publicSettings.publicDuckId=duckId;
   data.presentation.ducks[duckId]={ iconUrl:"duck.png",cutinUrl:"cutin.png", quotes:createEmptyDuckQuotes(),profile:createEmptyDuckProfile() };
   data.presentation.ducks.orphan={ iconUrl:"orphan.png",cutinUrl:"private.png", quotes:createEmptyDuckQuotes(),profile:createEmptyDuckProfile() };
   data.presentation.battler.profile.text='保存する本文';
@@ -107,4 +107,14 @@ test("online storage save/load round-trips cut-ins including detached private di
   data.presentation.ducks.orphan.profile.flavorStats=[{label:'保持',value:6}];
   const saved=await f.storage.save(loaded,data);
   assert.equal(saved.ok,true);assert.deepEqual((await f.storage.load()).data.presentation,data.presentation);
+});
+
+test('legacy unpublished Ducks load without mutation, but saving requires a public Duck',()=>{
+  const data=empty();data.build.ducks.push(createEmptyDuck({idFactory:()=>duckId}));
+  data.publicSettings.publicDuckId=duckId;const dto=encodeOnlinePlayer(data);
+  dto.publicDuckId=null;const before=structuredClone(dto),loaded=decodeOnlinePlayer(dto);
+  assert.deepEqual(dto,before);assert.equal(loaded.publicSettings.publicDuckId,null);
+  assert.throws(()=>encodeOnlinePlayer(loaded));
+  loaded.publicSettings.publicDuckId=duckId;assert.doesNotThrow(()=>encodeOnlinePlayer(loaded));
+  assert.doesNotThrow(()=>encodeOnlinePlayer(empty()));
 });

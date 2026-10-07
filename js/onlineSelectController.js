@@ -4,6 +4,7 @@ import { compileBattleLoadout } from "./battleLoadoutCompiler.js";
 import { buildBattlePresentationSnapshot } from "./battlePresentationSnapshot.js";
 import { createBattleResultStorage } from "./battleResultStorage.js";
 import { selectFailure } from "./onlineSelectService.js";
+import { inspectBattleLoadout } from "./battleLoadoutCompiler.js";
 
 const scopeErrors = new Set(["not-signed-in", "no-access", "selection-required", "session-changed", "forbidden"]);
 export function createOnlineSelectController({ service, results = createBattleResultStorage(), run = startSelectedBattle,
@@ -87,6 +88,8 @@ export function createOnlineSelectController({ service, results = createBattleRe
       if (!base) return fail(selectFailure("not-signed-in"));
       const result = await service.getOpponent(base, id); if (!current()) return { ok: false, status: "stale" };
       if (!result.ok) return selectionFailed(result);
+      if (!inspectBattleLoadout(result.opponent.build, result.opponent.publicDuckId).ready)
+        return selectionFailed({ ok: false, status: "not-ready", message: "この相手は戦闘設定が未完成です。" });
       state = selectOpponent(state, result.opponent); state.opponent.eno = result.opponent.eno;
       selectionMode = "manual";
       message = ""; blocked = false; return result;
@@ -96,9 +99,13 @@ export function createOnlineSelectController({ service, results = createBattleRe
       const listed = await service.listOpponents(base); if (!current()) return { ok: false, status: "stale" };
       if (!listed.ok) return selectionFailed(listed, true);
       if (!listed.opponents.length) return selectionFailed({ ok: false, status: "no-opponents", message: "公開中の相手がいません。" }, true);
-      const candidate = listed.opponents[Math.floor(random() * listed.opponents.length)];
+      const candidates = listed.opponents.filter(opponent => opponent.ready === true);
+      if (!candidates.length) return selectionFailed({ ok: false, status: "no-ready-opponents", message: "現在、戦闘可能な相手がいません。" }, true);
+      const candidate = candidates[Math.floor(random() * candidates.length)];
       const result = await service.getOpponent(base, candidate.id); if (!current()) return { ok: false, status: "stale" };
       if (!result.ok) return selectionFailed(result, true);
+      if (!inspectBattleLoadout(result.opponent.build, result.opponent.publicDuckId).ready)
+        return selectionFailed({ ok: false, status: "not-ready", message: "この相手は戦闘設定が未完成です。" }, true);
       state = selectOpponent(state, result.opponent); state.opponent.eno = result.opponent.eno;
       selectionMode = "random"; message = ""; blocked = false; return result;
     }),

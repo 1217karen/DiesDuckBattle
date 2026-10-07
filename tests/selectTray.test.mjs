@@ -14,6 +14,14 @@ function gridFixture() {
   return document.createElement("div");
 }
 
+test("incomplete opponents remain visible with a label but cannot be picked", () => {
+  const grid=gridFixture(),picked=[];
+  renderChoices(grid,[{id:'one',eno:'1',name:'未完成プレイヤー',ready:false,reasons:[]}],null,id=>picked.push(id),{kind:'opponents'});
+  const button=grid.children[0].children[0];assert.equal(button.disabled,true);
+  assert.ok(button.children.some(e=>e.textContent==='戦闘設定未完成'));
+  button.handlers.click();assert.deepEqual(picked,[]);
+});
+
 test("Duck cards use matching presentation icons, names, fallback, readiness and pressed state", () => {
   const grid = gridFixture(), picked = [];
   const choices = [

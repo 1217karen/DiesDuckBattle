@@ -32,7 +32,7 @@ async function setup() {
 test('open uses explicit account with multiple accessible accounts; save patches only theme of latest full DTO',async()=>{
   const f=await setup();await f.controller.open();assert.equal(f.state().canSave,false);
   f.controller.preset('dark');assert.equal(f.calls.length,1);
-  f.update(d=>{d.battlerName='latest name';d.build.ducks[0].name='latest build';d.publicSettings.publicDuckId=null;
+  f.update(d=>{d.battlerName='latest name';d.build.ducks[0].name='latest build';
     d.presentation.battler.standingImageUrl='latest-standing';d.presentation.battler.defaultIconUrl='latest-default';d.presentation.battler.iconSlots[0]='latest-slot';
     d.presentation.battler.quotes.battleStart.lines[0].text='latest quote';
     d.presentation.battler.quotes.battleStart.lines.push({text:'private ENo quote',iconSlot:7,opponentEno:'9223372036854775807'});d.presentation.battler.profile.text=' latest text ';d.presentation.battler.profile.showBestStreak=false;

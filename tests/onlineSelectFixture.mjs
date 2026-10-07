@@ -28,7 +28,7 @@ export async function fixture() {
       if(name==='get_online_random_win_streak')return {data:streak};
       const publicRow=id=>{const row=structuredClone(rows.get(id));if(!row?.publicDuckId || access.includes(id))return null;
         row.ducks=row.ducks.filter(d=>d.id===row.publicDuckId);row.battler.presentation.detachedDuckPresentation={};return row;};
-      if(name==='list_online_opponents')return {data:[...rows.keys()].map(publicRow).filter(Boolean).map(r=>({id:r.gameAccountId,eno:r.eno,name:r.battler.presentation.name,publicDuckId:r.publicDuckId,defaultIconUrl:r.battler.presentation.defaultIconUrl}))};
+      if(name==='list_online_opponents')return {data:[...rows.keys()].map(publicRow).filter(Boolean).map(r=>({id:r.gameAccountId,eno:r.eno,name:r.battler.presentation.name,publicDuckId:r.publicDuckId,defaultIconUrl:r.battler.presentation.defaultIconUrl,battleBuild:{schemaVersion:r.battler.build.schemaVersion,battler:Object.fromEntries(Object.entries(r.battler.build).filter(([k])=>k!=='schemaVersion')),ducks:r.ducks.map(d=>({...Object.fromEntries(Object.entries(d.build).filter(([k])=>k!=='schemaVersion')),id:d.id,name:''}))}}))};
       if(name==='get_online_opponent')return {data:publicRow(params.p_game_account_id)};
       if(name==='prepare_online_battle') {const opponent=publicRow(params.p_opponent_account_id);
         return {data:opponent?.publicDuckId===params.p_opponent_duck_id?{self:structuredClone(rows.get(params.p_game_account_id)),opponent}:null};}

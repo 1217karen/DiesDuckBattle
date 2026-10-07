@@ -38,15 +38,17 @@ export function changeSetting(state, action, { idFactory } = {}) {
       if (!build.ducks.some(d => d.id === action.id)) throw new RangeError("Unknown Duck ID");
       return { ...state, selectedDuckId: action.id };
     case "add":
-      build = addDuck(build, createEmptyDuck({ idFactory })); selectedDuckId = build.ducks.at(-1).id; break;
+      build = addDuck(build, createEmptyDuck({ idFactory })); selectedDuckId = build.ducks.at(-1).id;
+      if (state.build.ducks.length === 0 && state.publicSettings) {
+        state = { ...state, publicSettings: { ...state.publicSettings, publicDuckId: selectedDuckId } };
+      }
+      break;
     case "duplicate":
       build = duplicateDuck(build, selectedDuckId, { idFactory }); selectedDuckId = build.ducks.at(-1).id; break;
     case "delete": {
+      if (state.publicSettings?.publicDuckId === selectedDuckId) throw new Error("公開中のアヒルは削除できません。別のアヒルを公開アヒルに設定してください。");
       const index = build.ducks.findIndex(d => d.id === selectedDuckId);
       build = deleteDuck(build, selectedDuckId);
-      if (state.publicSettings?.publicDuckId === selectedDuckId) {
-        state = { ...state, publicSettings: { ...state.publicSettings, publicDuckId: null } };
-      }
       selectedDuckId = build.ducks[Math.min(index, build.ducks.length - 1)]?.id ?? null; break;
     }
     case "set-public":

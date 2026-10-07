@@ -6,7 +6,7 @@ function equal(actual: unknown, expected: unknown) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error("SDK contract mismatch");
 }
 
-for (const failure of [null, "access", "battler", "auth_user"]) {
+for (const failure of [null, "access", "battler", "auth_user", "duck", "public_setting"]) {
   Deno.test("pinned SDK / mocked HTTP: " + (failure ?? "success"), async () => {
     const requests: { path: string; method: string; body: unknown; select: string | null }[] = [];
     const fetchMock: typeof fetch = async (input, init) => {
@@ -17,6 +17,14 @@ for (const failure of [null, "access", "battler", "auth_user"]) {
       const respond = (value: unknown, status = 200) =>
         new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json" } });
       if (method === "DELETE") return respond({});
+      if (url.pathname === "/rest/v1/game_accounts" && method === "PATCH") {
+        if (failure === "public_setting") return respond({code:"23503"},400);
+        return new Response(null,{status:204});
+      }
+      if (url.pathname === "/rest/v1/ducks") {
+        if (failure === "duck") return respond({code:"23503"},400);
+        return new Response(null,{status:201});
+      }
       if (url.pathname === "/rest/v1/game_accounts") return respond({ eno: "123" }, 201);
       if (url.pathname === "/auth/v1/admin/users") {
         if (failure === "auth_user") return respond({ code: "email_exists", msg: "unsafe upstream text" }, 422);
@@ -47,16 +55,17 @@ for (const failure of [null, "access", "battler", "auth_user"]) {
     equal(result, failure ? { ok: false, error: failure + "_creation_failed" } : { ok: true, eno: "123" });
     equal(requests[0].select, "eno::text");
     equal(requests[1].body, { email: "eno-123@auth.diesduck.invalid", password: " untouched1 ", email_confirm: true });
-    const tablePaths = ["/rest/v1/game_accounts", "/auth/v1/admin/users", "/rest/v1/game_account_access", "/rest/v1/battlers"];
+    const tablePaths = ["/rest/v1/game_accounts", "/auth/v1/admin/users", "/rest/v1/game_account_access", "/rest/v1/battlers", "/rest/v1/ducks", "/rest/v1/game_accounts"];
     equal(requests.filter(r => r.method !== "DELETE").map(r => r.path),
-      tablePaths.slice(0, failure === "auth_user" ? 2 : failure === "access" ? 3 : 4));
+      tablePaths.slice(0, failure === "auth_user" ? 2 : failure === "access" ? 3 : failure === "battler" ? 4 : failure === "duck" ? 5 : 6));
     if (failure) {
       equal(requests.filter(r => r.method === "DELETE").map(r => r.path), [
         "/rest/v1/game_accounts",
         ...(failure !== "auth_user" ? ["/auth/v1/admin/users/10000000-0000-4000-8000-000000000001"] : []),
       ]);
     } else {
-      equal((requests[3].body as { presentation: unknown }).presentation, { name: "名前" });
+      equal((requests[3].body as { presentation: { name: string } }).presentation.name, "名前");
+      equal((requests[4].body as { presentation: { name: string } }).presentation.name, "名前のマイアヒル");
     }
   });
 }

@@ -75,7 +75,7 @@ test("local Postgres migration/RLS/RPC integration (no network)", { skip: !PGlit
     await t.test("foreign UUID collision and public ownership violation cannot alter another account", async () => {
       await db.exec(`reset role; insert into public.ducks(id,game_account_id) values ('${d1}','${b}');
         update public.game_accounts set public_duck_id='${d1}' where id='${b}'; set role authenticated;`);
-      const before = await load(a); const draft = empty(); draft.build.ducks.push(createEmptyDuck({ idFactory: () => d1 }));
+      const before = await load(a); const draft = empty(); draft.build.ducks.push(createEmptyDuck({ idFactory: () => d1 })); draft.publicSettings.publicDuckId=d1;
       await assert.rejects(save(a, before.revision, encodeOnlinePlayer(draft)));
       assert.deepEqual(await load(a), before);
       await assert.rejects(db.query("update public.game_accounts set public_duck_id=$1 where id=$2", [d1,a]), { code:"23503" });

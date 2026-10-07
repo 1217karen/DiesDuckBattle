@@ -39,15 +39,16 @@ test("ENo independent initial load/save and no client-side name fallback", async
   f.switch("3"); c.sessionChanged("auth-3"); assert.equal(c.snapshot().draft, null); await c.load();
   assert.equal(c.snapshot().draft.build.ducks.length, 0); assert.equal(c.snapshot().draft.battlerName, "DB名3");
 });
-test("incomplete setting draft and public Duck deletion use a single full save", async () => {
+test("incomplete public Duck saves and cannot be deleted", async () => {
   const f = fixture(), c = f.make(); await c.load();
   let s = createSettingState({ ok: true, status: "loaded", build: c.snapshot().draft.build });
   s = changeSetting(s, { type: "add" }); s = changeSetting(s, { type: "set-public", id: s.selectedDuckId });
   assert.equal(inspectBuildForSave(s.build).canSave, true); assert.equal(inspectBuildForSave(s.build).complete, false);
   c.edit({ build: s.build, publicSettings: s.publicSettings }); await c.save();
-  s = changeSetting(s, { type: "delete" }); c.edit({ build: s.build, publicSettings: s.publicSettings }); await c.save(); await c.load();
-  assert.equal(c.snapshot().draft.publicSettings.publicDuckId, null); assert.equal(c.snapshot().draft.build.ducks.length, 0);
-  assert.equal(f.calls.filter(x => x === "save").length, 2);
+  assert.throws(() => changeSetting(s, { type: "delete" }), /公開中/);
+  await c.load();assert.equal(c.snapshot().draft.publicSettings.publicDuckId, s.selectedDuckId);
+  assert.equal(c.snapshot().draft.build.ducks.length, 1);
+  assert.equal(f.calls.filter(x => x === "save").length, 1);
 });
 test("separate tabs conflict, retain draft, compare, explicitly rebase own section and preserve latest other page", async () => {
   const f = fixture(), setting = f.make(), character = f.make(["presentation"]); await setting.load(); await character.load();

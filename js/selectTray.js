@@ -21,6 +21,9 @@ export function renderChoices(grid, choices, selected, onPick, { kind, presentat
     }
     const name = document.createElement("span"); name.className = "trayItem__name";
     name.textContent = choice.name; button.append(name); card.append(button);
+    if (opponent && !choice.ready) {
+      const status = document.createElement("span"); status.textContent = "戦闘設定未完成"; button.append(status);
+    }
     if (choice.reasons.length) {
       const details = document.createElement("details"), summary = document.createElement("summary");
       summary.textContent = "理由を確認"; details.append(summary);
@@ -28,6 +31,6 @@ export function renderChoices(grid, choices, selected, onPick, { kind, presentat
       for (const reason of choice.reasons) { const li = document.createElement("li"); li.textContent = reason; list.append(li); }
       details.append(list); card.append(details);
     }
-    button.addEventListener("click", () => onPick(choice.id)); grid.append(card);
+    button.addEventListener("click", () => { if (choice.ready) return onPick(choice.id); }); grid.append(card);
   }
 }

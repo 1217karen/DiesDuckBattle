@@ -1,3 +1,4 @@
+import { inspectBattleLoadout } from "./battleLoadoutCompiler.js";
 import { finishPageLoad } from "./pageLoad.js";
 import { SKILL_NAME_MAX, SKILL_RUBY_MAX } from "./skillLabels.js";
 import { hasName, duckNameIssues, duckNameError, codePointLength } from "./nameValidation.js";
@@ -571,16 +572,16 @@ function renderDuck() {
   const publicButton = button(isPublic ? "公開中" : "公開アヒルに設定", () => commit({ type: "set-public", id: duck.id }), isPublic ? "public-active" : "");
   publicButton.disabled = isPublic || !state.publicSettings;
   if (!state.publicSettings) publicButton.title = "公開用設定を読み込めないため変更できません";
-  actions.append(publicButton, button("複製", () => commit({ type: "duplicate" })), button("削除", () => {
+  const deleteButton = button("削除", () => {
+    if (selectedPublicDuckId(state) === selectedDuck(state)?.id) return;
     const current = selectedDuck(state), displayName = current.name || "名前未設定のアヒル";
     const displayWarning = hasDuckDisplayData(current.id)
       ? "このアヒルに登録されているアイコン・カットイン・プロフィール情報・A/Cセリフも削除されます。\n\n" : "";
-    if (selectedPublicDuckId(state) === current.id) {
-      showDialog({ title: "公開中のアヒルを削除", confirmLabel: "削除する", message:
-        `「${displayName}」は現在、公開用アヒルに設定されています。\n\n削除すると公開用アヒルが未設定になり、他のプレイヤーから対戦相手として選択されなくなります。\n\n${displayWarning}削除しますか？ 保存するまで確定しません。`,
-      onConfirm: () => deleteSelectedDuck(current.id) });
-    } else confirmChange(`「${displayName}」を削除しますか？\n\n${displayWarning}保存するまで確定しません。`, () => deleteSelectedDuck(current.id));
-  }, "danger"));
+    confirmChange(`「${displayName}」を削除しますか？\n\n${displayWarning}保存するまで確定しません。`, () => deleteSelectedDuck(current.id));
+  }, "danger");
+  deleteButton.disabled = isPublic;
+  if (isPublic) deleteButton.title = "公開中のアヒルは削除できません。別のアヒルを公開アヒルに設定してください。";
+  actions.append(publicButton, button("複製", () => commit({ type: "duplicate" })), deleteButton);
   const identity = el("div", null, "duck-identity");
   const iconUrl = displayPresentation?.ducks?.[duck.id]?.iconUrl;
   if (typeof iconUrl === "string" && iconUrl.trim()) {
@@ -600,6 +601,7 @@ function renderDuck() {
 function inspectSettingsForSave() {
   const inspection = inspectBuildForSave(state.build);
   const invalid = [...inspection.invalid, ...duckNameIssues(state.build).filter(issue => !inspection.invalid.some(old => old.code === issue.code && old.duckId === issue.duckId))];
+  if (state.build.ducks.length && !selectedPublicDuckId(state)) invalid.push({ section: "public", message: "公開アヒルを設定してください。" });
   return { ...inspection, invalid, canSave: invalid.length === 0, complete: inspection.complete && invalid.length === 0 };
 }
 function renderSummaries() {
@@ -608,7 +610,9 @@ function renderSummaries() {
   const inspection = inspectSettingsForSave();
   $("save").classList.toggle("save-invalid", !inspection.canSave);
   $("save").setAttribute("aria-disabled", String(!inspection.canSave));
-  $("save").title = !inspection.canSave ? "保存できない理由を表示" : inspection.complete ? "設定を保存" : "未完成の項目を確認して保存";
+  const publicDuckId = selectedPublicDuckId(state);
+  $("save").title = !inspection.canSave ? "保存できない理由を表示"
+    : publicDuckId && !inspectBattleLoadout(state.build, publicDuckId).ready ? "公開アヒルの未完成設定を確認して保存" : "設定を保存";
   for (const key of ["B", "D"]) setFeedback(key.toLowerCase(), saveSectionSummary(inspection, key));
   const duck = selectedDuck(state); if (!duck) return;
   const summary = duckSummary(duck);
@@ -619,7 +623,7 @@ function renderSummaries() {
     $(`${metricId}-metrics`)?.classList.toggle("invalid", status.invalid.length > 0);
   }
   const frame = getDiceFrame(duck.diceFrame);
-  if ($("stat-metrics")) $("stat-metrics").textContent = `ステータスpt：${(duck.stats.AT ?? 0) + (duck.stats.DF ?? 0) + frame.SP} / ${rules.stats.totalMax}　HP ${num(summary.stats.hp)}`;
+  if ($("stat-metrics")) $("stat-metrics").textContent = `ステータスpt：${(duck.stats.AT ?? 0) + (duck.stats.DF ?? 0) + (frame?.SP ?? 0)} / ${rules.stats.totalMax}　HP ${num(summary.stats.hp)}`;
   const dice = summary.dice.resources;
   if ($("dice-metrics")) $("dice-metrics").textContent = `ダイスpt　獲得 ${num(dice?.earned)}pt / 消費 ${num(dice?.spent)}pt`;
   if (skillsUnlocked(duck)) { const a = aEditingSelection(duck); renderAPoints(a, calculateASkillResources(duck, a, { catalog: aCatalog })); }
@@ -640,9 +644,10 @@ async function saveSettings(approveIncomplete = false) {
       message: "修正してから保存してください。", cancelLabel: "閉じる" });
     return;
   }
-  if (!inspection.complete && !approveIncomplete) {
-    showDialog({ title: "未完成の設定があります", issues: inspection.incomplete,
-      message: "この設定は保存できますが、完成するまで戦闘には使用できません。",
+  const publicDuckId = selectedPublicDuckId(state);
+  if (publicDuckId && !inspectBattleLoadout(state.build, publicDuckId).ready && !approveIncomplete) {
+    showDialog({ title: "公開アヒルの設定が未完成です",
+      message: "このままでは対戦相手として選択されず、戦闘を行えません。\n\nこのまま保存しますか？",
       cancelLabel: "キャンセル", confirmLabel: "このまま保存", onConfirm: () => saveSettings(true) });
     return;
   }
