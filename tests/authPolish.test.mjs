@@ -190,7 +190,7 @@ test("INDEX has one login-first entrance and existing assets; shared cards remai
   assert.match(html, /data-auth-mode="login">ログイン \/ 新規登録/);
   assert.match(html, /src="img\/Dice_logo.png"[^>]*alt="DIES DUCK BATTLE"/);
   assert.match(html, /<h1>DIES DUCK BATTLE<\/h1>/);
-  assert.match(css, /body\.home-page\s*\{[^}]*index_BG\.png[^}]*cover/s);
+  assert.match(css, /body\.home-page::before\s*\{[^}]*position: fixed[^}]*pointer-events: none[^}]*index_BG\.png[^}]*cover/s);
   assert.match(css, /#auth-dialog \.panel\[aria-labelledby="session-title"\],\s*#auth-dialog #registered\s*\{\s*display: none !important/);
   assert.match(css, /#auth-dialog #form-message\[data-kind="error"\]/);
   assert.match(authMarkup, /id="session-title"/);

@@ -81,8 +81,17 @@ body {
 
 /* INDEXだけの背景。単独認証ページもこのCSSを読むためbodyへ限定する。 */
 body.home-page {
-  background: #c6a664 url("../img/index_BG.png") center center / cover no-repeat;
+  background: #c6a664;
   min-height: 100svh;
+  isolation: isolate;
+}
+body.home-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: #c6a664 url("../img/index_BG.png") center center / cover no-repeat;
 }
 
 .home:has(#home-guest:not([hidden])) {
@@ -164,6 +173,8 @@ body.home-page {
   --standing-overlap: 0px;
   --column-gap: 48px;
   --voices-min-height: 18rem;
+  /* Reserve space for the common menu, own voice and game controls. */
+  --voices-max-height: clamp(10rem, calc(100svh - 30rem), 24rem);
   isolation: isolate;
   display: grid;
   grid-template-columns: calc(var(--standing-width) - var(--standing-overlap)) var(--ui-width);
@@ -191,7 +202,12 @@ body.home-page {
 }
 .home__dashboard-ui { position: relative; z-index: 1; display: grid; gap: 22px; min-width: 0; }
 .home__voice { height: auto; padding: 18px; border: 1px solid #ffffff80; border-radius: 14px; background: #181818eb; color: #eee; box-shadow: 0 4px 16px #0002; }
-.home__voice:has(.home__voices) { min-height: var(--voices-min-height); }
+.home__voice:has(.home__voices) {
+  min-height: min(var(--voices-min-height), var(--voices-max-height));
+  max-height: var(--voices-max-height);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
 .home__voice h2 { margin: 0 0 14px; font-family: var(--font-heading-ja); font-size: 1rem; color: #ffcf60; }
 .home__voice small, .home__game-menu small { font: normal .7rem var(--font-base); color: #bbb; }
 .home__voices { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; }
