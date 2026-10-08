@@ -61,8 +61,8 @@ async function screen({ standalone = false } = {}) {
     };
   }
   function get(id) { if (!elements.has(id)) elements.set(id, element(id)); return elements.get(id); }
-  const buttons = [get("opener-login"), get("opener-register")];
-  buttons[0].dataset.authMode = "login"; buttons[1].dataset.authMode = "register";
+  const buttons = [get("opener-login")];
+  buttons[0].dataset.authMode = "login";
   const passwords = [get("register-password"), get("confirm-password"), get("login-password")];
   const controller = createAuthController({
     watch: () => () => {}, session: async () => null,
@@ -83,7 +83,7 @@ async function screen({ standalone = false } = {}) {
 }
 
 test("registration stays visible; failed login keeps panel and dialog; successful other ENo clears all derivatives", async () => {
-  const s = await screen(); s.buttons[1].handlers.click();
+  const s = await screen(); s.buttons[0].handlers.click(); s.get("show-register").onclick();
   await s.submit("register-form");
   assert.equal(s.get("auth-dialog").open, true);
   assert.equal(s.get("registered").hidden, false); assert.match(s.get("home-feedback").textContent, /77/);
@@ -102,7 +102,7 @@ test("registration stays visible; failed login keeps panel and dialog; successfu
   // Hidden controls must no longer retain the previous copy/handoff target.
   await s.get("copy-eno").onclick(); assert.equal(s.copied.at(-1), "");
   s.get("go-login").onclick(); assert.equal(s.get("login-eno").value, "");
-  await s.controller.logout(); s.failLogin(); s.next("99"); s.buttons[1].handlers.click(); await s.submit("register-form");
+  await s.controller.logout(); s.failLogin(); s.next("99"); s.buttons[0].handlers.click(); s.get("show-register").onclick(); await s.submit("register-form");
   assert.equal(s.get("auth-dialog").open, true); assert.equal(s.get("registered").hidden, false);
   assert.match(s.get("registered-eno").textContent, /99/); assert.match(s.get("home-feedback").textContent, /99/);
   await s.get("copy-eno").onclick(); s.get("go-login").onclick(); s.next("100");
@@ -141,7 +141,7 @@ test('registration UI blocks overlong names and recovers at 15 code points',asyn
 });
 
 test('INDEX auto-registration login closes modal, resolves accounts and emits only registration toast',async()=>{
- const s=await screen();s.buttons[1].handlers.click();s.succeed();
+ const s=await screen();s.buttons[0].handlers.click(); s.get("show-register").onclick();s.succeed();
  s.get('register-password').value='local-password1';s.get('confirm-password').value='local-password1';
  await s.submit('register-form');
  assert.equal(s.get('auth-dialog').open,false);assert.equal(s.focused(),s.get('home-status'));
@@ -159,4 +159,42 @@ test('standalone registration redirects to INDEX notice only on auto-login succe
  s.succeed();s.next('00099');await s.submit('register-form');
  assert.deepEqual(s.redirects,['index.html?notice=registered&eno=99']);assert.deepEqual(s.notifications,[]);
  assert.equal(s.get('registered').hidden,true);assert.equal(s.state().registeredEno,'');
+});
+
+
+test("form message distinguishes login failures from registration completion guidance", async () => {
+  const s = await screen();
+  assert.equal(s.get("form-message").dataset.kind, "");
+  s.buttons[0].handlers.click();
+  assert.equal(s.get("login-form").hidden, false);
+  assert.equal(s.get("register-form").hidden, true);
+  await s.submit("login-form");
+  assert.equal(s.get("form-message").dataset.kind, "error");
+  assert.equal(s.get("form-message").textContent, "ENoまたはパスワードを確認してください。");
+  s.get("show-register").onclick();
+  await s.submit("register-form");
+  assert.equal(s.get("form-message").dataset.kind, "");
+  assert.match(s.get("form-message").textContent, /登録は完了しました/);
+  s.get("show-login").onclick();
+  await s.submit("login-form");
+  assert.equal(s.get("form-message").dataset.kind, "error");
+  s.succeed(); await s.submit("login-form");
+  assert.equal(s.get("form-message").dataset.kind, "");
+});
+
+test("INDEX has one login-first entrance and existing assets; shared cards remain available to standalone auth", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const css = await readFile(new URL("../css/index.css", import.meta.url), "utf8");
+  assert.equal([...html.matchAll(/data-auth-mode=/g)].length, 1);
+  assert.match(html, /data-auth-mode="login">ログイン \/ 新規登録/);
+  assert.match(html, /src="img\/Dice_logo.png"[^>]*alt="DIES DUCK BATTLE"/);
+  assert.match(html, /<h1>DIES DUCK BATTLE<\/h1>/);
+  assert.match(css, /body\.home-page\s*\{[^}]*index_BG\.png[^}]*cover/s);
+  assert.match(css, /#auth-dialog \.panel\[aria-labelledby="session-title"\],\s*#auth-dialog #registered\s*\{\s*display: none !important/);
+  assert.match(css, /#auth-dialog #form-message\[data-kind="error"\]/);
+  assert.match(authMarkup, /id="session-title"/);
+  assert.match(authMarkup, /id="registered"/);
+  assert.match(authMarkup, /id="form-message" role="status" aria-live="polite"/);
+  const standalone = await readFile(new URL("../auth.html", import.meta.url), "utf8");
+  assert.doesNotMatch(standalone, /home-page|id="auth-dialog"/);
 });

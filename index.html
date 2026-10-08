@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="css/common-menu.css">
   <link rel="stylesheet" href="css/page-loading.css">
 </head>
-<body class="has-common-menu page-loading">
+<body class="home-page has-common-menu page-loading">
   <script src="js/pageLoadGate.js"></script>
   <noscript><p class="page-load-noscript">このページを表示するにはJavaScriptを有効にしてください。</p></noscript>
   <header id="common-menu" class="common-menu"><details class="common-menu__nav"><summary aria-label="ゲームメニューを開く"><span class="common-menu__icon" aria-hidden="true">☰</span></summary><nav aria-label="ゲームメニュー"></nav></details><details class="common-menu__account"><summary aria-label="アカウントメニューを開く" aria-disabled="true" tabindex="-1"><span data-identity role="status"></span><span data-account-arrow aria-hidden="true" hidden>▾</span></summary><div class="common-menu__account-dropdown"><div data-account-menu></div><p data-feedback role="status" hidden></p></div></details></header>
@@ -22,9 +22,10 @@
       <p class="home__notice">開発版 — 現在開発中です。</p>
       <p id="home-status" role="status" tabindex="-1"></p>
     </header>
-    <div id="home-guest" class="home__menu" hidden>
-      <button class="home__link" type="button" data-auth-mode="login">ログイン</button>
-      <button class="home__link" type="button" data-auth-mode="register">新規登録</button>
+    <div id="home-guest" class="home__menu home__guest" hidden>
+      <img class="home__logo" src="img/Dice_logo.png" alt="DIES DUCK BATTLE" width="520" height="320">
+      <button class="home__link" type="button" data-auth-mode="login">ログイン / 新規登録</button>
+      <p class="home__notice">開発版 — 現在開発中です。</p>
     </div>
     <nav id="home-game" class="home__menu" aria-label="ゲームメニュー" hidden></nav>
     <p id="home-feedback" role="status"></p>

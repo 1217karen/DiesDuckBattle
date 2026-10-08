@@ -44,6 +44,10 @@ function render(state) {
   }));
   byId("account-list").hidden = state.enos.length <= 1;
   byId("form-message").textContent = state.message;
+  // 表示上の区別のみ。登録済みENoの案内はエラーとして扱わない。
+  byId("form-message").dataset.kind = state.message && !state.busy &&
+    (state.messageSource === "login" || state.messageSource === "logout" ||
+      (state.messageSource === "register" && !state.registeredEno)) ? "error" : "";
   if (!state.registeredEno) {
     // Clear every derivative of the old registration ENo, including handoff input.
     if (registeredEno && byId("login-eno").value === registeredEno) byId("login-eno").value = "";

@@ -78,3 +78,74 @@ body {
   outline: 3px solid #ffcf60;
   outline-offset: 4px;
 }
+
+/* INDEXだけの背景。単独認証ページもこのCSSを読むためbodyへ限定する。 */
+body.home-page {
+  background: #c6a664 url("../img/index_BG.png") center center / cover no-repeat;
+  min-height: 100svh;
+}
+
+.home:has(#home-guest:not([hidden])) {
+  min-height: calc(100svh - var(--common-menu-height, 52px));
+  gap: 0;
+  padding: 32px 20px max(48px, 12svh);
+}
+
+/* 見出しと状態通知は支援技術向けに残す。ログイン後は従来の表示。 */
+.home:has(#home-guest:not([hidden])) .home__header {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.home__guest {
+  max-width: 520px;
+  justify-items: center;
+  gap: 28px;
+}
+
+.home__logo {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.home__guest .home__link {
+  width: min(100%, 320px);
+  background: #181818e6;
+  border-color: #ffffff80;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.home__guest .home__link:hover {
+  background: #303030;
+  border-color: #ffcf60;
+}
+
+.home__guest .home__notice {
+  margin: 0;
+  color: #20282c;
+  font-size: .75rem;
+  text-shadow: 0 1px 3px #fff9;
+}
+
+/* 共通マークアップは残し、INDEXのポップアップ内だけ簡素化する。 */
+#auth-dialog .panel[aria-labelledby="session-title"],
+#auth-dialog #registered {
+  display: none !important;
+}
+
+#auth-dialog .panel[aria-label="認証フォーム"] {
+  margin-bottom: 0;
+}
+
+#auth-dialog #form-message[data-kind="error"] {
+  color: var(--warn, #e28065);
+  border-left-color: var(--warn, #e28065);
+}

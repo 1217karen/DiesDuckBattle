@@ -100,8 +100,8 @@ test("INDEX actual handlers hide pre-restore menus and manage modal close/focus/
   }
   const document = { getElementById(id) { if (!elements.has(id)) elements.set(id, el()); return elements.get(id); },
     querySelectorAll() { return buttons; }, createElement: el };
-  const input = el(), buttons = [el(), el()];
-  buttons[0].dataset.authMode = "login"; buttons[1].dataset.authMode = "register";
+  const input = el(), buttons = [el()];
+  buttons[0].dataset.authMode = "login";
   let render, mode, cleared = 0;
   const controller = { subscribe(fn) { render = fn; fn({ ...base, ready: false, sessionKnown: false, message: "" }); } };
   const source = (await readFile(new URL("../js/indexPage.js", import.meta.url), "utf8")).replace(/^import .*;\r?\n/gm, "");
@@ -116,10 +116,10 @@ test("INDEX actual handlers hide pre-restore menus and manage modal close/focus/
   assert.equal(mode, "login"); assert.equal(dialog.open, true); assert.equal(document.focused, input);
   document.getElementById("auth-close").handlers.click();
   assert.equal(dialog.open, false); assert.equal(document.focused, buttons[0]); assert.equal(cleared, 1);
-  buttons[1].handlers.click(); assert.equal(mode, "register");
+  buttons[0].handlers.click(); assert.equal(mode, "login");
   // Native dialog Escape invokes close; the same cleanup/return-focus path applies.
-  dialog.close(); assert.equal(document.focused, buttons[1]);
-  buttons[1].handlers.click(); buttons[1].visible = false;
+  dialog.close(); assert.equal(document.focused, buttons[0]);
+  buttons[0].handlers.click(); buttons[0].visible = false;
   render({ ...base, signedIn: true, accounts: [{ eno: "77", name: "DB" }], enos: ["77"], message: "" });
   dialog.close(); assert.equal(document.focused, document.getElementById("home-status"));
   assert.equal(document.getElementById("home-game").hidden, false);
