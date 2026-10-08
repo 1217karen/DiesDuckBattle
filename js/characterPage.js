@@ -1,6 +1,6 @@
 import { PROFILE_MESSAGE_MAX, BATTLER_PROFILE_MAX, DUCK_PROFILE_MAX, profileTextError, flavorLabelError, presentationTextIssues } from "./profileTextValidation.js";
 import { finishPageLoad } from "./pageLoad.js";
-import { presentCSkill } from "./cSkillPresentation.js";
+import { presentProfileSkill } from "./profileSkillPresentation.js";
 import { BATTLER_NAME_MAX, battlerNameError, codePointLength } from "./nameValidation.js";
 import { FIXED_IMAGES, setImageFromCandidates } from "./fixedImages.js";
 import { mountOnlineEditor } from "./onlineEditor.js";
@@ -30,6 +30,7 @@ let dataVersion = 0;
 const picker = createIconPicker({ dialog: document.querySelector("#icon-picker"), list: document.querySelector("#picker-list"), closeButton: document.querySelector("#picker-close") });
 let presentation = createEmptyPlayerPresentation();
 let ducks = [];
+let battlerSkills = {};
 let selectedDuckId = "";
 const imageStates = new Map();
 const duckEditors = new Map();
@@ -197,10 +198,15 @@ function renderQuotes() {
   for (const group of quoteGroups) target.append(quoteGroupEditor(group, presentation.battler.quotes, "battler"));
 }
 
-function quoteGroupEditor(group, quotes, prefix, onEdit = () => {}, showTitle = true) {
+function quoteGroupEditor(group, quotes, prefix, onEdit = () => {}, showTitle = true, skills = battlerSkills) {
     const card = document.createElement("div"); card.className = "card quote-group";
     if (showTitle) { const heading = document.createElement("h3"); heading.textContent = group.title; card.append(heading); }
     for (const [label, path] of group.rows) {
+      if (path[0] === "skill") {
+        const description = document.createElement("p"); description.className = "quote-skill-description";
+        description.textContent = presentProfileSkill(path[1], skills[path[1]] ?? null);
+        card.append(description);
+      }
       const timing = path.reduce((value, key) => value[key], quotes);
       const block = document.createElement("div"); block.className = "quote-timing-block";
       const extras = document.createElement("div"); extras.className = "quote-extras"; extras.hidden = true;
@@ -458,10 +464,7 @@ function renderDuckSelect() {
     const cutin = document.createElement("section"); cutin.className = "duck-cutin";
     const heading = document.createElement("h3");
     heading.innerHTML = 'Cスキルカットイン <span class="muted">（480×480px）</span>';
-    const description = document.createElement("p"); description.className = "muted c-skill-description";
-    const skill = presentCSkill(duck.cSelection);
-    description.textContent = skill.text ?? (duck.cSelection == null ? "Cスキル未設定" : "Cスキル設定未完了");
-    cutin.append(heading, description, makeImageField({ label:"URL", kind:"cutin", previewClass:"cutin-preview", fallback:null,
+    cutin.append(heading, makeImageField({ label:"URL", kind:"cutin", previewClass:"cutin-preview", fallback:null,
       value:presentation.ducks[id]?.cutinUrl ?? "",
       onInput:value => { duckPresentation(id).cutinUrl = value; } }));
     const aQuotes = document.createElement("section"), cQuotes = document.createElement("section");
@@ -470,7 +473,7 @@ function renderDuckSelect() {
       for (const [category, root] of [["A", aQuotes], ["C", cQuotes]]) {
         const group = quoteGroupEditor(
           { title: category + "スキルセリフ", rows: [[category, ["skill", category]]] }, quotes, "duck-" + id,
-          () => { duckPresentation(id).quotes = quotes; }, false);
+          () => { duckPresentation(id).quotes = quotes; }, false, { A: duck.aSelection, C: duck.cSelection });
         group.className = "quote-group";
         root.replaceChildren(group);
       }
@@ -508,7 +511,8 @@ online = await mountOnlineEditor({
     battlerNameInput.value = data?.battlerName ?? "";
     picker.close(); imageStates.clear(); duckEditors.clear(); duckQuoteRenderers.clear(); selectedDuckId = "";
     presentation = data ? structuredClone(data.presentation) : createEmptyPlayerPresentation();
-    ducks = data ? data.build.ducks.map(({ id, name, cSelection }) => ({ id, name, cSelection })) : [];
+    battlerSkills = { B: data?.build.battler.bSelection ?? null, D: data?.build.battler.dSelection ?? null };
+    ducks = data ? data.build.ducks.map(({ id, name, aSelection, cSelection }) => ({ id, name, aSelection, cSelection })) : [];
     if (data) { renderBattlerImages(); renderBattlerProfile(); renderQuotes(); renderDuckSelect(); }
     else for (const id of ["battler-images", "battler-profile", "quotes", "duck-icon-editor", "duck-profile-editor", "duck-quotes-editor", "duck-select"]) document.getElementById(id).replaceChildren();
   },

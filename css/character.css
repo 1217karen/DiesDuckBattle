@@ -116,6 +116,7 @@ button.primary { font-weight:750; padding:13px 28px; }
 
 /* Each timing is a lighter enclosure than its parent quote-group card. */
 .quote-timing-block { border:1px solid transparent; border-radius:7px; padding:5px 8px; margin:4px -9px; }
+.quote-skill-description { margin:8px 0; font-size:.75rem; line-height:1.6; color:var(--muted); overflow-wrap:anywhere; }
 .quote-timing-block.is-open { border-color:var(--line); background:var(--ui-surface); }
 .quote-row { grid-template-columns:70px 28px 60px minmax(0,1fr); gap:9px; }
 .quote-toggle,.quote-add { padding:3px; width:28px; min-height:30px; }

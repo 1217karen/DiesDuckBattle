@@ -1,8 +1,11 @@
 import { PROFILE_MESSAGE_MAX, BATTLER_PROFILE_MAX, DUCK_PROFILE_MAX, profileTextError, flavorLabelError, presentationTextIssues } from "../js/profileTextValidation.js";
 import { createQuoteEnoLookup } from "../js/quoteEnoLookup.js";
-import { presentCSkill } from "../js/cSkillPresentation.js";
+import { presentProfileSkill } from "../js/profileSkillPresentation.js";
+import { createASkillCatalog } from "../js/aSkillCatalog.js";
+import { createBSkillCatalog } from "../js/bSkillCatalog.js";
+import { migrateSelection } from "../js/selectionNormalization.js";
 import { createQuoteToolbar } from "../js/quoteRichTextToolbar.js";
-import { hasName, battlerNameError } from "../js/nameValidation.js";
+import { BATTLER_NAME_MAX, codePointLength, hasName, battlerNameError } from "../js/nameValidation.js";
 import { FIXED_IMAGES, setImageFromCandidates } from "../js/fixedImages.js";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -63,7 +66,7 @@ async function characterScreen({ siteTheme = null, storageThrows = false } = {})
   const controller = { snapshot: () => ({ canSave: true, canEdit: true }),
     edit(patch) { editCount++; latest = { ...latest, ...structuredClone(patch) }; },
     async save() { saved = structuredClone(latest); return { ok: true }; } };
-  const context = { PROFILE_MESSAGE_MAX, BATTLER_PROFILE_MAX, DUCK_PROFILE_MAX, profileTextError, flavorLabelError, presentationTextIssues, battlerNameError, presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine, createQuoteEnoLookup, getSupabaseClient: async()=>({}), createOnlineProfileService: ()=>({getProfile:async()=>({ok:false,status:"profile-not-found"})}), finishPageLoad() {}, requireLoginPage: async () => {}, presentCSkill, hasName, FIXED_IMAGES, setImageFromCandidates, getQuoteIconUrlCandidates, createQuoteToolbar, document, structuredClone, createEmptyDuckQuotes, createEmptyDuckPresentation, quoteTimings, createEmptyDuckProfile, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
+  const context = { BATTLER_NAME_MAX, codePointLength, PROFILE_MESSAGE_MAX, BATTLER_PROFILE_MAX, DUCK_PROFILE_MAX, profileTextError, flavorLabelError, presentationTextIssues, battlerNameError, presentationForPersistence, QUOTE_PATHS, QUOTE_TEXT_MAX, isQuoteEno, createEmptyQuoteLine, createQuoteEnoLookup, getSupabaseClient: async()=>({}), createOnlineProfileService: ()=>({getProfile:async()=>({ok:false,status:"profile-not-found"})}), finishPageLoad() {}, requireLoginPage: async () => {}, presentProfileSkill, hasName, FIXED_IMAGES, setImageFromCandidates, getQuoteIconUrlCandidates, createQuoteToolbar, document, structuredClone, createEmptyDuckQuotes, createEmptyDuckPresentation, quoteTimings, createEmptyDuckProfile, createEmptyPlayerPresentation, IMAGE_LIMITS, createImageValidation, imageValidationSummary,
     Option: function (name, value) { const el = new Element("option"); el.textContent = name; el.value = value; return el; },
     createIconPicker: () => ({ open(args) { selectedCallback = args.select; }, close() { selectedCallback = null; } }),
     mountOnlineEditor: async args => { assert.deepEqual(Array.from(args.sections), ["presentation", "battlerName"]); hooks = args; latest = structuredClone(data); args.hydrate(data); args.onState({ canSave: true, canEdit: true }); return controller; } };
@@ -194,7 +197,7 @@ test("blank battler names load unchanged but block even a direct save click", as
   }
 });
 
-test("Duck cut-in editor merges sibling URLs, switches Ducks, and uses common C presentation without repair",async()=>{
+test("Duck cut-in editor retains only image settings; C explanation moves to quotes without repair",async()=>{
   const page=await characterScreen(),data=structuredClone(page.data),first=data.build.ducks[0];
   first.name="一羽目";first.cSelection={mode:"normal",structure:{kind:"flat",effects:[{effectId:"heal-self",options:{amount:"healAmount-30"}}]}};
   const second=createEmptyDuck();second.name="二羽目";data.build.ducks.push(second);
@@ -202,8 +205,9 @@ test("Duck cut-in editor merges sibling URLs, switches Ducks, and uses common C 
   const before=structuredClone(data.build);page.hydrate(data);assert.deepEqual(page.latest().build,before);
   const editors=page.get("duck-icon-editor").children;assert.equal(editors.length,2);
   assert.equal(editors[0].hidden,false);assert.equal(editors[1].hidden,true);
-  const icon=editors[0].children[1],cutin=page.get("duck-quotes-editor").children[0].children[2],description=cutin.children[1],field=cutin.children[2];
-  assert.equal(description.textContent,presentCSkill(first.cSelection).text);
+  const icon=editors[0].children[1],cutin=page.get("duck-quotes-editor").children[0].children[2],field=cutin.children[1];
+  assert.equal(cutin.children.length,2);
+  assert.equal(descendants(page.get("duck-quotes-editor").children[0].children[1]).find(e=>e.className==="quote-skill-description").textContent,presentProfileSkill("C",first.cSelection));
   assert.equal(field.className,"image-field cutin-field");assert.equal(field.children[0].className,"image-field-control");
   assert.equal(field.children[1].className,"preview cutin-preview");assert.equal(field.children[1].children.length,1); // no fallback
   const cutinInput=descendants(field).find(e=>e.tagName==="input");
@@ -214,9 +218,9 @@ test("Duck cut-in editor merges sibling URLs, switches Ducks, and uses common C 
   assert.deepEqual(page.latest().presentation.ducks[second.id],data.presentation.ducks[second.id]);assert.deepEqual(page.latest().build,before);
   page.get("duck-select").value=second.id;page.get("duck-select").onchange();
   assert.equal(editors[0].hidden,true);assert.equal(editors[1].hidden,false);
-  assert.equal(page.get("duck-quotes-editor").children[1].children[2].children[1].textContent,"Cスキル未設定");
+  assert.equal(descendants(page.get("duck-quotes-editor").children[1].children[1]).find(e=>e.className==="quote-skill-description").textContent,"未設定");
   data.build.ducks[0].cSelection={mode:"normal",structure:{kind:"flat",effects:[null]}};page.hydrate(data);
-  assert.equal(page.get("duck-quotes-editor").children[0].children[2].children[1].textContent,"Cスキル設定未完了");
+  assert.equal(descendants(page.get("duck-quotes-editor").children[0].children[1]).find(e=>e.className==="quote-skill-description").textContent,"設定未完了");
   assert.deepEqual(page.latest().build,data.build);
 });
 
@@ -551,4 +555,22 @@ test('character subheadings retain label association and Battler titles while Du
   assert.ok(aria(root.children[1],'Cスキルセリフ Cのセリフ'));
   assert.equal(root.children[2].children[0].tagName,'h3');
  }
+});
+
+
+test('A/B/C/D quote hints use existing presentation and rehydrate without editing saved data',async()=>{
+ const page=await characterScreen(),data=structuredClone(page.data);
+ data.build.battler.bSelection=migrateSelection('B',{type:'event',triggerId:'after-hit',conditionId:'always',effectId:'enemy-debuff',options:{statusId:'crack'}},createBSkillCatalog());
+ data.build.battler.dSelection={optionId:'add-self-0'};
+ data.build.ducks[0].aSelection=migrateSelection('A',{triggerId:'gte:4',effects:[{effectId:'ap-self-increase',amountOptionId:'amount-1'}]},createASkillCatalog());
+ data.build.ducks[0].cSelection={mode:'normal',structure:{kind:'flat',effects:[{effectId:'heal-self',options:{amount:'healAmount-30'}}]}};
+ const before=structuredClone(data);page.hydrate(data);
+ const hints=root=>descendants(root).filter(e=>e.className==='quote-skill-description').map(e=>e.textContent);
+ assert.deepEqual(hints(page.get('quotes')),['B','D'].map(c=>presentProfileSkill(c,data.build.battler[c.toLowerCase()+'Selection'])));
+ const root=page.get('duck-quotes-editor').children[0];
+ for(const [i,c] of ['A','C'].entries())assert.deepEqual(hints(root.children[i]),[presentProfileSkill(c,data.build.ducks[0][c.toLowerCase()+'Selection'])]);
+ assert.ok([...hints(page.get('quotes')),...hints(root)].every(text=>text!=='未設定'&&text!=='設定未完了'));
+ assert.deepEqual(hints(root.children[2]),[]);assert.deepEqual(page.latest(),before);
+ data.build.battler.bSelection=null;data.build.battler.dSelection=null;page.hydrate(data);
+ assert.deepEqual(hints(page.get('quotes')),['未設定','未設定']);
 });
