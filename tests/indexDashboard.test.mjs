@@ -13,7 +13,7 @@ async function screen() {
   let render, logouts=0;
   await vm.runInNewContext('(async()=>{'+source+'})()', {
     document: { getElementById: get, querySelectorAll: () => [] },
-    consumeIndexNotice() {}, finishPageLoad() {}, menuModel, FIXED_IMAGES, setImageFromCandidates,
+    consumeIndexNotice() {}, mountIndexMessages: () => ({update() {}}), finishPageLoad() {}, menuModel, FIXED_IMAGES, setImageFromCandidates,
     mountAuthView: () => ({}), getAuthRuntime: async () => ({ subscribe(fn) { render=fn; fn({ ...signedOut, ready:false }); }, logout() { logouts++; render(signedOut); } }),
     getSupabaseClient: async () => ({}), createOnlinePlayerStorage: () => ({ load: () => new Promise(resolve => pending.push(resolve)) }),
   });

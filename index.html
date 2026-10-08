@@ -31,20 +31,24 @@
       <div class="home__standing"><img id="home-standing" alt="自分のバトラーの立ち絵" width="500" height="800"></div>
       <div class="home__dashboard-ui">
         <section class="home__voice home__voice--own" aria-labelledby="home-own-title">
-          <h2 id="home-own-title">自分のひとこと <small>準備中</small></h2>
+          <h2 id="home-own-title">自分のひとこと</h2>
           <div class="home__voice-row">
             <img id="home-icon" class="home__avatar" alt="" width="60" height="60">
-            <div class="home__voice-body"><p id="home-identity" class="home__identity"></p><p>ここに自分のひとことが表示されます。</p></div>
-            <button class="home__edit" type="button" disabled aria-label="ひとこと編集（準備中）">✎</button>
+            <div class="home__voice-body"><p id="home-identity" class="home__identity"></p><p id="home-message"></p></div>
+            <button id="home-message-edit" class="home__edit" type="button" disabled aria-label="ひとことを編集">✎</button>
           </div>
+          <form id="home-message-form" class="home__message-form" hidden>
+            <label for="home-message-input">ひとこと（60文字まで）</label>
+            <textarea id="home-message-input" rows="3" aria-describedby="home-message-count home-message-status"></textarea>
+            <p id="home-message-count"></p>
+            <div><button id="home-message-cancel" type="button">キャンセル</button><button id="home-message-save" type="submit">保存</button></div>
+          </form>
+          <p id="home-message-status" role="status"></p>
         </section>
         <section class="home__voice" aria-labelledby="home-voices-title">
-          <h2 id="home-voices-title">みんなのひとこと <small>サンプル表示</small></h2>
-          <ul class="home__voices">
-            <li class="home__voice-row"><img class="home__avatar" src="img/B00_icon.png" alt="" width="60" height="60"><div class="home__voice-body"><p class="home__identity">ENo.--｜サンプル</p><p>ここに他プレイヤーのひとことが表示されます。</p></div></li>
-            <li class="home__voice-row"><img class="home__avatar" src="img/B00_icon.png" alt="" width="60" height="60"><div class="home__voice-body"><p class="home__identity">ENo.--｜サンプル</p><p>ひとこと表示の仮レイアウトです。</p></div></li>
-            <li class="home__voice-row"><img class="home__avatar" src="img/B00_icon.png" alt="" width="60" height="60"><div class="home__voice-body"><p class="home__identity">ENo.--｜サンプル</p><p>後からオンラインデータに接続します。</p></div></li>
-          </ul>
+          <h2 id="home-voices-title">みんなのひとこと</h2>
+          <ul id="home-messages" class="home__voices"></ul>
+          <p id="home-messages-status" role="status"></p>
         </section>
         <nav class="home__menu home__game-menu" aria-label="ゲームメニュー">
           <a class="home__link" href="select.html">アヒルバトル</a>

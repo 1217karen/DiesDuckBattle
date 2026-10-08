@@ -263,3 +263,18 @@ body.home-page::before {
   .home__voice { padding: 14px; }
   .home__voice-row { gap: 8px; }
 }
+
+.home__message-form { margin-top: 12px; font-size: .85rem; }
+.home__message-form textarea { display: block; width: 100%; resize: vertical; padding: 8px; font: inherit; color: #eee; background: #242424; border: 1px solid #888; border-radius: 6px; }
+.home__message-form textarea[aria-invalid="true"] { border-color: #e28065; }
+.home__message-form > p { text-align: right; margin: 4px 0; }
+.home__message-form > div { display: flex; justify-content: flex-end; gap: 8px; }
+.home__message-form button { font: inherit; color: #eee; background: #303030; border: 1px solid #888; border-radius: 6px; padding: 6px 12px; }
+.home__message-form button:disabled { opacity: .5; }
+.home__edit:not(:disabled) { cursor: pointer; }
+#home-message-status, #home-messages-status { font-size: .85rem; color: #bbb; }
+#home-message-status:empty, #home-messages-status:empty { display: none; }
+#home-message, .home__voices .home__voice-body p { white-space: pre-wrap; }
+.home__voices .home__voice-row > a { flex: 0 0 48px; }
+.home__voices a.home__identity { text-decoration: none; }
+.home__voices a.home__identity:hover { text-decoration: underline; }

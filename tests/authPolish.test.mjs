@@ -73,7 +73,7 @@ async function screen({ standalone = false } = {}) {
       : { ok: false, message: "ENoまたはパスワードを確認してください。" }, logout: async () => {},
   }, state => { last = state; }, message => notifications.push(message));
   await controller.start();
-  const context = { battlerNameError, FIXED_IMAGES, setImageFromCandidates, getSupabaseClient: async () => ({}), createOnlinePlayerStorage: () => ({ load: async () => ({ ok: false }) }), finishPageLoad() {}, document, window: { addEventListener() {} }, navigator: { clipboard: { writeText: async v => copied.push(v) } },
+  const context = { battlerNameError, FIXED_IMAGES, setImageFromCandidates, getSupabaseClient: async () => ({}), createOnlinePlayerStorage: () => ({ load: async () => ({ ok: false }) }), mountIndexMessages: () => ({update() {}}), finishPageLoad() {}, document, window: { addEventListener() {} }, navigator: { clipboard: { writeText: async v => copied.push(v) } },
     consumeIndexNotice() {}, canonicalEno, location: { replace: url => redirects.push(url) }, authMarkup, menuModel, getAuthRuntime: async () => controller, controller };
   const code = await source("authView") + (standalone ? await source("authPage") : await source("indexPage"));
   await vm.runInNewContext("(async()=>{" + code + "})()", context);

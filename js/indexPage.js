@@ -1,3 +1,4 @@
+import { mountIndexMessages } from "./indexMessagesView.js";
 import { finishPageLoad } from "./pageLoad.js";
 import { getAuthRuntime, getSupabaseClient } from "./authRuntime.js";
 import { mountAuthView } from "./authView.js";
@@ -61,6 +62,7 @@ try {
       document.getElementById("home-status").focus();
     },
   });
+  const messages = mountIndexMessages(document, getSupabaseClient);
   const logout = document.getElementById("home-logout");
   logout.addEventListener("click", () => controller.logout());
   controller.subscribe(state => {
@@ -75,6 +77,7 @@ try {
       document.getElementById("home-identity").textContent = known && state.signedIn ? menuModel(state).identity : "";
       logout.disabled = !known || !state.signedIn || !!state.busy;
       updateBattlerImages(state);
+      messages.update(state);
       if (known || state.ready) finishPageLoad();
     } catch {
       document.getElementById("home-status").textContent = "認証機能を読み込めませんでした。通信状況を確認して再読み込みしてください。";
