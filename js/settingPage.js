@@ -90,8 +90,29 @@ function select(id, items, current, onChange, placeholder = "選択してくだ�
   input.addEventListener("change", () => onChange(input.value));
   return input;
 }
+function inputWithHint(input) {
+  const hints = {
+    "b-type": { event: "特定のタイミングで都度発動します。", trait: "条件を満たす限り、常に発動します。" },
+    "c-mode": { normal: "自分のフェイズ開始時、APが溜まっていれば発動します。", special: "自分敗北時、APが溜まっていれば発動します。" },
+    "dice-type": {
+      "custom-speed": "0と1～4のみが使えるダイスです。", "custom-normal": "0と2～5のみが使えるダイスです。",
+      "custom-heavy": "0と3～6のみが使えるダイスです。", "preset-standard": "1～6が1つずつ入ったダイスです。",
+      "preset-void": "0のみで構成されたダイスです。"
+    },
+    "d-option": "戦闘開始時に1回、選んだダイスを1個追加します。",
+    "a-cancel": "通常攻撃をキャンセルしても、出目効果は発動します。",
+    "c-structure": "確率などで複数の効果を使い分けることができます。"
+  };
+  const hint = hints[input.id], text = typeof hint === "string" ? hint : hint?.[input.value];
+  if (!text) return input;
+  const row = el("span", null, "input-with-hint"), description = el("span", text, "description");
+  description.id = input.id + "-hint"; input.setAttribute("aria-describedby", description.id);
+  row.append(input, description); return row;
+}
 function field(box, text, id, items, current, onChange, placeholder) {
-  box.append(labeled(text, select(id, items, current, onChange, placeholder)));
+  const input = select(id, items, current, onChange, placeholder);
+  box.append(text ? labeled(text, inputWithHint(input)) : inputWithHint(input));
+  return input;
 }
 function card(title, key) {
   const box = el("section", null, ["a", "b", "c", "d"].includes(key) ? `card skill-card skill-${key}` : "card"), heading = el("div", null, "card-header");
@@ -265,7 +286,7 @@ function renderBattler() {
   const { bSelection: b, dSelection: d } = state.build.battler;
   const bBox = card("B SKILL / Bスキル", "b"), controls = el("div", null, "controls");
   const incomplete = [{ id: "incomplete", label: "未完了（選択してください）", disabled: true }];
-  field(controls, "Bスキルの種類", "b-type", [{ id: "event", label: "トリガー型" }, { id: "trait", label: "パッシブ型" },
+  field(controls, "発動タイミング", "b-type", [{ id: "event", label: "トリガー型" }, { id: "trait", label: "パッシブ型" },
     ...(b !== null && !b.type ? incomplete : [])], b === null ? "" : b.type || "incomplete",
     type => patchBattler({ bSelection: !type ? null : type === "event"
       ? { type, triggerId: "", conditionId: "", effectId: "", options: {} } : { type, traitId: "", options: {} } }), "未設定");
@@ -273,9 +294,8 @@ function renderBattler() {
   bBox.append(controls);
   feedback(bBox, "b");
   const dBox = card("D SKILL / Dスキル", "d");
-  dBox.append(el("p", "戦闘開始時に1回、選んだダイスを1個追加します。", "description"));
-  field(dBox, "追加するダイス", "d-option", [...D_SKILL_OPTIONS, ...(d !== null && !d.optionId ? incomplete : [])], d === null ? "" : d.optionId || "incomplete",
-    optionId => patchBattler({ dSelection: optionId ? { optionId } : null }), "未設定");
+  field(dBox, null, "d-option", [...D_SKILL_OPTIONS, ...(d !== null && !d.optionId ? incomplete : [])], d === null ? "" : d.optionId || "incomplete",
+    optionId => patchBattler({ dSelection: optionId ? { optionId } : null }), "未設定").setAttribute("aria-label", "Dスキル");
   feedback(dBox, "d");
   $("battler-editor").replaceChildren(bBox, dBox);
 }
@@ -327,7 +347,7 @@ function renderStats(duck, box) {
   }
   const sp = el("span", `SP ${frame.SP}`); sp.id = "stat-SP"; grid.append(sp);
   const metrics = el("div", null, "metrics"); metrics.id = "stat-metrics";
-  statBox.append(grid, metrics, el("p", "AT・DFは1～5。SPを含む合計上限は9pt。0は未設定です。", "description"));
+  statBox.append(grid, metrics, el("p", "AT・DFは1～5まで選択できます。SPを含む合計上限は9です。", "description"));
   feedback(statBox, "stats"); box.append(statBox);
 }
 const skillsUnlocked = duck => duck.stats.AT >= 1 && duck.stats.DF >= 1;
@@ -341,7 +361,7 @@ function aChoice(box, id, items, current, onChange, label, savedLabel = current,
   const options = [...items];
   if (current && !options.some(o => o.id === current)) options.push({ id: current, label: `現在は使用不可：${savedLabel}（再選択してください）`, disabled: true });
   const input = select(id, options, current, onChange, placeholder);
-  input.setAttribute("aria-label", label); box.append(input); return input;
+  input.setAttribute("aria-label", label); box.append(inputWithHint(input)); return input;
 }
 function aSentenceChoice(box, id, items, current, onChange, label, savedLabel = current) {
   // Reading never fills a missing field or conceals an invalid saved value.
@@ -396,7 +416,7 @@ function renderA(duck, box) {
           triggerId => update(changeATrigger(a, triggerId, duck, aCatalog)), f.label, aTriggerText(a.triggerId) ?? a.triggerId);
       }
     }
-    const triggerEditor = el("div"); triggerEditor.append(el("span", "発動条件"), trigger);
+    const triggerEditor = el("div"); triggerEditor.append(el("span", "発動条件"), el("small", "「以下」の判定には0を含みません。", "description trigger-hint"), trigger);
     settingLine(top, priceLabel("a-trigger-price", "", negative(resources.triggerCost), "pt"), triggerEditor);
     const cancelled = (a.effects ?? []).some(e => isACancel(e, aCatalog));
     const cancel = el("label", "通常攻撃", "auxiliary-control");
@@ -499,7 +519,7 @@ function renderC(duck, box) {
   settingLine(top, el("span", `最低AP ${cRules.minimumAP}`), modeEditor);
   const metrics = el("div", null, "resource-summary"); metrics.id = "c-metrics";
   const hasEffects = cBranches(duck.cSelection).some(({ branch }) => branch?.effects?.length);
-  field(modeEditor, "Cスキルの種類", "c-mode", [...C_MODE_OPTIONS,
+  field(modeEditor, "発動タイミング", "c-mode", [...C_MODE_OPTIONS,
     ...(duck.cSelection !== null && !c.mode ? [{ id: "incomplete", label: "未完了（選択してください）", disabled: true }] : [])], duck.cSelection === null ? "" : c.mode || "incomplete",
     mode => {
       if (!mode) { patchDuck({ cSelection: null }); return; }
@@ -623,7 +643,7 @@ function renderSummaries() {
     $(`${metricId}-metrics`)?.classList.toggle("invalid", status.invalid.length > 0);
   }
   const frame = getDiceFrame(duck.diceFrame);
-  if ($("stat-metrics")) $("stat-metrics").textContent = `ステータスpt：${(duck.stats.AT ?? 0) + (duck.stats.DF ?? 0) + (frame?.SP ?? 0)} / ${rules.stats.totalMax}　HP ${num(summary.stats.hp)}`;
+  if ($("stat-metrics")) $("stat-metrics").textContent = `ステータス合計：${(duck.stats.AT ?? 0) + (duck.stats.DF ?? 0) + (frame?.SP ?? 0)} / ${rules.stats.totalMax}　HP ${num(summary.stats.hp)}`;
   const dice = summary.dice.resources;
   if ($("dice-metrics")) $("dice-metrics").textContent = `ダイスpt　獲得 ${num(dice?.earned)}pt / 消費 ${num(dice?.spent)}pt`;
   if (skillsUnlocked(duck)) { const a = aEditingSelection(duck); renderAPoints(a, calculateASkillResources(duck, a, { catalog: aCatalog })); }

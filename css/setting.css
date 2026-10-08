@@ -185,3 +185,8 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
 }
 
 .section-heading h2 { font-family:var(--font-heading-ja); }
+
+.input-with-hint { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; min-width:0; }
+.input-with-hint > select { flex:0 0 auto; width:auto; max-width:100%; }
+.input-with-hint > .description { flex:1 1 16em; margin:0; }
+.trigger-hint { margin-left:12px; }

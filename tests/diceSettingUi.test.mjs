@@ -40,15 +40,15 @@ test("dice-first UI derives SP, resets dice only on type changes, exposes budget
   const p=await page(initial());
   assert.equal(p.get("stat-SP").textContent,"SP 1");
   const headings=p.get("duck-editor").textContent;assert.ok(headings.indexOf("DICE /")<headings.indexOf("STATUS /"));assert.ok(headings.indexOf("STATUS /")<headings.indexOf("A SKILL"));
-  assert.match(p.get("stat-metrics").textContent,/ステータスpt：9 \/ 9/);
+  assert.match(p.get("stat-metrics").textContent,/ステータス合計：9 \/ 9/);
   p.choose("dice-type","custom-speed");
   assert.deepEqual(Array.from({length:6},(_,i)=>p.get(`dice-${i}`).value),["1","2","3","4","0","0"]);
   assert.equal(p.get("stat-AT").value,"4");assert.equal(p.get("stat-DF").value,"4");
-  assert.match(p.get("stat-metrics").textContent,/ステータスpt：11 \/ 9/);
+  assert.match(p.get("stat-metrics").textContent,/ステータス合計：11 \/ 9/);
   assert.equal(p.get("a-trigger").value,"exact:6");assert.match(p.get("a-trigger").textContent,/現在は使用不可/);
   p.choose("dice-0","0");assert.match(p.get("dice-metrics").textContent,/^ダイスpt　獲得 3pt \/ 消費 1pt$/);
   p.choose("dice-type","custom-normal");assert.deepEqual(Array.from({length:6},(_,i)=>p.get(`dice-${i}`).value),["0","2","3","4","5","0"]);
-  assert.match(p.get("stat-metrics").textContent,/ステータスpt：10 \/ 9/);
+  assert.match(p.get("stat-metrics").textContent,/ステータス合計：10 \/ 9/);
 });
 test("preset UI offers normal/void, locks every dice slot, and restores custom standard dice on load",async()=>{
   const b=initial();b.ducks[0].dice=[0,3,3,4,5,6];const p=await page(b);
@@ -79,7 +79,7 @@ test("0..5 stay visible and pt shortage candidates are disabled",async()=>{
  const b=initial();b.ducks[0].stats={AT:4,DF:null,SP:3};b.ducks[0].diceFrame="custom-speed";b.ducks[0].dice=[1,2,3,4,0,0];
  const before=structuredClone(b),p=await page(b);
  assert.deepEqual(p.get("stat-DF").children.map(o=>[o.value,o.disabled,o.textContent]),[["0",false,"0"],["1",false,"1"],["2",false,"2"],["3",true,"3（pt不足）"],["4",true,"4（pt不足）"],["5",true,"5（pt不足）"]]);
- assert.deepEqual(b,before);p.choose("stat-DF","1");assert.match(p.get("stat-metrics").textContent,/ステータスpt：8 \/ 9/);
+ assert.deepEqual(b,before);p.choose("stat-DF","1");assert.match(p.get("stat-metrics").textContent,/ステータス合計：8 \/ 9/);
  assert.ok(p.get("a-trigger"));assert.ok(p.get("c-mode"));p.choose("stat-AT","0");assert.equal(p.get("a-trigger"),undefined);
  assert.deepEqual(p.get("stat-DF").children.map(o=>o.value),["0","1","2","3","4","5"]);
 });

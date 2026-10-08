@@ -213,7 +213,7 @@ test("C first edit materializes only its branch; add starts a second row",async(
  const saved=p.save().ducks[0].cSelection;
  assert.equal(saved.structure.branches[0].effects.length,1);assert.equal(saved.structure.branches[1].effects.length,0);
  add(p);assert.ok(p.get("c-effect-0-1"));
- assert.equal(p.get("c-structure").parent.parent.className,"auxiliary-control");
+ assert.equal(p.get("c-structure").parent.parent.parent.className,"auxiliary-control");
  assert.ok(p.all().some(e=>e.className==="card skill-card skill-c"));
 });
 test("C effect metadata uses branch-local resource prices and retains maximum-branch total",async()=>{

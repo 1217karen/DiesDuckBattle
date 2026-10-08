@@ -138,7 +138,7 @@ test("A compact cost summary uses computed totals, preserves saved values, and e
 test("A incomplete controls use color hints without persistent warnings; supplementary control is subdued",async()=>{
  const p=await page(initial());
  assert.match(p.get("a-effect-0").className,/select-empty/);assert.equal(p.get("a-issues").textContent,"");
- assert.equal(p.get("a-cancel").parent.className,"auxiliary-control");
+ assert.equal(p.get("a-cancel").parent.parent.className,"auxiliary-control");
  assert.match(p.get("stat-AT").className,/select-compact/);
  assert.ok(!p.get("a-effect-0").className.includes("select-compact"));
  p.choose("a-trigger","exact:1");assert.ok(!p.get("a-trigger").className.includes("select-empty"));
