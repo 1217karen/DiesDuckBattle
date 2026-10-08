@@ -91,8 +91,9 @@ body.home-page {
   padding: 32px 20px max(48px, 12svh);
 }
 
-/* 見出しと状態通知は支援技術向けに残す。ログイン後は従来の表示。 */
-.home:has(#home-guest:not([hidden])) .home__header {
+/* 見出しと状態通知は支援技術向けに残す。 */
+.home:has(#home-guest:not([hidden])) .home__header,
+.home:has(#home-game:not([hidden])) .home__header {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -148,4 +149,47 @@ body.home-page {
 #auth-dialog #form-message[data-kind="error"] {
   color: var(--warn, #e28065);
   border-left-color: var(--warn, #e28065);
+}
+
+/* Signed-in home: the illustration stands directly on the INDEX background. */
+.home__dashboard[hidden], .home__guest[hidden] { display: none; }
+.home:has(#home-game:not([hidden])) {
+  min-height: calc(100svh - var(--common-menu-height, 52px));
+  padding: 28px 24px;
+  gap: 16px;
+}
+.home__dashboard {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  align-items: end;
+  gap: clamp(20px, 4vw, 64px);
+  width: min(100%, 1120px);
+  text-align: left;
+}
+.home__standing { display: flex; align-items: end; justify-content: center; min-width: 0; }
+.home__standing img { display: block; width: 100%; height: min(760px, 82svh); object-fit: contain; object-position: center bottom; }
+.home__dashboard-ui { display: grid; gap: 22px; min-width: 0; }
+.home__voice { padding: 18px; border: 1px solid #ffffff80; border-radius: 14px; background: #181818eb; color: #eee; box-shadow: 0 4px 16px #0002; }
+.home__voice h2 { margin: 0 0 14px; font-family: var(--font-heading-ja); font-size: 1rem; color: #ffcf60; }
+.home__voice small, .home__game-menu small { font: normal .7rem var(--font-base); color: #bbb; }
+.home__voices { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; }
+.home__voice-row { display: flex; align-items: start; gap: 12px; min-width: 0; }
+.home__avatar { width: 48px; height: 48px; flex: 0 0 48px; object-fit: contain; border-radius: 6px; }
+.home__voice-body { flex: 1; min-width: 0; font-size: .85rem; line-height: 1.7; overflow-wrap: anywhere; }
+.home__voice-body p { margin: 0; }
+.home__identity { font-size: .75rem; color: #cfcfcf; }
+.home__edit { flex: 0 0 auto; align-self: center; background: transparent; border: 0; color: #bbb; font: inherit; font-size: 1.25rem; }
+.home__game-menu { max-width: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.home__game-menu .home__link { background: #181818eb; text-align: center; font: inherit; font-weight: 700; padding: 13px 8px; }
+.home__game-menu .home__link:not(:disabled):hover { background: #303030; }
+.home__game-menu button:not(:disabled) { cursor: pointer; }
+.home__game-menu .home__link:disabled { color: #aaa; border-color: #ffffff40; }
+#home-feedback:empty { display: none; }
+@media (max-width: 700px) {
+  .home:has(#home-game:not([hidden])) { padding: 20px 16px 32px; }
+  .home__dashboard { grid-template-columns: minmax(0, 1fr); gap: 20px; max-width: 520px; }
+  .home__standing img { height: min(360px, 45svh); }
+  .home__dashboard-ui { gap: 16px; }
+  .home__voice { padding: 14px; }
+  .home__voice-row { gap: 8px; }
 }

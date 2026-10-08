@@ -1,3 +1,4 @@
+import { FIXED_IMAGES, setImageFromCandidates } from "../js/fixedImages.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -106,7 +107,7 @@ test("INDEX actual handlers hide pre-restore menus and manage modal close/focus/
   const controller = { subscribe(fn) { render = fn; fn({ ...base, ready: false, sessionKnown: false, message: "" }); } };
   const source = (await readFile(new URL("../js/indexPage.js", import.meta.url), "utf8")).replace(/^import .*;\r?\n/gm, "");
   await vm.runInNewContext("(async()=>{" + source + "})()", {
-    finishPageLoad() {}, consumeIndexNotice() {}, document, getAuthRuntime: async () => controller, menuModel,
+    FIXED_IMAGES, setImageFromCandidates, getSupabaseClient: async () => ({}), createOnlinePlayerStorage: () => ({ load: async () => ({ ok: false }) }), finishPageLoad() {}, consumeIndexNotice() {}, document, getAuthRuntime: async () => controller, menuModel,
     mountAuthView: () => ({ switchForm: value => { mode = value; }, clearPasswords: () => { cleared++; } }),
   });
   assert.equal(document.getElementById("home-guest").hidden, true);

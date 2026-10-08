@@ -1,10 +1,40 @@
 import { finishPageLoad } from "./pageLoad.js";
-import { getAuthRuntime } from "./authRuntime.js";
+import { getAuthRuntime, getSupabaseClient } from "./authRuntime.js";
 import { mountAuthView } from "./authView.js";
 import { menuModel } from "./commonMenuModel.js";
 import { consumeIndexNotice } from "./indexNotice.js";
 
+import { createOnlinePlayerStorage } from "./onlinePlayerStorage.js";
+import { FIXED_IMAGES, setImageFromCandidates } from "./fixedImages.js";
+
 consumeIndexNotice();
+
+const standing = document.getElementById("home-standing");
+const icon = document.getElementById("home-icon");
+function showBattlerImages(battler = {}) {
+  setImageFromCandidates(standing, [battler.standingImageUrl], FIXED_IMAGES.battlerStanding);
+  setImageFromCandidates(icon, [battler.defaultIconUrl], FIXED_IMAGES.battlerIcon);
+}
+showBattlerImages();
+let imageAccount = null, imageRevision = 0;
+function updateBattlerImages(state) {
+  const account = state.ready ? menuModel(state).currentAccount : null;
+  const eno = account?.eno ?? null;
+  if (eno === imageAccount) return;
+  imageAccount = eno;
+  const revision = ++imageRevision;
+  showBattlerImages();
+  if (!eno) return;
+  void (async () => {
+    try {
+      const storage = createOnlinePlayerStorage(await getSupabaseClient());
+      const result = await storage.load();
+      if (revision === imageRevision && result.ok && result.account.eno === eno) {
+        showBattlerImages(result.data.presentation.battler);
+      }
+    } catch { /* Keep the existing fixed images when online data is unavailable. */ }
+  })();
+}
 
 const dialog = document.getElementById("auth-dialog");
 const root = document.getElementById("auth-root");
@@ -31,7 +61,8 @@ try {
       document.getElementById("home-status").focus();
     },
   });
-  let menuBuilt = false;
+  const logout = document.getElementById("home-logout");
+  logout.addEventListener("click", () => controller.logout());
   controller.subscribe(state => {
     try {
       const known = state.ready && state.sessionKnown;
@@ -41,15 +72,9 @@ try {
         : state.signedIn ? menuModel(state).identity : "ログイン、または新規登録してはじめましょう。";
       const feedback = document.getElementById("home-feedback");
       feedback.textContent = state.registeredEno ? "登録済みのENo：" + state.registeredEno + "。ENoを控えてください。" : state.messageSource === "logout" ? state.message : "";
-      if (!menuBuilt && known && state.signedIn) {
-        menuBuilt = true;
-        document.getElementById("home-game").replaceChildren(...menuModel(state).items.filter(item => item.href !== "index.html").map(item => {
-          const el = document.createElement(item.href ? "a" : "span");
-          el.className = "home__link"; el.textContent = item.label;
-          if (item.href) el.href = item.href; else el.setAttribute("aria-disabled", "true");
-          return el;
-        }));
-      }
+      document.getElementById("home-identity").textContent = known && state.signedIn ? menuModel(state).identity : "";
+      logout.disabled = !known || !state.signedIn || !!state.busy;
+      updateBattlerImages(state);
       if (known || state.ready) finishPageLoad();
     } catch {
       document.getElementById("home-status").textContent = "認証機能を読み込めませんでした。通信状況を確認して再読み込みしてください。";

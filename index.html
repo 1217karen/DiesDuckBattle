@@ -27,7 +27,37 @@
       <button class="home__link" type="button" data-auth-mode="login">ログイン / 新規登録</button>
       <p class="home__notice">開発版 — 現在開発中です。</p>
     </div>
-    <nav id="home-game" class="home__menu" aria-label="ゲームメニュー" hidden></nav>
+    <section id="home-game" class="home__dashboard" aria-label="マイホーム" hidden>
+      <div class="home__standing"><img id="home-standing" alt="自分のバトラーの立ち絵" width="500" height="800"></div>
+      <div class="home__dashboard-ui">
+        <section class="home__voice home__voice--own" aria-labelledby="home-own-title">
+          <h2 id="home-own-title">自分のひとこと <small>準備中</small></h2>
+          <div class="home__voice-row">
+            <img id="home-icon" class="home__avatar" alt="" width="60" height="60">
+            <div class="home__voice-body"><p id="home-identity" class="home__identity"></p><p>ここに自分のひとことが表示されます。</p></div>
+            <button class="home__edit" type="button" disabled aria-label="ひとこと編集（準備中）">✎</button>
+          </div>
+        </section>
+        <section class="home__voice" aria-labelledby="home-voices-title">
+          <h2 id="home-voices-title">みんなのひとこと <small>サンプル表示</small></h2>
+          <ul class="home__voices">
+            <li class="home__voice-row"><img class="home__avatar" src="img/B00_icon.png" alt="" width="60" height="60"><div class="home__voice-body"><p class="home__identity">ENo.--｜サンプル</p><p>ここに他プレイヤーのひとことが表示されます。</p></div></li>
+            <li class="home__voice-row"><img class="home__avatar" src="img/B00_icon.png" alt="" width="60" height="60"><div class="home__voice-body"><p class="home__identity">ENo.--｜サンプル</p><p>ひとこと表示の仮レイアウトです。</p></div></li>
+            <li class="home__voice-row"><img class="home__avatar" src="img/B00_icon.png" alt="" width="60" height="60"><div class="home__voice-body"><p class="home__identity">ENo.--｜サンプル</p><p>後からオンラインデータに接続します。</p></div></li>
+          </ul>
+        </section>
+        <nav class="home__menu home__game-menu" aria-label="ゲームメニュー">
+          <a class="home__link" href="select.html">アヒルバトル</a>
+          <a class="home__link" href="setting.html">戦闘設定</a>
+          <a class="home__link" href="storage.html">バトル履歴</a>
+          <a class="home__link" href="character.html">キャラ設定</a>
+          <a class="home__link" href="rulebook.html">ルールブック</a>
+          <a class="home__link" href="character-list.html">キャラリスト</a>
+          <button class="home__link" type="button" disabled>お知らせ <small>準備中</small></button>
+          <button id="home-logout" class="home__link" type="button">ログアウト</button>
+        </nav>
+      </div>
+    </section>
     <p id="home-feedback" role="status"></p>
     <noscript>認証とメニューの表示にはJavaScriptを有効にしてください。</noscript>
   </main>
