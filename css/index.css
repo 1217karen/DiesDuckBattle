@@ -159,26 +159,24 @@ body.home-page {
   gap: 16px;
 }
 .home__dashboard {
-  --standing-frame-height: min(760px, 82svh);
-  --standing-image-width: 125%;
-  --standing-image-height: 125%;
-  --standing-offset-x: clamp(20px, 4vw, 64px);
+  --standing-width: 500px;
+  --ui-width: 520px;
+  --standing-overlap: 0px;
+  --column-gap: 48px;
   --voices-min-height: 18rem;
   isolation: isolate;
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  grid-template-columns: calc(var(--standing-width) - var(--standing-overlap)) var(--ui-width);
+  justify-content: end;
   align-items: center;
-  gap: clamp(20px, 4vw, 64px);
-  width: min(100%, 1120px);
+  column-gap: var(--column-gap);
+  width: min(100%, 1068px);
   text-align: left;
 }
-/* Let the illustration extend behind the UI instead of clipping it to its column. */
+/* The image keeps its full box; only foreground UI can obscure it. */
 .home__standing {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  height: var(--standing-frame-height);
+  width: var(--standing-width);
+  aspect-ratio: 5 / 8;
   overflow: visible;
   position: relative;
   z-index: 0;
@@ -186,12 +184,10 @@ body.home-page {
 }
 .home__standing img {
   display: block;
-  flex: 0 0 auto;
-  width: var(--standing-image-width);
-  height: var(--standing-image-height);
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   object-position: center;
-  transform: translateX(var(--standing-offset-x));
 }
 .home__dashboard-ui { position: relative; z-index: 1; display: grid; gap: 22px; min-width: 0; }
 .home__voice { height: auto; padding: 18px; border: 1px solid #ffffff80; border-radius: 14px; background: #181818eb; color: #eee; box-shadow: 0 4px 16px #0002; }
@@ -211,13 +207,41 @@ body.home-page {
 .home__game-menu button:not(:disabled) { cursor: pointer; }
 .home__game-menu .home__link:disabled { color: #aaa; border-color: #ffffff40; }
 #home-feedback:empty { display: none; }
-@media (max-width: 700px) {
-  .home:has(#home-game:not([hidden])) { padding: 20px 16px 32px; }
-  .home__dashboard { grid-template-columns: minmax(0, 1fr); gap: 20px; max-width: 520px; }
+/* 1 → 2: use the gap, then up to 50px of overlap and left overflow.
+   Right edge stays 24px inside the viewport; nothing clips the illustration. */
+@media (max-width: 1116px) {
   .home__dashboard {
-    --standing-frame-height: min(300px, 38svh);
-    --standing-image-width: 100%;
-    --standing-offset-x: 0px;
+    --column-gap: clamp(0px, calc(100vw - 1068px), 48px);
+    --standing-overlap: clamp(0px, calc((1068px - 100vw) / 2), 50px);
+  }
+}
+/* 3: keep 500px artwork and 50px overlap; UI yields from 520px to 320px. */
+@media (max-width: 944px) {
+  .home__dashboard { --ui-width: max(320px, calc(100vw - 424px)); }
+}
+/* 4: only after UI reaches 320px, artwork yields from 500px to 250px.
+   Viewport = 80% of artwork + 320px UI + 24px right inset. */
+@media (max-width: 744px) {
+  .home__dashboard {
+    --standing-width: clamp(250px, calc((100vw - 344px) / .8), 500px);
+    --standing-overlap: calc(var(--standing-width) / 10);
+  }
+}
+/* 5: half-size artwork starts just below the common menu; UI covers its feet. */
+@media (max-width: 544px) {
+  .home:has(#home-game:not([hidden])) {
+    justify-content: flex-start;
+    padding: 0 16px 32px;
+  }
+  .home__dashboard {
+    --standing-width: min(250px, calc(100vw - 32px));
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    max-width: 520px;
+  }
+  .home__standing {
+    justify-self: center;
+    margin-bottom: calc(var(--standing-width) * -.16);
   }
   .home__dashboard-ui { gap: 16px; }
   .home__voice { padding: 14px; }
