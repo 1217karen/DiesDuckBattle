@@ -1,4 +1,6 @@
-// Shared static markup for the standalone page and INDEX dialog.
+import { BATTLER_NAME_MAX } from './nameValidation.js';
+
+// Shared markup for the standalone page and INDEX dialog.
 export const authMarkup = `  <section class="panel" aria-labelledby="session-title">
     <h2 id="session-title">ログイン状態</h2>
     <p id="session-message" role="status">認証機能を読み込み中…</p>
@@ -23,7 +25,7 @@ export const authMarkup = `  <section class="panel" aria-labelledby="session-tit
     <form id="register-form" method="post">
       <fieldset disabled><legend>新しいゲームアカウント</legend>
         <label for="character-name">バトラー名</label>
-        <input id="character-name" type="text" placeholder="バトラー名を入力" aria-describedby="character-name-error" autocomplete="nickname" required>
+        <input id="character-name" type="text" placeholder="バトラー名を入力（最大${BATTLER_NAME_MAX}文字）" aria-describedby="character-name-error" autocomplete="nickname" required>
         <p id="character-name-error" role="status"></p>
         <label for="register-password">パスワード</label>
         <p id="register-password-hint" class="hint">パスワードは6文字以上、半角英字と数字をそれぞれ1文字以上含めてください。</p>

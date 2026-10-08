@@ -1,4 +1,6 @@
 import test from "node:test";
+import { DUCK_NAME_MAX } from "../js/nameValidation.js";
+import { SKILL_NAME_MAX, SKILL_RUBY_MAX } from "../js/skillLabels.js";
 import { loadSettingPage } from "./settingPageHarness.mjs";
 import { migratePlayerBuild } from "../js/playerBuildMigration.js";
 import assert from "node:assert/strict";
@@ -310,7 +312,7 @@ test("skill label inputs are under each heading; Duck/Battler ownership, whitesp
  const input=(id,value)=>{const e=p.get(id);assert.ok(e);e.value=value;e.handlers.input();};
  for(const category of ["a","b","c","d"]){
   const name=p.get(`skill-${category}-name`),rt=p.get(`skill-${category}-ruby`);
-  assert.equal(name.tagName,"input");assert.equal(name.type,"text");assert.equal(name.maxLength,undefined);assert.equal(rt.maxLength,undefined);assert.equal(name.placeholder,"スキル名を入力");assert.equal(rt.placeholder,"ルビを入力");
+  assert.equal(name.tagName,"input");assert.equal(name.type,"text");assert.equal(name.maxLength,undefined);assert.equal(rt.maxLength,undefined);assert.equal(name.placeholder,`スキル名を入力（最大${SKILL_NAME_MAX}文字）`);assert.equal(rt.placeholder,`ルビを入力（最大${SKILL_RUBY_MAX}文字）`);
   const card=name.parent.parent.parent;assert.equal(card.children[1],name.parent.parent);
   input(`skill-${category}-name`,`${category}雷`);input(`skill-${category}-ruby`,ruby);
  }
@@ -336,7 +338,7 @@ test('text limits preserve setting drafts and block overlong names and skill lab
   assert.equal(e.value,'😀'.repeat(max+1));assert.equal(p.get('save').attributes['aria-disabled'],'true');
   input(id,id==='duck-name'?'アヒル':'');
  }
- assert.equal(p.get('duck-name').placeholder,'アヒル名を入力');
+ assert.equal(p.get('duck-name').placeholder,`アヒル名を入力（最大${DUCK_NAME_MAX}文字）`);
  const old=initial();old.ducks[0].name='旧'.repeat(22);const loaded=await page(old);
  assert.equal(loaded.get('duck-name').value,old.ducks[0].name);
  assert.equal(loaded.get('duck-name').attributes['aria-invalid'],'true');

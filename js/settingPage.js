@@ -1,7 +1,7 @@
 import { inspectBattleLoadout } from "./battleLoadoutCompiler.js";
 import { finishPageLoad } from "./pageLoad.js";
 import { SKILL_NAME_MAX, SKILL_RUBY_MAX } from "./skillLabels.js";
-import { hasName, duckNameIssues, duckNameError, codePointLength } from "./nameValidation.js";
+import { DUCK_NAME_MAX, hasName, duckNameIssues, duckNameError, codePointLength } from "./nameValidation.js";
 import { effectSelectionFields } from "./effectSelectionCatalog.js";
 import { mountOnlineEditor } from "./onlineEditor.js";
 import { createEmptyDuckProfile } from "./playerPresentationModel.js";
@@ -129,7 +129,7 @@ function renderSkillLabels(box, category) {
   for (const [key, text, limit] of [["name", "スキル名（任意）", SKILL_NAME_MAX], ["ruby", "ルビ（任意）", SKILL_RUBY_MAX]]) {
     const input = el("input"); input.type = "text"; input.id = `skill-${category.toLowerCase()}-${key}`;
     input.value = owner.skillLabels[category][key];
-    input.placeholder = key === "name" ? "スキル名を入力" : "ルビを入力";
+    input.placeholder = `${key === "name" ? "スキル名を入力" : "ルビを入力"}（最大${limit}文字）`;
     input.setAttribute("aria-invalid", String(codePointLength(input.value) > limit));
     input.addEventListener("input", () => {
       input.setAttribute("aria-invalid", String(codePointLength(input.value) > limit));
@@ -584,7 +584,7 @@ function renderC(duck, box) {
 function renderDuck() {
   const box = $("duck-editor"); box.replaceChildren(); const duck = selectedDuck(state);
   if (!duck) { box.append(el("p", "アヒル設定はまだありません。「＋ 新規アヒル」から作成できます。", "empty")); return; }
-  const meta = el("div", null, "duck-meta"), name = el("input"); name.id = "duck-name"; name.value = duck.name; name.placeholder = "アヒル名を入力"; name.required = true;
+  const meta = el("div", null, "duck-meta"), name = el("input"); name.id = "duck-name"; name.value = duck.name; name.placeholder = `アヒル名を入力（最大${DUCK_NAME_MAX}文字）`; name.required = true;
   name.setAttribute("aria-invalid", String(!!duckNameError(duck.name)));
   name.addEventListener("input", () => patchDuck({ name: name.value }, false));
   const actions = el("div", null, "actions duck-actions");
