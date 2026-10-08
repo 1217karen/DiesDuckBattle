@@ -8,6 +8,10 @@ export function mountIndexMessages(document, getClient) {
   const input = el('home-message-input'), count = el('home-message-count'), save = el('home-message-save');
   const cancel = el('home-message-cancel'), status = el('home-message-status'), list = el('home-messages');
   let eno = null, revision = 0, service, current = '', saving = false;
+  function renderOwnMessage() {
+    text.textContent = current || '右のペンマークからひとことを編集できます。';
+    text.classList.toggle('is-placeholder', !current);
+  }
   function validate() {
     const length = codePointLength(normalizeHomeMessage(input.value));
     count.textContent = `${length} / ${HOME_MESSAGE_MAX}`;
@@ -29,7 +33,7 @@ export function mountIndexMessages(document, getClient) {
     if (version !== revision) return;
     saving = false; input.disabled = false; cancel.disabled = false; validate();
     if (!result.ok) { status.textContent = result.message; return; }
-    current = result.message; text.textContent = current || 'ひとことはまだありません。'; close(); edit.focus();
+    current = result.message; renderOwnMessage(); close(); edit.focus();
   });
   function renderOthers(rows) {
     list.replaceChildren(...rows.map(row => {
@@ -51,7 +55,7 @@ export function mountIndexMessages(document, getClient) {
     if (next === eno) return;
     eno = next; const version = ++revision; service?.invalidate(); service = null;
     current = ''; saving = false; input.disabled = false; cancel.disabled = false; close(); edit.disabled = true;
-    list.replaceChildren(); text.textContent = next ? '読み込み中…' : '';
+    list.replaceChildren(); text.classList.remove('is-placeholder'); text.textContent = next ? '読み込み中…' : '';
     el('home-messages-status').textContent = text.textContent;
     if (!next) return;
     void (async () => {
@@ -60,7 +64,7 @@ export function mountIndexMessages(document, getClient) {
         service = createIndexMessageService(client,next);
         const result = await service.load(); if (version !== revision) return;
         if (!result.ok) throw new Error('Load failed');
-        current = result.ownMessage; text.textContent = current || 'ひとことはまだありません。'; edit.disabled = false;
+        current = result.ownMessage; renderOwnMessage(); edit.disabled = false;
         renderOthers(result.others);
       } catch {
         if (version !== revision) return;

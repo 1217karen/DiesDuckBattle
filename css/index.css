@@ -275,6 +275,7 @@ body.home-page::before {
 #home-message-status, #home-messages-status { font-size: .85rem; color: #bbb; }
 #home-message-status:empty, #home-messages-status:empty { display: none; }
 #home-message, .home__voices .home__voice-body p { white-space: pre-wrap; }
+#home-message.is-placeholder { color: #aaa; font-size: .8rem; }
 .home__voices .home__voice-row > a { flex: 0 0 48px; }
 .home__voices a.home__identity { text-decoration: none; }
 .home__voices a.home__identity:hover { text-decoration: underline; }
