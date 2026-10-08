@@ -98,7 +98,7 @@ button.primary { font-weight:750; padding:13px 28px; }
 .profile-text-editor { min-width:0; margin-top:16px; }
 .profile-text-editor textarea { min-height:150px; }
 .profile-text-count { margin:4px 0; text-align:right; font-size:.75rem; color:var(--muted); }
-.profile-streak-visibility { flex-direction:row; align-items:center; gap:8px; margin-top:12px; }
+.profile-streak-visibility { flex-direction:row; align-items:center; gap:8px; margin-top:20px; }
 .profile-streak-visibility input[type="checkbox"], .profile-message-tail input[type="checkbox"] { flex:0 0 20px; width:20px; height:20px; min-height:20px; padding:0; margin:0; accent-color:var(--accent); }
 .site-theme-setting { border:0; padding:0; margin:16px 0 0; min-width:0; }
 .site-theme-setting legend { color:var(--muted); font-size:.82rem; margin-bottom:8px; }
@@ -157,6 +157,7 @@ button.primary { font-weight:750; padding:13px 28px; }
   flex-direction: row;
   align-items: center;
   gap: 8px;
+  margin-top: 20px;
   margin-bottom: 16px;
 }
 .profile-text-editor input[type="text"] { box-sizing: border-box; width: 100%; }
