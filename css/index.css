@@ -159,17 +159,38 @@ body.home-page {
   gap: 16px;
 }
 .home__dashboard {
+  --standing-frame-height: min(760px, 82svh);
+  --standing-image-width: 125%;
+  --standing-image-height: 100%;
+  --voices-min-height: 18rem;
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-  align-items: end;
+  align-items: center;
   gap: clamp(20px, 4vw, 64px);
   width: min(100%, 1120px);
   text-align: left;
 }
-.home__standing { display: flex; align-items: end; justify-content: center; min-width: 0; }
-.home__standing img { display: block; width: 100%; height: min(760px, 82svh); object-fit: contain; object-position: center bottom; }
+/* 125% keeps the middle 80% visible: at most about 10% cropped per side.
+   Contain preserves the original ratio, including for unusually shaped images. */
+.home__standing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: var(--standing-frame-height);
+  overflow: hidden;
+}
+.home__standing img {
+  display: block;
+  flex: 0 0 auto;
+  width: var(--standing-image-width);
+  height: var(--standing-image-height);
+  object-fit: contain;
+  object-position: center;
+}
 .home__dashboard-ui { display: grid; gap: 22px; min-width: 0; }
-.home__voice { padding: 18px; border: 1px solid #ffffff80; border-radius: 14px; background: #181818eb; color: #eee; box-shadow: 0 4px 16px #0002; }
+.home__voice { height: auto; padding: 18px; border: 1px solid #ffffff80; border-radius: 14px; background: #181818eb; color: #eee; box-shadow: 0 4px 16px #0002; }
+.home__voice:has(.home__voices) { min-height: var(--voices-min-height); }
 .home__voice h2 { margin: 0 0 14px; font-family: var(--font-heading-ja); font-size: 1rem; color: #ffcf60; }
 .home__voice small, .home__game-menu small { font: normal .7rem var(--font-base); color: #bbb; }
 .home__voices { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; }
@@ -188,7 +209,10 @@ body.home-page {
 @media (max-width: 700px) {
   .home:has(#home-game:not([hidden])) { padding: 20px 16px 32px; }
   .home__dashboard { grid-template-columns: minmax(0, 1fr); gap: 20px; max-width: 520px; }
-  .home__standing img { height: min(360px, 45svh); }
+  .home__dashboard {
+    --standing-frame-height: min(300px, 38svh);
+    --standing-image-height: 125%;
+  }
   .home__dashboard-ui { gap: 16px; }
   .home__voice { padding: 14px; }
   .home__voice-row { gap: 8px; }
