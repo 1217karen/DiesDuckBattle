@@ -37,7 +37,7 @@ for (const notice of notices) {
   noticeIndex.append(link);
 }
 
-// Reports remain a fixed mock; only tabs and article anchors are interactive.
+// Notice anchors and tab switching are independent from the online board.
 const tabs = [...document.querySelectorAll('.notice-tabs [role="tab"]')];
 const panels = tabs.map(tab => document.getElementById(tab.getAttribute("aria-controls")));
 
@@ -77,3 +77,7 @@ window.addEventListener("hashchange", revealArticle);
 activate(0);
 finishPageLoad();
 revealArticle();
+// A board/network failure must never prevent the static notices from opening.
+void import("./feedbackPage.js").then(module => module.startFeedbackPage()).catch(() => {
+  document.getElementById("feedback-message").textContent = "報告・要望を読み込めませんでした。再読み込みしてください。";
+});

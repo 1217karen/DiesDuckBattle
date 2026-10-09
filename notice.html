@@ -22,7 +22,7 @@
       <p class="page-eyebrow">DIES DUCK BATTLE</p>
       <h1 class="page-title">お知らせ・報告</h1>
       <p class="notice-lead">運営からのお知らせと、みなさんの報告・要望。</p>
-      <p class="notice-demo">レイアウト確認用のモックです。記事・件数・状態はすべてサンプルです。</p>
+      <p class="notice-demo">お知らせの記事はサンプルです。報告・要望は公開掲示板です。</p>
     </header>
     <div class="notice-tabs" role="tablist" aria-label="お知らせ・報告">
       <button id="tab-notices" type="button" role="tab" aria-selected="true" aria-controls="panel-notices">お知らせ</button>
@@ -41,49 +41,42 @@
     <section id="panel-reports" role="tabpanel" aria-labelledby="tab-reports" tabindex="0" hidden>
       <div class="notice-layout">
         <aside class="notice-sidebar page-panel" aria-label="投稿・一覧の絞り込み">
-          <button class="notice-new-post" type="button" disabled>＋ 新規投稿</button>
-          <p class="notice-side-help">投稿・絞り込みは準備中です。</p>
+          <button id="feedback-new" class="notice-new-post" type="button" disabled aria-controls="feedback-form" aria-expanded="false">＋ 新規投稿</button>
+          <p id="feedback-auth" class="notice-side-help">ログイン状態を確認中です。</p>
           <div class="notice-filters">
-            <fieldset disabled><legend>種別</legend>
+            <fieldset><legend>種別</legend>
               <label><input type="radio" name="report-type" value="all" checked>すべて</label>
               <label><input type="radio" name="report-type" value="bug">不具合</label>
               <label><input type="radio" name="report-type" value="request">要望</label>
               <label><input type="radio" name="report-type" value="question">質問・相談</label>
             </fieldset>
-            <fieldset disabled><legend>状態</legend>
+            <fieldset><legend>状態</legend>
               <label><input type="radio" name="report-status" value="all" checked>すべて</label>
               <label><input type="radio" name="report-status" value="open">受付中</label>
               <label><input type="radio" name="report-status" value="confirmed">確認済</label>
-              <label><input type="radio" name="report-status" value="resolved">対応済 / 解決済</label>
+              <label><input type="radio" name="report-status" value="resolved">対応済</label>
+              <label><input type="radio" name="report-status" value="withdrawn">取り下げ</label>
             </fieldset>
-            <div class="notice-sort"><label for="report-sort">並び順</label><select id="report-sort" disabled><option>新しい順</option></select></div>
+            <div class="notice-sort"><label for="report-sort">並び順</label><select id="report-sort"><option value="newest">新しい順</option><option value="reactions">同意が多い順</option></select></div>
           </div>
         </aside>
         <div class="notice-main">
-          <article class="report-card page-panel">
-            <span class="notice-badge">要望</span>
-            <h2>キャラリストでPL名検索がほしい</h2>
-            <p>キャラリストから同じPLのキャラクターを探せると便利です。名前で絞り込める欄があるとうれしいです。</p>
-            <footer class="report-meta"><span aria-label="同意数 12">👍 12</span><span>返信 3</span><span class="report-status">確認済</span></footer>
-          </article>
-          <article class="report-card page-panel">
-            <span class="notice-badge">不具合</span>
-            <h2>スマホ表示でキャラクター名が重なります</h2>
-            <p>画面幅が狭いとき、長いキャラクター名とアイコンが重なって見えました。幅375px付近で確認しています。</p>
-            <footer class="report-meta"><span aria-label="同意数 4">👍 4</span><span>返信 2</span><span class="report-status">受付中</span></footer>
-          </article>
-          <article class="report-card page-panel">
-            <span class="notice-badge">質問・相談</span>
-            <h2>バトラーのセリフ設定について</h2>
-            <p>戦闘中のセリフを設定したいのですが、どの画面から変更できますか？ 設定の流れを教えてください。</p>
-            <footer class="report-meta"><span aria-label="同意数 1">👍 1</span><span>返信 1</span><span class="report-status report-status--resolved">解決済</span></footer>
-          </article>
-          <article class="report-card page-panel">
-            <span class="notice-badge">要望</span>
-            <h2>バトル履歴をもっと見やすくしたい</h2>
-            <p>過去の対戦を振り返るとき、勝敗や対戦相手がひと目で分かると探しやすくなりそうです。</p>
-            <footer class="report-meta"><span aria-label="同意数 8">👍 8</span><span>返信 0</span><span class="report-status">受付中</span></footer>
-          </article>
+          <form id="feedback-form" class="feedback-form page-panel" hidden>
+            <h2>新規投稿</h2>
+            <p class="notice-side-help">投稿・返信は公開されます。個人情報は書かないでください。投稿後の編集・削除はできません。補足は返信で追加できます。</p>
+            <fieldset>
+              <label for="feedback-category">種別</label>
+              <select id="feedback-category"><option value="bug">不具合</option><option value="request">要望</option><option value="question">質問・相談</option></select>
+              <label for="feedback-title">タイトル</label><input id="feedback-title" required aria-describedby="feedback-title-count">
+              <p id="feedback-title-count" class="feedback-count"></p>
+              <label for="feedback-body">本文</label><textarea id="feedback-body" rows="6" required aria-describedby="feedback-body-count"></textarea>
+              <p id="feedback-body-count" class="feedback-count"></p>
+              <div class="feedback-actions"><button type="submit" class="primary" data-feedback-write="account">投稿する</button><button id="feedback-cancel" type="button">閉じる</button></div>
+            </fieldset>
+            <p id="feedback-form-message" role="status"></p>
+          </form>
+          <div class="feedback-toolbar"><p id="feedback-message" role="status"></p><button id="feedback-reload" type="button">再読み込み</button></div>
+          <div id="feedback-list" class="feedback-list" aria-label="報告・要望一覧"></div>
         </div>
       </div>
     </section>
