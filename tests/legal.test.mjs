@@ -35,7 +35,7 @@ test('legal tabs restore hashes and history and support keyboard wrapping', () =
 test('public editable document shells and registration links stay connected', async () => {
   const read = p => readFile(new URL('../' + p, import.meta.url), 'utf8');
   const [legal, rulebook, entry, index] = await Promise.all(['legal.html', 'rulebook.html', 'js/legalPage.js', 'index.html'].map(read));
-  assert.equal((legal.match(/改定日：未定/g) || []).length, 2);
+  assert.equal((legal.match(/最終更新日：/g) || []).length, 2);
   assert.equal((legal.match(/role="tabpanel"/g) || []).length, 2);
   assert.doesNotMatch(entry, /requireLoginPage|getAuthRuntime/);
   for (const name of ['terms', 'privacy']) {
