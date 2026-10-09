@@ -1,6 +1,43 @@
 import { finishPageLoad } from "./pageLoad.js";
+import { notices } from "./noticeData.js";
 
-// Only presentation is interactive. All articles, counts and statuses are static HTML.
+// Shared static data drives both articles and the index in its authored order.
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+const articles = document.getElementById("notice-articles");
+const noticeIndex = document.getElementById("notice-index");
+
+for (const notice of notices) {
+  const article = element("article", "notice-article page-panel");
+  article.id = notice.id;
+  const title = element("h2", "", notice.title);
+  title.id = notice.id + "-title";
+  article.setAttribute("aria-labelledby", title.id);
+
+  const meta = element("div", "notice-meta");
+  const date = element("time", "", notice.date.replaceAll("-", "/"));
+  date.dateTime = notice.date;
+  meta.append(element("span", "notice-badge", notice.category), date);
+
+  const body = element("div", "notice-body");
+  for (const paragraph of notice.body) body.append(element("p", "", paragraph));
+  article.append(meta, title, body);
+  articles.append(article);
+
+  const link = element("a");
+  link.setAttribute("href", "#" + encodeURIComponent(notice.id));
+  const shortDate = element("time", "", notice.date.slice(5).replace("-", "/"));
+  shortDate.dateTime = notice.date;
+  link.append(shortDate, element("span", "", notice.title));
+  noticeIndex.append(link);
+}
+
+// Reports remain a fixed mock; only tabs and article anchors are interactive.
 const tabs = [...document.querySelectorAll('.notice-tabs [role="tab"]')];
 const panels = tabs.map(tab => document.getElementById(tab.getAttribute("aria-controls")));
 
@@ -28,7 +65,10 @@ tabs.forEach((tab, i) => {
 });
 
 function revealArticle() {
-  const article = document.getElementById(location.hash.slice(1));
+  let id;
+  try { id = decodeURIComponent(location.hash.slice(1)); }
+  catch { return; }
+  const article = document.getElementById(id);
   if (!article?.matches(".notice-article")) return;
   activate(0);
   article.scrollIntoView();

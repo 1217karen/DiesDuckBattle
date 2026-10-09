@@ -33,29 +33,9 @@
         <aside class="notice-sidebar page-panel" aria-labelledby="notice-index-heading">
           <h2 id="notice-index-heading" class="notice-side-title">NOTICE LIST</h2>
           <p class="notice-side-help">タイトルを選ぶと記事へ移動します。</p>
-          <nav class="notice-index" aria-label="お知らせ一覧">
-            <a href="#notice-development"><time datetime="2026-10-09">10/09</time><span>開発版のお知らせ</span></a>
-            <a href="#notice-fix"><time datetime="2026-10-08">10/08</time><span>表示の不具合を修正しました</span></a>
-            <a href="#notice-maintenance"><time datetime="2026-10-07">10/07</time><span>メンテナンスについて</span></a>
-          </nav>
+          <nav id="notice-index" class="notice-index" aria-label="お知らせ一覧"></nav>
         </aside>
-        <div class="notice-main">
-          <article id="notice-development" class="notice-article page-panel" aria-labelledby="notice-development-title">
-            <div class="notice-meta"><span class="notice-badge">更新情報</span><time datetime="2026-10-09">2026/10/09</time></div>
-            <h2 id="notice-development-title">開発版のお知らせ</h2>
-            <div class="notice-body"><p>DIES DUCK BATTLEの開発版へようこそ。アヒルとバトラーを組み合わせて、自分だけの戦い方を見つけてみてください。</p><p>このページでは、今後の更新情報や運営からのお知らせを掲載する予定です。遊びやすい画面を目指して、少しずつ準備を進めています。</p></div>
-          </article>
-          <article id="notice-fix" class="notice-article page-panel" aria-labelledby="notice-fix-title">
-            <div class="notice-meta"><span class="notice-badge">不具合修正</span><time datetime="2026-10-08">2026/10/08</time></div>
-            <h2 id="notice-fix-title">表示の不具合を修正しました</h2>
-            <div class="notice-body"><p>一部の画面で長いキャラクター名が枠からはみ出していた表示を調整しました。</p><p>スマートフォンでも情報を読みやすくするため、余白やテキストの折り返しを見直しています。こちらは修正内容の掲載イメージです。</p></div>
-          </article>
-          <article id="notice-maintenance" class="notice-article page-panel" aria-labelledby="notice-maintenance-title">
-            <div class="notice-meta"><span class="notice-badge">メンテナンス</span><time datetime="2026-10-07">2026/10/07</time></div>
-            <h2 id="notice-maintenance-title">メンテナンスについて</h2>
-            <div class="notice-body"><p>メンテナンスを実施する際は、このページで日時や対象機能をご案内する予定です。</p><p>現在の内容はレイアウト確認用のサンプルです。実際のメンテナンス予定を示すものではありません。</p></div>
-          </article>
-        </div>
+        <div id="notice-articles" class="notice-main"></div>
       </div>
     </section>
     <section id="panel-reports" role="tabpanel" aria-labelledby="tab-reports" tabindex="0" hidden>
