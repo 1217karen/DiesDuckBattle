@@ -6,7 +6,7 @@ create table diesduck_private.feedback_moderators (
 );
 create table diesduck_private.feedback_threads (
   id uuid primary key default gen_random_uuid(),
-  game_account_id uuid not null references public.game_accounts(id),
+  game_account_id uuid references public.game_accounts(id) on delete set null,
   category text not null check (category in ('bug','request','question')),
   title text not null check (char_length(title) between 1 and 100 and title !~ '^[[:space:]]*$'),
   body text not null check (char_length(body) between 1 and 2000 and body !~ '^[[:space:]]*$'),
@@ -17,7 +17,7 @@ create table diesduck_private.feedback_threads (
 create table diesduck_private.feedback_replies (
   id uuid primary key default gen_random_uuid(),
   thread_id uuid not null references diesduck_private.feedback_threads(id),
-  game_account_id uuid not null references public.game_accounts(id),
+  game_account_id uuid references public.game_accounts(id) on delete set null,
   body text not null check (char_length(body) between 1 and 2000 and body !~ '^[[:space:]]*$'),
   -- Snapshot the authenticated writer's role, not the role of another account accessor.
   is_moderator boolean not null default false,
@@ -26,7 +26,7 @@ create table diesduck_private.feedback_replies (
 );
 create table diesduck_private.feedback_reactions (
   thread_id uuid not null references diesduck_private.feedback_threads(id),
-  game_account_id uuid not null references public.game_accounts(id),
+  game_account_id uuid not null references public.game_accounts(id) on delete cascade,
   created_at timestamptz not null default now(),
   primary key(thread_id,game_account_id)
 );
@@ -80,7 +80,7 @@ $$;
 create function diesduck_private.list_feedback_replies(p_thread_id uuid)
 returns jsonb language sql stable security definer set search_path = '' as $$
   select coalesce(jsonb_agg(jsonb_build_object('id',r.id,'body',r.body,'createdAt',r.created_at,
-    'isAuthor',r.game_account_id=t.game_account_id,'isModerator',r.is_moderator)
+    'isAuthor',coalesce(r.game_account_id=t.game_account_id,false),'isModerator',r.is_moderator)
     order by r.created_at,r.id),'[]'::jsonb)
   from diesduck_private.feedback_replies r join diesduck_private.feedback_threads t on t.id=r.thread_id
   where t.id=p_thread_id and t.hidden_at is null and r.hidden_at is null;
@@ -98,24 +98,27 @@ end;
 $$;
 create function diesduck_private.create_feedback_reply(p_eno bigint,p_thread_id uuid,p_body text)
 returns uuid language plpgsql volatile security definer set search_path = '' as $$
-declare account_id uuid; result uuid;
+declare account_id uuid; result uuid; thread_status text; moderator boolean;
 begin
   account_id := diesduck_private.feedback_account(p_eno);
   -- Serialize with hide/status/reaction operations on this thread.
-  perform 1 from diesduck_private.feedback_threads where id=p_thread_id and hidden_at is null for update;
+  select status into thread_status from diesduck_private.feedback_threads where id=p_thread_id and hidden_at is null for update;
   if not found then raise exception 'Thread unavailable' using errcode='22023'; end if;
+  moderator := diesduck_private.feedback_is_moderator();
+  if thread_status='withdrawn' and not moderator then raise exception 'Thread closed' using errcode='42501'; end if;
   insert into diesduck_private.feedback_replies(thread_id,game_account_id,body,is_moderator)
-    values(p_thread_id,account_id,p_body,diesduck_private.feedback_is_moderator()) returning id into result;
+    values(p_thread_id,account_id,p_body,moderator) returning id into result;
   return result;
 end;
 $$;
 create function diesduck_private.toggle_feedback_reaction(p_eno bigint,p_thread_id uuid)
 returns jsonb language plpgsql volatile security definer set search_path = '' as $$
-declare account_id uuid; reacted boolean;
+declare account_id uuid; reacted boolean; thread_status text;
 begin
   account_id := diesduck_private.feedback_account(p_eno);
-  perform 1 from diesduck_private.feedback_threads where id=p_thread_id and hidden_at is null for update;
+  select status into thread_status from diesduck_private.feedback_threads where id=p_thread_id and hidden_at is null for update;
   if not found then raise exception 'Thread unavailable' using errcode='22023'; end if;
+  if thread_status='withdrawn' then raise exception 'Thread closed' using errcode='42501'; end if;
   delete from diesduck_private.feedback_reactions where thread_id=p_thread_id and game_account_id=account_id;
   reacted := not found;
   if reacted then insert into diesduck_private.feedback_reactions(thread_id,game_account_id) values(p_thread_id,account_id); end if;

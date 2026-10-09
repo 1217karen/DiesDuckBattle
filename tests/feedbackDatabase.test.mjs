@@ -74,6 +74,20 @@ test('feedback RPC security and lifecycle against PostgreSQL',{skip:!PGlite&&'Se
    await assert.rejects(rpc('withdraw_feedback_thread',['1',thread]),{code:'42501'});
    await as(2);for(const status of ['open','confirmed','resolved'])await assert.rejects(rpc('moderate_feedback_status',[thread,status]),{code:'42501'});
   });
+  await t.test('withdrawn closes ordinary replies and both reaction directions; moderator may reply but never reopen',async()=>{
+   await as(0);const closed=await create();await rpc('toggle_feedback_reaction',['1',closed]);await rpc('withdraw_feedback_thread',['1',closed]);
+   for(const i of [0,1]){
+    await as(i);await assert.rejects(rpc('create_feedback_reply',[String(i+1),closed,'no']),{code:'42501'});
+    await assert.rejects(rpc('toggle_feedback_reaction',[String(i+1),closed]),{code:'42501'});
+   }
+   await as(2);const managementReply=await rpc('create_feedback_reply',['3',closed,'運営からの補足']);
+   await assert.rejects(rpc('toggle_feedback_reaction',['3',closed]),{code:'42501'});
+   for(const status of ['open','confirmed','resolved'])await assert.rejects(rpc('moderate_feedback_status',[closed,status]),{code:'42501'});
+   await as();const dto=decodeFeedbackList(await list()).threads.find(r=>r.id===closed);
+   assert.equal(dto.body,'本文');assert.equal(dto.status,'withdrawn');assert.equal(dto.reactionCount,1);
+   assert.equal(decodeFeedbackReplies(await rpc('list_feedback_replies',[closed]))[0].isModerator,true);
+   await as(2);await rpc('hide_feedback',[closed,managementReply]);await rpc('hide_feedback',[closed,null]);
+  });
   await t.test('hidden rows retained but not exposed, including parent reply endpoint and all roles',async()=>{
    await as(2);await rpc('hide_feedback',[thread,reply]);
    for(const i of [null,0,2]){await as(i);assert.ok(!(await rpc('list_feedback_replies',[thread])).some(r=>r.body==='author reply'));assert.equal((await list()).threads.find(r=>r.id===thread).replyCount,2);}
@@ -102,6 +116,33 @@ test('feedback RPC security and lifecycle against PostgreSQL',{skip:!PGlite&&'Se
    assert.ok(funcs.filter(f=>f.nspname==='public').every(f=>!f.prosecdef));
    const tables=(await db.query("select relrowsecurity from pg_class where relname in ('feedback_threads','feedback_replies','feedback_reactions','feedback_moderators')")).rows;
    assert.equal(tables.length,4);assert.ok(tables.every(r=>r.relrowsecurity));
+  });
+  await t.test('account deletion keeps thread/reply records, clears ownership, removes only its votes and preserves moderation',async()=>{
+   await as(0);const preserved=await create('1','残すタイトル','残す本文');
+   const authorReply=await rpc('create_feedback_reply',['1',preserved,'投稿者の返信']);await rpc('toggle_feedback_reaction',['1',preserved]);
+   await as(1);const otherReply=await rpc('create_feedback_reply',['2',preserved,'他の返信']);await rpc('toggle_feedback_reaction',['2',preserved]);
+   await as(2);await rpc('toggle_feedback_reaction',['3',preserved]);
+   const before=(await list()).threads.find(r=>r.id===preserved);
+   // Delete the reply author first: NULL reply vs a still-existing thread account.
+   await db.exec('reset role');await db.query('delete from public.game_accounts where id=$1',[ids[1]]);
+   assert.deepEqual((await db.query('select body,game_account_id from diesduck_private.feedback_replies where id=$1',[otherReply])).rows[0],{body:'他の返信',game_account_id:null});
+   await as();assert.equal(decodeFeedbackReplies(await rpc('list_feedback_replies',[preserved])).find(r=>r.id===otherReply).isAuthor,false);
+   assert.equal((await list()).threads.find(r=>r.id===preserved).reactionCount,2);
+   await db.exec('reset role');await db.query('delete from public.game_accounts where id=$1',[ids[0]]);
+   assert.deepEqual((await db.query('select body,game_account_id from diesduck_private.feedback_threads where id=$1',[preserved])).rows[0],{body:'残す本文',game_account_id:null});
+   assert.deepEqual((await db.query('select body,game_account_id from diesduck_private.feedback_replies where id=$1',[authorReply])).rows[0],{body:'投稿者の返信',game_account_id:null});
+   for(const i of [null,0,1,2]){
+    await as(i);const dto=decodeFeedbackList(await list(i===2?'3':null)).threads.find(r=>r.id===preserved);
+    for(const key of ['title','body','category','status','createdAt'])assert.equal(dto[key],before[key]);
+    assert.equal(dto.isOwn,false);assert.equal(dto.reactionCount,1);assert.equal(dto.replyCount,2);
+    const replies=decodeFeedbackReplies(await rpc('list_feedback_replies',[preserved]));assert.equal(replies.length,2);assert.ok(replies.every(r=>r.isAuthor===false));
+   }
+   await as(0);await assert.rejects(rpc('withdraw_feedback_thread',['1',preserved]),{code:'42501'});
+   await as(2);await assert.rejects(rpc('withdraw_feedback_thread',['3',preserved]),{code:'42501'});
+   await rpc('moderate_feedback_status',[preserved,'confirmed']);
+   const modReply=await rpc('create_feedback_reply',['3',preserved,'削除後の管理返信']);
+   assert.equal(decodeFeedbackReplies(await rpc('list_feedback_replies',[preserved])).find(r=>r.id===modReply).isAuthor,false);
+   await rpc('hide_feedback',[preserved,otherReply]);await rpc('hide_feedback',[preserved,null]);
   });
  }finally{await db.close();}
 });

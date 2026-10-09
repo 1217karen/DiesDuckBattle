@@ -16,11 +16,12 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
   };
   const canWrite=()=>auth.ready && auth.signedIn && !!auth.eno && data.canPost;
   const canModerate=()=>auth.ready && auth.signedIn && data.isModerator;
+  const canReply=thread=>canWrite() && (thread.status!=='withdrawn' || canModerate());
   const dateNode=value => {const n=el('time','feedback-date',new Date(value).toLocaleString('ja-JP')); n.dateTime=value;return n;};
   function enabled() {
     newButton.disabled=busy || !canWrite();
     form.querySelector('fieldset').disabled=busy || !canWrite();
-    for(const n of root.querySelectorAll('[data-feedback-write]')) n.disabled=busy || !(n.dataset.feedbackWrite==='moderator'?canModerate():canWrite());
+    for(const n of root.querySelectorAll('[data-feedback-write]')) n.disabled=busy || n.dataset.feedbackClosed==='true' || !(n.dataset.feedbackWrite==='moderator'?canModerate():canWrite());
     authMessage.textContent=!auth.ready?'ログイン状態を確認中です。':!auth.signedIn?'閲覧はどなたでも可能です。投稿・返信・同意にはホームからログインしてください。':!auth.eno?'利用できるゲームアカウントを確認できません。':'投稿後の編集・削除はできません。補足は返信で追加してください。';
   }
   function countInput(input, output, max) {
@@ -85,6 +86,7 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
       container.append(row);
     }
     if(!result.data.length)container.append(el('p','notice-side-help','まだ返信はありません。'));
+    if(thread.status==='withdrawn'&&!canModerate()){container.append(el('p','notice-side-help','取り下げ済みのため、返信・同意の変更はできません。'));return;}
     if(!canWrite()){container.append(el('p','notice-side-help','返信にはログインとゲームアカウントが必要です。'));return;}
     const replyForm=el('form','feedback-reply-form'),label=el('label','','返信本文'),input=el('textarea');
     input.id='reply-input-'+thread.id;label.htmlFor=input.id;input.rows=4;input.required=true;
@@ -95,7 +97,7 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
     replyForm.append(label,input,counter,submit,feedback);replyForm.hidden=!drafts.has(thread.id);
     const opener=button('返信を書く',()=>{replyForm.hidden=false;input.focus();},'account');
     replyForm.addEventListener('submit',event=>{
-      event.preventDefault();if(!canWrite()||busy)return;
+      event.preventDefault();if(!canReply(thread)||busy)return;
       try{validateFeedbackInput({body:input.value},true);}catch{feedback.textContent='本文を1〜2000文字で入力してください。';return;}
       void mutate(()=>service.reply(auth.eno,thread.id,input.value),async()=>{drafts.delete(thread.id);await load();},feedback);
     });
@@ -112,11 +114,15 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
       const meta=el('div','notice-meta');meta.append(el('span','notice-badge',FEEDBACK_CATEGORIES[thread.category]),dateNode(thread.createdAt));
       card.append(meta,el('h2','',thread.title),el('p','feedback-text',thread.body));
       const footer=el('div','report-meta');
-      const reaction=button(`👍 ${thread.reactionCount}`,()=>void mutate(()=>service.react(auth.eno,thread.id),async value=>{
+      const reaction=button(`👍 ${thread.reactionCount}`,()=>{
+        if(!canWrite()||thread.status==='withdrawn')return;
+        void mutate(()=>service.react(auth.eno,thread.id),async value=>{
         Object.assign(thread,value);render();
-      }),'account');
+        });
+      },'account');
+      reaction.dataset.feedbackClosed=String(thread.status==='withdrawn');
       reaction.setAttribute('aria-pressed',String(thread.hasReacted));reaction.setAttribute('aria-label',`同意 ${thread.reactionCount}件${thread.hasReacted?'（同意済み）':''}`);
-      reaction.title=canWrite()?'同意する／解除する':'同意にはログインとゲームアカウントが必要です。';
+      reaction.title=thread.status==='withdrawn'?'取り下げ済みのため、同意の変更はできません。':canWrite()?'同意する／解除する':'同意にはログインとゲームアカウントが必要です。';
       footer.append(reaction,el('span','report-status',FEEDBACK_STATUSES[thread.status]));card.append(footer);
       const operations=el('div','feedback-actions');
       if(canWrite()&&thread.isOwn&&['open','confirmed'].includes(thread.status))operations.append(button('取り下げる',()=>{

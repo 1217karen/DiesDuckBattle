@@ -49,6 +49,20 @@ test('moderator controls only for allowed status; filters change displayed cards
  f.threads[0].status='withdrawn';await f.get('feedback-reload').fire('click');await tick();assert.equal(f.find('状態を変更'),undefined);assert.ok(f.find('投稿を非表示'));
  const radios=f.document.querySelectorAll('input[name="report-type"]');radios.forEach(n=>n.checked=n.value==='request');await radios[0].fire('change');assert.equal(f.get('feedback-list').querySelectorAll('article').length,0);
 });
+test('withdrawn UI keeps reading but blocks ordinary replies and reaction add/remove; moderator retains reply/hide',async()=>{
+ for(const reacted of [false,true]){
+  const f=fixture();Object.assign(f.threads[0],{status:'withdrawn',hasReacted:reacted,reactionCount:reacted?1:0});
+  f.view.updateAuth(logged);await tick();
+  const reaction=f.find(`👍 ${reacted?1:0}`);assert.equal(reaction.disabled,true);await reaction.fire('click');assert.ok(!f.calls.includes('react'));
+  assert.equal(f.find('取り下げる'),undefined);assert.equal(f.get('feedback-list').querySelector('h2').textContent,row.title);
+  const details=f.get('feedback-list').querySelector('details');details.open=true;await details.fire('toggle');await tick();
+  assert.ok(f.calls.includes('replies'));assert.equal(f.find('返信を書く'),undefined);assert.equal(details.querySelector('form'),null);
+ }
+ const f=fixture();f.threads[0].status='withdrawn';f.moderator();f.view.updateAuth(logged);await tick();
+ assert.equal(f.find('状態を変更'),undefined);assert.ok(f.find('投稿を非表示'));assert.equal(f.find('👍 0').disabled,true);
+ const details=f.get('feedback-list').querySelector('details');details.open=true;await details.fire('toggle');await tick();
+ await f.find('返信を書く').fire('click');const form=details.querySelector('form');form.querySelector('textarea').value='運営の補足';await form.fire('submit');await tick();assert.ok(f.calls.includes('reply'));
+});
 test('session change clears drafts and permissions and rejects old list/reply completion',async()=>{
  const f=fixture();f.view.updateAuth(logged);await tick();await f.get('feedback-new').fire('click');f.get('feedback-body').value='private draft';
  const pending=f.delayReply(),details=f.get('feedback-list').querySelector('details');details.open=true;await details.fire('toggle');await tick();
