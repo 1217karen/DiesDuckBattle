@@ -9,7 +9,7 @@ body { margin:0;  }
   overflow-wrap:anywhere;
 }
 .rulebook-heading { text-align:center; }
-.rulebook-tabs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:24px 0; }
+.rulebook-tabs { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); gap:10px; margin:24px 0; }
 .rulebook-tabs button { min-width:0; min-height:56px; padding:12px; font-weight:800; font-size:18px; border-radius:8px; cursor:pointer; }
 .rulebook-tabs button[aria-selected="true"] { border-color:var(--accent); background:var(--ui-accent-surface); box-shadow:inset 0 -3px var(--accent); }
 .rulebook-shell [hidden] { display:none; }
@@ -30,7 +30,7 @@ body { margin:0;  }
 @media (max-width:700px) {
   .rulebook-shell .grid2 { grid-template-columns:minmax(0,1fr); }
   .rulebook-tabs { gap:8px; }
-  .rulebook-tabs button { font-size:16px; }
+  .rulebook-tabs button { font-size:16px; padding:12px 6px; }
 }
 
 .rulebook-shell h2, .rulebook-shell .skillGroupTitle { font-family:var(--font-heading-ja); }

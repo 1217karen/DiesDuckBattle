@@ -79,10 +79,17 @@ byId("copy-eno").onclick = async () => {
 byId("register-form").onsubmit = async event => {
   event.preventDefault();
   if (!validateName()) return;
+  const consent = byId("terms-consent");
+  if (!consent.checked) {
+    consent.reportValidity();
+    consent.focus();
+    return;
+  }
   const input = { characterName: byId("character-name").value,
     password: byId("register-password").value, confirmation: byId("confirm-password").value };
   passwords().forEach(el => { el.value = ""; });
   const result = await controller?.register(input, { notify: registrationToast });
+  if (result?.ok) consent.checked = false;
   if (result?.ok && result.signedIn) onRegistrationSuccess(result);
 };
 byId("login-form").onsubmit = async event => {

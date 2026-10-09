@@ -52,7 +52,7 @@ async function screen({ standalone = false } = {}) {
   const document = { focused: null, getElementById: id => get(id), querySelectorAll: () => buttons,
     createElement: () => element() };
   function element(id = "") {
-    return { id, value: "", textContent: "", hidden: false, disabled: false, dataset: {}, handlers: {}, children: [],
+    return { id, checked: false, reportValidity() { this.reported = true; }, value: "", textContent: "", hidden: false, disabled: false, dataset: {}, handlers: {}, children: [],
       setAttribute() {}, addEventListener(event, fn) { this.handlers[event] = fn; },
       focus() { document.focused = this; }, replaceChildren(...children) { this.children = children; },
       getClientRects() { return (id.startsWith("opener") && get("home-guest").hidden) ? [] : [1]; },
@@ -78,7 +78,7 @@ async function screen({ standalone = false } = {}) {
   const code = await source("authView") + (standalone ? await source("authPage") : await source("indexPage"));
   await vm.runInNewContext("(async()=>{" + code + "})()", context);
   get("character-name").value = "バトラー";
-  const submit = async id => get(id).onsubmit({ preventDefault() {} });
+  const submit = async (id, consent = true) => { if (id === "register-form") get("terms-consent").checked = consent; return get(id).onsubmit({ preventDefault() {} }); };
   return { get, buttons, controller, copied, submit, focused: () => document.focused, state: () => last,
     notifications, redirects, succeed: () => { succeed = true; }, failLogin: () => { succeed = false; }, next: eno => { nextEno = eno; } };
 }
@@ -198,4 +198,19 @@ test("INDEX has one login-first entrance and existing assets; shared cards remai
   assert.match(authMarkup, /id="form-message" role="status" aria-live="polite"/);
   const standalone = await readFile(new URL("../auth.html", import.meta.url), "utf8");
   assert.doesNotMatch(standalone, /home-page|id="auth-dialog"/);
+});
+
+for (const standalone of [false, true]) test('consent blocks registration without clearing inputs: standalone=' + standalone, async () => {
+  const s = await screen({ standalone });
+  assert.equal(s.get('terms-consent').checked, false);
+  s.get('register-password').value = 'password1';
+  s.get('confirm-password').value = 'password1';
+  await s.submit('register-form', false);
+  assert.equal(s.state().registeredEno, '');
+  assert.equal(s.get('register-password').value, 'password1');
+  assert.equal(s.get('terms-consent').reported, true);
+  assert.equal(s.focused(), s.get('terms-consent'));
+  await s.submit('register-form', true);
+  assert.equal(s.state().registeredEno, '77');
+  assert.equal(s.get('terms-consent').checked, false);
 });

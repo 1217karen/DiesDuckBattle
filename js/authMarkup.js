@@ -33,6 +33,16 @@ export const authMarkup = `  <section class="panel" aria-labelledby="session-tit
         <label for="confirm-password">パスワード確認</label>
         <input id="confirm-password" type="password" autocomplete="new-password" required>
         <p class="hint">バトラー名は後から変更できます。メールアドレスは不要です。</p>
+        <nav class="auth-document-links" aria-label="登録前の確認事項">
+          <a href="rulebook.html#guidelines" target="_blank" rel="noopener">サイトガイドライン</a>
+          <a href="legal.html#terms" target="_blank" rel="noopener">利用規約</a>
+          <a href="legal.html#privacy" target="_blank" rel="noopener">プライバシーポリシー</a>
+        </nav>
+        <p class="hint">各文書は別タブで開きます。本文は掲載準備中です。</p>
+        <label class="auth-consent" for="terms-consent">
+          <input id="terms-consent" name="terms-consent" type="checkbox" required autocomplete="off">
+          <span>利用規約に同意します</span>
+        </label>
         <button type="submit">登録する</button>
       </fieldset>
     </form>

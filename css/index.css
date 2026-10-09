@@ -279,3 +279,6 @@ body.home-page::before {
 .home__voices .home__voice-row > a { flex: 0 0 48px; }
 .home__voices a.home__identity { text-decoration: none; }
 .home__voices a.home__identity:hover { text-decoration: underline; }
+
+.home__legal { display:flex; flex-wrap:wrap; justify-content:center; gap:12px 20px; margin-top:28px; font-size:.875rem; }
+.home__legal a { color:inherit; }
