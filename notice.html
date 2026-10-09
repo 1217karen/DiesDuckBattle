@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>お知らせ・報告 | DiesDuckBattle</title>
+  <script src="js/siteTheme.js"></script>
+  <script type="module" src="js/siteThemeAuth.js"></script>
+  <link rel="stylesheet" href="css/common-theme.css">
+  <link rel="stylesheet" href="css/common-page.css">
+  <link rel="stylesheet" href="css/notice.css">
+  <link rel="stylesheet" href="css/common-menu.css">
+  <link rel="stylesheet" href="css/page-loading.css">
+</head>
+<body class="has-common-menu page-loading">
+  <script src="js/pageLoadGate.js"></script>
+  <noscript><p class="page-load-noscript">このページを表示するにはJavaScriptを有効にしてください。</p></noscript>
+  <header id="common-menu" class="common-menu"><details class="common-menu__nav"><summary aria-label="ゲームメニューを開く"><span class="common-menu__icon" aria-hidden="true">☰</span></summary><nav aria-label="ゲームメニュー"></nav></details><details class="common-menu__account"><summary aria-label="アカウントメニューを開く" aria-disabled="true" tabindex="-1"><span data-identity role="status"></span><span data-account-arrow aria-hidden="true" hidden>▾</span></summary><div class="common-menu__account-dropdown"><div data-account-menu></div><p data-feedback role="status" hidden></p></div></details></header>
+  <script src="js/menuDisplayCache.js"></script>
+  <main data-page-content class="notice-shell page-shell">
+    <header class="notice-heading page-header">
+      <p class="page-eyebrow">DIES DUCK BATTLE</p>
+      <h1 class="page-title">お知らせ・報告</h1>
+      <p class="notice-lead">運営からのお知らせと、みなさんの報告・要望。</p>
+      <p class="notice-demo">レイアウト確認用のモックです。記事・件数・状態はすべてサンプルです。</p>
+    </header>
+    <div class="notice-tabs" role="tablist" aria-label="お知らせ・報告">
+      <button id="tab-notices" type="button" role="tab" aria-selected="true" aria-controls="panel-notices">お知らせ</button>
+      <button id="tab-reports" type="button" role="tab" aria-selected="false" aria-controls="panel-reports" tabindex="-1">報告・要望</button>
+    </div>
+    <section id="panel-notices" role="tabpanel" aria-labelledby="tab-notices" tabindex="0">
+      <div class="notice-layout">
+        <aside class="notice-sidebar page-panel" aria-labelledby="notice-index-heading">
+          <h2 id="notice-index-heading" class="notice-side-title">NOTICE LIST</h2>
+          <p class="notice-side-help">タイトルを選ぶと記事へ移動します。</p>
+          <nav class="notice-index" aria-label="お知らせ一覧">
+            <a href="#notice-development"><time datetime="2026-10-09">10/09</time><span>開発版のお知らせ</span></a>
+            <a href="#notice-fix"><time datetime="2026-10-08">10/08</time><span>表示の不具合を修正しました</span></a>
+            <a href="#notice-maintenance"><time datetime="2026-10-07">10/07</time><span>メンテナンスについて</span></a>
+          </nav>
+        </aside>
+        <div class="notice-main">
+          <article id="notice-development" class="notice-article page-panel" aria-labelledby="notice-development-title">
+            <div class="notice-meta"><span class="notice-badge">更新情報</span><time datetime="2026-10-09">2026/10/09</time></div>
+            <h2 id="notice-development-title">開発版のお知らせ</h2>
+            <div class="notice-body"><p>DIES DUCK BATTLEの開発版へようこそ。アヒルとバトラーを組み合わせて、自分だけの戦い方を見つけてみてください。</p><p>このページでは、今後の更新情報や運営からのお知らせを掲載する予定です。遊びやすい画面を目指して、少しずつ準備を進めています。</p></div>
+          </article>
+          <article id="notice-fix" class="notice-article page-panel" aria-labelledby="notice-fix-title">
+            <div class="notice-meta"><span class="notice-badge">不具合修正</span><time datetime="2026-10-08">2026/10/08</time></div>
+            <h2 id="notice-fix-title">表示の不具合を修正しました</h2>
+            <div class="notice-body"><p>一部の画面で長いキャラクター名が枠からはみ出していた表示を調整しました。</p><p>スマートフォンでも情報を読みやすくするため、余白やテキストの折り返しを見直しています。こちらは修正内容の掲載イメージです。</p></div>
+          </article>
+          <article id="notice-maintenance" class="notice-article page-panel" aria-labelledby="notice-maintenance-title">
+            <div class="notice-meta"><span class="notice-badge">メンテナンス</span><time datetime="2026-10-07">2026/10/07</time></div>
+            <h2 id="notice-maintenance-title">メンテナンスについて</h2>
+            <div class="notice-body"><p>メンテナンスを実施する際は、このページで日時や対象機能をご案内する予定です。</p><p>現在の内容はレイアウト確認用のサンプルです。実際のメンテナンス予定を示すものではありません。</p></div>
+          </article>
+        </div>
+      </div>
+    </section>
+    <section id="panel-reports" role="tabpanel" aria-labelledby="tab-reports" tabindex="0" hidden>
+      <div class="notice-layout">
+        <aside class="notice-sidebar page-panel" aria-label="投稿・一覧の絞り込み">
+          <button class="notice-new-post" type="button" disabled>＋ 新規投稿</button>
+          <p class="notice-side-help">投稿・絞り込みは準備中です。</p>
+          <div class="notice-filters">
+            <fieldset disabled><legend>種別</legend>
+              <label><input type="radio" name="report-type" value="all" checked>すべて</label>
+              <label><input type="radio" name="report-type" value="bug">不具合</label>
+              <label><input type="radio" name="report-type" value="request">要望</label>
+              <label><input type="radio" name="report-type" value="question">質問・相談</label>
+            </fieldset>
+            <fieldset disabled><legend>状態</legend>
+              <label><input type="radio" name="report-status" value="all" checked>すべて</label>
+              <label><input type="radio" name="report-status" value="open">受付中</label>
+              <label><input type="radio" name="report-status" value="confirmed">確認済</label>
+              <label><input type="radio" name="report-status" value="resolved">対応済 / 解決済</label>
+            </fieldset>
+            <div class="notice-sort"><label for="report-sort">並び順</label><select id="report-sort" disabled><option>新しい順</option></select></div>
+          </div>
+        </aside>
+        <div class="notice-main">
+          <article class="report-card page-panel">
+            <span class="notice-badge">要望</span>
+            <h2>キャラリストでPL名検索がほしい</h2>
+            <p>キャラリストから同じPLのキャラクターを探せると便利です。名前で絞り込める欄があるとうれしいです。</p>
+            <footer class="report-meta"><span aria-label="同意数 12">👍 12</span><span>返信 3</span><span class="report-status">確認済</span></footer>
+          </article>
+          <article class="report-card page-panel">
+            <span class="notice-badge">不具合</span>
+            <h2>スマホ表示でキャラクター名が重なります</h2>
+            <p>画面幅が狭いとき、長いキャラクター名とアイコンが重なって見えました。幅375px付近で確認しています。</p>
+            <footer class="report-meta"><span aria-label="同意数 4">👍 4</span><span>返信 2</span><span class="report-status">受付中</span></footer>
+          </article>
+          <article class="report-card page-panel">
+            <span class="notice-badge">質問・相談</span>
+            <h2>バトラーのセリフ設定について</h2>
+            <p>戦闘中のセリフを設定したいのですが、どの画面から変更できますか？ 設定の流れを教えてください。</p>
+            <footer class="report-meta"><span aria-label="同意数 1">👍 1</span><span>返信 1</span><span class="report-status report-status--resolved">解決済</span></footer>
+          </article>
+          <article class="report-card page-panel">
+            <span class="notice-badge">要望</span>
+            <h2>バトル履歴をもっと見やすくしたい</h2>
+            <p>過去の対戦を振り返るとき、勝敗や対戦相手がひと目で分かると探しやすくなりそうです。</p>
+            <footer class="report-meta"><span aria-label="同意数 8">👍 8</span><span>返信 0</span><span class="report-status">受付中</span></footer>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="js/commonMenu.js"></script>
+  <script src="js/pageEntry.js" data-page-src="js/noticePage.js"></script>
+</body>
+</html>
