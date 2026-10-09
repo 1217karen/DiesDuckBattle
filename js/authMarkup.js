@@ -38,7 +38,7 @@ export const authMarkup = `  <section class="panel" aria-labelledby="session-tit
           <a href="legal.html#terms" target="_blank" rel="noopener">利用規約</a>
           <a href="legal.html#privacy" target="_blank" rel="noopener">プライバシーポリシー</a>
         </nav>
-        <p class="hint">各文書は別タブで開きます。本文は掲載準備中です。</p>
+        <p class="hint">各文書は別タブで開きます。</p>
         <label class="auth-consent" for="terms-consent">
           <input id="terms-consent" name="terms-consent" type="checkbox" required autocomplete="off">
           <span>利用規約に同意します</span>

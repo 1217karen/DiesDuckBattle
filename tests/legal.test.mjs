@@ -46,5 +46,5 @@ test('public editable document shells and registration links stay connected', as
   const checkbox = authMarkup.match(/<input id="terms-consent"[^>]*>/)[0];
   assert.match(checkbox, /type="checkbox" required/);
   assert.doesNotMatch(checkbox, /\schecked(?:\s|=|>)/);
-  for (const heading of ['アカウント', 'キャラクター・画像', '生成AI', '全年齢向け表現', '禁止行為', '問い合わせ']) assert.ok(rulebook.includes('<h2>' + heading + '</h2>'));
+  for (const heading of ['アカウントについて', 'キャラクター・画像の登録について', '生成AIの使用について', '登録内容の表現について', '禁止行為について', '困ったときは']) assert.ok(rulebook.includes('<h3>' + heading + '</h3>'));
 });
