@@ -77,7 +77,7 @@ export const DUCK_PRESETS = freeze([
   {
     "id": "attack",
     "label": "アタック",
-    "description": "出目5以上で次の通常攻撃ATを+2。Cで固定50ダメージと2ターンのAT+3を得るヘビー型です。",
+    "description": "出目5以上で次の通常攻撃ATを+2。Ｃスキルで固定ダメージとターン制のATバフを得るヘビー型です。",
     "stats": {
       "AT": 5,
       "DF": 3,
@@ -134,7 +134,7 @@ export const DUCK_PRESETS = freeze([
   {
     "id": "defense",
     "label": "ディフェンス",
-    "description": "出目4以下で追風を2付与。特殊Cで最大HPの10%で復活し、経過ターンに応じた固定ダメージを返します。",
+    "description": "出目4以下で追風を2付与。特殊発動のＣスキルで復活し、経過ターンに応じた固定ダメージを返します。",
     "stats": {
       "AT": 2,
       "DF": 5,
@@ -190,7 +190,7 @@ export const DUCK_PRESETS = freeze([
   {
     "id": "heal",
     "label": "ヒール",
-    "description": "出目3で清潔を2付与。CでHPを30回復し、3ターンの命中時集中オーラで攻撃も補います。",
+    "description": "出目3で清潔を2付与。Ｃスキルで自身のHPを回復し、命中時の集中オーラで攻撃も補います。",
     "stats": {
       "AT": 2,
       "DF": 4,
@@ -246,7 +246,7 @@ export const DUCK_PRESETS = freeze([
   {
     "id": "technical",
     "label": "テクニカル",
-    "description": "出目2でランダムな状態異常を2付与。Cは状態異常と状態数ダメージ、または相手の現在HPの25％固定ダメージと3ターンのDF-3の2分岐です。",
+    "description": "出目2でランダムな状態異常を2付与。Ｃスキルは状態異常と状態数ダメージ、または相手HPの割合攻撃とDF低下の2分岐です。",
     "stats": {
       "AT": 2,
       "DF": 5,

@@ -51,7 +51,9 @@ async function page(data=initial()) {
   const button=(text,root=body)=>walk(root).find(e=>e.tagName==="button"&&e.textContent===text);
   const dialog=()=>all().find(e=>e.tagName==="dialog");
   return {get,all,writes,edits,controller,dialog,button,
-    choose(id,value){const e=get(id);assert.ok(e,`missing ${id}`);assert.ok(e.children.flatMap(o=>o.tagName==="optgroup"?o.children:[o]).some(o=>o.value===value&&!o.disabled),`illegal ${id}/${value}`);e.value=value;e.handlers.change();},
+    choose(id,value){
+      if (["battler-preset","duck-preset"].includes(id)) get(id+"-details").open=true;
+      const e=get(id);assert.ok(e,`missing ${id}`);assert.ok(e.children.flatMap(o=>o.tagName==="optgroup"?o.children:[o]).some(o=>o.value===value&&!o.disabled),`illegal ${id}/${value}`);e.value=value;e.handlers.change();},
     apply(kind){get(kind+"-preset-apply").handlers.click();},
     confirm(){button("変更する",dialog()).handlers.click();},cancel(){button("取り消す",dialog()).handlers.click();},
   };
@@ -104,4 +106,24 @@ test("preset controls are placed before cards, below duck identity controls",asy
 test("duck confirmation cannot accidentally apply to a different selected duck",async()=>{
   const p=await page();p.choose("duck-preset","heal");p.apply("duck");
   p.get("duck-tab-1").handlers.click();p.confirm();assert.equal(p.edits.length,0);
+});
+
+test("native preset disclosures start closed with visible heading/help and compact controls inside",async()=>{
+  const p=await page();
+  for(const [kind,title] of [["battler","バトラープリセットを使用する"],["duck","アヒルプリセットを使用する"]]) {
+    const details=p.get(kind+"-preset-details"),heading=p.get(kind+"-preset-heading"),help=p.get(kind+"-preset-help");
+    assert.equal(details.tagName,"details");assert.ok(!details.open);assert.equal(details.attributes.open,undefined);
+    const summary=details.children[0];assert.equal(summary.tagName,"summary");
+    assert.equal(heading.parent,summary);assert.equal(heading.textContent,title);
+    assert.equal(help.parent,summary);assert.equal(help.textContent,"サンプル構成を読み込んで自由に編集できます。");
+    assert.equal(summary.attributes["aria-labelledby"],heading.id);assert.equal(summary.attributes["aria-describedby"],help.id);
+    assert.doesNotMatch(p.get(kind+"-presets").textContent,/設定を保存|確定されません/);
+    const controls=details.children[1];
+    assert.deepEqual(controls.children,[p.get(kind+"-preset"),p.get(kind+"-preset-apply")]);
+    assert.equal(details.children[2],p.get(kind+"-preset-description"));
+    details.open=true;p.choose(kind+"-preset","technical");
+    assert.equal(details.open,true);assert.equal(p.get(kind+"-preset-apply").disabled,false);
+    assert.ok(p.get(kind+"-preset-description").textContent.includes("出目2") || kind === "battler");
+    assert.equal(p.edits.length,0);assert.equal(p.writes.length,0);
+  }
 });

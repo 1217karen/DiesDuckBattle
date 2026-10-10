@@ -112,3 +112,12 @@ test("battler B/D match attack, defense, heal and technical requests",()=>{
   assert.deepEqual(compiled.technical.effect,{type:"changeStatus",target:"self",status:"@buff",op:"add",value:1,chance:.5});
   assert.deepEqual(BATTLER_PRESETS.map(p=>p.dSelection.optionId),["add-self-6","add-self-4","add-self-3","add-self-2"]);
 });
+
+test("duck preset descriptions use the requested UI copy",()=>{
+  assert.deepEqual(DUCK_PRESETS.map(p=>p.description),[
+    "出目5以上で次の通常攻撃ATを+2。Ｃスキルで固定ダメージとターン制のATバフを得るヘビー型です。",
+    "出目4以下で追風を2付与。特殊発動のＣスキルで復活し、経過ターンに応じた固定ダメージを返します。",
+    "出目3で清潔を2付与。Ｃスキルで自身のHPを回復し、命中時の集中オーラで攻撃も補います。",
+    "出目2でランダムな状態異常を2付与。Ｃスキルは状態異常と状態数ダメージ、または相手HPの割合攻撃とDF低下の2分岐です。",
+  ]);
+});

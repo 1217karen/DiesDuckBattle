@@ -287,8 +287,14 @@ function renderPresets(kind) {
   const isBattler = kind === "battler", presets = isBattler ? BATTLER_PRESETS : DUCK_PRESETS;
   const box = el("section", null, "card battle-presets"); box.id = kind + "-presets";
   const title = isBattler ? "バトラープリセット" : "アヒルプリセット";
-  box.setAttribute("aria-label", title); box.append(el("h3", title));
-  box.append(el("p", "サンプル構成を読み込んで自由に編集できます。「設定を保存」するまでは確定されません。", "description"));
+  box.setAttribute("aria-label", title);
+  const disclosure = el("details"); disclosure.id = kind + "-preset-details";
+  const summary = el("summary"), heading = el("span", title + "を使用する", "preset-heading");
+  heading.id = kind + "-preset-heading";
+  const help = el("span", "サンプル構成を読み込んで自由に編集できます。", "description preset-help");
+  help.id = kind + "-preset-help";
+  summary.setAttribute("aria-labelledby", heading.id); summary.setAttribute("aria-describedby", help.id);
+  summary.append(heading, help); disclosure.append(summary); box.append(disclosure);
   const description = el("p", "プリセットを選ぶと構成の説明が表示されます。", "description");
   description.id = kind + "-preset-description"; description.setAttribute("aria-live", "polite");
   const apply = button("プリセットを適用", () => {
@@ -314,8 +320,9 @@ function renderPresets(kind) {
     apply.disabled = !preset;
   });
   input.setAttribute("aria-describedby", description.id);
-  const controls = el("div", null, "actions"); controls.append(labeled(title, input), apply);
-  box.append(controls, description); return box;
+  const controls = el("div", null, "actions");
+  input.setAttribute("aria-label", title); controls.append(input, apply);
+  disclosure.append(controls, description); return box;
 }
 
 function renderBattler() {
