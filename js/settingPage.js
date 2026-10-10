@@ -1,3 +1,4 @@
+import { BATTLER_PRESETS, DUCK_PRESETS, hasBattlerPresetSettings, hasDuckPresetSettings } from "./battlePresets.js";
 import { inspectBattleLoadout } from "./battleLoadoutCompiler.js";
 import { finishPageLoad } from "./pageLoad.js";
 import { SKILL_NAME_MAX, SKILL_RUBY_MAX } from "./skillLabels.js";
@@ -282,6 +283,41 @@ function renderBSentence(controls, b) {
   if (definition) controls.append(el("p", bSentence(definition, statusId), "b-completed-sentence"));
 }
 
+function renderPresets(kind) {
+  const isBattler = kind === "battler", presets = isBattler ? BATTLER_PRESETS : DUCK_PRESETS;
+  const box = el("section", null, "card battle-presets"); box.id = kind + "-presets";
+  const title = isBattler ? "バトラープリセット" : "アヒルプリセット";
+  box.setAttribute("aria-label", title); box.append(el("h3", title));
+  box.append(el("p", "サンプル構成を読み込んで自由に編集できます。「設定を保存」するまでは確定されません。", "description"));
+  const description = el("p", "プリセットを選ぶと構成の説明が表示されます。", "description");
+  description.id = kind + "-preset-description"; description.setAttribute("aria-live", "polite");
+  const apply = button("プリセットを適用", () => {
+    if (!online?.snapshot().canEdit) return;
+    const preset = presets.find(p => p.id === input.value); if (!preset) return;
+    const duck = selectedDuck(state);
+    const action = isBattler ? { type: "battler-preset", presetId: preset.id }
+      : { type: "duck-preset", presetId: preset.id, duckId: duck.id };
+    const applyDraft = () => {
+      if (!isBattler && selectedDuck(state)?.id !== action.duckId) return;
+      commit(action);
+    };
+    const configured = isBattler ? hasBattlerPresetSettings(state.build.battler) : hasDuckPresetSettings(duck);
+    if (configured) confirmChange(isBattler
+      ? `現在のB・Dスキル設定を『${preset.label}』プリセットで置き換えます。\n保存するまでは確定されません。`
+      : `現在のアヒルの戦闘設定（能力・ダイス・A・C）を『${preset.label}』プリセットで置き換えます。\nアヒル名や表示設定は変更されません。\n保存するまでは確定されません。`, applyDraft);
+    else applyDraft();
+  });
+  apply.id = kind + "-preset-apply"; apply.disabled = true;
+  const input = select(kind + "-preset", presets, "", id => {
+    const preset = presets.find(p => p.id === id);
+    description.textContent = preset?.description ?? "プリセットを選ぶと構成の説明が表示されます。";
+    apply.disabled = !preset;
+  });
+  input.setAttribute("aria-describedby", description.id);
+  const controls = el("div", null, "actions"); controls.append(labeled(title, input), apply);
+  box.append(controls, description); return box;
+}
+
 function renderBattler() {
   const { bSelection: b, dSelection: d } = state.build.battler;
   const bBox = card("B SKILL / Bスキル", "b"), controls = el("div", null, "controls");
@@ -297,7 +333,7 @@ function renderBattler() {
   field(dBox, null, "d-option", [...D_SKILL_OPTIONS, ...(d !== null && !d.optionId ? incomplete : [])], d === null ? "" : d.optionId || "incomplete",
     optionId => patchBattler({ dSelection: optionId ? { optionId } : null }), "未設定").setAttribute("aria-label", "Dスキル");
   feedback(dBox, "d");
-  $("battler-editor").replaceChildren(bBox, dBox);
+  $("battler-editor").replaceChildren(renderPresets("battler"), bBox, dBox);
 }
 
 function renderTabs() {
@@ -614,7 +650,7 @@ function renderDuck() {
   const nameError = el("p", "", "issues"); nameError.id = "duck-name-error"; nameError.hidden = true; nameError.setAttribute("role", "status");
   name.setAttribute("aria-describedby", "duck-name-error");
   identity.append(labeled("アヒル名", name), nameError);
-  meta.append(identity); box.append(actions, meta);
+  meta.append(identity); box.append(actions, meta, renderPresets("duck"));
   renderStats(duck, box); renderA(duck, box); renderC(duck, box);
 }
 // Name requirements apply to editing/saving, not legacy loadouts or battle logic.

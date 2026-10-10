@@ -1,3 +1,4 @@
+import { battlerPresetPatch, duckPresetPatch } from "./battlePresets.js";
 import { clonePlayerBuild, createEmptyDuck, addDuck, duplicateDuck, updateDuck, deleteDuck, updateBattler } from "./playerBuildModel.js";
 import { DICE_FRAMES, getDiceFrame } from "./diceFrames.js";
 import { calcMaxHPFromStats } from "./statsUtil.js";
@@ -55,6 +56,10 @@ export function changeSetting(state, action, { idFactory } = {}) {
       if (!state.publicSettings) throw new Error("公開用設定を読み込めないため編集できません。");
       if (!build.ducks.some(duck => duck.id === action.id)) throw new RangeError("Unknown Duck ID");
       return { ...state, publicSettings: { ...state.publicSettings, publicDuckId: action.id }, dirty: true };
+    case "battler-preset": build = updateBattler(build, battlerPresetPatch(action.presetId)); break;
+    case "duck-preset":
+      if (!current || current.id !== action.duckId) throw new RangeError("Preset target is not the selected Duck");
+      build = updateDuck(build, current.id, duckPresetPatch(action.presetId)); break;
     case "duck": build = updateDuck(build, selectedDuckId, action.patch); break;
     case "battler": build = updateBattler(build, action.patch); break;
     case "dice-type":

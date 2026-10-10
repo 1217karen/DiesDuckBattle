@@ -67,7 +67,7 @@ button.primary.save-invalid:hover { background:#495356; }
 .b-sentence-controls select { width:auto; flex:0 1 auto; min-width:0; max-width:100%; }
 .b-fixed-clause { padding:8px 0; }
 .b-completed-sentence { color:var(--accent); border-left:2px solid var(--accent); padding-left:12px; overflow-wrap:anywhere; }
-.battler-grid > .card:first-child { grid-column:1 / -1; }
+.battler-grid > .battle-presets, .battler-grid > .skill-b { grid-column:1 / -1; }
 
 /* A clauses use the same reading direction without changing the other editors. */
 .a-sentence-controls { display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-width:0; margin-top:10px; overflow-wrap:anywhere; }
@@ -190,3 +190,7 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
 .input-with-hint > select { flex:0 0 auto; width:auto; max-width:100%; }
 .input-with-hint > .description { flex:1 1 16em; margin:0; }
 .trigger-hint { margin-left:12px; }
+
+.battle-presets .actions { flex-wrap:wrap; align-items:flex-end; margin-bottom:12px; }
+.battle-presets .actions > label { flex:1 1 180px; }
+.battle-presets .actions > button { flex:0 0 auto; }
