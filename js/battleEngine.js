@@ -322,6 +322,10 @@ const push = (type, actor = "system", extra = {}) => {
       makeCtx(state, rng, push, state.P2, state.P1, getRules), getRules
     );
 
+    for (const fighter of [state.P1, state.P2]) {
+      if (fighter.runtime.cSkillLastActivatedTurn !== state.turn) fighter.runtime.cSkillIdleTurns += 1;
+    }
+
     result = judge(state.P1, state.P2);
     push("turnEnd", "system", { result });
 
@@ -477,6 +481,8 @@ function makeFighter(side, battler, duck) {
 
     // UI/常時計算用のランタイム（保存領域）
     runtime: {
+      cSkillIdleTurns: 0,
+      cSkillLastActivatedTurn: null,
       passive: {
         AT: 0,
         DF: 0,
@@ -1305,6 +1311,27 @@ function judge(p1, p2) {
    Cスキル（実行本体）
    effect の実行自体は effects.js に寄せる
 ========================= */
+// Both C modes call this only after paying the existing cost and logging activation.
+function applyCSkillIdleBonus(atk, ctx) {
+  const idleTurns = atk.runtime.cSkillIdleTurns;
+  const bonusAP = idleTurns >= 10 ? 3 : idleTurns >= 8 ? 2 : idleTurns >= 6 ? 1 : 0;
+  atk.runtime.cSkillIdleTurns = 0;
+  atk.runtime.cSkillLastActivatedTurn = ctx.turn;
+  if (bonusAP === 0) return;
+
+  const apBefore = atk.ap;
+  atk.ap += bonusAP;
+  ctx.helpers.refreshPassives();
+  ctx.push("cSkillIdleBonus", atk.side, {
+    code: "C_SKILL_IDLE_AP_BONUS",
+    target: atk.side,
+    idleTurns,
+    bonusAP,
+    apBefore,
+    apAfter: atk.ap,
+  });
+}
+
 function maybeUseCSkill(atk, def, ctx) {
   const cs = atk.duck?.cSkill;
   if (!cs || !cs.effect) return;
@@ -1338,6 +1365,8 @@ if (typeof refresh === "function") refresh();
       skill: { category: "C", skillId: cs.id, skillName: cs.skillName ?? cs.name, skillRuby: cs.skillRuby },
       groupId,
     });
+
+    applyCSkillIdleBonus(atk, ctx);
 
     // 以降の effect ログは originSkill/groupId が自動付与される
     applyEffect(cs.effect, ctx);
@@ -1390,6 +1419,7 @@ function maybeUseCSkillBeforeTurnEnd(atk, def, ctx) {
       groupId,
     });
 
+    applyCSkillIdleBonus(atk, ctx);
     applyEffect(cs.effect, ctx);
   });
 }

@@ -251,6 +251,7 @@ function eventToLines(event, context) {
     }
     case "cSkillActivated":
       return [{ kind: "note", text: `<span class="ap-charge-complete">APチャージ完了！</span><br>${actor}のチャージスキル！${renderSkillDisplayName(event.skill?.skillName, event.skill?.skillRuby)}` }];
+    case "cSkillIdleBonus": return [{ kind: "soft", text: `${target}はCスキルを${escapeHTML(event.idleTurns)}ターン待機したボーナスで、APが${amount("buff", `+${event.bonusAP}`)}！` }];
     case "timedRuleApplied": return [{ kind: "soft", text: `${target}は${escapeHTML(statusName(event.status))}付与のオーラを纏った！（${escapeHTML(event.duration?.remainingTurns)}ターン）` }];
     case "timedRuleTriggered": return [{ kind: "note", text: `${actor}のオーラ効果！` }];
     case "timedRuleTick": return event.after > 0
@@ -383,6 +384,7 @@ if (["normalDamage", "fixedDamage", "statusDamage", "counterDamage", "recoil", "
     if (event.key === "ap" && Number.isFinite(Number(event.after))) state.ap[side] = Number(event.after);
   }
   if (event.type === "cSkillActivated" && (event.actor === "P1" || event.actor === "P2") && Number.isFinite(Number(event.apAfter))) state.ap[event.actor] = Number(event.apAfter);
+  if (event.type === "cSkillIdleBonus" && (side === "P1" || side === "P2") && Number.isFinite(Number(event.apAfter))) state.ap[side] = Number(event.apAfter);
   if (event.type === "statusChange" && (side === "P1" || side === "P2") && event.status) state.status[side][event.status] = Number(event.after ?? 0);
   if (event.type === "attackAvoided" && event.code === "ATTACK_AVOIDED_BY_TAILWIND" && state.status[side]) state.status[side].tailwind = Number(event.tailwindAfter ?? 0);
   if (event.type === "counterDamage" && state.status[event.actor] && Number.isFinite(event.counterAfter)) state.status[event.actor].counter = event.counterAfter;
