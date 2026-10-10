@@ -53,6 +53,12 @@ test('user switch, login from anon, logout/login ABA and account invalidation di
   delay.resolve({data:list});const result=await request;assert.equal(result.ok,false);assert.equal(result.stale,true);
  }
 });
+test('null ENo can be sent for moderator reply only; user operations reject it',async()=>{
+ const f=fixture();f.set('operator');f.response(id);assert.equal((await f.service.reply(null,id,'運営返信')).ok,true);
+ assert.equal(f.calls[0][1].p_eno,null);const before=f.calls.length;
+ for(const fn of [()=>f.service.create(null,{category:'bug',title:'t',body:'b'}),()=>f.service.react(null,id),()=>f.service.withdraw(null,id)])assert.equal((await fn()).ok,false);
+ assert.equal(f.calls.length,before);
+});
 test('session loss during mutation never accepts success or retries toggle',async()=>{
  const f=fixture();f.set('a');const delay=f.delay();const request=f.service.react('1',id);await tick();f.set(null);delay.resolve({data:{hasReacted:true,reactionCount:1}});
  assert.equal((await request).stale,true);assert.equal(f.calls.length,1);

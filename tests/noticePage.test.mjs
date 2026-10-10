@@ -15,7 +15,8 @@ test('static notices and index, deep links and keyboard tabs remain independent 
  let code=await readFile(new URL('../js/noticePage.js',import.meta.url),'utf8');
  // Only replace module loading; run the entire production notice renderer/tab handlers.
  code=code.replace(/^import .*;\r?\n/gm,'').replace(/void import\("\.\/feedbackPage\.js"\)[\s\S]*$/,'');
- vm.runInNewContext(code,{document,notices,location,window:{addEventListener:(key,fn)=>events[key]=fn},finishPageLoad(){finished=true;}});
+ location.search='?tab=reports';
+ vm.runInNewContext(code,{document,notices,location,URLSearchParams,window:{addEventListener:(key,fn)=>events[key]=fn},finishPageLoad(){finished=true;}});
  assert.ok(finished);assert.equal(nodes.get('notice-articles').children.length,notices.length);assert.equal(nodes.get('notice-index').children.length,notices.length);
  for(const [i,notice] of notices.entries()){
   const article=nodes.get('notice-articles').children[i],link=nodes.get('notice-index').children[i];
@@ -27,6 +28,8 @@ test('static notices and index, deep links and keyboard tabs remain independent 
  location.hash='#'+notices[2].id;events.hashchange();assert.equal(nodes.get('panel-notices').hidden,false);
  for(const fn of tabs[0].handlers.keydown)fn({key:'ArrowRight',preventDefault(){}});
  assert.equal(nodes.get('panel-reports').hidden,false);assert.ok(tabs[1].focused);
+ location.hash='';vm.runInNewContext(code,{document,notices,location,URLSearchParams,window:{addEventListener(){}},finishPageLoad(){}});
+ assert.equal(nodes.get('panel-reports').hidden,false);
  const html=await readFile(new URL('../notice.html',import.meta.url),'utf8');assert.ok(html.includes('id="notice-articles"'));assert.ok(!html.includes('PL名検索'));
  const index=await readFile(new URL('../index.html',import.meta.url),'utf8');assert.ok(index.includes('href="notice.html"'));
 });

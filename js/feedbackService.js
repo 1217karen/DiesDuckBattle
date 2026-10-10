@@ -76,7 +76,7 @@ export function createFeedbackService(client, onSessionChange = () => {}) {
     create: (eno,input) => validated(() => { validateFeedbackInput(input); return request('create_feedback_thread',
       {p_eno:account(eno),p_category:input.category,p_title:input.title.trim(),p_body:input.body.trim()},idResult,true); }),
     reply: (eno,id,body) => validated(() => { uuid(id); validateFeedbackInput({body},true); return request('create_feedback_reply',
-      {p_eno:account(eno),p_thread_id:id,p_body:body.trim()},idResult,true); }),
+      {p_eno:eno === null ? null : account(eno),p_thread_id:id,p_body:body.trim()},idResult,true); }),
     react: (eno,id) => validated(() => { uuid(id); return request('toggle_feedback_reaction',{p_eno:account(eno),p_thread_id:id},v => {
       keys(v,['hasReacted','reactionCount']); flag(v.hasReacted); count(v.reactionCount); return structuredClone(v);
     },true); }),

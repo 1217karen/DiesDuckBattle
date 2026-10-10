@@ -14,15 +14,15 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
     if(permission)n.dataset.feedbackWrite=permission;
     return n;
   };
-  const canWrite=()=>auth.ready && auth.signedIn && !!auth.eno && data.canPost;
+  const canUserWrite=()=>auth.ready && auth.signedIn && !!auth.eno && data.canPost;
   const canModerate=()=>auth.ready && auth.signedIn && data.isModerator;
-  const canReply=thread=>canWrite() && (thread.status!=='withdrawn' || canModerate());
+  const canReply=thread=>canModerate() || (canUserWrite() && thread.status!=='withdrawn');
   const dateNode=value => {const n=el('time','feedback-date',new Date(value).toLocaleString('ja-JP')); n.dateTime=value;return n;};
   function enabled() {
-    newButton.disabled=busy || !canWrite();
-    form.querySelector('fieldset').disabled=busy || !canWrite();
-    for(const n of root.querySelectorAll('[data-feedback-write]')) n.disabled=busy || n.dataset.feedbackClosed==='true' || !(n.dataset.feedbackWrite==='moderator'?canModerate():canWrite());
-    authMessage.textContent=!auth.ready?'ログイン状態を確認中です。':!auth.signedIn?'閲覧はどなたでも可能です。投稿・返信・同意にはホームからログインしてください。':!auth.eno?'利用できるゲームアカウントを確認できません。':'投稿後の編集・削除はできません。補足は返信で追加してください。';
+    newButton.disabled=busy || !canUserWrite();
+    form.querySelector('fieldset').disabled=busy || !canUserWrite();
+    for(const n of root.querySelectorAll('[data-feedback-write]')) n.disabled=busy || n.dataset.feedbackClosed==='true' || !(n.dataset.feedbackWrite==='moderator'?canModerate():n.dataset.feedbackWrite==='reply'?(canModerate()||canUserWrite()):canUserWrite());
+    authMessage.textContent=canModerate()?'運営としてログイン中':!auth.ready?'ログイン状態を確認中です。':!auth.signedIn?'閲覧はどなたでも可能です。投稿・返信・同意にはホームからログインしてください。':!auth.eno?'利用できるゲームアカウントを確認できません。':'投稿後の編集・削除はできません。補足は返信で追加してください。';
   }
   function countInput(input, output, max) {
     const update=()=>{const n=codePointLength(input.value);output.textContent=`${n} / ${max}文字`;input.setCustomValidity(n>max?`${max}文字以内で入力してください。`:'');};
@@ -31,7 +31,7 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
   const titleCount=countInput(get('feedback-title'),get('feedback-title-count'),FEEDBACK_TITLE_MAX);
   const bodyCount=countInput(get('feedback-body'),get('feedback-body-count'),FEEDBACK_BODY_MAX);
   function closeForm() { form.hidden=true;newButton.setAttribute('aria-expanded','false'); }
-  newButton.addEventListener('click',()=>{if(!canWrite()||busy)return;form.hidden=false;newButton.setAttribute('aria-expanded','true');get('feedback-category').focus();});
+  newButton.addEventListener('click',()=>{if(!canUserWrite()||busy)return;form.hidden=false;newButton.setAttribute('aria-expanded','true');get('feedback-category').focus();});
   get('feedback-cancel').addEventListener('click',()=>{closeForm();newButton.focus();});
 
   async function load() {
@@ -53,7 +53,7 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
     } finally {if(current===epoch){busy=false;enabled();}}
   }
   form.addEventListener('submit',event=>{
-    event.preventDefault();if(!canWrite()||busy)return;
+    event.preventDefault();if(!canUserWrite()||busy)return;
     const input={category:get('feedback-category').value,title:get('feedback-title').value,body:get('feedback-body').value};
     try {validateFeedbackInput(input);} catch {get('feedback-form-message').textContent='種別・タイトル・本文と文字数を確認してください。';return;}
     void mutate(()=>service.create(auth.eno,input),async()=>{
@@ -87,15 +87,15 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
     }
     if(!result.data.length)container.append(el('p','notice-side-help','まだ返信はありません。'));
     if(thread.status==='withdrawn'&&!canModerate()){container.append(el('p','notice-side-help','取り下げ済みのため、返信・同意の変更はできません。'));return;}
-    if(!canWrite()){container.append(el('p','notice-side-help','返信にはログインとゲームアカウントが必要です。'));return;}
+    if(!canReply(thread)){container.append(el('p','notice-side-help','返信にはログインとゲームアカウントが必要です。'));return;}
     const replyForm=el('form','feedback-reply-form'),label=el('label','','返信本文'),input=el('textarea');
     input.id='reply-input-'+thread.id;label.htmlFor=input.id;input.rows=4;input.required=true;
     input.value=drafts.get(thread.id) ?? '';input.addEventListener('input',()=>drafts.set(thread.id,input.value));
     const counter=el('p','feedback-count');counter.id='reply-count-'+thread.id;input.setAttribute('aria-describedby',counter.id);countInput(input,counter,FEEDBACK_BODY_MAX);
     const feedback=el('p');feedback.setAttribute('role','status');
-    const submit=button('返信を投稿',()=>{},'account');submit.type='submit';
+    const submit=button('返信を投稿',()=>{},'reply');submit.type='submit';
     replyForm.append(label,input,counter,submit,feedback);replyForm.hidden=!drafts.has(thread.id);
-    const opener=button('返信を書く',()=>{replyForm.hidden=false;input.focus();},'account');
+    const opener=button('返信を書く',()=>{replyForm.hidden=false;input.focus();},'reply');
     replyForm.addEventListener('submit',event=>{
       event.preventDefault();if(!canReply(thread)||busy)return;
       try{validateFeedbackInput({body:input.value},true);}catch{feedback.textContent='本文を1〜2000文字で入力してください。';return;}
@@ -115,17 +115,17 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
       card.append(meta,el('h2','',thread.title),el('p','feedback-text',thread.body));
       const footer=el('div','report-meta');
       const reaction=button(`👍 ${thread.reactionCount}`,()=>{
-        if(!canWrite()||thread.status==='withdrawn')return;
+        if(!canUserWrite()||thread.status==='withdrawn')return;
         void mutate(()=>service.react(auth.eno,thread.id),async value=>{
         Object.assign(thread,value);render();
         });
       },'account');
       reaction.dataset.feedbackClosed=String(thread.status==='withdrawn');
       reaction.setAttribute('aria-pressed',String(thread.hasReacted));reaction.setAttribute('aria-label',`同意 ${thread.reactionCount}件${thread.hasReacted?'（同意済み）':''}`);
-      reaction.title=thread.status==='withdrawn'?'取り下げ済みのため、同意の変更はできません。':canWrite()?'同意する／解除する':'同意にはログインとゲームアカウントが必要です。';
+      reaction.title=thread.status==='withdrawn'?'取り下げ済みのため、同意の変更はできません。':canUserWrite()?'同意する／解除する':'同意にはログインとゲームアカウントが必要です。';
       footer.append(reaction,el('span','report-status',FEEDBACK_STATUSES[thread.status]));card.append(footer);
       const operations=el('div','feedback-actions');
-      if(canWrite()&&thread.isOwn&&['open','confirmed'].includes(thread.status))operations.append(button('取り下げる',()=>{
+      if(canUserWrite()&&thread.isOwn&&['open','confirmed'].includes(thread.status))operations.append(button('取り下げる',()=>{
         if(confirm('投稿を取り下げますか？ 本文・返信・同意は記録として残り、元に戻すことはできません。'))void mutate(()=>service.withdraw(auth.eno,thread.id),load);
       },'account'));
       if(canModerate()){

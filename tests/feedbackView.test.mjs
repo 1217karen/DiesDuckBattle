@@ -63,6 +63,15 @@ test('withdrawn UI keeps reading but blocks ordinary replies and reaction add/re
  const details=f.get('feedback-list').querySelector('details');details.open=true;await details.fire('toggle');await tick();
  await f.find('返信を書く').fire('click');const form=details.querySelector('form');form.querySelector('textarea').value='運営の補足';await form.fire('submit');await tick();assert.ok(f.calls.includes('reply'));
 });
+test('Auth-only moderator can reply and hide without user write controls; logout removes authority',async()=>{
+ const f=fixture();f.moderator();f.threads[0].status='withdrawn';f.view.updateAuth({...logged,eno:null});await tick();
+ assert.equal(f.get('feedback-new').disabled,true);assert.equal(f.find('👍 0').disabled,true);assert.equal(f.find('取り下げる'),undefined);
+ assert.ok(f.find('投稿を非表示'));assert.equal(f.get('feedback-auth').textContent,'運営としてログイン中');
+ const details=f.get('feedback-list').querySelector('details');details.open=true;await details.fire('toggle');await tick();
+ assert.equal(f.find('返信を書く').disabled,false);await f.find('返信を書く').fire('click');
+ const form=details.querySelector('form');form.querySelector('textarea').value='運営返信';await form.fire('submit');await tick();assert.ok(f.calls.includes('reply'));
+ f.view.sessionChanged();f.view.updateAuth(guest);await tick();assert.equal(f.find('投稿を非表示'),undefined);assert.notEqual(f.get('feedback-auth').textContent,'運営としてログイン中');
+});
 test('session change clears drafts and permissions and rejects old list/reply completion',async()=>{
  const f=fixture();f.view.updateAuth(logged);await tick();await f.get('feedback-new').fire('click');f.get('feedback-body').value='private draft';
  const pending=f.delayReply(),details=f.get('feedback-list').querySelector('details');details.open=true;await details.fire('toggle');await tick();

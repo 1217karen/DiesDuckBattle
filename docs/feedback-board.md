@@ -4,7 +4,7 @@
 
 ## 適用前の状態
 
-新規migration `20261009144805_feedback_board.sql` はローカルファイルとして追加しただけで、remoteには未適用です。既存migrationは変更していません。未適用の環境では報告・要望の取得エラーが表示されますが、静的お知らせとタブは利用できます。
+掲示板migration `20261009144805_feedback_board.sql` は適用済みです。ENoなし運営返信を追加する `20261010022315_operator_feedback_reply.sql` は未適用です。適用済みmigrationは変更していません。
 
 migrationの適用は別作業です。適用後、運営Authユーザーを管理者が手動登録してください。アプリからの登録・昇格機能はありません。SQL例はpsql変数を使用します（実際のUUIDをソースへ保存しないでください）。
 
@@ -14,7 +14,11 @@ values (:'moderator_auth_user_id'::uuid)
 on conflict do nothing;
 ```
 
-運営ユーザーが返信するにはアクセス可能なgame accountも必要です。状態変更・非表示は運営Authユーザーであれば利用できます。
+運営専用Authユーザーは、game_accounts・game_account_accessを作成せず、上の運営テーブルだけへ登録します。ENo、Battler、Duckは不要です。実際のユーザー作成・運営登録は別途手動作業で、今回の実装では実行していません。
+
+専用URLは `operator-login.html` です。一般メニューからのリンクや新規登録機能はありません。メール・パスワードで認証後、`list_feedback_threads(null)` のDB運営判定がtrueの場合だけ `notice.html?tab=reports` へ移動します。非運営・確認失敗時はlocal sign outし、ログアウトに失敗した場合も成功扱いせず再実行を案内します。既存のブラウザーセッションを共有するため、運営には別ブラウザープロファイルの利用も可能です。
+
+ENoなし運営は状態変更・投稿／返信非表示・運営返信が可能です。返信はgame_account_id=NULL、is_moderator=trueで記録されます。取り下げ後も運営返信と非表示は可能ですが、再開はできません。新規投稿・同意・取り下げには従来どおりアクセス可能なENoが必要です。
 
 ## 公開境界と操作
 

@@ -1,0 +1,9 @@
+body { margin:0; }
+.operator-login { --page-max-width:520px; --page-margin-block:32px; --page-title-size:26px; border-radius:12px; min-height:0; }
+.operator-login p { font-size:14px; line-height:1.8; }
+.operator-login fieldset { border:0; padding:0; margin:20px 0 12px; min-width:0; }
+.operator-login label { display:block; margin:14px 0 6px; }
+.operator-login input { box-sizing:border-box; width:100%; padding:10px; border-radius:6px; }
+.operator-login button { padding:10px 14px; border-radius:6px; cursor:pointer; }
+.operator-login button[type="submit"] { margin-top:20px; }
+.operator-login button:disabled { cursor:not-allowed; opacity:.6; }

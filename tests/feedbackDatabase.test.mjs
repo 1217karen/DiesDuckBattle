@@ -117,6 +117,27 @@ test('feedback RPC security and lifecycle against PostgreSQL',{skip:!PGlite&&'Se
    const tables=(await db.query("select relrowsecurity from pg_class where relname in ('feedback_threads','feedback_replies','feedback_reactions','feedback_moderators')")).rows;
    assert.equal(tables.length,4);assert.ok(tables.every(r=>r.relrowsecurity));
   });
+  await t.test('Auth-only moderator can reply without account, while all user writes still require ownership',async()=>{
+   await db.exec('reset role');
+   for(let i=0;i<2;i++){const id=(await db.query('insert into auth.users(id) values(gen_random_uuid()) returning id')).rows[0].id;ids.push(id);}
+   await db.query('insert into diesduck_private.feedback_moderators values ($1)',[ids[3]]);
+   await as(0);const target=await create();await rpc('create_feedback_reply',['1',target,'一般返信']);
+   await as(4);await assert.rejects(rpc('create_feedback_reply',[null,target,'拒否']),{code:'42501'});
+   await as(3);const dto=decodeFeedbackList(await list());assert.equal(dto.canPost,false);assert.equal(dto.isModerator,true);
+   const operatorReply=await rpc('create_feedback_reply',[null,target,'運営専用返信']);
+   await assert.rejects(rpc('create_feedback_reply',['1',target,'他人名義']),{code:'42501'});
+   for(const [name,args] of [['create_feedback_thread',[null,'bug','t','b']],['toggle_feedback_reaction',[null,target]],['withdraw_feedback_thread',[null,target]]])await assert.rejects(rpc(name,args),{code:'42501'});
+   await rpc('moderate_feedback_status',[target,'confirmed']);
+   await as(0);await rpc('withdraw_feedback_thread',['1',target]);
+   await as(3);await rpc('create_feedback_reply',[null,target,'取り下げ後の運営返信']);
+   for(const status of ['open','confirmed','resolved'])await assert.rejects(rpc('moderate_feedback_status',[target,status]),{code:'42501'});
+   await as();const rows=decodeFeedbackReplies(await rpc('list_feedback_replies',[target]));
+   assert.equal(rows.find(r=>r.id===operatorReply).isModerator,true);assert.equal(rows.find(r=>r.id===operatorReply).isAuthor,false);
+   assert.ok(!JSON.stringify(rows).includes(ids[3]));assert.ok(!JSON.stringify(rows).includes('email'));
+   await db.exec('reset role');assert.equal((await db.query('select game_account_id from diesduck_private.feedback_replies where id=$1',[operatorReply])).rows[0].game_account_id,null);
+   assert.equal((await db.query('select count(*)::int n from public.game_account_access where auth_user_id=$1',[ids[3]])).rows[0].n,0);
+   await as(3);await rpc('hide_feedback',[target,operatorReply]);await rpc('hide_feedback',[target,null]);
+  });
   await t.test('account deletion keeps thread/reply records, clears ownership, removes only its votes and preserves moderation',async()=>{
    await as(0);const preserved=await create('1','残すタイトル','残す本文');
    const authorReply=await rpc('create_feedback_reply',['1',preserved,'投稿者の返信']);await rpc('toggle_feedback_reaction',['1',preserved]);

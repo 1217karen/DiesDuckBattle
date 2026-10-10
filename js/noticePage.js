@@ -74,7 +74,7 @@ function revealArticle() {
   article.scrollIntoView();
 }
 window.addEventListener("hashchange", revealArticle);
-activate(0);
+activate(new URLSearchParams(location.search).get("tab") === "reports" ? 1 : 0);
 finishPageLoad();
 revealArticle();
 // A board/network failure must never prevent the static notices from opening.
