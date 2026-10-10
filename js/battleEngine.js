@@ -1311,12 +1311,14 @@ function judge(p1, p2) {
    Cスキル（実行本体）
    effect の実行自体は effects.js に寄せる
 ========================= */
-// Both C modes call this only after paying the existing cost and logging activation.
-function applyCSkillIdleBonus(atk, ctx) {
+// Both C modes reset the wait on activation, then award AP after all skill effects.
+function resolveCSkillEffects(atk, effect, ctx) {
   const idleTurns = atk.runtime.cSkillIdleTurns;
   const bonusAP = idleTurns >= 10 ? 3 : idleTurns >= 8 ? 2 : idleTurns >= 6 ? 1 : 0;
   atk.runtime.cSkillIdleTurns = 0;
   atk.runtime.cSkillLastActivatedTurn = ctx.turn;
+
+  applyEffect(effect, ctx);
   if (bonusAP === 0) return;
 
   const apBefore = atk.ap;
@@ -1366,10 +1368,8 @@ if (typeof refresh === "function") refresh();
       groupId,
     });
 
-    applyCSkillIdleBonus(atk, ctx);
-
-    // 以降の effect ログは originSkill/groupId が自動付与される
-    applyEffect(cs.effect, ctx);
+    // effect・ボーナスのログには originSkill/groupId が自動付与される
+    resolveCSkillEffects(atk, cs.effect, ctx);
   });
 }
 
@@ -1419,8 +1419,7 @@ function maybeUseCSkillBeforeTurnEnd(atk, def, ctx) {
       groupId,
     });
 
-    applyCSkillIdleBonus(atk, ctx);
-    applyEffect(cs.effect, ctx);
+    resolveCSkillEffects(atk, cs.effect, ctx);
   });
 }
 

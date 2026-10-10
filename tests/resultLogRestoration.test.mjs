@@ -233,12 +233,12 @@ for (const stacks of [1, 2, 3]) for (const success of [true, false]) {
 }
 test("Headwind uses the official display label", () => assert.equal(statusLabel("Headwind"), "逆風"));
 
-for (const [idleTurns, bonusAP] of [[6,1],[8,2],[10,3]]) test("C idle AP bonus displays wait and awarded AP: " + idleTurns, () => {
+for (const [idleTurns, bonusAP] of [[6,1],[8,2],[10,3]]) test("C idle AP bonus displays awarded AP only: " + idleTurns, () => {
   const bonus = event("cSkillIdleBonus", { code: "C_SKILL_IDLE_AP_BONUS", idleTurns, bonusAP, apBefore: 0, apAfter: bonusAP });
   const lines = linesFor([bonus]);
   assert.equal(lines.length, 1);
   assert.equal(lines[0].kind, "soft");
-  assert.equal(textFor([bonus]), "アヒル一はCスキルを" + idleTurns + "ターン待機したボーナスで、APが+" + bonusAP + "！");
+  assert.equal(textFor([bonus]), "長期APチャージボーナス　AP＋" + bonusAP + "！");
   const blocks = blocksFor([start, phase(), bonus]);
   assert.equal(blocks.at(-1).stateAfter.ap.P1, bonusAP);
 });

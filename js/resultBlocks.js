@@ -251,7 +251,7 @@ function eventToLines(event, context) {
     }
     case "cSkillActivated":
       return [{ kind: "note", text: `<span class="ap-charge-complete">APチャージ完了！</span><br>${actor}のチャージスキル！${renderSkillDisplayName(event.skill?.skillName, event.skill?.skillRuby)}` }];
-    case "cSkillIdleBonus": return [{ kind: "soft", text: `${target}はCスキルを${escapeHTML(event.idleTurns)}ターン待機したボーナスで、APが${amount("buff", `+${event.bonusAP}`)}！` }];
+    case "cSkillIdleBonus": return [{ kind: "soft", text: `長期APチャージボーナス　AP${amount("buff", `＋${event.bonusAP}`)}！` }];
     case "timedRuleApplied": return [{ kind: "soft", text: `${target}は${escapeHTML(statusName(event.status))}付与のオーラを纏った！（${escapeHTML(event.duration?.remainingTurns)}ターン）` }];
     case "timedRuleTriggered": return [{ kind: "note", text: `${actor}のオーラ効果！` }];
     case "timedRuleTick": return event.after > 0
