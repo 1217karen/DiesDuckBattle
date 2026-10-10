@@ -257,3 +257,10 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
   .a-condition-card .condition-label { font-size:.77rem; }
   .a-condition-card .input-with-hint > select { flex-shrink:1; min-width:0; }
 }
+
+.duck-identity { flex:0 1 500px; width:min(100%,500px); max-width:100%; }
+.duck-identity label { min-width:0; }
+.a-effect-row .effect-meta .price-gain, .a-effect-row .effect-meta .price-spend,
+.skill-c .effect-meta .price-positive, .skill-c .effect-meta .price-negative { font-weight:700; }
+.skill-card .completed-skill-sentence { color:var(--skill-heading); border-left-color:var(--skill-heading); }
+@media(max-width:700px) { .duck-identity { flex:1 1 100%; width:100%; } }

@@ -136,7 +136,7 @@ test("C sentence UI and completed preview share formal wording, with singletons 
   assert.equal(sentenceText(p.get(control+"-sentence")),presentCSkill(c).branches[0][0]);
   assert.equal(p.get(control+"-options.amount").tagName,"span");
   assert.equal(p.get(control+"-targetId").tagName,"select");
-  assert.equal(p.get("c-completed-sentence").textContent,presentCSkill(c,{includeCost:false}).text);
+  assert.equal(p.get("c-completed-sentence").textContent,presentCSkill(c).text);
   p.choose(control,"change-at");
   assert.equal(p.get(control+"-options.direction").tagName,"span");
   p.choose(control+"-targetId","self");

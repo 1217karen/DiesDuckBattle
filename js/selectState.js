@@ -1,16 +1,8 @@
-import { resolveSelection } from "./selectionNormalization.js";
+import { presentSkillSummary } from "./skillSummaryPresentation.js";
 import { clonePlayerBuild } from "./playerBuildModel.js";
 import { clonePlayerPresentation } from "./playerPresentationModel.js";
 import { inspectBattleLoadout } from "./battleLoadoutCompiler.js";
 import { calcMaxHPFromStats } from "./statsUtil.js";
-import { createASkillCatalog } from "./aSkillCatalog.js";
-import { createBSkillCatalog, getBSelectionDefinition } from "./bSkillCatalog.js";
-import { createCSkillCatalog } from "./cSkillCatalog.js";
-import { presentASkill } from "./aSkillPresentation.js";
-import { presentCSkill } from "./cSkillPresentation.js";
-import { bSentence } from "./bSkillPresentation.js";
-import { validateBSkillSelection } from "./bSkillCompiler.js";
-import { D_SKILL_OPTIONS } from "./dSkillCatalog.js";
 
 export const SELF_BATTLER = Object.freeze({ id: "local-player", name: "自分" });
 const loadMessages = {
@@ -50,8 +42,6 @@ export function battleStartStatus(state) {
     return { canStart: false, reason: "この相手は現在対戦できません。" };
   return { canStart: true, reason: "準備完了 — VSで戦闘開始" };
 }
-const label = (items, id) => items?.find(item => item.id === id)?.label ?? "未設定・不明な選択";
-const ac = createASkillCatalog(), bc = createBSkillCatalog(), cc = createCSkillCatalog();
 // Presentation owns wording and validation. Malformed saved values must not be guessed.
 function skillText(selection, present) {
   if (selection == null) return "未設定";
@@ -63,17 +53,12 @@ function skillText(selection, present) {
 }
 export function battlerSummary(battler) {
   if (!battler) return "B / D：読み込み待ち";
-  const bText = skillText(battler.bSelection, () => {
-    const validation = validateBSkillSelection(battler.bSelection, { catalog: bc });
-    if (!validation.complete) return validation;
-    const b = resolveSelection("B", battler.bSelection, bc).selection;
-    return { complete: true, text: bSentence(getBSelectionDefinition(b, bc), b.options?.statusId) };
-  });
-  return `B：${bText}\nD：${battler.dSelection ? label(D_SKILL_OPTIONS, battler.dSelection.optionId) : "未設定"}`;
+  const bText = skillText(battler.bSelection, () => presentSkillSummary("B", battler));
+  return `B：${bText}\nD：${battler.dSelection ? (presentSkillSummary("D", battler).text ?? "未設定・不明な選択") : "未設定"}`;
 }
 export function duckSummary(duck) {
   if (!duck) return "中央の自分側アヒル枠からアヒルを選択してください。";
-  const aText = skillText(duck.aSelection, () => presentASkill(duck, duck.aSelection, { catalog: ac }));
-  const cText = skillText(duck.cSelection, () => presentCSkill(duck.cSelection, { catalog: cc }));
+  const aText = skillText(duck.aSelection, () => presentSkillSummary("A", duck));
+  const cText = skillText(duck.cSelection, () => presentSkillSummary("C", duck));
   return `AT ${duck.stats.AT} / DF ${duck.stats.DF} / SP ${duck.stats.SP}   HP ${calcMaxHPFromStats(duck.stats)}\nダイス：${duck.dice.join(" / ")}\nA：${aText}\nC：${cText}`;
 }

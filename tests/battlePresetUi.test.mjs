@@ -1,6 +1,7 @@
 import { presentASkill } from "../js/aSkillPresentation.js";
 import { presentCSkill } from "../js/cSkillPresentation.js";
-import { compileDSkill } from "../js/dSkillCompiler.js";
+import { D_SKILL_OPTIONS } from "../js/dSkillCatalog.js";
+import { battlerSummary, duckSummary as characterDuckSummary } from "../js/selectState.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -134,7 +135,7 @@ test("native preset disclosures start closed with visible heading/help and compa
 
 test("Japanese card titles, fixed SP and concise skill guidance",async()=>{
   const p=await page();
-  for(const title of ["Ｂスキル","Ｄスキル","ダイス・ステータス","Ａスキル","Ｃスキル"]) {
+  for(const title of ["Ｂスキル","Ｄスキル","Ａスキル","Ｃスキル"]) {
     const card=p.all().find(e=>e.attributes["aria-label"]===title);
     assert.ok(card,title);assert.ok([...card.children,...card.children[0].children].some(e=>e.tagName==="h3"&&e.textContent===title),title);
   }
@@ -180,10 +181,12 @@ test("compact editor headings and responsive battle layout are scoped",async()=>
 test("dice and stats share one card with separate validation and metrics",async()=>{
  const p=await page(),card=p.all().find(e=>e.className==="card dice-stats-card");
  const descendants=e=>[e,...e.children.flatMap(descendants)];
- assert.deepEqual(card.children.map(e=>e.tagName),["h3","section","hr","section"]);
- assert.equal(card.children[0].textContent,"ダイス・ステータス");
- assert.equal(card.children[2].className,"dice-stats-divider");
- for(const [i,ids] of [[1,["dice-status","dice-metrics","dice-issues"]],[3,["stats-status","stat-metrics","stats-issues"]]])
+ assert.deepEqual(card.children.map(e=>e.tagName),["section","hr","section"]);
+ assert.ok(!card.children.some(e=>e.tagName==="h3"));
+ assert.equal(card.children[0].children[0].children[0].textContent,"ダイス");
+ assert.equal(card.children[2].children[0].children[0].textContent,"ステータス");
+ assert.equal(card.children[1].className,"dice-stats-divider");
+ for(const [i,ids] of [[0,["dice-status","dice-metrics","dice-issues"]],[2,["stats-status","stat-metrics","stats-issues"]]])
   for(const id of ids) {assert.ok(p.get(id),id);assert.ok(descendants(card.children[i]).includes(p.get(id)),id);}
 });
 test("B/C timing label and select stay paired beside their unchanged wrapping hint",async()=>{
@@ -216,12 +219,12 @@ test("condition rows keep paired metadata, shared labels and full-width separato
 });
 for(const preset of DUCK_PRESETS) test(preset.id+" D/A/C completed text uses trusted presentation after totals without changing drafts",async()=>{
  const data=initial();Object.assign(data.build.ducks[0],duckPresetPatch(preset.id));const before=structuredClone(data),p=await page(data),duck=data.build.ducks[0];
- for(const [key,expected] of [["d",compileDSkill(data.build.battler.dSelection).skill.description],["a",presentASkill(duck,duck.aSelection).text],["c",presentCSkill(duck.cSelection,{includeCost:false}).text]]) {
+ for(const [key,expected] of [["d",D_SKILL_OPTIONS.find(o=>o.id===data.build.battler.dSelection.optionId).label],["a",presentASkill(duck,duck.aSelection).text],["c",presentCSkill(duck.cSelection).text]]) {
   const node=p.get(key+"-completed-sentence");assert.ok(node,key);assert.equal(node.textContent,expected);assert.equal(node.className,"completed-skill-sentence");
   const children=node.parent.children;assert.ok(children.indexOf(node)<children.indexOf(p.get(key+"-issues")));
   if(key!=="d")assert.ok(children.indexOf(p.get(key+"-metrics"))<children.indexOf(node));
  }
- assert.doesNotMatch(p.get("c-completed-sentence").textContent,/〈AP/);
+ assert.match(p.get("c-completed-sentence").textContent,/^〈AP/);
  assert.deepEqual(p.controller.snapshot().draft,before);assert.equal(p.edits.length,0);assert.equal(p.writes.length,0);
  await p.get("save").handlers.click();assert.deepEqual(p.controller.snapshot().draft,before);
 });
@@ -232,13 +235,29 @@ for(const invalid of [false,true]) test("unfinished/invalid skill selections sup
  const p=await page(data);for(const key of ["d","a","c"])assert.equal(p.get(key+"-completed-sentence"),undefined);
  assert.deepEqual(p.controller.snapshot().draft,data);
 });
-test("A over-budget selection has no completed preview",async()=>{
+test("A over-budget preview matches CHARACTER presentation",async()=>{
  const data=initial();data.build.ducks[0].aSelection={triggerId:"all",effects:[{effectId:"heal",targetId:"self",options:{amount:"amount-10"}}]};
- const p=await page(data);assert.equal(p.get("a-completed-sentence"),undefined);
+ const p=await page(data);assert.equal(p.get("a-completed-sentence").textContent,presentASkill(data.build.ducks[0],data.build.ducks[0].aSelection).text);
 });
 test("B keeps its completed sentence with the shared appearance",async()=>{
  const data=initial();Object.assign(data.build.battler,battlerPresetPatch("defense"));const p=await page(data);
  const b=p.all().find(e=>e.className==="card skill-card skill-b");
  const walk=e=>[e,...e.children.flatMap(walk)];const sentences=walk(b).filter(e=>e.className==="completed-skill-sentence");
  assert.equal(sentences.length,1);assert.ok(sentences[0].textContent.includes("反撃"));
+});
+
+
+for(const preset of DUCK_PRESETS) test(preset.id+" all four setting sentences exactly match CHARACTER bodies",async()=>{
+ const data=initial();Object.assign(data.build.battler,battlerPresetPatch(preset.id));Object.assign(data.build.ducks[0],duckPresetPatch(preset.id));
+ const p=await page(data),b=battlerSummary(data.build.battler),d=characterDuckSummary(data.build.ducks[0]);
+ const expected={b:b.split("\nD：")[0].slice(2),d:b.split("\nD：")[1],a:d.split("\nA：")[1].split("\nC：")[0],c:d.split("\nC：")[1]};
+ for(const key of ["b","d","a","c"])assert.equal(p.get(key+"-completed-sentence").textContent,expected[key]);
+ assert.doesNotMatch(expected.d,/戦闘開始|（1個）/);assert.deepEqual(p.controller.snapshot().draft,data);
+});
+test("compact identity and colored text use responsive widths and existing palettes",async()=>{
+ const css=await readFile(new URL("../css/setting.css",import.meta.url),"utf8");
+ assert.match(css,/\.duck-identity\s*\{[^}]*width:min\(100%,500px\)/);
+ assert.match(css,/@media\(max-width:700px\)\s*\{ \.duck-identity\s*\{[^}]*width:100%/);
+ assert.match(css,/\.skill-card \.completed-skill-sentence\s*\{ color:var\(--skill-heading\); border-left-color:var\(--skill-heading\)/);
+ assert.match(css,/\.a-effect-row \.effect-meta \.price-gain,[^{}]*\.skill-c \.effect-meta \.price-negative\s*\{ font-weight:700/);
 });

@@ -1,4 +1,4 @@
-import { compileDSkill } from "./dSkillCompiler.js";
+import { presentSkillSummary } from "./skillSummaryPresentation.js";
 import { formatCRequiredAP } from "./skillResourceDisplay.js";
 import { BATTLER_PRESETS, DUCK_PRESETS, hasBattlerPresetSettings, hasDuckPresetSettings } from "./battlePresets.js";
 import { inspectBattleLoadout } from "./battleLoadoutCompiler.js";
@@ -14,16 +14,16 @@ import { DICE_FRAMES, getDiceFrame } from "./diceFrames.js";
 import { createBuildRules } from "./buildRules.js";
 import { createASkillCatalog, getATriggerOptions } from "./aSkillCatalog.js";
 import { aEditorLeaf, aNormalSlots, aEditorCatalog, aCancelAvailable, isACancel, setAAttackCancel, addANormalEffect, removeANormalEffect, changeAClause, changeATrigger } from "./aSkillSentenceEditor.js";
-import { presentASkill, aTriggerText, aTriggerEditor, aContentText, aEffectParts, aFieldOptionText, aStatusText } from "./aSkillPresentation.js";
+import { aTriggerText, aTriggerEditor, aContentText, aEffectParts, aFieldOptionText, aStatusText } from "./aSkillPresentation.js";
 import { calculateASkillResources } from "./aSkillResources.js";
 import { createBSkillCatalog, getBTriggerOptions, getBConditionOptions, getBEffectOptions } from "./bSkillCatalog.js";
-import { bEffectText, bSentence } from "./bSkillPresentation.js";
+import { bEffectText } from "./bSkillPresentation.js";
 import { bEventEditorSelection, bEventEditorDefinition, changeBEvent } from "./bSkillSentenceEditor.js";
 import { createCSkillCatalog } from "./cSkillCatalog.js";
 import { calculateCSkillResources } from "./cSkillResources.js";
 import { createCSkillRules } from "./cSkillRules.js";
 import { cControlDefinitions, cControlView, changeCControl } from "./cSkillControlEditor.js";
-import { presentCSkill, cEffectParts, cFieldOptionText, C_MODE_OPTIONS, C_STRUCTURE_OPTIONS } from "./cSkillPresentation.js";
+import { cEffectParts, cFieldOptionText, C_MODE_OPTIONS, C_STRUCTURE_OPTIONS } from "./cSkillPresentation.js";
 import { D_SKILL_OPTIONS } from "./dSkillCatalog.js";
 import { requireLoginPage } from "./authPageGuard.js";
 
@@ -287,7 +287,7 @@ function renderBSentence(controls, b) {
       traitId => patchBattler({ bSelection: { type: "trait", traitId, options: {} } }), "パッシブの効果");
   }
   controls.append(sentence);
-  if (definition) controls.append(el("p", bSentence(definition, statusId), "completed-skill-sentence"));
+
 }
 
 function renderPresets(kind) {
@@ -342,12 +342,14 @@ function renderBattler() {
       ? { type, triggerId: "", conditionId: "", effectId: "", options: {} } : { type, traitId: "", options: {} } }), "未設定");
   if (b?.type === "event" || b?.type === "trait") renderBSentence(controls, b);
   bBox.append(controls);
+  const presentedB = presentSkillSummary("B", state.build.battler);
+  if (presentedB.complete && presentedB.text) appendCompletedSentence(bBox, "b", presentedB.text);
   feedback(bBox, "b");
   const dBox = card("Ｄスキル", "d");
   field(dBox, null, "d-option", [...D_SKILL_OPTIONS, ...(d !== null && !d.optionId ? incomplete : [])], d === null ? "" : d.optionId || "incomplete",
     optionId => patchBattler({ dSelection: optionId ? { optionId } : null }), "未設定").setAttribute("aria-label", "Dスキル");
-  const compiledD = compileDSkill(d);
-  if (compiledD.ok && compiledD.skill.description) appendCompletedSentence(dBox, "d", compiledD.skill.description);
+  const presentedD = presentSkillSummary("D", state.build.battler);
+  if (presentedD.complete && presentedD.text) appendCompletedSentence(dBox, "d", presentedD.text);
   feedback(dBox, "d");
   $("battler-editor").replaceChildren(renderPresets("battler"), bBox, dBox);
 }
@@ -361,7 +363,7 @@ function renderTabs() {
 }
 function renderStats(duck, box) {
   const combined = el("section", null, "card dice-stats-card"); combined.setAttribute("aria-label", "ダイス・ステータス");
-  combined.append(el("h3", "ダイス・ステータス")); box.append(combined);
+  box.append(combined);
   const subsection = (title, key) => {
     const section = el("section"), heading = el("div", null, "card-header"), badge = el("span", null, "badge");
     section.setAttribute("aria-label", title); badge.id = key + "-status";
@@ -571,8 +573,8 @@ function renderA(duck, box) {
     const metrics = el("section", null, "resource-summary"); metrics.id = "a-metrics";
     metrics.setAttribute("aria-label", "Aスキルのpt"); panel.append(metrics);
   }
-  const presentedA = presentASkill(duck, a, { catalog: aCatalog });
-  if (presentedA.complete && presentedA.text && calculateASkillResources(duck, a, { catalog: aCatalog }).ready) appendCompletedSentence(panel, "a", presentedA.text);
+  const presentedA = presentSkillSummary("A", duck);
+  if (presentedA.complete && presentedA.text) appendCompletedSentence(panel, "a", presentedA.text);
   feedback(panel, "a"); box.append(panel);
 }
 
@@ -663,7 +665,7 @@ function renderC(duck, box) {
       el("br"), el("span", "デメリット効果に枠追加コストはかかりません。")); panel.append(explanation);
   }
   panel.append(metrics);
-  const presentedC = presentCSkill(c, { catalog: cCatalog, rules: cRules, includeCost: false });
+  const presentedC = presentSkillSummary("C", duck);
   if (presentedC.complete && presentedC.text) appendCompletedSentence(panel, "c", presentedC.text);
   feedback(panel, "c"); box.append(panel);
 }
