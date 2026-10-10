@@ -36,7 +36,7 @@ button.public-active { color:var(--on-accent); background:var(--accent); border-
 .stat-grid input,.stat-grid select,.stat-grid .stat-fixed { margin-left:8px; min-width:0; }
 .stat-grid > span { align-self:center; }
 .metrics { display:flex; flex-wrap:wrap; gap:12px 28px; padding:14px 0 0; color:var(--accent); font-size:.92rem; }
-.dice-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px; margin-bottom:18px; }
+.dice-grid { display:grid; grid-template-columns:repeat(6,minmax(70px,90px)); justify-content:start; gap:10px; margin-bottom:18px; }
 .dice-grid label { text-align:left; }.dice-grid select { font-size:1.05rem; }
 .effect-row { background:var(--ui-surface); border:1px solid var(--line); border-radius:8px; padding:17px; margin:12px 0; }
 .row-heading { margin-bottom:12px; }.row-heading button { padding:5px 12px; }.row-heading strong { font-size:.85rem; }
@@ -200,8 +200,33 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
 .battle-presets .preset-help { display:block; margin:8px 0 12px; font-weight:400; cursor:default; }
 .battle-presets summary:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
 
-.battle-presets { width:min(100%,860px); justify-self:start; }
+.battle-presets { width:min(100%,640px); justify-self:start; }
 .stat-field { display:flex; gap:6px; font-size:.82rem; min-width:0; }
 .stat-fixed { display:flex; align-items:center; gap:6px; min-height:42px; padding:8px 10px; border-radius:6px; border:1px solid var(--line); background:var(--panel); color:var(--text); }
 .stat-fixed-hint { color:var(--muted); font-weight:400; }
 @media(max-width:700px) { .battle-presets { width:100%; } }
+
+/* A conditions share one outline; C settings use ordinary wrapping form controls. */
+.a-condition-card { background:transparent; }
+.a-condition-card > .auxiliary-control { flex-direction:column; align-items:flex-start; margin:18px 0 0; }
+.a-condition-card .a-sentence-controls { margin:6px 0; }
+.c-setting-form { display:flex; flex-wrap:wrap; align-items:flex-start; gap:12px 24px; }
+.c-setting-form .auxiliary-control { margin:0; }
+.c-setting-form > div { min-width:0; max-width:100%; }
+@media(max-width:700px) {
+  .setting-shell { font-size:.94rem; }
+  .setting-shell h2 { font-size:1.35rem; }
+  .setting-shell h3 { font-size:.94rem; }
+  .setting-shell h4 { font-size:.85rem; }
+  .setting-shell label, .setting-shell .stat-field { font-size:.77rem; }
+  .setting-shell .description, .setting-shell .issues { font-size:.79rem; }
+  .setting-shell .metrics, .setting-shell .resource-summary { font-size:.84rem; }
+  .setting-shell .setting-meta { font-size:.8rem; }
+  .setting-shell button { font-size:.8rem; min-height:42px; }
+  .setting-shell input, .setting-shell select { font-size:.77rem; min-height:42px; }
+  .setting-shell .dice-grid select { font-size:.98rem; }
+  .setting-shell .auxiliary-control select { font-size:.73rem; }
+  .setting-shell .effect-meta { font-size:.71rem; }
+  .setting-shell .effect-meta button { font-size:.73rem; }
+  .setting-shell .preset-heading { font-size:.9rem; }
+}

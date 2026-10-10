@@ -272,27 +272,27 @@ test("Duck name errors block saving before and after incomplete confirmation", a
 test("A metadata separates signed effect/slot prices and updates slots on polarity edits",async()=>{
  const s={triggerId:"lte:3",effects:[{effectId:"heal",targetId:"self",options:{amount:"amount-5"}},damage,heal,cancel]};
  const b=initial(s),before=structuredClone(b),p=await page(b),r=calculateASkillResources(b.ducks[0],s);
- assert.equal(p.get("a-trigger-price").textContent,`-${r.triggerCost}pt`);
- assert.equal(p.get("a-cancel-price").textContent,`+${r.cancelDrawbackPoints}pt`);
+ assert.equal(p.get("a-trigger-price").textContent,`条件 -${r.triggerCost}pt`);
+ assert.equal(p.get("a-cancel-price").textContent,`還元 +${r.cancelDrawbackPoints}pt`);
  for(const [i,row] of r.effectBreakdown.slice(0,3).entries()) {
-  assert.equal(p.get(`a-effect-${i}-price`).textContent,`${row.polarity==="benefit"?"-"+row.effectCost:"+"+row.drawbackPoints}pt`);
-  assert.equal(p.get(`a-effect-${i}-slot-price`).textContent,`枠 ${i===1?"-1":"0"}pt`);
+  assert.equal(p.get(`a-effect-${i}-price`).textContent,`${row.polarity==="benefit"?"効果 "+row.effectCost:"還元 "+row.drawbackPoints}pt`);
+  assert.equal(p.get(`a-effect-${i}-slot-price`).textContent,`枠 ${i===1?"1":"0"}pt`);
   const meta=p.get(`a-effect-${i}-price`).parent;assert.equal(meta.className,"effect-meta");
   assert.deepEqual(meta.children.map(e=>e.tagName),["strong","span","span","button"]);
   assert.equal(meta.parent.children[1].className,"effect-editor");
  }
  assert.equal(r.effectBreakdown.reduce((n,row)=>n+row.slotCost,0),r.benefitSlotCost);
  p.choose("a-effect-0-targetId","enemy");assert.equal(p.get("a-effect-1-slot-price").textContent,"枠 0pt");
- assert.match(p.get("a-effect-0-price").textContent,/^\+\d+pt$/);assert.deepEqual(b,before);
+ assert.match(p.get("a-effect-0-price").textContent,/^還元 \d+pt$/);assert.deepEqual(b,before);
 });
 test("A incomplete prices and dependent slots are dashes, never provisional zero",async()=>{
  const p=await page(initial({triggerId:"",effects:[{effectId:"heal",targetId:"",options:{amount:"amount-5"}},damage]}));
  for(const id of ["a-trigger-price","a-effect-0-price","a-effect-0-slot-price","a-effect-1-slot-price"]) assert.match(p.get(id).textContent,/—$/);
- p.choose("a-trigger","exact:1");assert.equal(p.get("a-effect-1-price").textContent,"-2pt");
+ p.choose("a-trigger","exact:1");assert.equal(p.get("a-effect-1-price").textContent,"効果 2pt");
 });
 test("A pt wording and dice explanation placement change presentation only",async()=>{
  const b=initial({triggerId:"exact:1",effects:[damage]}),before=structuredClone(b),p=await page(b);
- assert.equal(p.get("a-budget-line").textContent,"使用可能pt初期pt 2 ＋ ダイスpt余剰 0 ＝ 2");
+ assert.equal(p.get("a-budget-line").textContent,"使用可能pt初期pt 2 ＋ ダイスpt余剰 0 ＝ 2pt");
  assert.equal(p.get("a-metrics").textContent,"使用可能 2pt｜必要 2pt｜残り 0pt");
  assert.equal(p.get("dice-metrics").textContent,"ダイスpt　獲得 0pt / 消費 0pt");
  const siblings=p.get("dice-metrics").parent.children;
@@ -302,7 +302,7 @@ test("A pt wording and dice explanation placement change presentation only",asyn
  assert.ok(!p.get("dice-metrics").textContent.includes("残り"));
  assert.deepEqual(p.save().ducks[0].aSelection,b.ducks[0].aSelection);assert.deepEqual(b,before);
  p.choose("dice-type","custom-speed");assert.equal(p.get("dice-metrics").textContent,"ダイスpt　獲得 2pt / 消費 0pt");
- assert.equal(p.get("a-budget-line").textContent,"使用可能pt初期pt 2 ＋ ダイスpt余剰 2 ＝ 4");
+ assert.equal(p.get("a-budget-line").textContent,"使用可能pt初期pt 2 ＋ ダイスpt余剰 2 ＝ 4pt");
 });
 
 test("skill label inputs are under each heading; Duck/Battler ownership, whitespace and selections survive save/reload",async()=>{
@@ -342,4 +342,14 @@ test('text limits preserve setting drafts and block overlong names and skill lab
  const old=initial();old.ducks[0].name='旧'.repeat(22);const loaded=await page(old);
  assert.equal(loaded.get('duck-name').value,old.ducks[0].name);
  assert.equal(loaded.get('duck-name').attributes['aria-invalid'],'true');
+});
+
+
+test("A trigger and cancellation share an outline card and preserve nearby hints",async()=>{
+ const p=await page(initial({triggerId:"exact:1",effects:[damage]}));
+ const card=p.get("a-condition-card");assert.equal(card.className,"effect-row a-condition-card");
+ const descendants=e=>[e,...e.children.flatMap(descendants)];
+ for(const id of ["a-trigger","a-cancel"]) assert.ok(descendants(card).includes(p.get(id)));
+ assert.ok(card.textContent.includes("「以下」の判定には0を含みません。"));
+ assert.ok(!descendants(card).some(e=>e.className==="skill-setting-line"));
 });

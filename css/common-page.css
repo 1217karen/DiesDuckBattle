@@ -41,7 +41,7 @@
   --page-eyebrow-size:.75rem;
   --page-eyebrow-spacing:.23em;
   --page-eyebrow-weight:700;
-  --page-title-size:clamp(2rem,5vw,3.4rem);
+  --page-title-size:clamp(1.7rem,4vw,2.8rem);
   --page-title-spacing:.045em;
   --page-title-line-height:1.15;
   --page-title-margin:16px 0 22px;

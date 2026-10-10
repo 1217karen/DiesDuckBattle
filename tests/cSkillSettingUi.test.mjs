@@ -56,7 +56,7 @@ test("C explicit edits: singleton amount becomes fixed, multiple targets/status/
   assert.equal(p.get(control+"-targetId").tagName,"select");assert.equal(p.get(control+"-targetId").value,"");
   assert.equal(p.get(control+"-statusId").tagName,"select");assert.equal(p.get(control+"-statusId").value,"");
   p.choose(control+"-targetId","enemy");p.choose(control+"-statusId","crack");
-  assert.equal(p.get("c-metrics").textContent,`必要AP：${calculateCSkillResources(selection([grant])).requiredAP}`);
+  assert.equal(p.get("c-metrics").textContent,`必要AP：最低AP5＋0＝${calculateCSkillResources(selection([grant])).requiredAP}`);
   const saved=p.save();assert.deepEqual(saved.ducks[0].cSelection,selection([grant]));assert.equal(compileCSkill(saved.ducks[0].cSelection).ok,true);
   p=await page(saved);assert.equal(p.get(control+"-options.amount").textContent,"3");
   p.choose(control,"damage");assert.equal(p.get(control+"-options.amount").tagName,"select");assert.equal(p.get(control+"-options.amount").value,"");
@@ -225,7 +225,7 @@ test("C effect metadata uses branch-local resource prices and retains maximum-br
   assert.equal(p.get(id+"-price").textContent,`AP ${cost}`);assert.equal(p.get(id+"-slot-price").textContent,`枠AP ${slot}`);
   const meta=p.get(id+"-price").parent;assert.equal(meta.className,"effect-meta");assert.equal(meta.parent.children[1].className,"effect-editor c-effect-controls");
  }
- assert.equal(r.selectedBranchPath,"structure.branches.0");assert.equal(p.get("c-metrics").textContent,`必要AP：${r.requiredAP}`);
+ assert.equal(r.selectedBranchPath,"structure.branches.0");assert.equal(p.get("c-metrics").textContent,`必要AP：最低AP5＋1＋3＝${r.requiredAP}`);
  assert.deepEqual(p.save().ducks[0].cSelection,s);assert.deepEqual(b,before);
 });
 test("C incomplete and dependent slot prices are unknown without contaminating another branch",async()=>{
@@ -234,4 +234,14 @@ test("C incomplete and dependent slot prices are unknown without contaminating a
  const p=await page(initial(s));
  for(const id of ["c-effect-0-0-price","c-effect-0-0-slot-price","c-effect-0-1-slot-price"]) assert.match(p.get(id).textContent,/—$/);
  assert.equal(p.get("c-effect-1-0-slot-price").textContent,"枠AP 0");assert.equal(p.get("c-metrics").textContent,"必要AP：—");
+});
+
+
+test("C upper settings are wrapping forms without AP metadata",async()=>{
+ const p=await page(initial(selection([grant]))),top=p.get("c-settings");
+ const descendants=e=>[e,...e.children.flatMap(descendants)];
+ assert.equal(top.className,"skill-settings c-setting-form");
+ assert.ok(!top.textContent.includes("最低AP"));
+ assert.ok(!descendants(top).some(e=>e.className==="skill-setting-line"||e.className==="setting-meta"));
+ for(const id of ["c-mode","c-structure"]) assert.ok(descendants(top).includes(p.get(id)));
 });

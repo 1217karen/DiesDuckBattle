@@ -140,16 +140,16 @@ test("Japanese card titles, fixed SP and concise skill guidance",async()=>{
   assert.equal(sp.handlers.change,undefined);assert.equal(sp.parent.attributes.role,"group");
   assert.equal(p.all().some(e=>e.tagName==="select"&&e.id==="stat-SP"),false);
   const a=p.all().find(e=>e.attributes["aria-label"]==="Ａスキル");
-  assert.ok(a.textContent.includes("使用可能pt初期pt 2 ＋ ダイスpt余剰 0 ＝ 2"));
-  assert.ok(a.textContent.includes("最大４個まで効果を選択できます。"));
+  assert.ok(a.textContent.includes("使用可能pt初期pt 2 ＋ ダイスpt余剰 0 ＝ 2pt"));
+  assert.ok(a.textContent.includes("最大４枠まで効果を選択できます。"));
   const c=p.all().find(e=>e.attributes["aria-label"]==="Ｃスキル");
-  assert.ok(c.textContent.includes("最大５件まで効果を選択できます。効果を分岐させた場合は、最も消費APが多い分岐が必要APに採用されます。"));
+  assert.ok(c.textContent.includes("最大５枠まで効果を選択できます。効果を分岐させた場合は、最も消費APが多い分岐が必要APに採用されます。"));
 });
 
 test("card widths, left aligned dice, shared skill borders and mobile layout rules",async()=>{
   const css=await readFile(new URL("../css/setting.css",import.meta.url),"utf8");
   assert.match(css,/\.battler-grid > \.skill-b, \.battler-grid > \.skill-d\s*\{\s*grid-column:1\s*\/\s*-1/);
-  assert.match(css,/\.battle-presets\s*\{[^}]*width:min\(100%,860px\);[^}]*justify-self:start/);
+  assert.match(css,/\.battle-presets\s*\{[^}]*width:min\(100%,640px\);[^}]*justify-self:start/);
   assert.match(css,/@media\s*\(max-width:700px\)\s*\{\s*\.battle-presets\s*\{\s*width:100%/);
   assert.match(css,/\.dice-grid label\s*\{\s*text-align:left/);
   assert.match(css,/\.dice-grid\s*\{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
@@ -157,4 +157,18 @@ test("card widths, left aligned dice, shared skill borders and mobile layout rul
   for(const kind of ["a","b","c","d"]) assert.equal([...css.matchAll(new RegExp('\\.skill-'+kind+'\\s*\\{[^}]*--skill-line:', 'g'))].length,2);
   assert.match(css,/\.stat-fixed-hint\s*\{[^}]*color:var\(--muted\)/);
   assert.match(css,/\.skill-label-controls\s*\{[^}]*grid-template-columns:minmax\(0,1fr\) minmax\(0,2fr\)/);
+});
+
+
+test("compact editor headings and responsive battle layout are scoped",async()=>{
+ const css=await readFile(new URL("../css/setting.css",import.meta.url),"utf8");
+ const common=await readFile(new URL("../css/common-page.css",import.meta.url),"utf8");
+ assert.match(common,/\.page-shell--editor\s*\{[^}]*--page-title-size:clamp\(1\.7rem,4vw,2\.8rem\)/);
+ assert.match(common,/font-size:var\(--page-title-size, 2em\)/);
+ assert.match(css,/grid-template-columns:repeat\(6,minmax\(70px,90px\)\); justify-content:start/);
+ assert.match(css,/\.a-condition-card\s*\{ background:transparent/);
+ const mobile=css.slice(css.lastIndexOf("@media(max-width:700px)"));
+ for(const selector of ["label",".description",".metrics","button","select",".effect-meta"]) assert.ok(mobile.includes(".setting-shell "+selector));
+ assert.match(mobile,/min-height:42px/);
+ for(const file of ["setting.html","character.html"]) assert.match(await readFile(new URL("../"+file,import.meta.url),"utf8"),/page-shell--editor/);
 });
