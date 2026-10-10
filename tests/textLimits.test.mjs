@@ -18,15 +18,15 @@ import { player, a, da } from './onlineSelectFixture.mjs';
 const memory=(key,data)=>{let raw=JSON.stringify(data),writes=0;return {getItem:k=>k===key?raw:null,setItem(k,v){writes++;raw=v;},get writes(){return writes;}};};
 
 test('shared text constants and code point counting',()=>{
- assert.deepEqual([BATTLER_NAME_MAX,DUCK_NAME_MAX,SKILL_NAME_MAX,SKILL_RUBY_MAX,BATTLER_PROFILE_MAX,DUCK_PROFILE_MAX,FLAVOR_LABEL_WIDTH_MAX],[15,21,20,50,2000,300,10]);
+ assert.deepEqual([BATTLER_NAME_MAX,DUCK_NAME_MAX,SKILL_NAME_MAX,SKILL_RUBY_MAX,BATTLER_PROFILE_MAX,DUCK_PROFILE_MAX,FLAVOR_LABEL_WIDTH_MAX],[15,15,20,50,2000,300,10]);
  assert.equal(codePointLength('😀aあ'),3);
 });
 for(const char of ['a','あ','😀'])test(`name and skill exact boundaries: ${char}`,async()=>{
  const {data}=await player(a,'1',da);
- for(const [error,max] of [[battlerNameError,15],[duckNameError,21]]){assert.equal(error(char.repeat(max)),'');assert.ok(error(char.repeat(max+1)));assert.ok(error('　 '));}
- data.battlerName=char.repeat(15);data.build.ducks[0].name=char.repeat(21);assert.doesNotThrow(()=>encodeOnlinePlayer(data));
+ for(const [error,max] of [[battlerNameError,15],[duckNameError,15]]){assert.equal(error(char.repeat(max)),'');assert.ok(error(char.repeat(max+1)));assert.ok(error('　 '));}
+ data.battlerName=char.repeat(15);data.build.ducks[0].name=char.repeat(15);assert.doesNotThrow(()=>encodeOnlinePlayer(data));
  data.battlerName=char.repeat(16);assert.throws(()=>encodeOnlinePlayer(data));data.battlerName='valid';
- data.build.ducks[0].name=char.repeat(22);assert.equal(duckNameIssues(data.build)[0].code,'NAME_TOO_LONG');assert.throws(()=>clonePlayerBuild(data.build));assert.throws(()=>encodeOnlinePlayer(data));
+ data.build.ducks[0].name=char.repeat(16);assert.equal(duckNameIssues(data.build)[0].code,'NAME_TOO_LONG');assert.throws(()=>clonePlayerBuild(data.build));assert.throws(()=>encodeOnlinePlayer(data));
  assert.equal(validSkillLabel({name:char.repeat(20),ruby:char.repeat(50)}),true);
  assert.equal(validSkillLabel({name:char.repeat(21),ruby:''}),false);assert.equal(validSkillLabel({name:'',ruby:char.repeat(51)}),false);
 });
@@ -48,7 +48,7 @@ for(const char of ['a','😀'])test(`profile boundaries and tags count code poin
 for(const version of [1,2,3])test(`old v${version} oversized stored data loads losslessly but cannot be saved`,async()=>{
  const {data}=await player(a,'1',da);const dto=encodeOnlinePlayer(data);
  legacyDtoQuoteOwnership(dto);delete dto.battler.presentation.profile.showBestStreak;delete dto.battler.presentation.profile.message;delete dto.battler.presentation.profile.messageTail;dto.battler.presentation.schemaVersion=version;dto.ducks[0].presentation.schemaVersion=version;
- dto.battler.presentation.name='😀'.repeat(16);dto.ducks[0].presentation.name='あ'.repeat(22);
+ dto.battler.presentation.name='😀'.repeat(16);dto.ducks[0].presentation.name='あ'.repeat(16);
  dto.battler.build.skillLabels.B={name:'a'.repeat(21),ruby:'😀'.repeat(51)};
  if(version<3)for(const path of QUOTE_PATHS){const p=path.slice(0,-1).reduce((v,k)=>v[k],dto.battler.presentation.quotes);const first=p[path.at(-1)].lines[0];p[path.at(-1)]={text:first.text,iconSlot:first.iconSlot};}
  if(version===1){delete dto.battler.presentation.profile;delete dto.ducks[0].presentation.icon.profile;}

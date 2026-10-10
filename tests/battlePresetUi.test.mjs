@@ -261,3 +261,10 @@ test("compact identity and colored text use responsive widths and existing palet
  assert.match(css,/\.skill-card \.completed-skill-sentence\s*\{ color:var\(--skill-heading\); border-left-color:var\(--skill-heading\)/);
  assert.match(css,/\.a-effect-row \.effect-meta \.price-gain,[^{}]*\.skill-c \.effect-meta \.price-negative\s*\{ font-weight:700/);
 });
+
+test("all completed skill sentences share the same top spacing", async()=>{
+ const css=await readFile(new URL("../css/setting.css",import.meta.url),"utf8");
+ assert.match(css,/\.completed-skill-sentence\s*\{[^}]*margin-top:18px/);
+ const p=await page();
+ for(const kind of ["b","d","a","c"]) assert.equal(p.get(kind+"-completed-sentence").className,"completed-skill-sentence");
+});

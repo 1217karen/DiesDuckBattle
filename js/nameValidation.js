@@ -1,6 +1,6 @@
 import { codePointLength } from "../supabase/functions/_shared/text-limits.mjs";
 export { BATTLER_NAME_MAX, battlerNameError, codePointLength } from "../supabase/functions/_shared/text-limits.mjs";
-export const DUCK_NAME_MAX = 21;
+export const DUCK_NAME_MAX = 15;
 export const hasName = value => typeof value === "string" && value.trim().length > 0;
 export function duckNameError(value) {
   if (!hasName(value)) return "アヒル名を入力してください（空白のみは使用できません）。";

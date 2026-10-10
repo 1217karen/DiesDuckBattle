@@ -333,14 +333,14 @@ test("skill label inputs are under each heading; Duck/Battler ownership, whitesp
 test('text limits preserve setting drafts and block overlong names and skill labels',async()=>{
  const p=await page(initial());
  const input=(id,value)=>{const e=p.get(id);e.value=value;e.handlers.input();return p.get(id);};
- for(const [id,max] of [['duck-name',21],['skill-a-name',20],['skill-a-ruby',50]]){
+ for(const [id,max] of [['duck-name',15],['skill-a-name',20],['skill-a-ruby',50]]){
   let e=input(id,'😀'.repeat(max));assert.equal(e.attributes['aria-invalid'],'false');
   e=input(id,'😀'.repeat(max+1));assert.equal(e.attributes['aria-invalid'],'true');
   assert.equal(e.value,'😀'.repeat(max+1));assert.equal(p.get('save').attributes['aria-disabled'],'true');
   input(id,id==='duck-name'?'アヒル':'');
  }
- assert.equal(p.get('duck-name').placeholder,`アヒル名を入力（最大${DUCK_NAME_MAX}文字）`);
- const old=initial();old.ducks[0].name='旧'.repeat(22);const loaded=await page(old);
+ assert.equal(p.get('duck-name').placeholder,"アヒル名を入力（最大15文字）");
+ const old=initial();old.ducks[0].name='旧'.repeat(16);const loaded=await page(old);
  assert.equal(loaded.get('duck-name').value,old.ducks[0].name);
  assert.equal(loaded.get('duck-name').attributes['aria-invalid'],'true');
 });
