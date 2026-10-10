@@ -111,7 +111,10 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
     if(!rows.length)list.append(el('p','notice-side-help',data.threads.length?'条件に一致する投稿はありません。':'まだ投稿はありません。'));
     for(const thread of rows){
       const card=el('article','report-card page-panel');card.id='feedback-'+thread.id;
-      const meta=el('div','notice-meta');meta.append(el('span','notice-badge',FEEDBACK_CATEGORIES[thread.category]),dateNode(thread.createdAt));
+      const meta=el('div','notice-meta');meta.append(
+        el('span','notice-badge',FEEDBACK_CATEGORIES[thread.category]),
+        el('span',`report-status report-status--${thread.status}`,FEEDBACK_STATUSES[thread.status]),
+        dateNode(thread.createdAt));
       card.append(meta,el('h2','',thread.title),el('p','feedback-text',thread.body));
       const footer=el('div','report-meta');
       const reaction=button(`👍 ${thread.reactionCount}`,()=>{
@@ -123,7 +126,7 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
       reaction.dataset.feedbackClosed=String(thread.status==='withdrawn');
       reaction.setAttribute('aria-pressed',String(thread.hasReacted));reaction.setAttribute('aria-label',`同意 ${thread.reactionCount}件${thread.hasReacted?'（同意済み）':''}`);
       reaction.title=thread.status==='withdrawn'?'取り下げ済みのため、同意の変更はできません。':canUserWrite()?'同意する／解除する':'同意にはログインとゲームアカウントが必要です。';
-      footer.append(reaction,el('span','report-status',FEEDBACK_STATUSES[thread.status]));card.append(footer);
+      footer.append(reaction);card.append(footer);
       const operations=el('div','feedback-actions');
       if(canUserWrite()&&thread.isOwn&&['open','confirmed'].includes(thread.status))operations.append(button('取り下げる',()=>{
         if(confirm('投稿を取り下げますか？ 本文・返信・同意は記録として残り、元に戻すことはできません。'))void mutate(()=>service.withdraw(auth.eno,thread.id),load);
