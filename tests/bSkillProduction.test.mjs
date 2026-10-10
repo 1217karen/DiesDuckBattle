@@ -178,14 +178,14 @@ test("HP/AP trait全境界と倍率6候補の値、counter除外", () => {
   }
 });
 
-function battle(selection, { hp = 1000, sp = 1, dice = 0, aSkill, helper = [], enemyStatus = [], cSkill } = {}) {
+function battle(selection, { hp = 1000, sp = 1, dice = 0, aSkill, helper = [], enemyStatus = [], cSkill, rng = () => .9 } = {}) {
   return runBattle({ p1: { battlerId: "p1", duckId: "d1" }, p2: { battlerId: "p2", duckId: "d2" },
     data: { BATTLERS: [{ id: "p1", bSkills: [...compile(selection), ...helper], dSkill: { effect: [
       { type: "changeValue", key: "hp", op: "set", value: hp }, { type: "changeValue", key: "ap", op: "set", value: 30 }] } },
       { id: "p2", dSkill: { effect: enemyStatus } }], DUCKS: [
       { id: "d1", stats: { AT: 0, DF: 0, SP: sp, maxHP: 1000 }, dice: [dice], aSkill, cSkill },
       { id: "d2", stats: { AT: 0, DF: 0, SP: 1, maxHP: 1000 }, dice: [0] }] },
-    field: "no-field", maxTurns: 1, rng: () => .9 });
+    field: "no-field", maxTurns: 1, rng });
 }
 test("production phaseEnd自傷後も残りphaseで行動・AP獲得→ターン末特殊C", () => {
   const r = battle(event("phase-end", "always", "ap-up-cost-5"), { hp: 1, sp: 3,
@@ -214,7 +214,7 @@ test("production通常命中Bは0damageでも発火し、MISS・回避では発�
   assert.ok(counter.events.some(e => e.type === "counterDamage" && e.value === 0));
   assert.ok(counter.events.some(e => e.key === "nextAttackATPlus" && e.delta === -3));
   for (const settings of [{ helper: [{ id: "miss", trigger: "beforeAttack", effect: { type: "changeAttack", op: "miss" } }] },
-    { enemyStatus: [{ type: "changeStatus", target: "self", status: "tailwind", op: "set", value: 3 }] }]) {
+    { rng: () => 0, enemyStatus: [{ type: "changeStatus", target: "self", status: "tailwind", op: "set", value: 3 }] }]) {
     const r = battle(always, settings);
     assert.equal(r.events.some(e => e.type === "skillTriggered" && e.skill?.skillId?.startsWith("B:after-hit/always")), false);
   }

@@ -67,7 +67,7 @@ test("連続行動の命中率MISSでも消費し、同phaseの2発目へ持ち�
 });
 
 test("tailwind回避でも1発目で消費し、2発目へ持ち越さない", () => {
-  const result = battle({ dice: 2, setup: [nextAT], enemySetup: [status("tailwind")] });
+  const result = battle({ dice: 2, setup: [nextAT], enemySetup: [status("tailwind")], rng: () => 0 });
   assert.equal(result.events.filter(e => e.code === "ATTACK_AVOIDED_BY_TAILWIND").length, 1);
   assert.deepEqual(p1NormalDamage(result).map(e => e.value), [6]);
   assert.deepEqual(consumed(result).map(e => e.value), [3]);

@@ -58,6 +58,10 @@ test("all seven battle sections retain base prose, emoji and credits", () => {
   for (const id of ids) {
     let expected = section(base, id);
     if (id === "rule") expected = expected.replace("好きなバトラーとアヒルを選んで", "バトラーとアヒルで");
+    if (id === "status") expected = expected
+      .replace("スタック分の<b>固定ダメージ</b>", "１スタックにつき２の<b>固定ダメージ</b>")
+      .replace("１スタックにつき１度、<b>通常攻撃</b>を回避できる！", "１／２／３スタックで30%／60%／90%の確率で<b>通常攻撃</b>を回避！<br /> 回避判定時に、成功・失敗に関係なく全スタックを消費する！")
+      .replace("１スタックにつき１つ、<b>状態異常</b>を防ぐ！", "１スタックにつき、１回の付与で最大２スタック分の<b>状態異常</b>を防ぐ！");
     assert.equal(prose(section(html, id)), prose(expected), id);
     assert.match(html, new RegExp('href="#' + id + '"'));
   }

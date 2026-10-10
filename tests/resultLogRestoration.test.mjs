@@ -43,20 +43,20 @@ test("clean uses actual effect event with prevented status/amount and consumed s
     actor, push: (type, actor, payload) => events.push({ type, actor, ...payload }),
   });
   assert.equal(events[0].code, "STATUS_CLEAN_CONSUMED");
-  assert.equal(textFor(events), "アヒル一の🧼清潔！\nアヒル一は清潔で異常付与を防いだ！ （⚡亀裂 -2） （清潔 3→1）");
+  assert.equal(textFor(events), "アヒル一の🧼清潔！\nアヒル一は清潔で異常付与を防いだ！ （⚡亀裂 -2） （清潔 3→2）");
 });
 
 test("focus multiplier is rendered once with stock consumption", () => {
-  const text = textFor([event("attackChanged", { code: "ATTACK_DAMAGE_MUL_FOCUS", op: "mulDamage", value: 2.5 }),
-    event("statusChange", { code: "STATUS_FOCUS_CONSUMED", status: "focus", mul: 2.5, before: 3, after: 0 })]);
-  assert.equal(text, "アヒル一の🎯集中！\nアヒル一は集中して攻撃力を×2.5にした！ （集中 3→0）");
+  const text = textFor([event("attackChanged", { code: "ATTACK_DAMAGE_MUL_FOCUS", op: "mulDamage", value: 2 }),
+    event("statusChange", { code: "STATUS_FOCUS_CONSUMED", status: "focus", mul: 2, before: 3, after: 0 })]);
+  assert.equal(text, "アヒル一の🎯集中！\nアヒル一は集中して攻撃力を×2にした！ （集中 3→0）");
   assert.doesNotMatch(text, /ダメージ倍率|解除/);
 });
 
 test("tailwind and counter headings, damage and stock hints", () => {
-  const text = textFor([event("attackAvoided", { code: "ATTACK_AVOIDED_BY_TAILWIND", tailwindBefore: 2, tailwindAfter: 1 }),
+  const text = textFor([event("attackAvoided", { code: "ATTACK_AVOIDED_BY_TAILWIND", tailwindBefore: 2, tailwindAfter: 0 }),
     event("counterTriggered"), event("counterDamage", { target: "P2", value: 4, counterBefore: 3, counterAfter: 2 })]);
-  assert.equal(text, "アヒル一の💨追風！\nアヒル一は💨追風で攻撃を回避した！ （追風 2→1）\nアヒル一の🛡️反撃！\nアヒル二に🛡️反撃で 4 ダメージを返した！ （反撃 3→2）");
+  assert.equal(text, "アヒル一の💨追風！\nアヒル一は💨追風で攻撃を回避した！ （追風 2→0）\nアヒル一の🛡️反撃！\nアヒル二に🛡️反撃で 4 ダメージを返した！ （反撃 3→2）");
 });
 
 test("capped status is visible while random failure remains a separate category event", () => {
@@ -185,7 +185,7 @@ function battle({ status, value = 3, dice = 1, rng = () => .9, enemyStatus, cSki
 }
 
 for (const [status, expected] of [["crack", "⚡亀裂の効果で"], ["roughWave", "荒波が襲いかかる"],
-  ["steam", "湯気に包まれている"], ["Headwind", "逆風が吹き荒れる"], ["focus", "攻撃力を×2.5"]]) {
+  ["steam", "湯気に包まれている"], ["Headwind", "逆風が吹き荒れる"], ["focus", "攻撃力を×2"]]) {
   test(`actual engine ${status} uses dedicated rendering without duplicate status damage`, () => {
     const result = battle({ status });
     const blocks = blocksFor(result.events);

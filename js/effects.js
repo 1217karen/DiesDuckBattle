@@ -24,7 +24,7 @@ import { addTimedHitRule } from "./timedHitRules.js";
 // - changeStatus
 //     状態スタックの付与・変更
 //     対象：crack / tailwind / focus / Headwind / roughWave / counter / clean / steam
-//     ※ clean がある場合、一部デバフ付与をスタック分だけ防ぐ
+//     ※ clean がある場合、対象デバフの付与を1スタックで最大2スタック防ぐ
 //
 // - randomPick
 //     picks 配列から1つランダムに選んで実行する
@@ -314,14 +314,14 @@ function effChangeStatus(eff, ctx, emit) {
 
 
   // =========================
-  // 清潔（clean）：デバフ付与をスタック分だけ防ぐ
+  // 清潔（clean）：1スタックで1回のデバフ付与を最大2スタック防ぐ
   // 対象：crack / Headwind / roughWave / steam
   // 条件：
   //   - op === "add"
   //   - value > 0
   //   - 付与先（tgt）が clean を持っている
   // 挙動：
-  //   - clean を blocked 分だけ消費し、付与量 value を差し引く
+  //   - clean を必要な分だけ消費し、付与量 value を差し引く
   //   - 差し引き後 value <= 0 なら、このデバフ付与は完全に無効化して return
   // =========================
   {
@@ -335,11 +335,12 @@ function effChangeStatus(eff, ctx, emit) {
 
     // 「清潔そのもの」を防ぐのは意味が変わるので除外
     if (isAdd && isPositive && isDebuff && hasClean && status !== "clean") {
-      const blocked = Math.min(cleanNow, Math.trunc(value));
+      const consumed = Math.min(Math.trunc(cleanNow), Math.ceil(Math.trunc(value) / 2));
+      const blocked = Math.min(Math.trunc(value), consumed * 2);
       if (blocked > 0) {
         // 清潔を消費
         const beforeClean = Math.trunc(cleanNow);
-        const afterClean = Math.max(0, beforeClean - blocked);
+        const afterClean = Math.max(0, beforeClean - consumed);
         tgt.status.clean = afterClean;
         ctx.helpers?.refreshPassives?.();
 

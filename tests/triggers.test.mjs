@@ -60,7 +60,7 @@ for (const mode of ["miss", "avoid", "zero-attacks"]) {
   test(`${mode}でも解決後triggerは発火`, () => {
     const bSkills = [skill("after", "afterDiceResolve", addAP, diceWhen(6))];
     if (mode === "miss") bSkills.push(skill("miss", "beforeAttack", { type: "changeAttack", op: "miss" }));
-    const { events } = battle({ dice: 6, bSkills,
+    const { events } = battle({ dice: 6, bSkills, rng: () => mode === "avoid" ? 0 : .9,
       enemyDEffect: mode === "avoid" ? status("tailwind") : undefined,
       aSkill: mode === "zero-attacks" ? skill("a", "onDice=6", { ...addAP, key: "attackTimesOverride", op: "set", value: 0 }) : undefined });
     const phase = events.filter(e => e.phase === 1);

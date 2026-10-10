@@ -76,7 +76,7 @@ test("timedは命中1回ごと、2回攻撃なら2回・既存B/反撃の後に�
   assert.deepEqual(events.filter(e => e.type === "statusChange" && e.status === "crack").map(e => e.after), [1, 2]);
 });
 for (const mode of ["miss", "avoided", "counter-only"]) test(`timedは${mode}で発動しない`, () => {
-  const r = battle({ dice: 2, enemyDice: 1, setup: [timed(2), ...(mode === "counter-only" ? [status("counter", 2)] : [])],
+  const r = battle({ dice: mode === "avoided" ? 1 : 2, enemyDice: 1, rng: () => mode === "avoided" ? 0 : .9, setup: [timed(2), ...(mode === "counter-only" ? [status("counter", 2)] : [])],
     enemySetup: mode === "avoided" ? [status("tailwind", 2)] : [],
     bSkills: mode !== "avoided" ? [b("beforeAttack", { type: "changeAttack", op: "miss" })] : [] });
   assert.equal(r.events.some(e => e.type === "timedRuleTriggered"), false);
@@ -84,7 +84,7 @@ for (const mode of ["miss", "avoided", "counter-only"]) test(`timedは${mode}で
 });
 test("self buffは処理済みの一撃へ遡及せず、次の一撃でfocusを利用", () => {
   const r = battle({ dice: 2, setup: [timed(1, "self", "focus")] });
-  assert.deepEqual(r.events.filter(e => e.type === "normalDamage" && e.actor === "P1").map(e => e.value), [4, 6]);
+  assert.deepEqual(r.events.filter(e => e.type === "normalDamage" && e.actor === "P1").map(e => e.value), [4, 5]);
 });
 test("同一ID timed ruleも独立しdurationが個別に減る", () => {
   const r = battle({ dice: 1, setup: [timed(1), timed(2)], maxTurns: 3 });

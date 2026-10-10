@@ -133,9 +133,9 @@ for (const key of STATUS_GROUPS.all) test(`${key}付与・発動消費/自然減
     dEffect: status(key, key === "clean" ? 2 : 1),
     aSkill: { id: "A", trigger: "onDice=1", effect: value("ap", 1) },
   });
-  assert.deepEqual(changes(logs).map(e => e.after.AT), key === "tailwind" || key === "counter" ? [1, 0] : key === "clean" ? [2, 0] : [1, 0]);
-  assert.deepEqual(changes(logs, "enemy-watch").map(e => e.after.AT), key === "clean" ? [2, 0] : [1, 0]);
-  assert.deepEqual(changes(logs, "c").map(e => e.active), [true, false]);
+  assert.deepEqual(changes(logs).map(e => e.after.AT), key === "tailwind" || key === "counter" ? [1, 0] : key === "clean" ? [2, 1] : [1, 0]);
+  assert.deepEqual(changes(logs, "enemy-watch").map(e => e.after.AT), key === "clean" ? [2, 1] : [1, 0]);
+  assert.deepEqual(changes(logs, "c").map(e => e.active), key === "clean" ? [true] : [true, false]);
 });
 test("出目4の直接counter付与もbuff合計へ同期", () => {
   const logs = battle([passive(scaled("self.statusTotal:buff"))], { dice: 4 });

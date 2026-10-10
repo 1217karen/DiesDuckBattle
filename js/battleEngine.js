@@ -659,7 +659,7 @@ function tickCooldownsPhase(f) {
 ========================= */
 
 function tickPreActionStatuses(atk, ctx) {
-  // 亀裂：行動前にスタック数ダメージ
+  // 亀裂：行動前に1スタックにつき2ダメージ
   const crack = atk.status?.crack ?? 0;
   if (crack > 0) {
     ctx.push("statusEffect", "system", {
@@ -667,11 +667,11 @@ function tickPreActionStatuses(atk, ctx) {
       target: atk.side,
       status: "crack",
       kind: "damage",
-      value: crack,
+      value: crack * 2,
     });
 
     // HPを動かす処理は helpers 経由に統一（常時バフ再判定が漏れない）
-    ctx.helpers.dealDamage(atk, crack, "system", "statusDamage", {
+    ctx.helpers.dealDamage(atk, crack * 2, "system", "statusDamage", {
       status: "crack",
       source: "crack",
     });
@@ -693,7 +693,7 @@ function tickPreActionStatuses(atk, ctx) {
       consumeKind: "trigger",
     });
 
-    const prob = clamp(0.2 * rw, 0, 0.95);
+    const prob = clamp(0.15 * rw, 0, 0.95);
     const ok = ctx.rng() < prob;
 
     ctx.push("roughWaveResult", "system", {
@@ -744,7 +744,7 @@ function applyFocusIfAny(atk, ctx, push) {
   const stacks = atk.status?.focus ?? 0;
   if (stacks <= 0) return;
 
-  const factor = stacks >= 3 ? 2.5 : stacks === 2 ? 2.0 : 1.5;
+  const factor = stacks >= 3 ? 2 : stacks === 2 ? 1.5 : 1.25;
 
   // damageMul に倍率を掛ける
   if (!ctx.attack) return;
@@ -884,7 +884,7 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
     afterHitCtx.attack = attackInfo;
 
     // =========================
-    // 湯気（steam）：通常攻撃の命中率低下（ストック×20%でMISS）
+    // 湯気（steam）：通常攻撃の命中率低下（ストック×25%でMISS）
     // - 通常攻撃のみ（counter/fixedDamageは対象外）
     // - 判定したら成功/失敗に関わらず全消費
     // =========================
@@ -908,7 +908,7 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
           consumeKind: "trigger",
         });
 
-        const prob = clamp(0.2 * before, 0, 0.95);
+        const prob = clamp(0.25 * before, 0, 0.95);
         const ok = rng() < prob; // ok=true なら MISS
 
         push("steamResult", "system", {
@@ -992,31 +992,46 @@ function resolveDiceAndAttack(atk, def, diceValue, push, rng, state, getRules) {
 
     // === 回避判定：miss の後に判定するので、miss時は回避を消費しない ===
     {
-      // 追風：攻撃ごとに1消費して回避
+      // 追風：判定時に全消費してスタック×30%で回避
       const tw = def.status?.tailwind ?? 0;
       if (tw > 0) {
         const beforeTw = tw;
-        def.status.tailwind = Math.max(0, tw - 1);
+        def.status.tailwind = 0;
         afterHitCtx.helpers.refreshPassives();
 
-        afterHitCtx.attack.avoided = true;
-        afterHitCtx.attack.hit = false;
-        afterHitCtx.attack.baseDamage = 0;
-        afterHitCtx.attack.damage = 0;
-
-        // 回避済みの情報を見せたいので afterHit は呼ぶ
-        runTrigger(Triggers.afterHit, atk, def, afterHitCtx, getRules);
-        applyFocusIfAny(atk, afterHitCtx, push);
-
-
-        push("attackAvoided", def.side, {
-          code: "ATTACK_AVOIDED_BY_TAILWIND",
+        const probability = 0.3 * beforeTw;
+        const success = rng() < probability;
+        push("tailwindResult", def.side, {
+          code: "STATUS_TAILWIND_ROLL",
           target: def.side,
-          value: baseDmg,
-          tailwindBefore: beforeTw,
-          tailwindAfter: def.status.tailwind,
+          status: "tailwind",
+          stacks: beforeTw,
+          probability,
+          success,
+          before: beforeTw,
+          after: 0,
         });
-        continue;
+
+        if (success) {
+          afterHitCtx.attack.avoided = true;
+          afterHitCtx.attack.hit = false;
+          afterHitCtx.attack.baseDamage = 0;
+          afterHitCtx.attack.damage = 0;
+
+          // 回避済みの情報を見せたいので afterHit は呼ぶ
+          runTrigger(Triggers.afterHit, atk, def, afterHitCtx, getRules);
+          applyFocusIfAny(atk, afterHitCtx, push);
+
+
+          push("attackAvoided", def.side, {
+            code: "ATTACK_AVOIDED_BY_TAILWIND",
+            target: def.side,
+            value: baseDmg,
+            tailwindBefore: beforeTw,
+            tailwindAfter: def.status.tailwind,
+          });
+          continue;
+        }
       }
     }
 
