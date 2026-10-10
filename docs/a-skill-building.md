@@ -59,7 +59,7 @@ frequencyCountは初期6枠の実数。exact:0/allは0を数え、rangeは数え
 ## ポイント・effect数
 
 ```text
-availablePoints = basePoints 3 + dicePoints
+availablePoints = basePoints 2 + dicePoints
   dicePoints = calculateBuildResources(build, rules).dice.remaining
 benefitSlotCost = max(0, benefitCount - 1)
 effectCost = Σ max(0, benefit本体価格 - chanceDiscount)

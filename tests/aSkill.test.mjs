@@ -67,7 +67,7 @@ test("Aの50/25/10%をv1/v2とも拒否、100指定は互換受理してchance�
 
 test("AP操作は合法な2方向のみ、1=3pt/2=5pt",()=>{
   for(const id of ["ap-self-increase","ap-enemy-decrease"]) for(const [amount,cost] of [[1,3],[2,5]]) {
-    const r=compile(selection([chosen(id,amount)]));assert.equal(r.ok,true);assert.equal(r.resources.effectCost,cost);
+    const r=compile(selection([chosen(id,amount),chosen("heal-enemy",5)]));assert.equal(r.ok,true);assert.equal(r.resources.effectCost,cost);
     assert.equal(r.skill.effect[0].value,id.includes("self")?amount:-amount);
   }
 });

@@ -97,7 +97,7 @@ export function createASkillCatalog() {
     }));
   }
   const catalog = {
-    categories, effects, statuses, basePoints: 3, maxEffects: 4,
+    categories, effects, statuses, basePoints: 2, maxEffects: 4,
     targets: [{ id: "self", label: "自分" }, { id: "enemy", label: "相手" }],
     triggerCosts: { byFrequency: { 1: 0, 2: 0, 3: 1, 4: 1, 5: 2, 6: 2 } },
     // 旧selectionの100指定を受けるためだけの互換ID。Aに確率選択はない。

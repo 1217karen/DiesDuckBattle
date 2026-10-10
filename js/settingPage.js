@@ -327,7 +327,7 @@ function renderPresets(kind) {
 
 function renderBattler() {
   const { bSelection: b, dSelection: d } = state.build.battler;
-  const bBox = card("B SKILL / Bスキル", "b"), controls = el("div", null, "controls");
+  const bBox = card("Ｂスキル", "b"), controls = el("div", null, "controls");
   const incomplete = [{ id: "incomplete", label: "未完了（選択してください）", disabled: true }];
   field(controls, "発動タイミング", "b-type", [{ id: "event", label: "トリガー型" }, { id: "trait", label: "パッシブ型" },
     ...(b !== null && !b.type ? incomplete : [])], b === null ? "" : b.type || "incomplete",
@@ -336,7 +336,7 @@ function renderBattler() {
   if (b?.type === "event" || b?.type === "trait") renderBSentence(controls, b);
   bBox.append(controls);
   feedback(bBox, "b");
-  const dBox = card("D SKILL / Dスキル", "d");
+  const dBox = card("Ｄスキル", "d");
   field(dBox, null, "d-option", [...D_SKILL_OPTIONS, ...(d !== null && !d.optionId ? incomplete : [])], d === null ? "" : d.optionId || "incomplete",
     optionId => patchBattler({ dSelection: optionId ? { optionId } : null }), "未設定").setAttribute("aria-label", "Dスキル");
   feedback(dBox, "d");
@@ -351,7 +351,7 @@ function renderTabs() {
   }));
 }
 function renderStats(duck, box) {
-  const diceBox = card("DICE / ダイス", "dice"), frame = getDiceFrame(duck.diceFrame);
+  const diceBox = card("ダイス", "dice"), frame = getDiceFrame(duck.diceFrame);
   const types = Object.values(DICE_FRAMES).map(item => ({ id: item.id, label: `${item.label}（SP${item.SP}）`,
     group: item.editable ? "カスタマイズ" : "プリセット" }));
   const typeLabel = el("label", "ダイスタイプ");
@@ -375,7 +375,7 @@ function renderStats(duck, box) {
   }
   feedback(diceBox, "dice"); box.append(diceBox);
   if (!frame) return;
-  const statBox = card("STATUS / 能力", "stats"), grid = el("div", null, "stat-grid");
+  const statBox = card("ステータス", "stats"), grid = el("div", null, "stat-grid");
   for (const key of ["AT", "DF"]) {
     const other = duck.stats[key === "AT" ? "DF" : "AT"] ?? 0;
     const options = Array.from({ length: 6 }, (_, value) => {
@@ -388,7 +388,11 @@ function renderStats(duck, box) {
     }), key, duck.stats[key], null);
     grid.append(wrapper);
   }
-  const sp = el("span", `SP ${frame.SP}`); sp.id = "stat-SP"; grid.append(sp);
+  const spField = el("div", null, "stat-field"), spLabel = el("span", "SP"); spLabel.id = "stat-SP-label";
+  spField.setAttribute("role", "group"); spField.setAttribute("aria-labelledby", spLabel.id);
+  const sp = el("span", null, "stat-fixed"); sp.id = "stat-SP";
+  sp.append(el("span", String(frame.SP)), el("span", "（固定）", "stat-fixed-hint"));
+  spField.append(spLabel, sp); grid.append(spField);
   const metrics = el("div", null, "metrics"); metrics.id = "stat-metrics";
   statBox.append(grid, metrics, el("p", "AT・DFは1～5まで選択できます。SPを含む合計上限は9です。", "description"));
   feedback(statBox, "stats"); box.append(statBox);
@@ -439,15 +443,15 @@ function effectMeta(index, id, label, cost, slotLabel, slotCost, remove, unit = 
   return meta;
 }
 function renderA(duck, box) {
-  const panel = card("A SKILL / Aスキル", "a");
+  const panel = card("Ａスキル", "a");
   if (!skillsUnlocked(duck)) { panel.append(el("p", "ステータスを設定してください", "description")); box.append(panel); return; }
   const a = aEditingSelection(duck);
   {
     const update = aSelection => patchDuck({ aSelection });
     const resources = calculateASkillResources(duck, a, { catalog: aCatalog });
     const top = el("div", null, "skill-settings"); panel.append(top);
-    settingLine(top, el("span", `使用可能pt ${num(resources.availablePoints)}`),
-      el("span", `初期pt ${num(resources.basePoints)} ＋ ダイスpt余剰 ${num(resources.dicePoints)}`), "a-budget-line");
+    settingLine(top, el("span", "使用可能pt"),
+      el("span", `初期pt ${num(resources.basePoints)} ＋ ダイスpt余剰 ${num(resources.dicePoints)} ＝ ${num(resources.availablePoints)}`), "a-budget-line");
     const trigger = el("div", null, "a-sentence-controls");
     const triggerView = aTriggerEditor(getATriggerOptions(duck, aCatalog), a.triggerId);
     for (const part of triggerView.parts) {
@@ -529,7 +533,7 @@ function renderA(duck, box) {
     });
     const add = button("＋ 効果を追加", () => update(addANormalEffect(a, aCatalog))); add.id = "a-add-effect";
     add.disabled = slots.length >= aCatalog.maxEffects; panel.append(add);
-    panel.append(el("p", `通常効果は1～${aCatalog.maxEffects}個。通常攻撃キャンセルはこの枠に含みません。`, "description"));
+    panel.append(el("p", "最大４枠まで効果を選択できます。", "description"));
   }
   if (a !== null) {
     const metrics = el("section", null, "resource-summary"); metrics.id = "a-metrics";
@@ -555,7 +559,7 @@ function renderAPoints(selection, resources) {
 
 function renderC(duck, box) {
   // Empty rows are view-only until an explicit edit materializes that branch.
-  const panel = card("C SKILL / Cスキル", "c"), c = duck.cSelection ?? { mode: "", structure: createCStructure("flat") };
+  const panel = card("Ｃスキル", "c"), c = duck.cSelection ?? { mode: "", structure: createCStructure("flat") };
   if (!skillsUnlocked(duck)) { panel.append(el("p", "ステータスを設定してください", "description")); box.append(panel); return; }
   const resources = calculateCSkillResources(c, { catalog: cCatalog, rules: cRules });
   const top = el("div", null, "skill-settings"), modeEditor = el("div"); panel.append(top);
@@ -620,7 +624,7 @@ function renderC(duck, box) {
       const add = button("＋ C効果を追加", () => setRows([...effects, { effectId: "", options: {} }]));
       add.disabled = count >= cRules.maxEffects; branchBox.append(add); panel.append(branchBox);
     }
-    panel.append(el("p", `全分岐の効果を合計して${cRules.minEffects}～${cRules.maxEffects}件。各分岐に効果を設定してください。`, "description"));
+    panel.append(el("p", "最大５枠まで効果を選択できます。効果を分岐させた場合は、最も消費APが多い分岐が必要APに採用されます。", "description"));
   }
   panel.append(metrics); feedback(panel, "c"); box.append(panel);
 }

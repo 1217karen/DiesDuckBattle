@@ -38,8 +38,8 @@ async function page(build = createEmptyPlayerBuild()) {
 function initial() {const b=createEmptyPlayerBuild();b.ducks.push({...createEmptyDuck({idFactory:()=>"ui-duck"}),name:"テストDuck",stats:{AT:4,DF:4,SP:1},diceFrame:"custom-heavy",dice:[0,0,3,4,5,6],aSelection:{triggerId:"exact:6",effects:[{effectId:"heal",targetId:"enemy",options:{amount:"amount-5"}}]}});return b;}
 test("dice-first UI derives SP, resets dice only on type changes, exposes budget and preserves invalid A",async()=>{
   const p=await page(initial());
-  assert.equal(p.get("stat-SP").textContent,"SP 1");
-  const headings=p.get("duck-editor").textContent;assert.ok(headings.indexOf("DICE /")<headings.indexOf("STATUS /"));assert.ok(headings.indexOf("STATUS /")<headings.indexOf("A SKILL"));
+  assert.equal(p.get("stat-SP").textContent,"1（固定）");
+  const headings=p.get("duck-editor").textContent;assert.ok(headings.indexOf("ダイス")<headings.indexOf("ステータス"));assert.ok(headings.indexOf("ステータス")<headings.indexOf("Ａスキル"));
   assert.match(p.get("stat-metrics").textContent,/ステータス合計：9 \/ 9/);
   p.choose("dice-type","custom-speed");
   assert.deepEqual(Array.from({length:6},(_,i)=>p.get(`dice-${i}`).value),["1","2","3","4","0","0"]);
@@ -68,11 +68,11 @@ test("empty dice shows grouped types only; cards stay visible and locked",async(
  const groups=p.get("dice-type").children.filter(e=>e.tagName==="optgroup");
  assert.deepEqual(groups.map(g=>[g.label,g.children.map(o=>o.value)]),[["カスタマイズ",["custom-speed","custom-normal","custom-heavy"]],["プリセット",["preset-standard","preset-void"]]]);
  assert.match(groups[0].textContent,/スピード（SP3）/);assert.match(groups[1].textContent,/ヴォイド（SP1）/);
- assert.equal(p.all().filter(e=>e.tagName==="section"&&["A SKILL / Aスキル","C SKILL / Cスキル"].includes(e.attributes["aria-label"])).length,2);
+ assert.equal(p.all().filter(e=>e.tagName==="section"&&["Ａスキル","Ｃスキル"].includes(e.attributes["aria-label"])).length,2);
  assert.equal(p.all().filter(e=>e.tagName==="p"&&e.textContent==="ステータスを設定してください").length,2);
  assert.deepEqual(p.save(),before);p.choose("dice-type","custom-speed");
  assert.ok(p.get("dice-0"));for(const key of ["AT","DF"]) assert.equal(p.get("stat-"+key).tagName,"select");
- assert.equal(p.get("stat-SP").tagName,"span");assert.equal(p.get("stat-SP").textContent,"SP 3");
+ assert.equal(p.get("stat-SP").tagName,"span");assert.equal(p.get("stat-SP").textContent,"3（固定）");
  assert.equal(p.get("stat-AT").value,"0");assert.equal(p.get("a-trigger"),undefined);assert.equal(p.save().ducks[0].stats.AT,null);
 });
 test("0..5 stay visible and pt shortage candidates are disabled",async()=>{

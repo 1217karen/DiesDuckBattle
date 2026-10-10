@@ -32,12 +32,12 @@ button.public-active { color:var(--on-accent); background:var(--accent); border-
 .duck-meta { margin-bottom:24px; }.duck-meta label { flex:1; min-width:180px; }.actions { display:flex; gap:8px; }
 .duck-actions { flex-wrap:wrap; margin-bottom:24px; }
 .stat-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
-.stat-grid label { flex-direction:row; align-items:center; color:var(--accent); font-weight:700; }
-.stat-grid input,.stat-grid select { margin-left:8px; min-width:0; }
+.stat-grid label, .stat-grid .stat-field { flex-direction:row; align-items:center; color:var(--accent); font-weight:700; }
+.stat-grid input,.stat-grid select,.stat-grid .stat-fixed { margin-left:8px; min-width:0; }
 .stat-grid > span { align-self:center; }
 .metrics { display:flex; flex-wrap:wrap; gap:12px 28px; padding:14px 0 0; color:var(--accent); font-size:.92rem; }
 .dice-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px; margin-bottom:18px; }
-.dice-grid label { text-align:center; }.dice-grid select { font-size:1.05rem; }
+.dice-grid label { text-align:left; }.dice-grid select { font-size:1.05rem; }
 .effect-row { background:var(--ui-surface); border:1px solid var(--line); border-radius:8px; padding:17px; margin:12px 0; }
 .row-heading { margin-bottom:12px; }.row-heading button { padding:5px 12px; }.row-heading strong { font-size:.85rem; }
 .branch { border-left:2px solid var(--accent); padding-left:15px; margin:22px 0; }
@@ -60,14 +60,14 @@ button.primary.save-invalid:hover { background:#495356; }
 .confirm-dialog { max-height:85vh; overflow-y:auto; }
 .dialog-issues { padding-left:22px; margin:16px 0; font-size:.88rem; overflow-wrap:anywhere; }
 .dialog-issues li { margin-bottom:9px; }
-@media(max-width:700px) { .battler-grid { grid-template-columns:1fr; gap:0; }.card { padding:17px; }.dice-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }.stat-grid { gap:10px; }.stat-grid label { flex-direction:column; align-items:stretch; }.stat-grid input,.stat-grid select { margin:0; }.save-bar { position:static; flex-direction:column; align-items:stretch; }.controls { grid-template-columns:1fr; } }
+@media(max-width:700px) { .battler-grid { grid-template-columns:1fr; gap:0; }.card { padding:17px; }.dice-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }.stat-grid { gap:10px; }.stat-grid label, .stat-grid .stat-field { flex-direction:column; align-items:stretch; }.stat-grid input,.stat-grid select,.stat-grid .stat-fixed { margin:0; }.save-bar { position:static; flex-direction:column; align-items:stretch; }.controls { grid-template-columns:1fr; } }
 
 /* B clauses follow reading order and wrap on narrow screens. */
 .b-sentence-controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; min-width:0; }
 .b-sentence-controls select { width:auto; flex:0 1 auto; min-width:0; max-width:100%; }
 .b-fixed-clause { padding:8px 0; }
 .b-completed-sentence { color:var(--accent); border-left:2px solid var(--accent); padding-left:12px; overflow-wrap:anywhere; }
-.battler-grid > .battle-presets, .battler-grid > .skill-b { grid-column:1 / -1; }
+.battler-grid > .battle-presets, .battler-grid > .skill-b, .battler-grid > .skill-d { grid-column:1 / -1; }
 
 /* A clauses use the same reading direction without changing the other editors. */
 .a-sentence-controls { display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-width:0; margin-top:10px; overflow-wrap:anywhere; }
@@ -96,7 +96,7 @@ select.select-compact { width:auto; max-width:100%; min-width:4.5em; align-self:
 .resource-summary { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px; margin:16px 0 4px; font-size:.9rem; }
 select.select-empty { background:#34272e; border-color:#976979; }
 select.select-invalid { background:#45252c; border-color:#ff8d96; }
-.skill-card { border-color:var(--skill-line); background:linear-gradient(var(--skill-tint),var(--skill-tint)),var(--panel); }
+.card.skill-card { border:1px solid var(--skill-line); background:linear-gradient(var(--skill-tint),var(--skill-tint)),var(--panel); }
 .skill-card > .card-header h3 { color:var(--skill-heading); }
 .skill-a { --skill-line:#876344; --skill-tint:#f99b3510; --skill-heading:#efb87e; }
 .skill-b { --skill-line:#496b86; --skill-tint:#469fe910; --skill-heading:#93c5ed; }
@@ -199,3 +199,9 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
 .battle-presets .preset-heading { font-weight:700; }
 .battle-presets .preset-help { display:block; margin:8px 0 12px; font-weight:400; cursor:default; }
 .battle-presets summary:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
+
+.battle-presets { width:min(100%,860px); justify-self:start; }
+.stat-field { display:flex; gap:6px; font-size:.82rem; min-width:0; }
+.stat-fixed { display:flex; align-items:center; gap:6px; min-height:42px; padding:8px 10px; border-radius:6px; border:1px solid var(--line); background:var(--panel); color:var(--text); }
+.stat-fixed-hint { color:var(--muted); font-weight:400; }
+@media(max-width:700px) { .battle-presets { width:100%; } }

@@ -89,7 +89,7 @@ const compile=(b,id="P1")=>compileBattleLoadout(b,{duckId:b.ducks[0].id,battlerI
 const battle=(p1,p2)=>runBattle({p1:{battlerId:p1.battler.id,duckId:p1.duck.id},p2:{battlerId:p2.battler.id,duckId:p2.duck.id},data:{BATTLERS:[p1.battler,p2.battler],DUCKS:[p1.duck,p2.duck]},maxTurns:12,rng:()=>0.75,field:null});
 
 test("A/B/C/D snapshot metadata reaches actual engine events and saved records, without changing combat",async()=>{
-  const b=await currentBuild();b.ducks[0].aSelection.triggerId="all";
+  const b=await currentBuild();b.ducks[0].aSelection.triggerId="all";b.ducks[0].aSelection.effects.push({effectId:"heal",targetId:"enemy",options:{amount:"amount-5"}});
   // AP-based B fires every turn; C becomes available during this battle.
   b.battler.bSelection={type:"trait",traitId:"ap-at",options:{}};
   const blank=compile(b),otherBuild=await currentBuild();otherBuild.ducks[0].id="other";const other=compile(otherBuild,"P2");

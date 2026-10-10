@@ -43,18 +43,20 @@ test("productionだけで全効果・全数量がcomplete/compile成功し既存
     const trigger = effect.exactFace ? `exact:${effect.exactFace}` : "exact:0";
     for (const option of effect.requiresAmount ? effect.amountOptions : [null]) {
       const s = selection([chosen(effect.id, option?.value), ...(effect.id === "cancel-self-attack" ? [chosen("heal-enemy", 5)] : [])], trigger);
+      const budgetRefund = option?.pointCost === 5 ? 2 : 0;
+      if (budgetRefund) s.effects.push(chosen("heal-enemy",5));
       const r = compileASkill(b, s);
       assert.equal(r.resources.complete, true, effect.id);
       assert.equal(r.ok, true, effect.id);
       assert.deepEqual(r.unresolved, []);
       const price = option ?? effect;
       assert.equal(r.resources.effectCost, price.pointCost);
-      assert.equal(r.resources.drawbackPoints, effect.id === "cancel-self-attack" ? 3 : price.drawbackPoints);
+      assert.equal(r.resources.drawbackPoints, effect.id === "cancel-self-attack" ? 3 : price.drawbackPoints + budgetRefund);
       const actual = r.skill.effect[0];
       assert.equal(actual.type, effect.semantics.type);
       assert.equal(actual.target, effect.semantics.target);
       assert.equal(actual.amount ?? actual.value ?? actual.repeat, option ? option.value * (effect.semantics.sign ?? 1) : effect.semantics.value);
-      // 専用triggerも実際にrollする初期diceにする。残り5枠は0なので予算内。
+      // 専用triggerも実際にrollする初期diceにする。予算と頻度は維持。
       const run = runASkillTestBattle({ ...b, dice: effect.exactFace ? [effect.exactFace,0,0,0,3,4] : [0,0,1,2,3,4] }, s, { rng: () => 0 });
       assert.equal(run.compilation.ok, true, effect.id);
       assert.ok(run.battle.events.some(e => e.type === "skillTriggered" && e.skill?.category === "A"), effect.id);
@@ -90,7 +92,7 @@ test("drawbackは100%固定、還元合計にcapなし", () => {
   assert.equal(catalog.maxDrawbackPoints, null);
   const s = selection(Array.from({ length: 4 }, () => chosen("heal-enemy", 10)));
   const r = calculateASkillResources(build(), s);
-  assert.equal(r.drawbackPoints, 16); assert.equal(r.netCost, -14); assert.equal(r.remaining, 21);
+  assert.equal(r.drawbackPoints, 16); assert.equal(r.netCost, -14); assert.equal(r.remaining, 20);
   // 既存の未使用fieldを設定しても新しいcap制御は存在しない。
   const custom = createASkillCatalog(); custom.maxDrawbackPoints = 1;
   assert.deepEqual(calculateASkillResources(build(), s, { catalog: custom }), r);
@@ -109,7 +111,7 @@ test("raw amount/cost等と未登録数量を拒否、ID参照だけを維持", 
 });
 
 test("基礎pt・effect上限・trigger cost・専用条件/重複制限は維持", () => {
-  assert.equal(catalog.basePoints, 3); assert.equal(catalog.maxEffects, 4);
+  assert.equal(catalog.basePoints, 2); assert.equal(catalog.maxEffects, 4);
   assert.deepEqual(catalog.triggerCosts, { byFrequency: { 1: 0, 2: 0, 3: 1, 4: 1, 5: 2, 6: 2 } });
   for (const effect of catalog.effects.filter(e => e.exactFace || e.id === "cancel-self-attack")) {
     assert.equal(effect.allowDuplicate, false);

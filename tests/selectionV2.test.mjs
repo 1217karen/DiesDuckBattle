@@ -29,6 +29,7 @@ test("all production A variants/amounts/chances preserve exact engine semantics 
     const build={...base,stats:{...base.stats,SP:frame==="custom-heavy"?1:3},diceFrame:frame,dice:effect.exactFace?[effect.exactFace,0,0,0,3,4]:[1,2,3,4,0,0]};
     const old={triggerId:`exact:${effect.exactFace??0}`,effects:[{effectId:effect.id,...(amount?{amountOptionId:amount.id}:{}),chanceOptionId:chance.id}]};
     if (effect.id === "cancel-self-attack") old.effects.push({effectId:"heal-enemy",amountOptionId:"amount-5"});
+    if(amount?.pointCost === 5) old.effects.push({effectId:"heal-enemy",amountOptionId:"amount-5"});
     const next=migrateSelection("A",old,ac);
     const before=compileASkill(build,old),after=compileASkill(build,next);
     assert.equal(before.ok,true,effect.id);assert.equal(after.ok,before.ok,effect.id);assert.deepEqual(after.skill,before.skill,effect.id);

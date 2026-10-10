@@ -62,7 +62,7 @@ for(const [id,dice,points] of [["preset-standard",[1,2,3,4,5,6],0],["preset-void
     assert.deepEqual(d.dice,dice);assert.equal(d.stats.SP,def.SP);assert.equal(inspectBuildForSave(build(d)).complete,true);
     const rules=createBuildRules();rules.resources.dicePointsPerEmpty=999;rules.resources.dicePointsPerTriple=999;
     assert.equal(calculateBuildResources(d,rules).dice.remaining,points);
-    assert.equal(calculateASkillResources(d,d.aSelection).availablePoints,3+points);
+    assert.equal(calculateASkillResources(d,d.aSelection).availablePoints,2+points);
     for(let i=0;i<6;i++){const bad=structuredClone(d);bad.dice[i]=dice[i]===0?1:0;
       assert.equal(inspectBuildForSave(build(bad)).canSave,false);assert.equal(compileASkill(bad,bad.aSelection).ok,false);}
     for(const SP of [1,2,3,null].filter(value=>value!==def.SP)) {const bad=structuredClone(d);bad.stats.SP=SP;assert.equal(inspectBuildForSave(build(bad)).complete,false);assert.equal(compileASkill(bad,bad.aSelection).ok,false);}

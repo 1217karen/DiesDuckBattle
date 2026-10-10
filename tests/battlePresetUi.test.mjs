@@ -101,7 +101,7 @@ test("preset controls are placed before cards, below duck identity controls",asy
   const p=await page();assert.equal(p.get("battler-editor").children[0].id,"battler-presets");
   const children=p.get("duck-editor").children;
   assert.equal(children[2].id,"duck-presets");assert.equal(children[1].className,"duck-meta");
-  assert.equal(children[3].attributes["aria-label"],"DICE / ダイス");
+  assert.equal(children[3].attributes["aria-label"],"ダイス");
 });
 test("duck confirmation cannot accidentally apply to a different selected duck",async()=>{
   const p=await page();p.choose("duck-preset","heal");p.apply("duck");
@@ -126,4 +126,35 @@ test("native preset disclosures start closed with visible heading/help and compa
     assert.ok(p.get(kind+"-preset-description").textContent.includes("出目2") || kind === "battler");
     assert.equal(p.edits.length,0);assert.equal(p.writes.length,0);
   }
+});
+
+
+test("Japanese card titles, fixed SP and concise skill guidance",async()=>{
+  const p=await page();
+  for(const title of ["Ｂスキル","Ｄスキル","ダイス","ステータス","Ａスキル","Ｃスキル"]) {
+    const card=p.all().find(e=>e.attributes["aria-label"]===title);
+    assert.ok(card,title);assert.ok(card.children[0].children.some(e=>e.tagName==="h3"&&e.textContent===title),title);
+  }
+  const sp=p.get("stat-SP");assert.equal(sp.tagName,"span");assert.equal(sp.textContent,"1（固定）");
+  assert.equal(sp.children[1].className,"stat-fixed-hint");assert.equal(sp.children[1].textContent,"（固定）");
+  assert.equal(sp.handlers.change,undefined);assert.equal(sp.parent.attributes.role,"group");
+  assert.equal(p.all().some(e=>e.tagName==="select"&&e.id==="stat-SP"),false);
+  const a=p.all().find(e=>e.attributes["aria-label"]==="Ａスキル");
+  assert.ok(a.textContent.includes("使用可能pt初期pt 2 ＋ ダイスpt余剰 0 ＝ 2"));
+  assert.ok(a.textContent.includes("最大４個まで効果を選択できます。"));
+  const c=p.all().find(e=>e.attributes["aria-label"]==="Ｃスキル");
+  assert.ok(c.textContent.includes("最大５件まで効果を選択できます。効果を分岐させた場合は、最も消費APが多い分岐が必要APに採用されます。"));
+});
+
+test("card widths, left aligned dice, shared skill borders and mobile layout rules",async()=>{
+  const css=await readFile(new URL("../css/setting.css",import.meta.url),"utf8");
+  assert.match(css,/\.battler-grid > \.skill-b, \.battler-grid > \.skill-d\s*\{\s*grid-column:1\s*\/\s*-1/);
+  assert.match(css,/\.battle-presets\s*\{[^}]*width:min\(100%,860px\);[^}]*justify-self:start/);
+  assert.match(css,/@media\s*\(max-width:700px\)\s*\{\s*\.battle-presets\s*\{\s*width:100%/);
+  assert.match(css,/\.dice-grid label\s*\{\s*text-align:left/);
+  assert.match(css,/\.dice-grid\s*\{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(css,/\.card\.skill-card\s*\{\s*border:1px solid var\(--skill-line\)/);
+  for(const kind of ["a","b","c","d"]) assert.equal([...css.matchAll(new RegExp('\\.skill-'+kind+'\\s*\\{[^}]*--skill-line:', 'g'))].length,2);
+  assert.match(css,/\.stat-fixed-hint\s*\{[^}]*color:var\(--muted\)/);
+  assert.match(css,/\.skill-label-controls\s*\{[^}]*grid-template-columns:minmax\(0,1fr\) minmax\(0,2fr\)/);
 });

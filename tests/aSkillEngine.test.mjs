@@ -55,10 +55,10 @@ test("全公開effectがcompilerからtrusted engineへ到達（unsupportedな�
   }
 });
 test("重複random付与は確定発動し、status選択だけ乱数を使用",()=>{
-  const skill=compiled([choose("grant-random-debuff-enemy",2),choose("grant-random-debuff-enemy",2)],"exact:3");
+  const skill=compiled([choose("grant-random-debuff-enemy",2),choose("grant-random-debuff-enemy",2),choose("heal-enemy",5)],"exact:3");
   let calls=0;
   const ctx={actor:{side:"P1",status:emptyStatus()},enemy:{side:"P2",status:emptyStatus()},rng:()=>{calls++;return calls===1?0:.9;},push:()=>{},helpers:{}};
-  applyEffect(skill.effect,ctx);
+  applyEffect(skill.effect.slice(0,2),ctx);
   assert.equal(calls,2); assert.equal(Object.values(ctx.enemy.status).reduce((a,b)=>a+b,0),4);
 });
 test("random buff/debuffは各group内、status解除は1stackかつ0 clamp",()=>{

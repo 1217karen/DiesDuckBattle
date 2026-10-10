@@ -86,7 +86,7 @@ for(const p of DUCK_PRESETS) test(`${p.id} exact dice/stats/A and individual A r
   assert.deepEqual(p.stats,expected.stats);assert.equal(p.diceFrame,expected.diceFrame);assert.deepEqual(p.dice,expected.dice);
   const a=compileASkill(p,p.aSelection);assert.equal(a.ok,true);assert.deepEqual(a.skill,{trigger:expected.trigger,effect:[expected.effect]});
   const resources=calculateASkillResources(p,p.aSelection);
-  assert.equal(resources.ready,true);assert.deepEqual(resources.errors,[]);assert.ok(resources.netCost<=resources.availablePoints);
+  assert.equal(resources.basePoints,2);assert.equal(resources.dicePoints,p.id === "attack" ? 0 : 1);assert.equal(resources.remaining,0);assert.equal(resources.ready,true);assert.deepEqual(resources.errors,[]);assert.ok(resources.netCost<=resources.availablePoints);
 });
 const focusAura={type:"addTimedHitRule",target:"self",duration:{kind:"turns",count:3},effect:{type:"changeStatus",target:"self",status:"focus",op:"add",value:1}};
 const expectedCEffects={

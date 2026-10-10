@@ -292,8 +292,8 @@ test("A incomplete prices and dependent slots are dashes, never provisional zero
 });
 test("A pt wording and dice explanation placement change presentation only",async()=>{
  const b=initial({triggerId:"exact:1",effects:[damage]}),before=structuredClone(b),p=await page(b);
- assert.equal(p.get("a-budget-line").textContent,"使用可能pt 3初期pt 3 ＋ ダイスpt余剰 0");
- assert.equal(p.get("a-metrics").textContent,"使用可能 3pt｜必要 2pt｜残り 1pt");
+ assert.equal(p.get("a-budget-line").textContent,"使用可能pt初期pt 2 ＋ ダイスpt余剰 0 ＝ 2");
+ assert.equal(p.get("a-metrics").textContent,"使用可能 2pt｜必要 2pt｜残り 0pt");
  assert.equal(p.get("dice-metrics").textContent,"ダイスpt　獲得 0pt / 消費 0pt");
  const siblings=p.get("dice-metrics").parent.children;
  assert.equal(siblings[siblings.indexOf(p.get("dice-metrics"))+1],p.get("dice-pt-description"));
@@ -302,7 +302,7 @@ test("A pt wording and dice explanation placement change presentation only",asyn
  assert.ok(!p.get("dice-metrics").textContent.includes("残り"));
  assert.deepEqual(p.save().ducks[0].aSelection,b.ducks[0].aSelection);assert.deepEqual(b,before);
  p.choose("dice-type","custom-speed");assert.equal(p.get("dice-metrics").textContent,"ダイスpt　獲得 2pt / 消費 0pt");
- assert.equal(p.get("a-budget-line").textContent,"使用可能pt 5初期pt 3 ＋ ダイスpt余剰 2");
+ assert.equal(p.get("a-budget-line").textContent,"使用可能pt初期pt 2 ＋ ダイスpt余剰 2 ＝ 4");
 });
 
 test("skill label inputs are under each heading; Duck/Battler ownership, whitespace and selections survive save/reload",async()=>{
