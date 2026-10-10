@@ -1,3 +1,4 @@
+import { compileDSkill } from "./dSkillCompiler.js";
 import { formatCRequiredAP } from "./skillResourceDisplay.js";
 import { BATTLER_PRESETS, DUCK_PRESETS, hasBattlerPresetSettings, hasDuckPresetSettings } from "./battlePresets.js";
 import { inspectBattleLoadout } from "./battleLoadoutCompiler.js";
@@ -13,7 +14,7 @@ import { DICE_FRAMES, getDiceFrame } from "./diceFrames.js";
 import { createBuildRules } from "./buildRules.js";
 import { createASkillCatalog, getATriggerOptions } from "./aSkillCatalog.js";
 import { aEditorLeaf, aNormalSlots, aEditorCatalog, aCancelAvailable, isACancel, setAAttackCancel, addANormalEffect, removeANormalEffect, changeAClause, changeATrigger } from "./aSkillSentenceEditor.js";
-import { aTriggerText, aTriggerEditor, aContentText, aEffectParts, aFieldOptionText, aStatusText } from "./aSkillPresentation.js";
+import { presentASkill, aTriggerText, aTriggerEditor, aContentText, aEffectParts, aFieldOptionText, aStatusText } from "./aSkillPresentation.js";
 import { calculateASkillResources } from "./aSkillResources.js";
 import { createBSkillCatalog, getBTriggerOptions, getBConditionOptions, getBEffectOptions } from "./bSkillCatalog.js";
 import { bEffectText, bSentence } from "./bSkillPresentation.js";
@@ -22,7 +23,7 @@ import { createCSkillCatalog } from "./cSkillCatalog.js";
 import { calculateCSkillResources } from "./cSkillResources.js";
 import { createCSkillRules } from "./cSkillRules.js";
 import { cControlDefinitions, cControlView, changeCControl } from "./cSkillControlEditor.js";
-import { cEffectParts, cFieldOptionText, C_MODE_OPTIONS, C_STRUCTURE_OPTIONS } from "./cSkillPresentation.js";
+import { presentCSkill, cEffectParts, cFieldOptionText, C_MODE_OPTIONS, C_STRUCTURE_OPTIONS } from "./cSkillPresentation.js";
 import { D_SKILL_OPTIONS } from "./dSkillCatalog.js";
 import { requireLoginPage } from "./authPageGuard.js";
 
@@ -286,7 +287,7 @@ function renderBSentence(controls, b) {
       traitId => patchBattler({ bSelection: { type: "trait", traitId, options: {} } }), "パッシブの効果");
   }
   controls.append(sentence);
-  if (definition) controls.append(el("p", bSentence(definition, statusId), "b-completed-sentence"));
+  if (definition) controls.append(el("p", bSentence(definition, statusId), "completed-skill-sentence"));
 }
 
 function renderPresets(kind) {
@@ -345,6 +346,8 @@ function renderBattler() {
   const dBox = card("Ｄスキル", "d");
   field(dBox, null, "d-option", [...D_SKILL_OPTIONS, ...(d !== null && !d.optionId ? incomplete : [])], d === null ? "" : d.optionId || "incomplete",
     optionId => patchBattler({ dSelection: optionId ? { optionId } : null }), "未設定").setAttribute("aria-label", "Dスキル");
+  const compiledD = compileDSkill(d);
+  if (compiledD.ok && compiledD.skill.description) appendCompletedSentence(dBox, "d", compiledD.skill.description);
   feedback(dBox, "d");
   $("battler-editor").replaceChildren(renderPresets("battler"), bBox, dBox);
 }
@@ -460,6 +463,9 @@ function effectMeta(index, id, label, cost, slotLabel, slotCost, remove, unit = 
     priceLabel(id + "-slot-price", slotLabel, slotCost, unit, unsigned), button("削除", remove));
   return meta;
 }
+function appendCompletedSentence(panel, key, text) {
+  const sentence = el("p", text, "completed-skill-sentence"); sentence.id = key + "-completed-sentence"; panel.append(sentence);
+}
 function renderA(duck, box) {
   const panel = card("Ａスキル", "a");
   if (!skillsUnlocked(duck)) { panel.append(el("p", "ステータスを設定してください", "description")); box.append(panel); return; }
@@ -470,9 +476,12 @@ function renderA(duck, box) {
     const top = el("div", null, "skill-settings"); panel.append(top);
     settingLine(top, el("span", "使用可能pt"),
       el("span", `初期pt ${num(resources.basePoints)} ＋ ダイスpt余剰 ${num(resources.dicePoints)} ＝ ${num(resources.availablePoints)}pt`), "a-budget-line");
-    const conditions = el("div", null, "effect-row priced-effect-row a-condition-card"); conditions.id = "a-condition-card"; top.append(conditions);
-    const conditionMeta = el("div", null, "effect-meta"), conditionEditor = el("div", null, "effect-editor");
-    conditions.append(conditionMeta, conditionEditor);
+    const conditions = el("div", null, "effect-row a-condition-card"); conditions.id = "a-condition-card"; top.append(conditions);
+    const conditionRow = () => {
+      const row = el("div", null, "priced-effect-row a-condition-row"), meta = el("div", null, "effect-meta"), editor = el("div", null, "effect-editor");
+      row.append(meta, editor); conditions.append(row); return { meta, editor };
+    };
+    const triggerRow = conditionRow(), cancelRow = conditionRow();
     const trigger = el("div", null, "a-sentence-controls");
     const triggerView = aTriggerEditor(getATriggerOptions(duck, aCatalog), a.triggerId);
     for (const part of triggerView.parts) {
@@ -484,17 +493,17 @@ function renderA(duck, box) {
           triggerId => update(changeATrigger(a, triggerId, duck, aCatalog)), f.label, aTriggerText(a.triggerId) ?? a.triggerId);
       }
     }
-    const triggerEditor = el("div"); triggerEditor.append(el("span", "発動条件"), trigger, el("p", "「以下」の判定には0を含みません。条件に対応する出目の数に応じてptを消費します。", "description"));
-    conditionMeta.append(priceLabel("a-trigger-price", "消費", resources.triggerCost, "pt", true));
-    conditionEditor.append(triggerEditor);
+    const triggerEditor = el("div"); triggerEditor.append(el("span", "発動条件", "condition-label"), trigger, el("p", "「以下」の判定には0を含みません。条件に対応する出目の数に応じてptを消費します。", "description"));
+    triggerRow.meta.append(priceLabel("a-trigger-price", "消費", resources.triggerCost, "pt", true));
+    triggerRow.editor.append(triggerEditor);
     const cancelled = (a.effects ?? []).some(e => isACancel(e, aCatalog));
-    const cancel = el("label", "通常攻撃", "auxiliary-control");
+    const cancel = el("label", null, "auxiliary-control"); cancel.append(el("span", "通常攻撃", "condition-label"));
     const cancelInput = aChoice(cancel, "a-cancel", [{ id: "off", label: "キャンセルしない" },
       { id: "on", label: "キャンセルする", disabled: !aCancelAvailable(duck, a, aCatalog) }], cancelled ? "on" : "off",
       value => update(setAAttackCancel(a, value === "on", duck, aCatalog)), "通常攻撃キャンセル");
     cancelInput.children[0].disabled = true;
-    conditionMeta.append(priceLabel("a-cancel-price", "獲得", cancelled ? resources.cancelDrawbackPoints : 0, "pt", true));
-    conditionEditor.append(cancel);
+    cancelRow.meta.append(priceLabel("a-cancel-price", "獲得", cancelled ? resources.cancelDrawbackPoints : 0, "pt", true));
+    cancelRow.editor.append(cancel);
     const slots = aNormalSlots(a, aCatalog);
     slots.forEach(({ leaf, index }, slot) => {
       const chosen = aEditorLeaf(leaf, aCatalog), definitions = aEditorCatalog(duck, a, aCatalog, index);
@@ -562,6 +571,8 @@ function renderA(duck, box) {
     const metrics = el("section", null, "resource-summary"); metrics.id = "a-metrics";
     metrics.setAttribute("aria-label", "Aスキルのpt"); panel.append(metrics);
   }
+  const presentedA = presentASkill(duck, a, { catalog: aCatalog });
+  if (presentedA.complete && presentedA.text && calculateASkillResources(duck, a, { catalog: aCatalog }).ready) appendCompletedSentence(panel, "a", presentedA.text);
   feedback(panel, "a"); box.append(panel);
 }
 
@@ -651,7 +662,10 @@ function renderC(duck, box) {
     explanation.append(el("span", "最大５枠まで効果を選択できます。効果を分岐させた場合は、最も消費APが多い分岐が必要APに採用されます。"),
       el("br"), el("span", "デメリット効果に枠追加コストはかかりません。")); panel.append(explanation);
   }
-  panel.append(metrics); feedback(panel, "c"); box.append(panel);
+  panel.append(metrics);
+  const presentedC = presentCSkill(c, { catalog: cCatalog, rules: cRules, includeCost: false });
+  if (presentedC.complete && presentedC.text) appendCompletedSentence(panel, "c", presentedC.text);
+  feedback(panel, "c"); box.append(panel);
 }
 function renderDuck() {
   const box = $("duck-editor"); box.replaceChildren(); const duck = selectedDuck(state);

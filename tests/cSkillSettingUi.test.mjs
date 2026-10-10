@@ -131,12 +131,12 @@ test("C display and unrelated mode/branch edits preserve existing leaves and com
 
 const sentenceText = e => e.tagName === "select" ? e.children.find(o => o.value === e.value)?.textContent ?? ""
   : (e.text ?? "") + e.children.map(sentenceText).join("");
-test("C sentence UI shares formal wording, with singletons as text and no duplicate preview", async () => {
+test("C sentence UI and completed preview share formal wording, with singletons as text", async () => {
   const c=selection([grant]),p=await page(initial(c));
   assert.equal(sentenceText(p.get(control+"-sentence")),presentCSkill(c).branches[0][0]);
   assert.equal(p.get(control+"-options.amount").tagName,"span");
   assert.equal(p.get(control+"-targetId").tagName,"select");
-  assert.ok(!p.all().some(e=>e.className==="c-completed-sentence"));
+  assert.equal(p.get("c-completed-sentence").textContent,presentCSkill(c,{includeCost:false}).text);
   p.choose(control,"change-at");
   assert.equal(p.get(control+"-options.direction").tagName,"span");
   p.choose(control+"-targetId","self");

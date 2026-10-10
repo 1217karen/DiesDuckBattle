@@ -1,3 +1,6 @@
+import { presentASkill } from "../js/aSkillPresentation.js";
+import { presentCSkill } from "../js/cSkillPresentation.js";
+import { compileDSkill } from "../js/dSkillCompiler.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -167,7 +170,7 @@ test("compact editor headings and responsive battle layout are scoped",async()=>
  assert.match(common,/font-size:var\(--page-title-size, 2em\)/);
  assert.match(css,/grid-template-columns:repeat\(6,minmax\(70px,90px\)\); justify-content:start/);
  assert.match(css,/\.a-condition-card\s*\{ background:transparent/);
- const mobile=css.slice(css.lastIndexOf("@media(max-width:700px)"));
+ const mobile=css.slice(css.indexOf("  .setting-shell {"));
  for(const selector of ["label",".description",".metrics","button","select",".effect-meta"]) assert.ok(mobile.includes(".setting-shell "+selector));
  assert.match(mobile,/min-height:42px/);
  for(const file of ["setting.html","character.html"]) assert.match(await readFile(new URL("../"+file,import.meta.url),"utf8"),/page-shell--editor/);
@@ -197,4 +200,45 @@ test("B/C timing label and select stay paired beside their unchanged wrapping hi
  assert.match(css,/\.a-effect-row \.effect-meta \.price-gain/);
  assert.match(css,/\.skill-c \.effect-meta \.price-positive/);
  assert.doesNotMatch(css,/\.a-condition-card[^{}]*\.price-(gain|spend)/);
+});
+
+
+test("condition rows keep paired metadata, shared labels and full-width separators on mobile",async()=>{
+ const p=await page(),card=p.get("a-condition-card");
+ assert.equal(card.children.length,2);
+ for(const row of card.children) assert.deepEqual(row.children.map(e=>e.className),["effect-meta","effect-editor"]);
+ const labels=p.all().filter(e=>e.className==="condition-label");assert.deepEqual(labels.map(e=>e.textContent),["発動条件","通常攻撃"]);
+ const css=await readFile(new URL("../css/setting.css",import.meta.url),"utf8");
+ assert.match(css,/\.a-condition-row \+ \.a-condition-row\s*\{ border-top:1px solid var\(--line\)/);
+ assert.match(css,/\.a-condition-row > \.effect-meta\s*\{[^}]*justify-content:center[^}]*border-right:1px solid var\(--line\)/);
+ assert.match(css,/\.a-condition-card \.a-condition-row\s*\{[^}]*grid-template-columns:80px minmax\(0,1fr\)/);
+ assert.match(css,/\.completed-skill-sentence\s*\{[^}]*color:var\(--accent\)[^}]*border-left:2px solid var\(--accent\)/);
+});
+for(const preset of DUCK_PRESETS) test(preset.id+" D/A/C completed text uses trusted presentation after totals without changing drafts",async()=>{
+ const data=initial();Object.assign(data.build.ducks[0],duckPresetPatch(preset.id));const before=structuredClone(data),p=await page(data),duck=data.build.ducks[0];
+ for(const [key,expected] of [["d",compileDSkill(data.build.battler.dSelection).skill.description],["a",presentASkill(duck,duck.aSelection).text],["c",presentCSkill(duck.cSelection,{includeCost:false}).text]]) {
+  const node=p.get(key+"-completed-sentence");assert.ok(node,key);assert.equal(node.textContent,expected);assert.equal(node.className,"completed-skill-sentence");
+  const children=node.parent.children;assert.ok(children.indexOf(node)<children.indexOf(p.get(key+"-issues")));
+  if(key!=="d")assert.ok(children.indexOf(p.get(key+"-metrics"))<children.indexOf(node));
+ }
+ assert.doesNotMatch(p.get("c-completed-sentence").textContent,/〈AP/);
+ assert.deepEqual(p.controller.snapshot().draft,before);assert.equal(p.edits.length,0);assert.equal(p.writes.length,0);
+ await p.get("save").handlers.click();assert.deepEqual(p.controller.snapshot().draft,before);
+});
+for(const invalid of [false,true]) test("unfinished/invalid skill selections suppress completed text: "+invalid,async()=>{
+ const data=initial();data.build.battler.dSelection=invalid?{optionId:"unknown"}:null;
+ data.build.ducks[0].aSelection=invalid?{triggerId:"unknown",effects:[]}:null;
+ data.build.ducks[0].cSelection=invalid?{mode:"normal",structure:{kind:"flat",effects:[{effectId:"unknown"}]}}:null;
+ const p=await page(data);for(const key of ["d","a","c"])assert.equal(p.get(key+"-completed-sentence"),undefined);
+ assert.deepEqual(p.controller.snapshot().draft,data);
+});
+test("A over-budget selection has no completed preview",async()=>{
+ const data=initial();data.build.ducks[0].aSelection={triggerId:"all",effects:[{effectId:"heal",targetId:"self",options:{amount:"amount-10"}}]};
+ const p=await page(data);assert.equal(p.get("a-completed-sentence"),undefined);
+});
+test("B keeps its completed sentence with the shared appearance",async()=>{
+ const data=initial();Object.assign(data.build.battler,battlerPresetPatch("defense"));const p=await page(data);
+ const b=p.all().find(e=>e.className==="card skill-card skill-b");
+ const walk=e=>[e,...e.children.flatMap(walk)];const sentences=walk(b).filter(e=>e.className==="completed-skill-sentence");
+ assert.equal(sentences.length,1);assert.ok(sentences[0].textContent.includes("反撃"));
 });

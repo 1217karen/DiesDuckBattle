@@ -155,7 +155,7 @@ test("A sentence: effect first, only variable clauses are selects, no duplicate 
   assert.equal(p.get("a-effect-0-targetId"),undefined);
   assert.equal(p.get("a-effect-0").children[0].textContent,"スキル効果");
   assert.ok(!p.get("a-effect-0").children.some(o=>o.value==="cancel-attack"));
-  const previews=()=>p.all().filter(e=>e.className==="a-completed-sentence").map(e=>e.textContent);
+  const previews=()=>p.all().filter(e=>e.id==="a-completed-sentence").map(e=>e.textContent);
   p.choose("a-effect-0","damage");
   assert.equal(p.get("a-effect-0-targetId").tagName,"span");
   assert.equal(p.get("a-effect-0-targetId").textContent,"相手");
@@ -348,7 +348,7 @@ test('text limits preserve setting drafts and block overlong names and skill lab
 
 test("A trigger and cancellation share an outline card and preserve nearby hints",async()=>{
  const p=await page(initial({triggerId:"exact:1",effects:[damage]}));
- const card=p.get("a-condition-card");assert.equal(card.className,"effect-row priced-effect-row a-condition-card");
+ const card=p.get("a-condition-card");assert.equal(card.className,"effect-row a-condition-card");
  const descendants=e=>[e,...e.children.flatMap(descendants)];
  for(const id of ["a-trigger","a-cancel"]) assert.ok(descendants(card).includes(p.get(id)));
  assert.ok(card.textContent.includes("「以下」の判定には0を含みません。"));
@@ -358,10 +358,10 @@ test("A trigger and cancellation share an outline card and preserve nearby hints
 
 test("A condition metadata stays neutral, effect prices expose scoped colors and hint follows controls",async()=>{
  const p=await page(initial({triggerId:"lte:3",effects:[damage,heal,cancel]}));
- const card=p.get("a-condition-card");assert.deepEqual(card.children.map(e=>e.className),["effect-meta","effect-editor"]);
- assert.equal(p.get("a-trigger-price").parent,card.children[0]);assert.equal(p.get("a-cancel-price").parent,card.children[0]);
+ const card=p.get("a-condition-card");assert.deepEqual(card.children.map(e=>e.className),["priced-effect-row a-condition-row","priced-effect-row a-condition-row"]);
+ assert.equal(p.get("a-trigger-price").parent,card.children[0].children[0]);assert.equal(p.get("a-cancel-price").parent,card.children[1].children[0]);
  for(const id of ["a-trigger-price","a-cancel-price","a-effect-0-price","a-effect-1-price","a-effect-0-slot-price"]) assert.doesNotMatch(p.get(id).textContent,/[+-]/);
- const editor=card.children[1].children[0];
+ const editor=card.children[0].children[1].children[0];
  assert.equal(editor.children[1].className,"a-sentence-controls");
  assert.equal(editor.children[2].textContent,"「以下」の判定には0を含みません。条件に対応する出目の数に応じてptを消費します。");
  assert.equal(p.get("a-effect-0-price").children[0].className,"price-spend");

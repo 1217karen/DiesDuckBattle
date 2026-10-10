@@ -66,7 +66,7 @@ button.primary.save-invalid:hover { background:#495356; }
 .b-sentence-controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; min-width:0; }
 .b-sentence-controls select { width:auto; flex:0 1 auto; min-width:0; max-width:100%; }
 .b-fixed-clause { padding:8px 0; }
-.b-completed-sentence { color:var(--accent); border-left:2px solid var(--accent); padding-left:12px; overflow-wrap:anywhere; }
+.completed-skill-sentence { color:var(--accent); border-left:2px solid var(--accent); padding-left:12px; overflow-wrap:anywhere; }
 .battler-grid > .battle-presets, .battler-grid > .skill-b, .battler-grid > .skill-d { grid-column:1 / -1; }
 
 /* A clauses use the same reading direction without changing the other editors. */
@@ -207,8 +207,8 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
 @media(max-width:700px) { .battle-presets { width:100%; } }
 
 /* A conditions share one outline; C settings use ordinary wrapping form controls. */
-.a-condition-card { background:transparent; }
-.a-condition-card .auxiliary-control { flex-direction:column; align-items:flex-start; margin:18px 0 0; }
+.a-condition-card { background:transparent; padding:0; }
+.a-condition-card .auxiliary-control { flex-direction:column; align-items:flex-start; margin:0; }
 .a-condition-card .a-sentence-controls { margin:6px 0; }
 .c-setting-form { display:flex; flex-wrap:wrap; align-items:flex-start; gap:12px 24px; }
 .c-setting-form .auxiliary-control { margin:0; }
@@ -244,3 +244,16 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
 .a-effect-row .effect-meta .price-spend, .skill-c .effect-meta .price-negative { color:var(--warn); }
 
 .timing-choice > span { flex:none; white-space:nowrap; }
+
+.a-condition-row { gap:0; }
+.a-condition-row + .a-condition-row { border-top:1px solid var(--line); }
+.a-condition-row > .effect-meta { justify-content:center; padding:17px; border-right:1px solid var(--line); border-bottom:0; }
+.a-condition-row > .effect-editor { padding:17px; }
+.a-condition-card .condition-label { font-size:.78rem; color:var(--muted); font-weight:400; }
+@media(max-width:700px) {
+  .a-condition-card .a-condition-row { grid-template-columns:80px minmax(0,1fr); padding:0; gap:0; }
+  .a-condition-row > .effect-meta { flex-direction:column; align-items:flex-start; padding:10px; }
+  .a-condition-row > .effect-editor { padding:10px; }
+  .a-condition-card .condition-label { font-size:.77rem; }
+  .a-condition-card .input-with-hint > select { flex-shrink:1; min-width:0; }
+}
