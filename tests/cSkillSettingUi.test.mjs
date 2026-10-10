@@ -245,3 +245,17 @@ test("C upper settings are wrapping forms without AP metadata",async()=>{
  assert.ok(!descendants(top).some(e=>e.className==="skill-setting-line"||e.className==="setting-meta"));
  for(const id of ["c-mode","c-structure"]) assert.ok(descendants(top).includes(p.get(id)));
 });
+
+
+test("C signed amount colors and two-line footer preserve AP resources",async()=>{
+ const s=selection([{effectId:"damage",targetId:"enemy",options:{amount:"damageAmount-60"}},{effectId:"damage",targetId:"self",options:{amount:"damageAmount-70"}}]);
+ const before=calculateCSkillResources(s),p=await page(initial(s));
+ assert.equal(p.get("c-effect-flat-0-price").children[0].className,"price-positive");
+ assert.equal(p.get("c-effect-flat-1-price").children[0].className,"price-negative");
+ assert.ok(!p.get("c-effect-flat-0-slot-price").children[0].className);
+ const description=p.get("c-effect-description");assert.deepEqual(description.children.map(e=>e.tagName),["span","br","span"]);
+ assert.equal(description.children[2].textContent,"デメリット効果に枠追加コストはかかりません。");
+ assert.deepEqual(calculateCSkillResources(p.save().ducks[0].cSelection),before);
+ const incomplete=await page(initial(selection([{effectId:"damage",targetId:"enemy",options:{}}])));
+ assert.equal(incomplete.get("c-effect-flat-0-price").children[0].textContent,"—");assert.ok(!incomplete.get("c-effect-flat-0-price").children[0].className);
+});

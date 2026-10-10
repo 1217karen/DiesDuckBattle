@@ -113,7 +113,12 @@ function inputWithHint(input) {
 }
 function field(box, text, id, items, current, onChange, placeholder) {
   const input = select(id, items, current, onChange, placeholder);
-  box.append(text ? labeled(text, inputWithHint(input)) : inputWithHint(input));
+  if (["b-type", "c-mode"].includes(id)) {
+    const row = el("div", null, "timing-field");
+    const hinted = inputWithHint(input), hint = hinted === input ? null : hinted.children[1];
+    const pair = el("label", null, "timing-choice"); pair.append(el("span", text), input);
+    row.append(pair); if (hint) row.append(hint); box.append(row);
+  } else box.append(text ? labeled(text, inputWithHint(input)) : inputWithHint(input));
   return input;
 }
 function card(title, key) {
@@ -352,7 +357,14 @@ function renderTabs() {
   }));
 }
 function renderStats(duck, box) {
-  const diceBox = card("ダイス", "dice"), frame = getDiceFrame(duck.diceFrame);
+  const combined = el("section", null, "card dice-stats-card"); combined.setAttribute("aria-label", "ダイス・ステータス");
+  combined.append(el("h3", "ダイス・ステータス")); box.append(combined);
+  const subsection = (title, key) => {
+    const section = el("section"), heading = el("div", null, "card-header"), badge = el("span", null, "badge");
+    section.setAttribute("aria-label", title); badge.id = key + "-status";
+    heading.append(el("h4", title), badge); section.append(heading); return section;
+  };
+  const diceBox = subsection("ダイス", "dice"), frame = getDiceFrame(duck.diceFrame);
   const types = Object.values(DICE_FRAMES).map(item => ({ id: item.id, label: `${item.label}（SP${item.SP}）`,
     group: item.editable ? "カスタマイズ" : "プリセット" }));
   const typeLabel = el("label", "ダイスタイプ");
@@ -374,9 +386,10 @@ function renderStats(duck, box) {
       el("br"), el("span", "余ったptはAスキルで使用可能です。"));
     diceBox.append(explanation);
   }
-  feedback(diceBox, "dice"); box.append(diceBox);
+  feedback(diceBox, "dice"); combined.append(diceBox);
   if (!frame) return;
-  const statBox = card("ステータス", "stats"), grid = el("div", null, "stat-grid");
+  combined.append(el("hr", null, "dice-stats-divider"));
+  const statBox = subsection("ステータス", "stats"), grid = el("div", null, "stat-grid");
   for (const key of ["AT", "DF"]) {
     const other = duck.stats[key === "AT" ? "DF" : "AT"] ?? 0;
     const options = Array.from({ length: 6 }, (_, value) => {
@@ -396,7 +409,7 @@ function renderStats(duck, box) {
   spField.append(spLabel, sp); grid.append(spField);
   const metrics = el("div", null, "metrics"); metrics.id = "stat-metrics";
   statBox.append(grid, metrics, el("p", "AT・DFは1～5まで選択できます。SPを含む合計上限は9です。", "description"));
-  feedback(statBox, "stats"); box.append(statBox);
+  feedback(statBox, "stats"); combined.append(statBox);
 }
 const skillsUnlocked = duck => duck.stats.AT >= 1 && duck.stats.DF >= 1;
 function aEditingSelection(duck) {
@@ -419,9 +432,13 @@ function aSentenceChoice(box, id, items, current, onChange, label, savedLabel = 
   } else aChoice(box, id, items, current, onChange, label, savedLabel, label);
 }
 const signed = value => value == null ? "—" : value > 0 ? `+${value}` : String(value);
-const negative = value => value == null ? null : -value;
+
 function priceLabel(id, label, value, unit = "", unsigned = false) {
-  const node = el("span", `${label ? label + " " : ""}${unsigned ? num(value) : signed(value)}${value == null ? "" : unit}`, "effect-price"); node.id = id; return node;
+  const node = el("span", label ? label + " " : "", "effect-price"); node.id = id;
+  const amount = el("span", (unsigned ? (value == null ? "—" : String(Math.abs(value))) : signed(value)) + (value == null ? "" : unit));
+  if (value != null && value !== 0) amount.className = unsigned
+    ? (label === "獲得" ? "price-gain" : "price-spend") : (value > 0 ? "price-positive" : "price-negative");
+  node.append(amount); return node;
 }
 function settingLine(group, left, right, id) {
   const row = el("div", null, "skill-setting-line"); if (id) row.id = id;
@@ -453,7 +470,9 @@ function renderA(duck, box) {
     const top = el("div", null, "skill-settings"); panel.append(top);
     settingLine(top, el("span", "使用可能pt"),
       el("span", `初期pt ${num(resources.basePoints)} ＋ ダイスpt余剰 ${num(resources.dicePoints)} ＝ ${num(resources.availablePoints)}pt`), "a-budget-line");
-    const conditions = el("div", null, "effect-row a-condition-card"); conditions.id = "a-condition-card"; top.append(conditions);
+    const conditions = el("div", null, "effect-row priced-effect-row a-condition-card"); conditions.id = "a-condition-card"; top.append(conditions);
+    const conditionMeta = el("div", null, "effect-meta"), conditionEditor = el("div", null, "effect-editor");
+    conditions.append(conditionMeta, conditionEditor);
     const trigger = el("div", null, "a-sentence-controls");
     const triggerView = aTriggerEditor(getATriggerOptions(duck, aCatalog), a.triggerId);
     for (const part of triggerView.parts) {
@@ -465,17 +484,17 @@ function renderA(duck, box) {
           triggerId => update(changeATrigger(a, triggerId, duck, aCatalog)), f.label, aTriggerText(a.triggerId) ?? a.triggerId);
       }
     }
-    const triggerEditor = el("div"); triggerEditor.append(el("span", "発動条件"), el("small", "「以下」の判定には0を含みません。", "description trigger-hint"), trigger);
-    triggerEditor.append(priceLabel("a-trigger-price", "条件", negative(resources.triggerCost), "pt"));
-    conditions.append(triggerEditor);
+    const triggerEditor = el("div"); triggerEditor.append(el("span", "発動条件"), trigger, el("p", "「以下」の判定には0を含みません。条件に対応する出目の数に応じてptを消費します。", "description"));
+    conditionMeta.append(priceLabel("a-trigger-price", "消費", resources.triggerCost, "pt", true));
+    conditionEditor.append(triggerEditor);
     const cancelled = (a.effects ?? []).some(e => isACancel(e, aCatalog));
     const cancel = el("label", "通常攻撃", "auxiliary-control");
     const cancelInput = aChoice(cancel, "a-cancel", [{ id: "off", label: "キャンセルしない" },
       { id: "on", label: "キャンセルする", disabled: !aCancelAvailable(duck, a, aCatalog) }], cancelled ? "on" : "off",
       value => update(setAAttackCancel(a, value === "on", duck, aCatalog)), "通常攻撃キャンセル");
     cancelInput.children[0].disabled = true;
-    cancel.append(priceLabel("a-cancel-price", "還元", cancelled ? resources.cancelDrawbackPoints : 0, "pt"));
-    conditions.append(cancel);
+    conditionMeta.append(priceLabel("a-cancel-price", "獲得", cancelled ? resources.cancelDrawbackPoints : 0, "pt", true));
+    conditionEditor.append(cancel);
     const slots = aNormalSlots(a, aCatalog);
     slots.forEach(({ leaf, index }, slot) => {
       const chosen = aEditorLeaf(leaf, aCatalog), definitions = aEditorCatalog(duck, a, aCatalog, index);
@@ -491,7 +510,7 @@ function renderA(duck, box) {
       const price = resources.effectBreakdown.find(item => item.index === index);
       const confirmed = confirmedPrices(resources, price, `effects.${index}`, index);
       const cost = !confirmed.costKnown ? null : price?.polarity === "drawback" ? price.drawbackPoints : price?.effectCost;
-      const head = effectMeta(slot, `a-effect-${slot}`, price?.polarity === "drawback" ? "還元" : "効果", cost, "枠", confirmed.slotCost,
+      const head = effectMeta(slot, `a-effect-${slot}`, price?.polarity === "drawback" ? "獲得" : "消費", cost, "消費（枠）", confirmed.slotCost,
         () => update(removeANormalEffect(a, index, aCatalog)), "pt", true);
       const staleFace = chosen.options?.diceAction && a.triggerId !== `exact:${chosen.options.diceAction}`;
       const contents = definitions.filter(d => !(staleFace && d.id === chosen.effectId))
@@ -537,7 +556,7 @@ function renderA(duck, box) {
     });
     const add = button("＋ 効果を追加", () => update(addANormalEffect(a, aCatalog))); add.id = "a-add-effect";
     add.disabled = slots.length >= aCatalog.maxEffects; panel.append(add);
-    panel.append(el("p", "最大４枠まで効果を選択できます。", "description"));
+    panel.append(el("p", "最大４枠まで効果を選択できます。デメリット効果に枠追加コストはかかりません。", "description"));
   }
   if (a !== null) {
     const metrics = el("section", null, "resource-summary"); metrics.id = "a-metrics";
@@ -548,7 +567,7 @@ function renderA(duck, box) {
 
 function renderAPoints(selection, resources) {
   const box = $("a-metrics"); if (!box || selection === null) return;
-  const values = [["available", "使用可能", resources.availablePoints], ["net", "必要", resources.netCost],
+  const values = [["available", "使用可能", resources.availablePoints], ["gross", "消費", resources.grossCost], ["drawback", "獲得", resources.drawbackPoints],
     ["remaining", resources.remaining < 0 ? "pt超過" : "残り", resources.remaining == null ? null : Math.abs(resources.remaining)]];
   box.replaceChildren();
   for (const [index, [id, label, amount]] of values.entries()) {
@@ -628,7 +647,9 @@ function renderC(duck, box) {
       const add = button("＋ C効果を追加", () => setRows([...effects, { effectId: "", options: {} }]));
       add.disabled = count >= cRules.maxEffects; branchBox.append(add); panel.append(branchBox);
     }
-    panel.append(el("p", "最大５枠まで効果を選択できます。効果を分岐させた場合は、最も消費APが多い分岐が必要APに採用されます。", "description"));
+    const explanation = el("p", null, "description"); explanation.id = "c-effect-description";
+    explanation.append(el("span", "最大５枠まで効果を選択できます。効果を分岐させた場合は、最も消費APが多い分岐が必要APに採用されます。"),
+      el("br"), el("span", "デメリット効果に枠追加コストはかかりません。")); panel.append(explanation);
   }
   panel.append(metrics); feedback(panel, "c"); box.append(panel);
 }

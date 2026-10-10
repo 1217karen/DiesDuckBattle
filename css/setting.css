@@ -208,7 +208,7 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
 
 /* A conditions share one outline; C settings use ordinary wrapping form controls. */
 .a-condition-card { background:transparent; }
-.a-condition-card > .auxiliary-control { flex-direction:column; align-items:flex-start; margin:18px 0 0; }
+.a-condition-card .auxiliary-control { flex-direction:column; align-items:flex-start; margin:18px 0 0; }
 .a-condition-card .a-sentence-controls { margin:6px 0; }
 .c-setting-form { display:flex; flex-wrap:wrap; align-items:flex-start; gap:12px 24px; }
 .c-setting-form .auxiliary-control { margin:0; }
@@ -230,3 +230,17 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
   .setting-shell .effect-meta button { font-size:.73rem; }
   .setting-shell .preset-heading { font-size:.9rem; }
 }
+
+.dice-stats-divider { border:0; border-top:1px solid var(--line); margin:24px 0; }
+.timing-field { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; min-width:0; max-width:100%; }
+.timing-field .timing-choice { display:flex; flex-direction:row; align-items:center; gap:8px; min-width:0; max-width:100%; }
+.timing-choice > select { width:auto; min-width:0; max-width:100%; flex:0 1 auto; }
+.timing-field > .description { flex:1 1 18em; min-width:0; margin:0; overflow-wrap:anywhere; }
+.c-setting-form > div:first-child { flex:1 1 100%; }
+/* Reuse the existing skill D green and theme warning red in both themes. */
+.skill-a, .skill-c { --price-green:#9ed7aa; }
+:root:not([data-theme="dark"]) .skill-a, :root:not([data-theme="dark"]) .skill-c { --price-green:#326b40; }
+.a-effect-row .effect-meta .price-gain, .skill-c .effect-meta .price-positive { color:var(--price-green); }
+.a-effect-row .effect-meta .price-spend, .skill-c .effect-meta .price-negative { color:var(--warn); }
+
+.timing-choice > span { flex:none; white-space:nowrap; }

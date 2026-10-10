@@ -101,7 +101,7 @@ test("preset controls are placed before cards, below duck identity controls",asy
   const p=await page();assert.equal(p.get("battler-editor").children[0].id,"battler-presets");
   const children=p.get("duck-editor").children;
   assert.equal(children[2].id,"duck-presets");assert.equal(children[1].className,"duck-meta");
-  assert.equal(children[3].attributes["aria-label"],"ダイス");
+  assert.equal(children[3].attributes["aria-label"],"ダイス・ステータス");
 });
 test("duck confirmation cannot accidentally apply to a different selected duck",async()=>{
   const p=await page();p.choose("duck-preset","heal");p.apply("duck");
@@ -131,9 +131,9 @@ test("native preset disclosures start closed with visible heading/help and compa
 
 test("Japanese card titles, fixed SP and concise skill guidance",async()=>{
   const p=await page();
-  for(const title of ["Ｂスキル","Ｄスキル","ダイス","ステータス","Ａスキル","Ｃスキル"]) {
+  for(const title of ["Ｂスキル","Ｄスキル","ダイス・ステータス","Ａスキル","Ｃスキル"]) {
     const card=p.all().find(e=>e.attributes["aria-label"]===title);
-    assert.ok(card,title);assert.ok(card.children[0].children.some(e=>e.tagName==="h3"&&e.textContent===title),title);
+    assert.ok(card,title);assert.ok([...card.children,...card.children[0].children].some(e=>e.tagName==="h3"&&e.textContent===title),title);
   }
   const sp=p.get("stat-SP");assert.equal(sp.tagName,"span");assert.equal(sp.textContent,"1（固定）");
   assert.equal(sp.children[1].className,"stat-fixed-hint");assert.equal(sp.children[1].textContent,"（固定）");
@@ -171,4 +171,30 @@ test("compact editor headings and responsive battle layout are scoped",async()=>
  for(const selector of ["label",".description",".metrics","button","select",".effect-meta"]) assert.ok(mobile.includes(".setting-shell "+selector));
  assert.match(mobile,/min-height:42px/);
  for(const file of ["setting.html","character.html"]) assert.match(await readFile(new URL("../"+file,import.meta.url),"utf8"),/page-shell--editor/);
+});
+
+
+test("dice and stats share one card with separate validation and metrics",async()=>{
+ const p=await page(),card=p.all().find(e=>e.className==="card dice-stats-card");
+ const descendants=e=>[e,...e.children.flatMap(descendants)];
+ assert.deepEqual(card.children.map(e=>e.tagName),["h3","section","hr","section"]);
+ assert.equal(card.children[0].textContent,"ダイス・ステータス");
+ assert.equal(card.children[2].className,"dice-stats-divider");
+ for(const [i,ids] of [[1,["dice-status","dice-metrics","dice-issues"]],[3,["stats-status","stat-metrics","stats-issues"]]])
+  for(const id of ids) {assert.ok(p.get(id),id);assert.ok(descendants(card.children[i]).includes(p.get(id)),id);}
+});
+test("B/C timing label and select stay paired beside their unchanged wrapping hint",async()=>{
+ const p=await page();
+ for(const [id,hint] of [["b-type","条件を満たす限り、常に発動します。"],["c-mode","自分のフェイズ開始時、APが溜まっていれば発動します。"]]) {
+  const input=p.get(id),pair=input.parent,row=pair.parent;
+  assert.equal(pair.className,"timing-choice");assert.equal(pair.children[0].textContent,"発動タイミング");
+  assert.equal(row.className,"timing-field");assert.equal(row.children[1],p.get(id+"-hint"));assert.equal(row.children[1].textContent,hint);
+  assert.equal(input.attributes["aria-describedby"],id+"-hint");
+ }
+ const css=await readFile(new URL("../css/setting.css",import.meta.url),"utf8");
+ assert.match(css,/\.timing-field\s*\{[^}]*flex-wrap:wrap[^}]*min-width:0/);
+ assert.match(css,/\.timing-field > \.description\s*\{[^}]*flex:1 1 18em[^}]*overflow-wrap:anywhere/);
+ assert.match(css,/\.a-effect-row \.effect-meta \.price-gain/);
+ assert.match(css,/\.skill-c \.effect-meta \.price-positive/);
+ assert.doesNotMatch(css,/\.a-condition-card[^{}]*\.price-(gain|spend)/);
 });
