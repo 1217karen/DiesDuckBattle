@@ -1373,6 +1373,30 @@ if (typeof refresh === "function") refresh();
   });
 }
 
+// Special C is immediately followed by the turn-end tick. Adjust only its
+// execution copy, including nested branches, without changing the saved skill.
+function extendSpecialCTurnDurations(effect) {
+  if (Array.isArray(effect)) return effect.map(extendSpecialCTurnDurations);
+  if (!effect || typeof effect !== "object") return effect;
+  const adjusted = { ...effect };
+  for (const key of ["met", "unmet", "picks", "onFail", "effect"]) {
+    if (key in effect) adjusted[key] = extendSpecialCTurnDurations(effect[key]);
+  }
+  if (effect.type === "addBuff") {
+    const duration = effect.duration ?? { kind: "turns", count: effect.turns ?? 1 };
+    const count = Math.trunc(Number(duration.count));
+    if (duration.kind === "turns" && Number.isFinite(count) && count > 0) {
+      adjusted.duration = { ...duration, count: count + 1 };
+    }
+  } else if (effect.type === "addTimedHitRule") {
+    const duration = effect.duration;
+    if (duration?.kind === "turns" && Number.isInteger(duration.count) && duration.count > 0) {
+      adjusted.duration = { ...duration, count: duration.count + 1 };
+    }
+  }
+  return adjusted;
+}
+
 function maybeUseCSkillBeforeTurnEnd(atk, def, ctx) {
   const cs = atk.duck?.cSkill;
   if (!cs || !cs.effect) return;
@@ -1419,7 +1443,7 @@ function maybeUseCSkillBeforeTurnEnd(atk, def, ctx) {
       groupId,
     });
 
-    resolveCSkillEffects(atk, cs.effect, ctx);
+    resolveCSkillEffects(atk, extendSpecialCTurnDurations(cs.effect), ctx);
   });
 }
 

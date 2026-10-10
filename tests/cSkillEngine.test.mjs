@@ -190,15 +190,15 @@ test("未設定repeat chanceを仮の0/0.5として実行しない", () => {
   assert.throws(() => battle({ cs: special(pctRevive(.3)), setup: [set("hp", -100), set("ap", 30)], maxTurns: 2,
     bSkills: [b("phaseEnd", set("hp", -100))] }), /repeatReviveChance/);
 });
-test("specialのturn buff/timedも即turn末減算、既存beforeTurnEnd/turnEnd順を保持", () => {
+test("specialのturn buff/timedは+1補正後に即turn末減算、既存beforeTurnEnd/turnEnd順を保持", () => {
   const r = battle({ cs: special([pctRevive(.5), timed(1), timed(2), { type: "addBuff", stat: "AT", amount: 2, duration: { kind: "turns", count: 1 } }]),
     setup: [set("hp", -100), set("ap", 20)], dice: 1, maxTurns: 2,
     bSkills: [b("beforeTurnEnd", set("ap", 0)), b("turnEnd", set("ap", 0))] });
-  assert.deepEqual(r.events.filter(e => e.type === "timedRuleTriggered").map(e => e.turn), [2]);
+  assert.deepEqual(r.events.filter(e => e.type === "timedRuleTriggered").map(e => e.turn), [2, 2]);
   const at = type => r.events.findIndex(e => e.type === type);
   assert.ok(at("cSkillActivated") < r.events.findIndex(e => e.type === "skillTriggered" && e.trigger === "beforeTurnEnd"));
-  assert.equal(r.events.find(e => e.type === "buffExpired").turn, 1);
-  assert.equal(r.events.find(e => e.type === "timedRuleExpired").turn, 1);
+  assert.equal(r.events.find(e => e.type === "buffExpired").turn, 2);
+  assert.equal(r.events.find(e => e.type === "timedRuleExpired").turn, 2);
   assert.ok(at("timedRuleTick") < r.events.findIndex(e => e.type === "skillTriggered" && e.trigger === "turnEnd"));
 });
 test("legacy特殊C fixed HP/onceは従来どおり、使用済みならAPも消費しない", () => {
