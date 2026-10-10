@@ -95,7 +95,7 @@ const expectedCEffects={
   heal:[{type:"heal",target:"self",amount:30},focusAura],
   technical:[{type:"randomPick",picks:[
     [{type:"changeStatus",target:"enemy",status:"@debuff",op:"add",value:3},{type:"fixedDamage",target:"enemy",byStatusCount:{n:15,statuses:["crack","Headwind","roughWave","steam"]}}],
-    [focusAura,{type:"addBuff",target:"enemy",stat:"DF",amount:-3,duration:{kind:"turns",count:3}}],
+    [{type:"fixedDamage",target:"enemy",amountPct:0.25},{type:"addBuff",target:"enemy",stat:"DF",amount:-3,duration:{kind:"turns",count:3}}],
   ]}],
 };
 for(const p of DUCK_PRESETS) test(`${p.id} C compiles requested effects in order`,()=>{

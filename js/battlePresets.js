@@ -246,7 +246,7 @@ export const DUCK_PRESETS = freeze([
   {
     "id": "technical",
     "label": "テクニカル",
-    "description": "出目2でランダムな状態異常を2付与。Cは状態異常と状態数ダメージ、または集中オーラとDF低下の2分岐です。",
+    "description": "出目2でランダムな状態異常を2付与。Cは状態異常と状態数ダメージ、または相手の現在HPの25％固定ダメージと3ターンのDF-3の2分岐です。",
     "stats": {
       "AT": 2,
       "DF": 5,
@@ -301,12 +301,10 @@ export const DUCK_PRESETS = freeze([
           {
             "effects": [
               {
-                "effectId": "grant-on-hit",
-                "targetId": "self",
-                "statusId": "focus",
+                "effectId": "hp-damage",
+                "targetId": "enemy",
                 "options": {
-                  "amount": "timedStacks-1",
-                  "duration": "timedTurns-3"
+                  "amountPct": "currentHpPct-0.25"
                 }
               },
               {
