@@ -237,8 +237,8 @@ function eventToLines(event, context) {
     case "ACTION_CANCELED_ROUGH_WAVE": return [{ kind: "soft", text: `<i>${target}は荒波のせいで行動できない！</i>` }];
     case "ACTION_CANCELED_HEADWIND": return [{ kind: "soft", text: `<i>${target}は逆風に煽られてスキルを発動できない！</i>` }];
     case "ATTACK_MISSED_BY_EFFECT": return [{ kind: "soft", text: `<i>${actor}は攻撃できない！</i>` }];
-    case "ATTACK_AVOIDED_BY_TAILWIND": return [heading("tailwind"), { kind: "soft",
-      text: `${target}は💨追風で攻撃を回避した！${hint(event.tailwindBefore, event.tailwindAfter, "追風 ")}` }];
+    case "ATTACK_AVOIDED_BY_TAILWIND": return [{ kind: "soft",
+      text: `${target}は💨追風で攻撃を回避した！` }];
     case "NEXT_ATTACK_ATPLUS_CONSUMED": return [{ kind: "meta", text: `${actor}は AT${signed(event.value)} を消費した！` }];
   }
 
@@ -324,11 +324,12 @@ function eventToLines(event, context) {
     case "chanceRoll": return [{ kind: "meta", text: `確率判定 ${event.success ? "成功" : "失敗"}！（${Math.round(Number(event.probability ?? 0) * 100)}%）` }];
     case "diceAdded": return [{ kind: "soft", text: `${target}にダイス追加：${escapeHTML((event.values ?? []).join("、"))}` }];
     case "revived": return [{ kind: "soft", text: `${target}がHP ${amount("heal", event.hpAfter)}で復活した！` }];
-    case "headwindResult": case "roughWaveResult": case "steamResult": {
+    case "headwindResult": case "roughWaveResult": case "steamResult": case "tailwindResult": {
       const [status, label, message] = {
         headwindResult: ["Headwind", "逆風", `${target}に逆風が吹き荒れる…… ${event.success ? "耐えきれなかった" : "耐えた"}！`],
         roughWaveResult: ["roughWave", "荒波", `${target}に荒波が襲いかかる…… ${event.success ? "命中" : "回避"}！`],
         steamResult: ["steam", "湯気", `${target}は湯気に包まれている…… ${event.success ? "脱出失敗" : "脱出"}！`],
+        tailwindResult: ["tailwind", "追風", `${target}に追風が吹いてくる…… ${event.success ? "加速成功" : "加速失敗"}！`],
       }[event.type];
       return [heading(status), { kind: "meta", text: message + hint(event.stacks, event.after ?? 0, `${label} `) }];
     }

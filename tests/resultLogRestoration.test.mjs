@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildBlocks } from "../js/resultBlocks.js";
 import { runBattle } from "../js/battleEngine.js";
+import { statusLabel } from "../js/statusMetadata.js";
 import { applyEffect } from "../js/effects.js";
 
 const context = { maxHP: { P1: 100, P2: 100 }, names: {
@@ -18,6 +19,7 @@ const event = (type, extra = {}) => ({ type, actor: "P1", target: "P1", turn: 1,
 for (const [type, status, icon, prefix, yes, no] of [
   ["roughWaveResult", "roughWave", "🌊荒波", "アヒル一に荒波が襲いかかる…… ", "命中", "回避"],
   ["steamResult", "steam", "🌫️湯気", "アヒル一は湯気に包まれている…… ", "脱出失敗", "脱出"],
+  ["tailwindResult", "tailwind", "💨追風", "アヒル一に追風が吹いてくる…… ", "加速成功", "加速失敗"],
   ["headwindResult", "Headwind", "🌪️逆風", "アヒル一に逆風が吹き荒れる…… ", "耐えきれなかった", "耐えた"],
 ]) for (const success of [true, false]) {
   test(`${type}: ${success} dedicated heading, result and one stock hint`, () => {
@@ -26,6 +28,7 @@ for (const [type, status, icon, prefix, yes, no] of [
       event(type, { status, stacks: 3, success }),
     ]);
     assert.equal(lines.length, 2);
+    assert.equal(lines[1].kind, "meta");
     assert.equal(lines[0].text, `アヒル一の${icon}！`);
     assert.ok(lines[1].text.startsWith(prefix + (success ? yes : no) + "！"));
     assert.match(lines[1].text, /3→0/);
@@ -54,9 +57,9 @@ test("focus multiplier is rendered once with stock consumption", () => {
 });
 
 test("tailwind and counter headings, damage and stock hints", () => {
-  const text = textFor([event("attackAvoided", { code: "ATTACK_AVOIDED_BY_TAILWIND", tailwindBefore: 2, tailwindAfter: 0 }),
+  const text = textFor([event("tailwindResult", { stacks: 2, after: 0, success: true }), event("attackAvoided", { code: "ATTACK_AVOIDED_BY_TAILWIND", tailwindBefore: 2, tailwindAfter: 0 }),
     event("counterTriggered"), event("counterDamage", { target: "P2", value: 4, counterBefore: 3, counterAfter: 2 })]);
-  assert.equal(text, "アヒル一の💨追風！\nアヒル一は💨追風で攻撃を回避した！ （追風 2→0）\nアヒル一の🛡️反撃！\nアヒル二に🛡️反撃で 4 ダメージを返した！ （反撃 3→2）");
+  assert.equal(text, "アヒル一の💨追風！\nアヒル一に追風が吹いてくる…… 加速成功！ （追風 2→0）\nアヒル一は💨追風で攻撃を回避した！\nアヒル一の🛡️反撃！\nアヒル二に🛡️反撃で 4 ダメージを返した！ （反撃 3→2）");
 });
 
 test("capped status is visible while random failure remains a separate category event", () => {
@@ -215,3 +218,17 @@ test("actual engine special C, quote and revival all stay together at turn end",
   assert.equal(tail.stateAfter.hp.P1, 50);
   assert.equal(tail.stateAfter.ap.P1, 0);
 });
+
+for (const stacks of [1, 2, 3]) for (const success of [true, false]) {
+  test("tailwind result " + stacks + ": " + success + " has one heading and one consumption hint", () => {
+    const events = [event("tailwindResult", { code: "STATUS_TAILWIND_ROLL", target: "P2", stacks, after: 0, success })];
+    if (success) events.push(event("attackAvoided", { code: "ATTACK_AVOIDED_BY_TAILWIND", target: "P2", tailwindBefore: stacks, tailwindAfter: 0 }));
+    const lines = linesFor(events);
+    assert.deepEqual(lines.map(l => l.kind), success ? ["note status", "meta", "soft"] : ["note status", "meta"]);
+    assert.equal(lines[0].text, "アヒル二の💨追風！");
+    assert.equal(lines[1].text.replace(/<[^>]*>/g, ""), "アヒル二に追風が吹いてくる…… 加速" + (success ? "成功" : "失敗") + "！ （追風 " + stacks + "→0）");
+    if (success) assert.equal(lines[2].text, "アヒル二は💨追風で攻撃を回避した！");
+    assert.equal((textFor(events).match(/→0/g) ?? []).length, 1);
+  });
+}
+test("Headwind uses the official display label", () => assert.equal(statusLabel("Headwind"), "逆風"));
