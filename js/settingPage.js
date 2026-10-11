@@ -114,7 +114,7 @@ function inputWithHint(input) {
 }
 function field(box, text, id, items, current, onChange, placeholder) {
   const input = select(id, items, current, onChange, placeholder);
-  if (["b-type", "c-mode"].includes(id)) {
+  if (["b-type", "c-mode", "c-structure"].includes(id)) {
     const row = el("div", null, "timing-field");
     const hinted = inputWithHint(input), hint = hinted === input ? null : hinted.children[1];
     const pair = el("label", null, "timing-choice"); pair.append(el("span", text), input);

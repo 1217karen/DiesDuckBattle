@@ -233,7 +233,7 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
 
 .dice-stats-divider { border:0; border-top:1px solid var(--line); margin:24px 0; }
 .timing-field { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; min-width:0; max-width:100%; }
-.timing-field .timing-choice { display:flex; flex-direction:row; align-items:center; gap:8px; min-width:0; max-width:100%; }
+.timing-field .timing-choice { display:flex; flex-direction:row; flex-wrap:nowrap; flex:0 1 auto; align-items:center; gap:8px; min-width:0; max-width:100%; }
 .timing-choice > select { width:auto; min-width:0; max-width:100%; flex:0 1 auto; }
 .timing-field > .description { flex:1 1 18em; min-width:0; margin:0; overflow-wrap:anywhere; }
 .c-setting-form > div:first-child { flex:1 1 100%; }
@@ -264,3 +264,11 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
 .skill-c .effect-meta .price-positive, .skill-c .effect-meta .price-negative { font-weight:700; }
 .skill-card .completed-skill-sentence { color:var(--skill-heading); border-left-color:var(--skill-heading); }
 @media(max-width:700px) { .duck-identity { flex:1 1 100%; width:100%; } }
+
+/* Keep the C branch selector and its hint on the same wrapping row model. */
+.c-setting-form > .auxiliary-control { flex:1 1 100%; }
+.c-setting-form .timing-field { flex:1 1 100%; }
+@media(max-width:700px) {
+  .a-effect-row > .effect-meta > button,
+  .skill-c .priced-effect-row > .effect-meta > button { margin-left:auto; flex-shrink:0; max-width:100%; }
+}

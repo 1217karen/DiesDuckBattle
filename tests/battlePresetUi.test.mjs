@@ -191,9 +191,9 @@ test("dice and stats share one card with separate validation and metrics",async(
 });
 test("B/C timing label and select stay paired beside their unchanged wrapping hint",async()=>{
  const p=await page();
- for(const [id,hint] of [["b-type","条件を満たす限り、常に発動します。"],["c-mode","自分のフェイズ開始時、APが溜まっていれば発動します。"]]) {
+ for(const [id,hint] of [["b-type","条件を満たす限り、常に発動します。"],["c-mode","自分のフェイズ開始時、APが溜まっていれば発動します。"],["c-structure","確率などで複数の効果を使い分けることができます。"]]) {
   const input=p.get(id),pair=input.parent,row=pair.parent;
-  assert.equal(pair.className,"timing-choice");assert.equal(pair.children[0].textContent,"発動タイミング");
+  assert.equal(pair.className,"timing-choice");assert.equal(pair.children[0].textContent,id==="c-structure"?"分岐方式":"発動タイミング");
   assert.equal(row.className,"timing-field");assert.equal(row.children[1],p.get(id+"-hint"));assert.equal(row.children[1].textContent,hint);
   assert.equal(input.attributes["aria-describedby"],id+"-hint");
  }
@@ -267,4 +267,17 @@ test("all completed skill sentences share the same top spacing", async()=>{
  assert.match(css,/\.completed-skill-sentence\s*\{[^}]*margin-top:18px/);
  const p=await page();
  for(const kind of ["b","d","a","c"]) assert.equal(p.get(kind+"-completed-sentence").className,"completed-skill-sentence");
+});
+
+test("responsive hint pairs and mobile delete alignment leave desktop and A conditions intact",async()=>{
+ const css=await readFile(new URL("../css/setting.css",import.meta.url),"utf8");
+ assert.match(css,/\.timing-field \.timing-choice\s*\{[^}]*flex-wrap:nowrap;[^}]*flex:0 1 auto;[^}]*min-width:0/);
+ assert.match(css,/\.timing-choice > span\s*\{[^}]*white-space:nowrap/);
+ assert.match(css,/\.timing-choice > select\s*\{[^}]*min-width:0;[^}]*max-width:100%/);
+ assert.match(css,/\.effect-meta\s*\{[^}]*flex-direction:column/);
+ assert.match(css,/@media\(max-width:700px\)\s*\{\s*\.a-effect-row > \.effect-meta > button,\s*\.skill-c \.priced-effect-row > \.effect-meta > button\s*\{ margin-left:auto; flex-shrink:0; max-width:100%/);
+ const p=await page(),walk=e=>[e,...e.children.flatMap(walk)];
+ const a=p.get("a-effect-0-price").parent,c=p.get("c-effect-flat-0-price").parent;
+ for(const meta of [a,c])assert.equal(meta.children.at(-1).textContent,"削除");
+ assert.equal(walk(p.get("a-condition-card")).filter(e=>e.tagName==="button").length,0);
 });
