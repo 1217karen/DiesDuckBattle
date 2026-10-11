@@ -114,10 +114,10 @@ function inputWithHint(input) {
 }
 function field(box, text, id, items, current, onChange, placeholder) {
   const input = select(id, items, current, onChange, placeholder);
-  if (["b-type", "c-mode", "c-structure"].includes(id)) {
+  if (["b-type", "c-mode", "c-structure", "a-cancel"].includes(id)) {
     const row = el("div", null, "timing-field");
     const hinted = inputWithHint(input), hint = hinted === input ? null : hinted.children[1];
-    const pair = el("label", null, "timing-choice"); pair.append(el("span", text), input);
+    const pair = el("label", null, "timing-choice"); pair.append(el("span", text, id === "a-cancel" ? "condition-label" : undefined), input);
     row.append(pair); if (hint) row.append(hint); box.append(row);
   } else box.append(text ? labeled(text, inputWithHint(input)) : inputWithHint(input));
   return input;
@@ -499,13 +499,13 @@ function renderA(duck, box) {
     triggerRow.meta.append(priceLabel("a-trigger-price", "消費", resources.triggerCost, "pt", true));
     triggerRow.editor.append(triggerEditor);
     const cancelled = (a.effects ?? []).some(e => isACancel(e, aCatalog));
-    const cancel = el("label", null, "auxiliary-control"); cancel.append(el("span", "通常攻撃", "condition-label"));
-    const cancelInput = aChoice(cancel, "a-cancel", [{ id: "off", label: "キャンセルしない" },
+    const cancelInput = field(cancelRow.editor, "通常攻撃", "a-cancel", [{ id: "off", label: "キャンセルしない" },
       { id: "on", label: "キャンセルする", disabled: !aCancelAvailable(duck, a, aCatalog) }], cancelled ? "on" : "off",
-      value => update(setAAttackCancel(a, value === "on", duck, aCatalog)), "通常攻撃キャンセル");
+      value => update(setAAttackCancel(a, value === "on", duck, aCatalog)));
+    cancelInput.setAttribute("aria-label", "通常攻撃キャンセル");
     cancelInput.children[0].disabled = true;
     cancelRow.meta.append(priceLabel("a-cancel-price", "獲得", cancelled ? resources.cancelDrawbackPoints : 0, "pt", true));
-    cancelRow.editor.append(cancel);
+
     const slots = aNormalSlots(a, aCatalog);
     slots.forEach(({ leaf, index }, slot) => {
       const chosen = aEditorLeaf(leaf, aCatalog), definitions = aEditorCatalog(duck, a, aCatalog, index);

@@ -141,7 +141,7 @@ test("A compact cost summary uses computed totals, preserves saved values, and e
 test("A incomplete controls use color hints without persistent warnings; supplementary control is subdued",async()=>{
  const p=await page(initial());
  assert.match(p.get("a-effect-0").className,/select-empty/);assert.equal(p.get("a-issues").textContent,"");
- assert.equal(p.get("a-cancel").parent.parent.className,"auxiliary-control");
+ assert.equal(p.get("a-cancel").parent.parent.className,"timing-field");
  assert.match(p.get("stat-AT").className,/select-compact/);
  assert.ok(!p.get("a-effect-0").className.includes("select-compact"));
  p.choose("a-trigger","exact:1");assert.ok(!p.get("a-trigger").className.includes("select-empty"));
@@ -368,4 +368,17 @@ test("A condition metadata stays neutral, effect prices expose scoped colors and
  assert.equal(p.get("a-effect-1-price").children[0].className,"price-gain");
  assert.ok(!p.get("a-effect-0-slot-price").children[0].className);
  assert.ok(p.all().some(e=>e.textContent==="最大４枠まで効果を選択できます。デメリット効果に枠追加コストはかかりません。"));
+});
+
+
+test("A cancel keeps label/select paired before hint inside the second condition row",async()=>{
+ const p=await page(initial({triggerId:"exact:1",effects:[damage]}));
+ const card=p.get("a-condition-card"),input=p.get("a-cancel"),pair=input.parent,row=pair.parent;
+ assert.equal(pair.className,"timing-choice");assert.equal(pair.children[0].textContent,"通常攻撃");
+ assert.equal(pair.children[0].className,"condition-label");assert.equal(pair.children[1],input);
+ assert.equal(row.className,"timing-field");assert.equal(row.parent,card.children[1].children[1]);
+ assert.equal(row.children[1].textContent,"通常攻撃をキャンセルしても、出目効果は発動します。");
+ assert.equal(row.children[1].className,"description");assert.equal(input.attributes["aria-describedby"],"a-cancel-hint");
+ assert.equal(input.attributes["aria-label"],"通常攻撃キャンセル");
+ assert.equal(card.children.length,2);assert.equal(p.get("a-cancel-price").parent,card.children[1].children[0]);
 });
