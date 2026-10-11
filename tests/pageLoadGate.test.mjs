@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
 import { menuModel } from '../js/commonMenuModel.js';
+import { BATTLER_NAME_MAX } from '../js/nameValidation.js';
+import { FIXED_IMAGES, setImageFromCandidates } from '../js/fixedImages.js';
 const read = file => readFile(new URL('../'+file, import.meta.url), 'utf8');
 const gateCode = await read('js/pageLoadGate.js');
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -50,7 +52,9 @@ test('gate: redirect never reveals; unexpected error shows error alone then fini
 for(const name of ['indexPage','authPage']) for(const outcome of ['signed-in','signed-out','restore-error','sdk-error']) test(name+' readiness '+outcome,async()=>{
  const f=fixture();let listener,mounted=false;
  const auth={subscribe(fn){listener=fn;fn({ready:false,sessionKnown:false,accounts:[],enos:[]});}};
- const ctx={...f,consumeIndexNotice(){},menuModel,mountAuthView(){mounted=true;return {};},
+ const ctx={...f,consumeIndexNotice(){},menuModel,FIXED_IMAGES,setImageFromCandidates,
+ mountIndexMessages:()=>({update(){}}),getSupabaseClient:async()=>({}),
+ createOnlinePlayerStorage:()=>({load:async()=>({ok:false})}),mountAuthView(){mounted=true;return {};},
  getAuthRuntime:async()=>{if(outcome==='sdk-error')throw Error('sdk');return auth;}};
  await run(name,ctx);
  if(outcome!=='sdk-error') {
@@ -61,7 +65,8 @@ for(const name of ['indexPage','authPage']) for(const outcome of ['signed-in','s
  if(outcome.endsWith('error'))assert.match(f.get(name==='indexPage'?'home-status':'auth-root').textContent,/読み込めません/);
  else if(name==='indexPage') {
   assert.equal(f.get('home-game').hidden,outcome!=='signed-in');
-  if(outcome==='signed-in'){assert.match(f.get('home-status').textContent,/Alice/);assert.ok(f.get('home-game').children.length);}
+  if(outcome==='signed-in'){assert.match(f.get('home-status').textContent,/Alice/);assert.equal(f.get('home-identity').textContent,menuModel({ready:true,sessionKnown:true,signedIn:true,accounts:[{eno:'12',name:'Alice'}],enos:['12']}).identity);
+   const html=await read('index.html');assert.match(html,/<section id="home-game"[\s\S]*?<a[^>]+href="select.html"/);}
  }
 });
 for(const name of ['settingPage','characterPage']) for(const outcome of ['success','error','denied']) test(name+' awaits editor boundary '+outcome,async()=>{
@@ -69,7 +74,7 @@ for(const name of ['settingPage','characterPage']) for(const outcome of ['succes
  const noop=()=>({});
  const ctx={...f,requireLoginPage:async()=>{if(outcome==='denied'){f.classes.add('auth-required-pending');throw Error('Login required');}},
  createSettingState:noop,createBuildRules:noop,createASkillCatalog:noop,createBSkillCatalog:noop,createCSkillCatalog:noop,createCSkillRules:noop,
- createIconPicker:noop,createEmptyPlayerPresentation:noop,
+ createIconPicker:noop,createEmptyPlayerPresentation:noop,BATTLER_NAME_MAX,
  mountOnlineEditor:async()=>{mounted=true;started.resolve();await pending.promise;f.get('editor').textContent=outcome==='success'?'hydrated':'load error';return null;}};
  const running=run(name,ctx);
  if(outcome==='denied'){await assert.rejects(running,/Login required/);assert.equal(mounted,false);assert.equal(f.visible(),false);return;}
@@ -113,14 +118,18 @@ for(const outcome of ['success','not-found','throw']) test('result sets up recor
 test('HTML starts gated; markers preserve background/menu and layout; noscript lives outside hidden content',async()=>{
  for(const name of ['index','auth','select','setting','character','storage','result','rulebook']){
   const html=await read(name+'.html');assert.match(html,/<body class="[^"]*page-loading/);assert.match(html,/css\/page-loading.css/);
-  assert.match(html,/<main data-page-content/);assert.match(html,/<noscript><p class="page-load-noscript">/);
-  assert.ok(html.indexOf('page-load-noscript')<html.indexOf('<main'));
+  assert.match(html,/<main data-page-content/);
+  const noscript=html.match(/<noscript>([\s\S]*?)<\/noscript>/);
+  assert.ok(noscript,name);assert.match(noscript[1],/JavaScriptを有効にしてください/);
+  assert.doesNotMatch(noscript[0],/\shidden(?:[\s=>])|data-page-content|aria-hidden="true"/);
+  assert.ok(noscript.index<html.indexOf('<main'));assert.ok(noscript.index>html.indexOf('<body'));
   assert.doesNotMatch(html,/<header[^>]*data-page-content[^>]*id="common-menu"|<div[^>]*data-page-content[^>]*id="bg"/);
   assert.doesNotMatch(html,/(?:表示)?設定を読み込んでいます/);
   assert.match(html,/data-page-src="js\//);
  }
  const css=await read('css/page-loading.css');assert.match(css,/visibility: hidden !important/);assert.doesNotMatch(css,/display:\s*none/);
  assert.match(css,/top: var\(--common-menu-height/);
+ assert.match(css,/body\.page-loading \[data-page-content\]/);assert.doesNotMatch(css,/noscript[^{}]*\{[^}]*visibility:\s*hidden/);
  const gate=await read('js/pageLoadGate.js');assert.doesNotMatch(gate,/pageshow|focus|visibilitychange|sessionStorage/);
 });
 

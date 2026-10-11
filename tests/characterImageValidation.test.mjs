@@ -11,7 +11,7 @@ for (const [kind, width, height, status] of [
   const result = validateImageDimensions(kind, width, height);
   assert.equal(result.status, status);
   assert.ok(result.message.includes(`${width}×${height}`));
-  if (status === "invalid") assert.ok(result.message.includes(kind === "standing" ? "500×800" : "250×250"));
+  if (status === "invalid") assert.equal(result.message, `画像サイズが大きすぎます。現在の画像：${width}×${height}px`);
 });
 
 test("empty URL is valid; loading is unresolved and prevents save; stale callbacks cannot overwrite", () => {

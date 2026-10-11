@@ -122,9 +122,9 @@ const context={maxHP:{P1:100,P2:100},names:{P1:{battler:"主人",duck:"アヒル
 function textFor(event){return buildBlocks([{type:"battleStart"},{type:"phaseStart",actor:"P1",turn:1,phase:1},event],"draw",context).flatMap(b=>b.lines).map(l=>l.text).join("\n");}
 for(const category of ["A","B","C","D"])test(`${category} result uses the common safe whole-name renderer, hides ruby-only labels`,()=>{
   const event={type:category==="C"?"cSkillActivated":"skillTriggered",actor:"P1",turn:1,phase:1,skill:{category,skillName:"雷<&>",skillRuby:"  サン   ダー &<>  "}};
-  assert.match(textFor(event),/<br><span class="skill-display-name"><ruby>雷&lt;&amp;&gt;<rt>  サン   ダー &amp;&lt;&gt;  <\/rt><\/ruby><\/span>/);
+  assert.match(textFor(event),/<br><span class="skill-display-name"><ruby>雷&lt;&amp;&gt;<rt>  サン   ダー &amp;&lt;&gt;  <\/rt><\/ruby>！<\/span>/);
   assert.doesNotMatch(textFor(event),/雷<&>|サン   ダー &<>/);
-  event.skill.skillRuby="";assert.match(textFor(event),/<span class="skill-display-name">雷&lt;&amp;&gt;<\/span>/);assert.doesNotMatch(textFor(event),/<ruby>/);
+  event.skill.skillRuby="";assert.match(textFor(event),/<span class="skill-display-name">雷&lt;&amp;&gt;！<\/span>/);assert.doesNotMatch(textFor(event),/<ruby>/);
   event.skill.skillName="";event.skill.skillRuby="孤立";assert.doesNotMatch(textFor(event),/skill-display-name|孤立|<ruby>/);
 });
 test("passive B names use the same renderer and oversized record labels are not rendered",async()=>{
@@ -132,6 +132,6 @@ test("passive B names use the same renderer and oversized record labels are not 
   assert.ok(html.includes(renderSkillDisplayName(label.name,label.ruby)));
   assert.equal(renderSkillDisplayName("x".repeat(21),""),"");assert.equal(renderSkillDisplayName("ok","x".repeat(51)),"");
   const css=await readFile(new URL("../css/result.css",import.meta.url),"utf8");
-  assert.match(css,/\.skill-display-name\s*\{[^}]*font-size:\s*1\.2em/s);
+  assert.match(css,/\.skill-display-name\s*\{[^}]*font-size:\s*1\.4em/s);
   assert.match(css,/\.skill-display-name rt\s*\{[^}]*white-space:\s*pre/s);
 });

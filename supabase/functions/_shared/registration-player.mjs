@@ -5,7 +5,7 @@ import { encodeOnlinePlayer } from "../../../js/onlinePlayerDto.js";
 /** Use the same current DTO/defaults as normal saves, including presentation. */
 export function createRegistrationPlayer(name, uuid) {
   const build = createEmptyPlayerBuild(), duck = createEmptyDuck({ idFactory: uuid });
-  duck.name = `${name}のマイアヒル`;
+  duck.name = "名前未設定のアヒル";
   build.ducks.push(duck);
   const presentation = createEmptyPlayerPresentation();
   presentation.ducks[duck.id] = createEmptyDuckPresentation();

@@ -59,14 +59,16 @@ function fixture({ fail, throws = false, cleanupFails = [], eno = "123", errorCo
 }
 const names = f => f.calls.map(c => c[0]);
 
-test("registration stores a normal current DTO with a public incomplete Duck and full 21-character name", async () => {
-  const f=fixture(), name='😀'.repeat(15);
+for (const char of ["あ", "a", "😀"]) test("registration accepts a 15-character Battler name and uses a fixed initial Duck name: " + char, async () => {
+  const f=fixture(), name=char.repeat(15);
   assert.equal((await registerAccount({...input,characterName:name},f)).status,201);
   const battler=f.calls.find(([stage])=>stage==='battler')[1];
   const duck=f.calls.find(([stage])=>stage==='duck')[1];
+  assert.equal(battler.presentation.name,name);
+  assert.deepEqual(f.logs,[]);
   const data=decodeOnlinePlayer({battler:{build:battler.build,presentation:battler.presentation},
     ducks:[{id:duck.id,build:duck.build,presentation:duck.presentation}],publicDuckId:duck.id});
-  assert.equal(data.build.ducks.length,1);assert.equal(data.build.ducks[0].name,name+'のマイアヒル');
+  assert.equal(data.build.ducks.length,1);assert.equal(data.build.ducks[0].name,'名前未設定のアヒル');
   assert.equal(duckNameError(data.build.ducks[0].name),'');
   assert.equal(data.publicSettings.publicDuckId,duck.id);
   assert.equal(inspectBattleLoadout(data.build,duck.id).ready,false);
@@ -83,7 +85,7 @@ test("registration creates account, confirmed Auth user, access, named Battler, 
   });
   assert.deepEqual(f.calls[2][1], { auth_user_id: authId, game_account_id: id });
   assert.equal(f.calls[3][1].presentation.name, "テスト");
-  assert.equal(f.calls[4][1].presentation.name, "テストのマイアヒル");
+  assert.equal(f.calls[4][1].presentation.name, "名前未設定のアヒル");
   assert.equal(f.calls[4][1].id, duckId);
   assert.deepEqual(f.calls[5][1], { public_duck_id: duckId });
   assert.deepEqual(f.logs, []);
@@ -220,4 +222,10 @@ test("secret key dictionary preferred; explicit legacy fallback; sessions disabl
   delete env.SUPABASE_SECRET_KEYS;
   delete env.SUPABASE_SERVICE_ROLE_KEY;
   assert.throws(() => createRegistrationAdminClient(read, create));
+});
+
+for (const char of ["あ", "a", "😀"]) test("registration rejects 16-character Battler names without side effects: " + char, async () => {
+  const f=fixture();
+  assert.equal((await registerAccount({...input,characterName:char.repeat(16)},f)).status,400);
+  assert.deepEqual(f.calls,[]);
 });

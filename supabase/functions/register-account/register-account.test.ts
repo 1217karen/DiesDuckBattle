@@ -65,7 +65,7 @@ for (const failure of [null, "access", "battler", "auth_user", "duck", "public_s
       ]);
     } else {
       equal((requests[3].body as { presentation: { name: string } }).presentation.name, "名前");
-      equal((requests[4].body as { presentation: { name: string } }).presentation.name, "名前のマイアヒル");
+      equal((requests[4].body as { presentation: { name: string } }).presentation.name, "名前未設定のアヒル");
     }
   });
 }

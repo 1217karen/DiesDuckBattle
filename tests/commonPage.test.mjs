@@ -10,7 +10,13 @@ test("ordinary pages opt into the shared shell before their own CSS and retain e
     assert.ok(html.indexOf('css/common-theme.css') < html.indexOf('css/common-page.css'));
     assert.ok(html.indexOf('css/common-page.css') < html.indexOf('css/' + page + '.css'));
     for (const script of ["siteTheme.js","pageEntry.js","commonMenu.js"]) assert.ok(html.includes('js/' + script), page + ' ' + script);
-    assert.match(html, /class="[^"]*page-eyebrow/);
+    const header = html.match(/<header class="[^"]*page-header[^"]*">([\s\S]*?)<\/header>/)?.[1];
+    assert.ok(header, page);
+    assert.match(header, /<h1 class="[^"]*page-title[^"]*">[^<]+<\/h1>/);
+    if (["setting", "character"].includes(page)) {
+      assert.doesNotMatch(header, /page-eyebrow/);
+      assert.match(header, /<p>[^<]+<\/p>/);
+    } else assert.match(header, /class="[^"]*page-eyebrow/);
     assert.match(html, /class="[^"]*page-title/);
   }
   for (const page of ["result", "profile"]) assert.doesNotMatch(await read(page + ".html"), /common-page\.css|page-shell/);

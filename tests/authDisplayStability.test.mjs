@@ -166,13 +166,13 @@ for (const cached of [null, signedCache]) test("actual menu retains header/nav/s
   assert.equal(d.nodes.get("[data-identity]").textContent, "未ログイン");
 });
 test("every common-menu HTML has identical prebuilt shell and early cache bootstrap; protected shells visible initially", async () => {
-  let expected, count = 0;
+  let expected; const pages = [];
   for (const page of await readdir(new URL("../", import.meta.url))) {
     if (!page.endsWith(".html")) continue;
     const html = await source(page);
     if (!html.includes('id="common-menu"')) continue;
     const header = html.match(/<header id="common-menu"[\s\S]*?<\/header>/)[0];
-    expected ??= header; assert.equal(header, expected); count++;
+    expected ??= header; assert.equal(header, expected); pages.push(page);
     assert.match(header, /<details class="common-menu__nav"><summary aria-label="ゲームメニューを開く">/);
     assert.match(header, /<details class="common-menu__account">/);
     assert.match(header, /data-account-menu/);
@@ -180,7 +180,7 @@ test("every common-menu HTML has identical prebuilt shell and early cache bootst
     assert.doesNotMatch(html, /ログイン状態を確認中…|auth-required-pending/);
     assert.ok(html.indexOf('src="js/menuDisplayCache.js"') < html.indexOf('src="js/commonMenu.js"'));
   }
-  assert.equal(count, 9);
+  assert.deepEqual(pages.sort(), ["auth.html", "character-list.html", "character.html", "index.html", "legal.html", "notice.html", "profile.html", "rulebook.html", "select.html", "setting.html", "storage.html"]);
 });
 
 test("getSession failure cannot discard successful INITIAL_SESSION; synchronous initial event wins over stale restore", async t => {

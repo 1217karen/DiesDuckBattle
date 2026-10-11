@@ -93,7 +93,7 @@ test('DOM order, skill placement, Duck metadata and safe rich text/name/ruby',as
   assert.deepEqual(grid.children.map(n=>n.className),['profile-card battler-card','profile-card profile-text-card','profile-card duck-card','profile-card featured-battle']);
   assert.equal(byClass(grid.children[0],'skill-B').length,1);assert.equal(byClass(grid.children[0],'skill-D').length,1);
   const duck=grid.children[2];assert.ok(duck.children.indexOf(byClass(duck,'skill-list')[0])<duck.children.indexOf(byClass(duck,'stat-section')[0]));
-  assert.equal(byClass(duck,'duck-meta')[0].textContent,'アタック / 炎・🔥');
+  assert.equal(byClass(duck,'duck-meta')[0].textContent,'アタックタイプ / 属性：炎・🔥');
   for(const node of byClass(main,'profile-rich-text')){assert.equal(node.innerHTML,renderQuoteRichText(raw));assert.doesNotMatch(node.innerHTML,/<script>/);assert.match(node.innerHTML,/&lt;script&gt;/);}
   const name=byClass(main,'skill-name')[0];assert.equal(name.children[0].tagName,'ruby');assert.equal(name.children[0].text,'<img>');assert.equal(name.children[0].children[0].textContent,'<script>');
   assert.equal(all(main).filter(n=>n.innerHTML!==undefined).every(n=>n.className==='profile-rich-text'),true);
