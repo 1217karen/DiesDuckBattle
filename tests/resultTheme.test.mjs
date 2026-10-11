@@ -9,7 +9,7 @@ const rule = selector => {
   return css.match(new RegExp('(?:^|\\n)' + escaped + ' \\{([^}]*)\\}'))?.[1] ?? "";
 };
 test("result loads the shared theme after early site preference scripts and before result CSS", () => {
-  const paths = ["js/siteTheme.js","js/siteThemeAuth.js","css/common-theme.css","css/result.css"];
+  const paths = ["js/siteTheme.js","css/common-theme.css","css/result.css"];
   paths.forEach((path,i) => { assert.ok(html.includes(path)); if (i) assert.ok(html.indexOf(paths[i-1]) < html.indexOf(path)); });
   assert.match(html, /fonts\.googleapis\.com/); assert.match(html, /css\/page-loading\.css/);
   assert.doesNotMatch(html, /common-page\.css/);

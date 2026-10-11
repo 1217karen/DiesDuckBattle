@@ -1,14 +1,13 @@
-// Classic head script: stay light until the shared Auth controller confirms login.
+// Classic head script: apply this browser's preference synchronously before CSS.
 (() => {
   const key = "diesduck-site-theme";
-  let loggedIn = false;
   const normalize = value => value === "dark" ? "dark" : "light";
   const read = () => {
     try { return normalize(globalThis.localStorage.getItem(key)); }
     catch { return "light"; }
   };
   const apply = value => {
-    const theme = loggedIn ? normalize(value) : "light";
+    const theme = normalize(value);
     document.documentElement.dataset.theme = theme;
     return theme;
   };
@@ -17,12 +16,6 @@
     try { globalThis.localStorage.setItem(key, theme); } catch { /* Preference still works for this page. */ }
     return apply(theme);
   };
-  const bindAuth = controller => controller.subscribe(state => {
-    const confirmedLogin = state.sessionKnown === true && state.signedIn === true;
-    if (confirmedLogin === loggedIn) return;
-    loggedIn = confirmedLogin;
-    apply(loggedIn ? read() : "light");
-  });
-  globalThis.diesDuckSiteTheme = { read, apply, set, bindAuth };
-  apply("light");
+  globalThis.diesDuckSiteTheme = { read, apply, set };
+  apply(read());
 })();

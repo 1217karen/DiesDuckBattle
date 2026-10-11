@@ -9,7 +9,7 @@ test("ordinary pages opt into the shared shell before their own CSS and retain e
     assert.match(html, new RegExp('<main data-page-content class="' + shell + ' page-shell'));
     assert.ok(html.indexOf('css/common-theme.css') < html.indexOf('css/common-page.css'));
     assert.ok(html.indexOf('css/common-page.css') < html.indexOf('css/' + page + '.css'));
-    for (const script of ["siteTheme.js","siteThemeAuth.js","pageEntry.js","commonMenu.js"]) assert.ok(html.includes('js/' + script), page + ' ' + script);
+    for (const script of ["siteTheme.js","pageEntry.js","commonMenu.js"]) assert.ok(html.includes('js/' + script), page + ' ' + script);
     assert.match(html, /class="[^"]*page-eyebrow/);
     assert.match(html, /class="[^"]*page-title/);
   }
