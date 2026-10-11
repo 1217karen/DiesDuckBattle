@@ -72,8 +72,8 @@ test("AP操作は合法な2方向のみ、1=3pt/2=5pt",()=>{
   }
 });
 
-test("指定/ランダムstatus付与は両target・両groupで1/2/3stack",()=>{
-  for(const group of ["buff","debuff"]) for(const target of ["self","enemy"]) for(const amount of [1,2,3]) {
+test("指定/ランダムstatus付与は両target・両groupで1/2stack",()=>{
+  for(const group of ["buff","debuff"]) for(const target of ["self","enemy"]) for(const amount of [1,2]) {
     for(const status of [...STATUS_GROUPS[group],`@${group}`]) {
       const id=`grant-${status.startsWith("@")?`random-${group}`:status}-${target}`;
       const r=compile(selection([chosen(id,amount)]));assert.equal(r.ok,true);
@@ -85,7 +85,7 @@ test("指定/ランダムstatus付与は両target・両groupで1/2/3stack",()=>{
 });
 
 test("ランダム解除4方向のpolarityとtrusted repeat、毎回異なるstatusを解除可能",()=>{
-  for(const group of ["buff","debuff"]) for(const target of ["self","enemy"]) for(const amount of [1,2,3]) {
+  for(const group of ["buff","debuff"]) for(const target of ["self","enemy"]) for(const amount of [1,2]) {
     const s=selection([chosen(`remove-random-${group}-${target}`,amount)]);
     const r=compile(migrateSelection("A",s,catalog));assert.equal(r.ok,true);
     assert.deepEqual(r.skill.effect[0],{type:"removeRandomStatusStack",target,group,repeat:amount});

@@ -16,10 +16,10 @@ test("A第1段階: 全効果の数量・価格・還元は指定表だけ（指�
   for (const effect of catalog.effects) {
     let amounts, fixed;
     if (effect.id.startsWith("damage-")) amounts = [[3, 2], [5, 3]];
-    else if (effect.id.startsWith("heal-")) amounts = [[5, 2], [10, 4]];
+    else if (effect.id.startsWith("heal-")) amounts = [[3, 1], [5, 2], [7, 3]];
     else if (effect.id.startsWith("ap-")) amounts = [[1, 3], [2, 5]];
-    else if (effect.id.startsWith("grant-")) amounts = [[1, 1], [2, 2], [3, 3]];
-    else if (effect.id.startsWith("remove-")) amounts = [[1, 1], [2, 2], [3, 3]];
+    else if (effect.id.startsWith("grant-")) amounts = [[1, 1], [2, 2]];
+    else if (effect.id.startsWith("remove-")) amounts = [[1, 1], [2, 2]];
     else if (effect.id.startsWith("next-at-") || effect.id.startsWith("phase-")) amounts = [[2, 1], [3, 2], [5, 3]];
     else if (effect.id === "increase-attacks") amounts = [[1, 4]];
     else if (effect.id === "additional-recoil") amounts = [[2, 1], [4, 2]];
@@ -90,9 +90,9 @@ test("drawbackは100%固定、還元合計にcapなし", () => {
     }
   }
   assert.equal(catalog.maxDrawbackPoints, null);
-  const s = selection(Array.from({ length: 4 }, () => chosen("heal-enemy", 10)));
+  const s = selection(Array.from({ length: 4 }, () => chosen("heal-enemy", 7)));
   const r = calculateASkillResources(build(), s);
-  assert.equal(r.drawbackPoints, 16); assert.equal(r.netCost, -14); assert.equal(r.remaining, 20);
+  assert.equal(r.drawbackPoints, 12); assert.equal(r.netCost, -10); assert.equal(r.remaining, 16);
   // 既存の未使用fieldを設定しても新しいcap制御は存在しない。
   const custom = createASkillCatalog(); custom.maxDrawbackPoints = 1;
   assert.deepEqual(calculateASkillResources(build(), s, { catalog: custom }), r);
@@ -136,3 +136,14 @@ test("Aの候補・頻度・pt・合法性は初期diceだけで決まりDを読
   assert.equal(getATriggerOptions(withD).some(t => t.id === "exact:5"), false);
   assert.equal(compileASkill(withD, selection(s.effects, "exact:5")).ok, false);
 });
+
+ test("removed production quantities stay invalid without mutating saved selections", () => {
+  for (const effect of catalog.effects.filter(e => ["healing", "ailment", "enhancement", "removeStatus"].includes(e.categoryId))) {
+    const amount = effect.categoryId === "healing" ? 10 : 3;
+    const saved = selection([chosen(effect.id, amount)]), before = structuredClone(saved);
+    const result = compileASkill(build(), saved);
+    assert.equal(result.ok, false, effect.id);
+    assert.ok(result.errors.some(e => e.code === "UNKNOWN_AMOUNT_OPTION"), effect.id);
+    assert.deepEqual(saved, before);
+  }
+ });

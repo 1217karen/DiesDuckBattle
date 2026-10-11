@@ -72,11 +72,11 @@ export function createASkillCatalog() {
   // option IDはこのtrusted定義から作り、ユーザーのIDを数値として解釈しない。
   const amounts = {
     damage: [[3, 2], [5, 3]],
-    healing: [[5, 2], [10, 4]],
+    healing: [[3, 1], [5, 2], [7, 3]],
     ap: [[1, 3], [2, 5]],
-    ailment: [[1, 1], [2, 2], [3, 3]],
-    removeStatus: [[1, 1], [2, 2], [3, 3]],
-    enhancement: [[1, 1], [2, 2], [3, 3]],
+    ailment: [[1, 1], [2, 2]],
+    removeStatus: [[1, 1], [2, 2]],
+    enhancement: [[1, 1], [2, 2]],
     nextAttack: [[2, 1], [3, 2], [5, 3]],
     phase: [[2, 1], [3, 2], [5, 3]],
     cancelAttack: [[1, 4]], // increase-attacksだけが数量を持つ。

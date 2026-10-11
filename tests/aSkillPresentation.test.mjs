@@ -20,17 +20,17 @@ for (const [id, expected] of [["exact:2", "出目【2】が出た時、"], ["gte
 }
 
 for (const [id, amount, expected] of [
-  ["heal-self",5,"自分のHPを5回復する"], ["heal-enemy",10,"相手のHPを10回復する（デメリット）"],
+  ["heal-self",5,"自分のHPを5回復する"], ["heal-enemy",7,"相手のHPを7回復する（デメリット）"],
   ["ap-self-increase",1,"自分のAPを1増加する"], ["ap-enemy-decrease",2,"相手のAPを2減少する"],
   ["next-at-self-increase",3,"自分が次に与える通常攻撃のATを3増加する"],
   ["next-at-enemy-decrease",5,"相手が次に与える通常攻撃のATを5減少する"],
   ["damage-enemy",3,"相手に固定3ダメージを与える"],
   ["grant-crack-enemy",2,"相手に亀裂を2付与する"],
   ["grant-random-debuff-enemy",2,"相手にランダムな状態異常を2付与する"],
-  ["grant-random-buff-self",3,"自分にランダムな状態強化を3付与する"],
+  ["grant-random-buff-self",2,"自分にランダムな状態強化を2付与する"],
   ["grant-random-buff-enemy",1,"相手にランダムな状態強化を1付与する（デメリット）"],
   ["remove-random-buff-enemy",2,"相手のランダムな状態強化を2解除する"],
-  ["remove-random-debuff-self",3,"自分のランダムな状態異常を3解除する"],
+  ["remove-random-debuff-self",2,"自分のランダムな状態異常を2解除する"],
   ["remove-random-debuff-enemy",1,"相手のランダムな状態異常を1解除する（デメリット）"],
   ["phase-at-self-increase",2,"自分のATを現在フェイズ中だけ2増加する"],
   ["phase-df-enemy-decrease",3,"相手のDFを現在フェイズ中だけ3減少する"],

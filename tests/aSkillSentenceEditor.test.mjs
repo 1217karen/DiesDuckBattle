@@ -79,9 +79,9 @@ test("dice-only candidates follow exact and skips 1/3/4/5 survive cancel",()=>{
 });
 
 test("parent edits retain legal downstream values only in that leaf; external dice/trigger changes and invalid legacy reads do not repair",()=>{
-  let s={triggerId:"exact:1",effects:[v2("grant-crack-enemy",3),v2("cancel-dice1-ap")]};
+  let s={triggerId:"exact:1",effects:[v2("grant-crack-enemy",2),v2("cancel-dice1-ap")]};
   const old=structuredClone(s);
-  s=edit(s,0,"targetId","self");assert.equal(s.effects[0].statusId,"crack");assert.equal(s.effects[0].options.amount,"amount-3");
+  s=edit(s,0,"targetId","self");assert.equal(s.effects[0].statusId,"crack");assert.equal(s.effects[0].options.amount,"amount-2");
   assert.deepEqual(s.effects[1],old.effects[1]);
   s=edit(s,0,"effectId","heal");assert.equal(s.effects[0].statusId,undefined);assert.equal(s.effects[0].options.amount,"");
   const invalid={...old,triggerId:"all"};const copy=structuredClone(invalid);
@@ -116,9 +116,9 @@ test("trigger edits retain exact variant identity without changing compiler or n
   const s=start();assert.equal(changeATrigger(s,"exact:0",duck,catalog),s);
 });
 
-test("HP target edits preserve amount10; status target/status edits preserve legal amount and unrelated leaf",()=>{
- const other=v2("cancel-dice1-ap"),s={triggerId:"exact:1",effects:[v2("heal-self",10),other]},before=structuredClone(s);
- const changed=edit(s,0,"targetId","enemy");assert.deepEqual(changed.effects[0],v2("heal-enemy",10));assert.deepEqual(changed.effects[1],other);assert.deepEqual(s,before);
+test("HP target edits preserve amount7; status target/status edits preserve legal amount and unrelated leaf",()=>{
+ const other=v2("cancel-dice1-ap"),s={triggerId:"exact:1",effects:[v2("heal-self",7),other]},before=structuredClone(s);
+ const changed=edit(s,0,"targetId","enemy");assert.deepEqual(changed.effects[0],v2("heal-enemy",7));assert.deepEqual(changed.effects[1],other);assert.deepEqual(s,before);
  const grant={triggerId:"exact:1",effects:[v2("grant-crack-self",2),other]};
  const enemy=edit(grant,0,"targetId","enemy");assert.deepEqual(enemy.effects[0],v2("grant-crack-enemy",2));
  const status=edit(enemy,0,"statusId","focus");assert.equal(status.effects[0].options.amount,"amount-2");assert.equal(status.effects[0].targetId,"enemy");assert.deepEqual(status.effects[1],other);

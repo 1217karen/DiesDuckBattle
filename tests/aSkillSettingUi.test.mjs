@@ -163,7 +163,7 @@ test("A sentence: effect first, only variable clauses are selects, no duplicate 
   assert.equal(p.get("a-effect-0-options.amount").children[0].textContent,"効果量");
   p.choose("a-effect-0-options.amount","amount-3");assert.equal(sentenceText(p.get("a-sentence-0")),"相手に固定3ダメージを与える");
   p.choose("a-effect-0","heal");assert.equal(p.get("a-effect-0-targetId").value,"");assert.equal(p.get("a-effect-0-options.amount").value,"");assert.deepEqual(previews(),[]);
-  p.choose("a-effect-0-targetId","self");p.choose("a-effect-0-options.amount","amount-10");assert.equal(sentenceText(p.get("a-sentence-0")),"自分のHPを10回復する");
+  p.choose("a-effect-0-targetId","self");p.choose("a-effect-0-options.amount","amount-7");assert.equal(sentenceText(p.get("a-sentence-0")),"自分のHPを7回復する");
   p.choose("a-effect-0","grant-status");assert.equal(p.get("a-effect-0-targetId").value,"");assert.equal(p.get("a-effect-0-statusId").children[0].textContent,"状態種別");
   p.choose("a-effect-0-targetId","enemy");p.choose("a-effect-0-statusId","crack");p.choose("a-effect-0-options.amount","amount-2");
   assert.equal(sentenceText(p.get("a-sentence-0")),"相手に亀裂を2付与する");
@@ -242,9 +242,9 @@ test("A face 0..6/all and comparison controls; natural formal all and cost wordi
 });
 
 test("A UI keeps heal/status amounts on parent changes and never offers a direction select",async()=>{
- const b=initial({triggerId:"exact:1",effects:[{effectId:"heal",targetId:"self",options:{amount:"amount-10"}}]}),before=structuredClone(b),p=await page(b);
+ const b=initial({triggerId:"exact:1",effects:[{effectId:"heal",targetId:"self",options:{amount:"amount-7"}}]}),before=structuredClone(b),p=await page(b);
  assert.deepEqual(p.save(),before);p.choose("a-effect-0-targetId","enemy");
- assert.equal(sentenceText(p.get("a-sentence-0")),"相手のHPを10回復する（デメリット）");
+ assert.equal(sentenceText(p.get("a-sentence-0")),"相手のHPを7回復する（デメリット）");
  p.choose("a-effect-0","grant-status");p.choose("a-effect-0-targetId","self");p.choose("a-effect-0-statusId","crack");p.choose("a-effect-0-options.amount","amount-2");
  p.choose("a-effect-0-targetId","enemy");assert.equal(sentenceText(p.get("a-sentence-0")),"相手に亀裂を2付与する");
  for(const effect of ["change-ap","change-next-at"]) {
@@ -381,4 +381,31 @@ test("A cancel keeps label/select paired before hint inside the second condition
  assert.equal(row.children[1].className,"description");assert.equal(input.attributes["aria-describedby"],"a-cancel-hint");
  assert.equal(input.attributes["aria-label"],"通常攻撃キャンセル");
  assert.equal(card.children.length,2);assert.equal(p.get("a-cancel-price").parent,card.children[1].children[0]);
+});
+
+test("A revised amounts: selectable quantities, both prices, and saved removed amounts require reselection", async()=>{
+ for (const targetId of ["self","enemy"]) {
+  const p=await page(initial({triggerId:"exact:1",effects:[{effectId:"heal",targetId,options:{amount:"amount-10"}}]}));
+  const input=p.get("a-effect-0-options.amount");
+  assert.equal(input.value,"amount-10");
+  assert.equal(input.children.find(o=>o.value==="amount-10").disabled,true);
+  assert.deepEqual(input.children.filter(o=>o.value&&!o.disabled).map(o=>o.value),["amount-3","amount-5","amount-7"]);
+  for(const [amount,pt] of [[3,1],[5,2],[7,3]]) {
+   p.choose("a-effect-0-options.amount","amount-"+amount);
+   assert.equal(p.get("a-effect-0-price").textContent,(targetId==="self"?"消費 ":"獲得 ")+pt+"pt");
+  }
+ }
+ for(const effectId of ["grant-status","remove-random-status"]) for(const statusId of (effectId==="grant-status"?["crack","focus","@buff","@debuff"]:["@buff","@debuff"])) for(const targetId of ["self","enemy"]) {
+  const leaf={effectId,targetId,statusId,options:{amount:"amount-3"}};
+  const p=await page(initial({triggerId:"exact:1",effects:[leaf]}));
+  const input=p.get("a-effect-0-options.amount");
+  assert.equal(input.value,"amount-3");assert.equal(input.children.find(o=>o.value==="amount-3").disabled,true);
+  assert.deepEqual(input.children.filter(o=>o.value&&!o.disabled).map(o=>o.value),["amount-1","amount-2"]);
+  for(const amount of [1,2]) {
+   p.choose("a-effect-0-options.amount","amount-"+amount);
+   const buff=["focus","@buff"].includes(statusId);
+   const benefit=effectId==="grant-status"?buff===(targetId==="self"):buff===(targetId==="enemy");
+   assert.equal(p.get("a-effect-0-price").textContent,(benefit?"消費 ":"獲得 ")+amount+"pt");
+  }
+ }
 });

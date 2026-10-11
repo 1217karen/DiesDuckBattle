@@ -236,7 +236,7 @@ for(const invalid of [false,true]) test("unfinished/invalid skill selections sup
  assert.deepEqual(p.controller.snapshot().draft,data);
 });
 test("A over-budget preview matches CHARACTER presentation",async()=>{
- const data=initial();data.build.ducks[0].aSelection={triggerId:"all",effects:[{effectId:"heal",targetId:"self",options:{amount:"amount-10"}}]};
+ const data=initial();data.build.ducks[0].aSelection={triggerId:"all",effects:[{effectId:"heal",targetId:"self",options:{amount:"amount-7"}}]};
  const p=await page(data);assert.equal(p.get("a-completed-sentence").textContent,presentASkill(data.build.ducks[0],data.build.ducks[0].aSelection).text);
 });
 test("B keeps its completed sentence with the shared appearance",async()=>{

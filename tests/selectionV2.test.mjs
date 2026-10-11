@@ -120,7 +120,7 @@ test("unfinished axes do not produce a guessed polarity/cost violation",async()=
   let r=inspectBuildForSave(b); assert.equal(r.canSave,true,JSON.stringify(r));assert.equal(r.complete,false);
   assert.equal(calculateASkillResources(b.ducks[0],b.ducks[0].aSelection).remaining,null);
   b.ducks[0].dice=[1,1,2,2,3,4];
-  b.ducks[0].aSelection={...a({effectId:"heal",options:{amount:"amount-10"}}),triggerId:"exact:1"};
+  b.ducks[0].aSelection={...a({effectId:"heal",options:{amount:"amount-7"}}),triggerId:"exact:1"};
   r=inspectBuildForSave(b);assert.equal(r.canSave,true,JSON.stringify(r));
   b.ducks[0].aSelection.effects[0].targetId="self";
   assert.equal(inspectBuildForSave(b).canSave,false);
