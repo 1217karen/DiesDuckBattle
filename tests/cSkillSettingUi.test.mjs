@@ -56,7 +56,7 @@ test("C explicit edits: singleton amount becomes fixed, multiple targets/status/
   assert.equal(p.get(control+"-targetId").tagName,"select");assert.equal(p.get(control+"-targetId").value,"");
   assert.equal(p.get(control+"-statusId").tagName,"select");assert.equal(p.get(control+"-statusId").value,"");
   p.choose(control+"-targetId","enemy");p.choose(control+"-statusId","crack");
-  assert.equal(p.get("c-metrics").textContent,`必要AP：最低AP5＋0＝${calculateCSkillResources(selection([grant])).requiredAP}`);
+  assert.equal(p.get("c-metrics").textContent,`必要AP：最低AP5＋1＝${calculateCSkillResources(selection([grant])).requiredAP}`);
   const saved=p.save();assert.deepEqual(saved.ducks[0].cSelection,selection([grant]));assert.equal(compileCSkill(saved.ducks[0].cSelection).ok,true);
   p=await page(saved);assert.equal(p.get(control+"-options.amount").textContent,"3");
   p.choose(control,"damage");assert.equal(p.get(control+"-options.amount").tagName,"select");assert.equal(p.get(control+"-options.amount").value,"");
@@ -220,12 +220,12 @@ test("C effect metadata uses branch-local resource prices and retains maximum-br
  const d=(n,target="enemy")=>({effectId:"damage",targetId:target,options:{amount:`damageAmount-${n}`}});
  const s={mode:"normal",structure:{kind:"random",branches:[{effects:[d(60),d(70)]},{effects:[d(80),d(60,"self")]}]}};
  const b=initial(s),before=structuredClone(b),p=await page(b),r=calculateCSkillResources(s);
- for(const [branch,index,cost,slot] of [[0,0,"+1","0"],[0,1,"+2","+1"],[1,0,"+3","0"],[1,1,"-1","0"]]) {
+ for(const [branch,index,cost,slot] of [[0,0,"+2","0"],[0,1,"+4","+1"],[1,0,"+6","0"],[1,1,"-2","0"]]) {
   const id=`c-effect-${branch}-${index}`;
   assert.equal(p.get(id+"-price").textContent,`AP ${cost}`);assert.equal(p.get(id+"-slot-price").textContent,`枠AP ${slot}`);
   const meta=p.get(id+"-price").parent;assert.equal(meta.className,"effect-meta");assert.equal(meta.parent.children[1].className,"effect-editor c-effect-controls");
  }
- assert.equal(r.selectedBranchPath,"structure.branches.0");assert.equal(p.get("c-metrics").textContent,`必要AP：最低AP5＋1＋3＝${r.requiredAP}`);
+ assert.equal(r.selectedBranchPath,"structure.branches.0");assert.equal(p.get("c-metrics").textContent,`必要AP：最低AP5＋2＋5＝${r.requiredAP}`);
  assert.deepEqual(p.save().ducks[0].cSelection,s);assert.deepEqual(b,before);
 });
 test("C incomplete and dependent slot prices are unknown without contaminating another branch",async()=>{
@@ -258,4 +258,38 @@ test("C signed amount colors and two-line footer preserve AP resources",async()=
  assert.deepEqual(calculateCSkillResources(p.save().ducks[0].cSelection),before);
  const incomplete=await page(initial(selection([{effectId:"damage",targetId:"enemy",options:{}}])));
  assert.equal(incomplete.get("c-effect-flat-0-price").children[0].textContent,"—");assert.ok(!incomplete.get("c-effect-flat-0-price").children[0].className);
+});
+
+test("C revised damage choices and stale saved quantities require explicit reselection",async()=>{
+ for(const amount of [90,100]) {
+  const b=initial(selection([{effectId:"damage",targetId:"enemy",options:{amount:`damageAmount-${amount}`}}])),before=structuredClone(b);
+  const p=await page(b),input=p.get(control+"-options.amount");
+  assert.equal(input.value,`damageAmount-${amount}`);
+  assert.equal(input.children.find(o=>o.value===input.value).disabled,true);
+  assert.deepEqual(input.children.filter(o=>o.value&&!o.disabled).map(o=>o.value),[50,55,60,65,70,75,80].map(n=>`damageAmount-${n}`));
+  assert.equal(p.get("c-metrics").textContent,"必要AP：—");assert.deepEqual(b,before);
+  p.choose(control+"-options.amount","damageAmount-80");
+  assert.equal(p.get(control+"-price").textContent,"AP +6");
+  assert.match(p.get("c-metrics").textContent,/＝11$/);
+  assert.equal(compileCSkill(p.save().ducks[0].cSelection).skill.costAP,11);
+ }
+});
+
+test("C grants and optionless clears display both signed AP prices",async()=>{
+ for(const effectId of ["grant-status","remove-random-status"]) for(const targetId of ["self","enemy"]) for(const statusId of (effectId==="grant-status"?["crack","focus","random-debuff","random-buff"]:["@debuff","@buff"])) {
+  const b=initial(selection([{effectId,targetId,statusId,options:effectId==="grant-status"?{amount:"statusStacks-3"}:{}}]));
+  const p=await page(b),buff=["focus","@buff","random-buff"].includes(statusId);
+  const benefit=effectId==="grant-status"?buff===(targetId==="self"):buff===(targetId==="enemy");
+  assert.equal(p.get(control+"-price").textContent,benefit?"AP +1":"AP -1");
+  assert.match(p.get("c-metrics").textContent,benefit?/＝6$/:/＝5$/);
+ }
+});
+
+test("C AT/DF amount 1 is selectable on both public targets",async()=>{
+ for(const stat of ["AT","DF"]) for(const targetId of ["self","enemy"]) {
+  const p=await page(initial(selection([{effectId:`change-${stat.toLowerCase()}`,targetId,options:{direction:targetId==="self"?"increase":"decrease",amount:`turn${stat}Amount-3`,duration:"turnCount-2"}}])));
+  p.choose(control+"-options.amount",`turn${stat}Amount-1`);
+  assert.equal(p.get(control+"-price").textContent,"AP 0");
+  assert.equal(compileCSkill(p.save().ducks[0].cSelection).skill.effect[0].amount,targetId==="self"?1:-1);
+ }
 });

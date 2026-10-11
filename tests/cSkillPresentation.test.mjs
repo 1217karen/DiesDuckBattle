@@ -34,10 +34,10 @@ const cases = [
   ["remove-random-buff-self", {}, "自分のランダムな状態強化を3解除する（デメリット）"],
   ["timed-hit-debuff-enemy", { status: "crack" }, "3ターンの間、通常攻撃時に相手に亀裂を1付与するオーラを纏う"],
   ["timed-hit-buff-self", { status: "focus" }, "3ターンの間、通常攻撃時に自分に集中を1付与するオーラを纏う"],
-  ["turn-at-self-up", {}, "2ターンの間、自分のATを2増加する"],
-  ["turn-at-enemy-down", {}, "2ターンの間、相手のATを2減少する"],
-  ["turn-df-self-up", {}, "2ターンの間、自分のDFを2増加する"],
-  ["turn-df-enemy-down", {}, "2ターンの間、相手のDFを2減少する"],
+  ["turn-at-self-up", {}, "2ターンの間、自分のATを1増加する"],
+  ["turn-at-enemy-down", {}, "2ターンの間、相手のATを1減少する"],
+  ["turn-df-self-up", {}, "2ターンの間、自分のDFを1増加する"],
+  ["turn-df-enemy-down", {}, "2ターンの間、相手のDFを1減少する"],
   ["revive-self", { maxHpPct: .1 }, "自分の最大HPの10％で復活する（2回目以降は確率発動）"],
 ];
 for (const [id, values, text] of cases) test(`formal C: ${id}/${JSON.stringify(values)}`, () => {
@@ -53,7 +53,7 @@ for (const [id, values, text] of cases) test(`formal C: ${id}/${JSON.stringify(v
   }
 });
 for (const chance of ["100", "70", "50", "25"]) test(`damage chance ${chance} and guarantee`, () => {
-  for (const amount of [50, 60, 70, 80, 90, 100]) {
+  for (const amount of [50, 55, 60, 65, 70, 75, 80]) {
     const s = flat([leaf("damage-enemy", { amount }, chance)]), p = presentCSkill(s);
     const failure = Math.floor(amount * C_HP_FAILURE_MULTIPLIER);
     const text = chance === "100" ? `相手に固定${amount}ダメージを与える`

@@ -1,6 +1,6 @@
 // statsUtil.js
 export const HP_FORMULA = {
-  base: 100,
+  base: 150,
   AT: 25,
   DF: 30,
   SP: -10,

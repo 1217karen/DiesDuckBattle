@@ -6,12 +6,12 @@ import { STATUS_GROUPS } from "./statusGroups.js";
 // balance v0。数値・価格の正式な設定元。
 export function createCSkillCatalog() {
   const tables = {
-    damageAmount: [[50,0],[60,1],[70,2],[80,3],[90,4],[100,5]],
-    healAmount: [[30,0],[40,1],[50,2]], currentHpPct: [[.25,0],[.5,5],[.75,10],[1,15]],
-    statusStacks: [[3,0]], turnATAmount: [[2,0],[3,1],[4,2]], turnDFAmount: [[2,0],[3,1],[4,2]],
+    damageAmount: [[50,0],[55,1],[60,2],[65,3],[70,4],[75,5],[80,6]],
+    healAmount: [[30,0],[40,1],[50,2]], currentHpPct: [[.25,0],[.5,5],[.75,10],[1,20]],
+    statusStacks: [[3,1]], turnATAmount: [[1,0],[2,1],[3,2],[4,3]], turnDFAmount: [[1,0],[2,1],[3,2],[4,3]],
     turnCount: [[2,0],[3,1],[4,2]], timedStacks: [[1,0]], timedTurns: [[3,0],[4,1],[5,2]],
     revivePct: [[.01,0],[.1,2],[.25,4]], hpThreshold: [[.25,0],[.5,0],[.75,0]],
-    statusMultiplier: [[10,0],[15,1],[20,2]], stepBaseAmount: [[30,0]], stepEveryTurns: [[5,1],[10,0]], stepAmount: [[5,0],[10,2]],
+    statusMultiplier: [[10,0],[15,2],[20,4]], stepBaseAmount: [[30,0]], stepEveryTurns: [[5,1],[10,0]], stepAmount: [[5,0],[10,2]],
   };
   const optionSets = Object.fromEntries(Object.entries(tables).map(([key, rows]) => [key,
     rows.map(([value, apDelta]) => ({ id: key + "-" + value, value, apDelta,
@@ -27,11 +27,12 @@ export function createCSkillCatalog() {
     const effect = { id, category, label, modes, polarity, optionAxes: { ...axes }, mirrorId: null, semantics };
     effects.push(effect); return effect;
   };
-  const pair = (category, axes, benefit, drawback) => {
+  const pair = (category, axes, benefit, drawback, apDelta = 0) => {
     const b = add(benefit.id, category, benefit.label, "benefit", axes, benefit.semantics);
     const d = add(drawback.id, category, drawback.label, "drawback", axes, drawback.semantics);
     b.chanceEnabled = benefit.chanceEnabled === true;
     b.mirrorId = d.id; d.mirrorId = b.id;
+    b.apDelta = d.apDelta = apDelta;
   };
   pair("damage", { amount: "damageAmount" },
     { id: "damage-enemy", chanceEnabled: true, label: "相手に固定ダメージ", semantics: { type: "fixedDamage", target: "enemy", amountAxis: "amount" } },
@@ -58,7 +59,7 @@ export function createCSkillCatalog() {
       { id: `remove-random-${group}-${drawbackTarget}`, label: `${drawbackTarget}の${group}をランダムに3解除`,
         semantics: { type: "removeRandomStatusStack", target: drawbackTarget, group, repeat: 3 } },
       { id: `remove-random-${group}-${benefitTarget}`, label: `${benefitTarget}の${group}をランダムに3解除`,
-        semantics: { type: "removeRandomStatusStack", target: benefitTarget, group, repeat: 3 } });
+        semantics: { type: "removeRandomStatusStack", target: benefitTarget, group, repeat: 3 } }, 1);
     add(`timed-hit-${group}-${benefitTarget}`, "timedHit", `通常攻撃命中後${benefitTarget}に${group}`, "benefit",
       { status: `timed-${group}`, amount: "timedStacks", duration: "timedTurns" },
       { type: "addTimedHitRule", target: "self", statusTarget: benefitTarget, group,

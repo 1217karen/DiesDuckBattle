@@ -144,25 +144,24 @@ knownOptionDelta、optionDelta、rawAP、requiredAP、complete、errors、unreso
 
 | option set | 候補 → option AP |
 | --- | --- |
-| damageAmount | 50/60/70/80/90/100 → 0/1/2/3/4/5 |
+| damageAmount | 50/55/60/65/70/75/80 → 0/1/2/3/4/5/6 |
 | healAmount | 30/40/50 → 0/1/2 |
-| currentHpPct | 25/50/75/100% → 0/5/10/15 |
-| statusStacks | 3 → 0 |
+| currentHpPct | 25/50/75/100% → 0/5/10/20 |
+| statusStacks | 3 → 1 |
 | 指定/random buff・debuff | 全種類0 |
-| 単体status全stack解除 | 全種類0 |
-| buffまたはdebuffの1group解除 | 2 |
-| turnATAmount / turnDFAmount | 2/3/4 → 0/1/2 |
+| ランダム状態解除 | 3stack固定、効果自体の追加AP 1（数量optionなし） |
+| turnATAmount / turnDFAmount | 1/2/3/4 → 0/1/2/3 |
 | turnCount | 2/3/4 → 0/1/2 |
 | timedStacks | 1 → 0 |
 | timedTurns | 3/4/5 → 0/1/2 |
-| statusMultiplier | 10/15/20 → 0/1/2 |
+| statusMultiplier | 10/15/20 → 0/2/4 |
 | stepBaseAmount | 30 → 0 |
 | stepEveryTurns | 5/10 → 1/0 |
 | stepAmount | 5/10 → 0/2 |
 | revivePct | 1/10/25% → 0/2/4 |
 | hpThreshold | 25/50/75% → すべて-1 |
 
-AT/DFはamount+duration、turnStepはbase+every+addのoption価格を合算する。mirror drawbackは対応benefitと共通表の価格を反転する。
+効果自体の`apDelta`（省略時0）とoption価格を合算する。ランダム状態解除はcatalogの効果定義に`apDelta: 1`を持ち、メリット・デメリットで共通。AT/DFはamount+duration、turnStepはbase+every+addを加算する。mirror drawbackは共通価格を反転し、1効果あたり最大5APの減算上限を維持する。
 chanceOptionsは100/70/50/25%、非負のapDiscountは0/1/2/3。割引はそのleaf価格を下限0まで下げるだけで、baseAP・追加枠・分岐・他effectには波及しない。
 
 分岐は通常Cのみ。branchAggregationは正式名称sumで、全branchのleaf価格とbenefit枠を合算する。

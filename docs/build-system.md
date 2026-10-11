@@ -103,3 +103,9 @@ generic DTO/validateBuildへの最終統合は未実装。ユーザーからのc
 
 Node.js 22以降で `node --test tests/*.test.mjs`。
 テスト内の数値・公開IDは検査用fixtureであり、ゲーム仕様の決定ではない。
+
+## 最大HP
+
+`js/statsUtil.js` の `calcMaxHPFromStats` が共通の計算元。
+`MHP = 150 + 25×AT + 30×DF − 10×SP` とし、整数化後に1～999へ制限する。
+能力値の制限やHP回復・復活の処理は変更しない。

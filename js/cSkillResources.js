@@ -44,7 +44,9 @@ function legacycalculateCSkillResources(selection, { catalog = createCSkillCatal
     if (!["benefit", "drawback"].includes(effect.polarity)) throw new TypeError("Invalid C polarity");
     const benefit = effect.polarity === "benefit";
     if (benefit) benefitCount++; else drawbackCount++;
-    let leafPrice = 0, priceComplete = true, apDiscount = 0;
+    // 効果自体の価格もcatalogを正とし、数量価格と同じ割引・還元上限を適用する。
+    const effectPrice = Object.hasOwn(effect, "apDelta") ? effect.apDelta : 0;
+    let leafPrice = price(effectPrice, `${path}.apDelta`), priceComplete = effectPrice != null, apDiscount = 0;
     const options = Object.hasOwn(chosen, "options") ? chosen.options : {};
     if (!record(options)) { error("INVALID_OPTIONS", `${path}.options`); priceComplete = false; }
     else {

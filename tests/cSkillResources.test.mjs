@@ -117,9 +117,9 @@ test("公開候補: AP/割合heal/出目操作/addDice/passiveなし、片方向
   for (const group of ["debuff", "buff"]) assert.deepEqual(catalog.optionSets[`grant-${group}`].map(o => o.id), [...STATUS_GROUPS[group], `random-${group}`]);
   assert.equal(getCEffectOptions("normal").find(e => e.id === "revive-self").selectable, false);
 });
-test("random解除は追加料金なし、timedはstatus/amount/durationの独立軸", () => {
-  assert.equal(calc([chosen("remove-random-debuff-self", {})]).optionDelta, 0);
-  assert.equal(calc([chosen("remove-random-buff-enemy", {})]).optionDelta, 0);
+test("random解除は追加1AP、timedはstatus/amount/durationの独立軸", () => {
+  assert.equal(calc([chosen("remove-random-debuff-self", {})]).optionDelta, 1);
+  assert.equal(calc([chosen("remove-random-buff-enemy", {})]).optionDelta, 1);
   assert.equal(calc([chosen("timed-hit-debuff-enemy", { status: "crack", amount: "one", duration: "two" })]).optionDelta, 4);
 });
 test("凍結DTO/catalog/rulesを変更せず純粋計算、設定値だけでルール変更", () => {

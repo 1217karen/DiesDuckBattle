@@ -13,14 +13,14 @@ function row(id, values = {}, chance) {
     ...(chance ? { chanceOptionId: chance } : {}) };
 }
 const flat = (effects, mode = 'normal') => ({ mode, structure: { kind: 'flat', effects } });
-const random = n => ({ mode: 'normal', structure: { kind: 'random', branches: Array.from({ length: n }, () => ({ effects: [row('damage-enemy', {amount:100})] })) } });
+const random = n => ({ mode: 'normal', structure: { kind: 'random', branches: Array.from({ length: n }, () => ({ effects: [row('damage-enemy', {amount:80})] })) } });
 const hp = value => ({ mode:'normal', structure:{kind:'hpCondition', thresholdOptionId:catalog.optionSets.hpThreshold.find(o=>o.value===value).id,
-  branches:{met:{effects:[row('damage-enemy',{amount:100})]},unmet:{effects:[row('heal-self',{amount:50})]}}}});
+  branches:{met:{effects:[row('damage-enemy',{amount:80})]},unmet:{effects:[row('heal-self',{amount:50})]}}}});
 const tables = {
-  damageAmount:[[50,0],[60,1],[70,2],[80,3],[90,4],[100,5]], healAmount:[[30,0],[40,1],[50,2]],
-  currentHpPct:[[.25,0],[.5,5],[.75,10],[1,15]], statusStacks:[[3,0]],
-  turnATAmount:[[2,0],[3,1],[4,2]],turnDFAmount:[[2,0],[3,1],[4,2]],turnCount:[[2,0],[3,1],[4,2]],
-  timedStacks:[[1,0]],timedTurns:[[3,0],[4,1],[5,2]],statusMultiplier:[[10,0],[15,1],[20,2]],
+  damageAmount:[[50,0],[55,1],[60,2],[65,3],[70,4],[75,5],[80,6]], healAmount:[[30,0],[40,1],[50,2]],
+  currentHpPct:[[.25,0],[.5,5],[.75,10],[1,20]], statusStacks:[[3,1]],
+  turnATAmount:[[1,0],[2,1],[3,2],[4,3]],turnDFAmount:[[1,0],[2,1],[3,2],[4,3]],turnCount:[[2,0],[3,1],[4,2]],
+  timedStacks:[[1,0]],timedTurns:[[3,0],[4,1],[5,2]],statusMultiplier:[[10,0],[15,2],[20,4]],
   stepBaseAmount:[[30,0]],stepEveryTurns:[[5,1],[10,0]],stepAmount:[[5,0],[10,2]],
   revivePct:[[.01,0],[.1,2],[.25,4]],hpThreshold:[[.25,0],[.5,0],[.75,0]],
 };
@@ -28,7 +28,7 @@ for (const [set, expected] of Object.entries(tables)) test('production '+set,()=
   assert.deepEqual(catalog.optionSets[set].map(o=>[o.value,o.apDelta]),expected);
   assert.equal(new Set(catalog.optionSets[set].map(o=>o.id)).size,expected.length);
 });
-test('status種類・random解除は0、全effectがproductionだけでcomplete',()=>{
+test('status種類は0、random解除は1、全effectがproductionだけでcomplete',()=>{
   for(const [key,options] of Object.entries(catalog.optionSets).filter(([key])=>/^(grant|clear|timed)-/.test(key)))
     for(const o of options) assert.equal(o.apDelta,0);
   for(const e of catalog.effects) {
@@ -41,16 +41,16 @@ test('status種類・random解除は0、全effectがproductionだけでcomplete'
   }
 });
 test('production AP: amount+duration、mirror反転、最低5、turnStep全軸',()=>{
-  assert.equal(compileCSkill(flat([row('turn-at-self-up',{amount:3,duration:4})])).skill.costAP,8);
+  assert.equal(compileCSkill(flat([row('turn-at-self-up',{amount:3,duration:4})])).skill.costAP,9);
   assert.equal(compileCSkill(flat([row('turn-step-damage-enemy',{everyTurns:5,stepAmount:10})])).skill.costAP,8);
-  const r=compileCSkill(flat([row('remove-random-buff-self')]));assert.equal(r.resources.optionDelta,0);assert.equal(r.skill.costAP,5);
-  const mirror=compileCSkill(flat([row('damage-self',{amount:100})]));assert.equal(mirror.resources.optionDelta,-5);assert.equal(mirror.skill.costAP,5);
+  const r=compileCSkill(flat([row('remove-random-buff-self')]));assert.equal(r.resources.optionDelta,-1);assert.equal(r.skill.costAP,5);
+  const mirror=compileCSkill(flat([row('damage-self',{amount:80})]));assert.equal(mirror.resources.optionDelta,-5);assert.equal(mirror.skill.costAP,5);
 });
 test('production chance割引はleafだけ、失敗20%維持',()=>{
   assert.deepEqual(catalog.chanceOptions.map(o=>[o.id,o.apDiscount]),[['100',0],['70',1],['50',2],['25',3]]);
   for(const [id,amount] of [['damage-enemy',60]]) for(const [chance,discount] of [['100',0],['70',1],['50',2],['25',3]]) {
-    const r=compileCSkill(flat([row(id,{amount},chance),row('damage-enemy',{amount:100})]));
-    assert.equal(r.skill.costAP,11+Math.max(0,1-discount));
+    const r=compileCSkill(flat([row(id,{amount},chance),row('damage-enemy',{amount:80})]));
+    assert.equal(r.skill.costAP,12+Math.max(0,2-discount));
     assert.equal(r.skill.effect[0].onFail?.amount,chance==='100'?undefined:Math.floor(amount*.2));
     assert.equal(r.resources.effectCount,2);
   }
@@ -60,17 +60,17 @@ test('normal分岐は最大枝、構造とHP割合は無料、special flat-only'
   assert.equal(compileCSkill(flat([row('revive-self')],'special')).ok,true);
   for(const n of [2,3]) {
     const s=random(n),r=compileCSkill(s);assert.equal(r.ok,true);
-    assert.equal(r.resources.optionDelta,5);assert.equal(r.resources.slotCost,0);
-    assert.equal(r.resources.knownStructureDelta,0);assert.equal(r.skill.costAP,10);
+    assert.equal(r.resources.optionDelta,6);assert.equal(r.resources.slotCost,0);
+    assert.equal(r.resources.knownStructureDelta,0);assert.equal(r.skill.costAP,11);
     assert.ok(compileCSkill({...s,mode:'special'}).errors.some(e=>e.code==='SPECIAL_FLAT_ONLY'));
-    s.structure.branches.forEach(b=>b.effects=[row('damage-self',{amount:100})]);
+    s.structure.branches.forEach(b=>b.effects=[row('damage-self',{amount:80})]);
     assert.equal(compileCSkill(s).skill.costAP,5);
   }
   for(const threshold of [.25,.5,.75]) {
-    const s=hp(threshold),r=compileCSkill(s);assert.equal(r.ok,true);assert.equal(r.skill.costAP,10);
+    const s=hp(threshold),r=compileCSkill(s);assert.equal(r.ok,true);assert.equal(r.skill.costAP,11);
     assert.equal(r.resources.knownStructureDelta,0);assert.equal(r.skill.effect[0].when.right,threshold);
     assert.ok(compileCSkill({...s,mode:'special'}).errors.some(e=>e.code==='SPECIAL_FLAT_ONLY'));
-    s.structure.branches.met.effects=[row('damage-self',{amount:100})];assert.equal(compileCSkill(s).skill.costAP,7);
+    s.structure.branches.met.effects=[row('damage-self',{amount:80})];assert.equal(compileCSkill(s).skill.costAP,7);
   }
 });
 test('revive回数別境界、初回乱数なし、各行独立、heal/damageは抽選失敗でも継続',()=>{

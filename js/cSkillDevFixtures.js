@@ -15,6 +15,7 @@ export function createCDevCatalog() {
       label: `仮：${["currentHpPct", "revivePct", "hpThreshold"].includes(key) ? `${value * 100}%` : value}` }));
   }
   for (const options of Object.values(catalog.optionSets)) for (const option of options) option.apDelta = 0;
+  for (const effect of catalog.effects) effect.apDelta = 0;
   // 成功率候補はproductionと共通。割引額0は動作確認用の仮値。
   for (const chance of catalog.chanceOptions) chance.apDiscount = 0;
   return catalog;

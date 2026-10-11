@@ -121,3 +121,9 @@ test("duck preset descriptions use the requested UI copy",()=>{
     "出目2でランダムな状態異常を2付与。Ｃスキルは状態異常と状態数ダメージ、または相手HPの割合攻撃とDF低下の2分岐です。",
   ]);
 });
+
+for(const [id,ap] of [["attack",8],["defense",11],["heal",6],["technical",9]]) test(`${id} preset compiles revised C AP and retains zero A points`,()=>{
+ const p=DUCK_PRESETS.find(p=>p.id===id),c=compileCSkill(p.cSelection);
+ assert.equal(c.ok,true);assert.equal(c.skill.costAP,ap);
+ assert.equal(calculateASkillResources(p,p.aSelection).remaining,0);
+});

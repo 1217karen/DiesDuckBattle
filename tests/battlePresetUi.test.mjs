@@ -281,3 +281,10 @@ test("responsive hint pairs and mobile delete alignment leave desktop and A cond
  for(const meta of [a,c])assert.equal(meta.children.at(-1).textContent,"削除");
  assert.equal(walk(p.get("a-condition-card")).filter(e=>e.tagName==="button").length,0);
 });
+
+for(const [id,ap] of [["attack",8],["defense",11],["heal",6],["technical",9]]) test(`${id} preset displays revised C AP`,async()=>{
+ const data=initial();Object.assign(data.build.ducks[0],duckPresetPatch(id));
+ const p=await page(data);
+ assert.match(p.get("c-metrics").textContent,new RegExp(`＝${ap}$`));
+ assert.ok(presentCSkill(data.build.ducks[0].cSelection).text.startsWith(`〈AP${ap}〉`));
+});
