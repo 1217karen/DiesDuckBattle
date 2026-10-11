@@ -107,7 +107,7 @@ export async function mountOnlineEditor({ sections, allowDuckPresentationDeletio
       document.removeEventListener("visibilitychange", checkScope);
       controller.invalidate("");
     });
-    // A BFCache restore must recheck identity before showing the cached editor.
+    // BFCache restores use the same non-blocking identity check as focus/visibility.
     window.addEventListener("pageshow", event => { if (event.persisted) void controller.checkScope(); });
     await controller.load();
     return controller;

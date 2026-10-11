@@ -21,6 +21,7 @@ const scopeErrors = new Set(["not-signed-in", "no-access", "selection-required",
 /** A full DTO stays in memory only. Page-specific edits never replace the other page's fields. */
 export function createOnlineEditController({ storage, sections, allowDuckPresentationDeletion = false, confirm = () => false, notify = () => {} }) {
   let generation = 0;
+  let scopeCheckInFlight = null;
   // Keep deletion intent across repeated conflicts without owning the entire presentation.
   const deletedDuckPresentationIds = new Set();
   const listeners = new Set();
@@ -48,7 +49,7 @@ export function createOnlineEditController({ storage, sections, allowDuckPresent
   }
   async function run(kind, work) {
     if (state.busy) return { ok: false, status: "busy" };
-    const ticket = generation; state.busy = kind; emit();
+    const ticket = ++generation; state.busy = kind; emit();
     try { return await work(() => ticket === generation); }
     finally { if (ticket === generation) { state.busy = ""; emit(); } }
   }
@@ -57,7 +58,7 @@ export function createOnlineEditController({ storage, sections, allowDuckPresent
   }
   async function ask(message) {
     if (state.busy) return false;
-    const ticket = generation; state.busy = "confirm"; emit();
+    const ticket = ++generation; state.busy = "confirm"; emit();
     try { return !!await confirm(message) && ticket === generation; }
     catch { return false; }
     finally { if (ticket === generation) { state.busy = ""; emit(); } }
@@ -109,16 +110,20 @@ export function createOnlineEditController({ storage, sections, allowDuckPresent
         return result;
       });
     },
-    async checkScope() {
+    checkScope() {
+      if (scopeCheckInFlight) return scopeCheckInFlight;
       if (state.busy || !state.base) return;
-      return run("scope", async current => {
+      const ticket = generation;
+      const baseScope = { authUserId: state.base.authUserId, account: { ...state.base.account } };
+      scopeCheckInFlight = (async () => {
         const result = await safe(() => storage.resolveAccount());
-        if (!current()) return;
-        if (!result.ok) scopeFailure(result);
-        else if (!sameScope(state.base, result)) invalidate();
-        // Only a successful explicit reload/compare resolves a previous failure.
+        if (ticket !== generation || !sameScope(baseScope, state.base)) return;
+        if (!result.ok && scopeErrors.has(result.status)) scopeFailure(result);
+        else if (result.ok && !sameScope(baseScope, result)) invalidate();
+        // Same scope and transient failures leave all editor state untouched.
         return result;
-      });
+      })().finally(() => { scopeCheckInFlight = null; });
+      return scopeCheckInFlight;
     },
     async save() {
       if (!snapshot().canSave) return { ok: false, status: "blocked" };

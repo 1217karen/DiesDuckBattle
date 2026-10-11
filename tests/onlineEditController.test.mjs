@@ -26,7 +26,7 @@ function fixture() {
   };
   const make = (sections = ["build", "publicSettings"]) => createOnlineEditController({ storage, sections,
     confirm: question => { questions.push(question); return accept; }, notify: event => notifications.push(event) });
-  return { make, rows, calls, notifications, questions, error: value => { error = value; }, accept: value => { accept = value; },
+  return { make, storage, rows, calls, notifications, questions, error: value => { error = value; }, accept: value => { accept = value; },
     switch: value => { eno = value; user = `auth-${eno}`; },
     defer() { let resolve; const promise = new Promise(r => { resolve = r; }); pending = { promise, resolve }; return value => { pending = null; resolve(value); }; },
   };
@@ -133,4 +133,55 @@ test("account changes while discard confirmation is open cancel that operation",
   await c.load(); c.edit({ build: c.snapshot().draft.build }); const reload = c.load();
   assert.equal(c.snapshot().busy, "confirm"); c.sessionChanged("auth-3"); accept(true);
   assert.equal((await reload).status, "cancelled"); assert.equal(c.snapshot().draft, null);
+});
+
+test("initial load locks editing; background scope coalesces without emitting or changing dirty state", async () => {
+  const f=fixture(),c=f.make(),finish=f.defer(),loading=c.load();
+  assert.equal(c.snapshot().canEdit,false);finish(f.rows.get('2'));await loading;
+  assert.equal(c.snapshot().canEdit,true);c.edit({build:c.snapshot().draft.build});
+  let resolve,calls=0,emits=0;
+  f.storage.resolveAccount=()=>{calls++;return new Promise(r=>{resolve=r;});};
+  c.subscribe(()=>emits++);const before=c.snapshot(),count=emits;
+  const pending=c.checkScope();assert.equal(c.checkScope(),pending);assert.equal(calls,1);
+  assert.deepEqual(c.snapshot(),before);assert.equal(c.snapshot().canSave,true);
+  // Actual edits remain possible while the request is outstanding.
+  const build=c.snapshot().draft.build;build.ducks.push(createEmptyDuck());assert.equal(c.edit({build}),true);
+  const edited=c.snapshot();resolve(f.rows.get('2'));await pending;
+  assert.deepEqual(c.snapshot(),edited);assert.equal(emits,count+1);
+});
+
+for(const failure of ['load-failed','throw'])test(`background ${failure} retains complete state including a comparison`,async()=>{
+  const f=fixture(),c=f.make();await c.load();c.edit({build:c.snapshot().draft.build});
+  f.storage.resolveAccount=async()=>{if(failure==='throw')throw new Error('network');return onlineFailure(failure);};
+  const before=c.snapshot();let emits=0;c.subscribe(()=>emits++);
+  await c.checkScope();assert.deepEqual(c.snapshot(),before);assert.equal(emits,1);assert.equal(c.snapshot().canSave,true);
+  await c.compare();const comparison=c.snapshot();await c.checkScope();assert.deepEqual(c.snapshot(),comparison);
+});
+
+for(const key of ['authUserId','id','eno'])test(`background scope change in ${key} invalidates old draft`,async()=>{
+  const f=fixture(),c=f.make();await c.load();c.edit({build:c.snapshot().draft.build});
+  const changed=clone(f.rows.get('2'));if(key==='authUserId')changed.authUserId='other';else changed.account[key]='other';
+  f.storage.resolveAccount=async()=>changed;await c.checkScope();assert.equal(c.snapshot().draft,null);assert.equal(c.snapshot().canEdit,false);
+});
+
+for(const status of ['not-signed-in','session-changed'])test(`background ${status} invalidates`,async()=>{
+  const f=fixture(),c=f.make();await c.load();f.error(status);await c.checkScope();assert.equal(c.snapshot().draft,null);
+});
+
+for(const action of ['save','load','compare','invalidate','logout','account'])test(`late scope result cannot change state after ${action}`,async()=>{
+  const f=fixture(),c=f.make();await c.load();c.edit({build:c.snapshot().draft.build});
+  let resolve;f.storage.resolveAccount=()=>new Promise(r=>{resolve=r;});const pending=c.checkScope();
+  if(['save','load','compare'].includes(action))await c[action]();
+  else if(action==='invalidate')c.invalidate();
+  else if(action==='logout')c.sessionChanged(null);
+  else {c.sessionChanged('auth-3');f.switch('3');await c.load();}
+  const newer=c.snapshot();resolve(onlineFailure('no-access'));await pending;assert.deepEqual(c.snapshot(),newer);
+});
+
+test('scope response arriving during save is ignored and save retains normal locking',async()=>{
+  const f=fixture(),c=f.make();await c.load();let resolve;
+  f.storage.resolveAccount=()=>new Promise(r=>{resolve=r;});const scope=c.checkScope();
+  const finish=f.defer(),saving=c.save();assert.equal(c.snapshot().busy,'save');assert.equal(c.snapshot().canEdit,false);
+  resolve(onlineFailure('forbidden'));await scope;assert.equal(c.snapshot().busy,'save');
+  finish(f.rows.get('2'));await saving;assert.equal(c.snapshot().canEdit,true);
 });

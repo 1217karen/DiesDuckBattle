@@ -148,12 +148,12 @@ test("late image callback from prior account cannot block the newly hydrated acc
 });
 test("shared browser adapter wires unload warning, cancellable discard dialog and immediate session invalidation", async () => {
   const nodes = new Map(), events = new Map(), hydrated = [];
-  let watch, guard;
+  let watch, guard, resolveScope, scopeCalls=0;
   const document = { visibilityState: "visible", activeElement: null,
     getElementById(id) { if (!nodes.has(id)) nodes.set(id, this.createElement("div")); return nodes.get(id); },
     createElement(tag) { return { tagName: tag, children: [], handlers: {}, isConnected: true,
       append(...children) { this.children.push(...children); }, replaceChildren(...children) { this.children = children; },
-      setAttribute() {}, addEventListener(event, cb) { this.handlers[event] = cb; }, focus() { document.activeElement = this; },
+      attributes: {}, setAttribute(key,value) { this.attributes[key]=value; }, addEventListener(event, cb) { this.handlers[event] = cb; }, focus() { document.activeElement = this; },
       showModal() { this.open = true; }, close(value = "") { this.open = false; this.returnValue = value; this.handlers.close?.(); }, remove() { this.isConnected = false; },
     }; },
     querySelector() { return null; },
@@ -167,13 +167,22 @@ test("shared browser adapter wires unload warning, cancellable discard dialog an
     window: { addEventListener(event, cb) { events.set(event, cb); }, removeEventListener(event) { events.delete(event); } },
     getSupabaseClient: async () => ({ auth: { onAuthStateChange(cb) { watch = cb; return { data: { subscription: { unsubscribe() {} } } }; } } }),
     getAuthRuntime: async () => ({ beforeLogout(cb) { guard = cb; return () => {}; } }),
-    createOnlinePlayerStorage: () => ({ load: async () => structuredClone(result), resolveAccount: async () => structuredClone(result) }),
+    createOnlinePlayerStorage: () => ({ load: async () => structuredClone(result), resolveAccount: () => {scopeCalls++;return new Promise(r=>{resolveScope=r;});} }),
     hydrate: data => hydrated.push(data),
   };
   const code = (await source("onlineEditor")).replace("export async function", "async function");
   const controller = await vm.runInNewContext(`(async()=>{${code}\nreturn mountOnlineEditor({sections:['build'],hydrate});})()`, context);
   let warned = false; const unload = () => events.get("beforeunload")({ preventDefault() { warned = true; } });
   unload(); assert.equal(warned, false); controller.edit({ build: data.build }); unload(); assert.equal(warned, true);
+  const before=controller.snapshot(),hydrations=hydrated.length;
+  let emissions=0;controller.subscribe(()=>emissions++);
+  const assertUnlocked=()=>{assert.equal(nodes.get('editor').inert,false);assert.equal(nodes.get('editor').attributes['aria-busy'],'false');assert.equal(nodes.get('save').disabled,false);assert.equal(hydrated.length,hydrations);};
+  events.get('focus')();events.get('visibilitychange')();assert.equal(scopeCalls,1);assertUnlocked();
+  resolveScope(structuredClone(result));await controller.checkScope();assertUnlocked();assert.deepEqual(controller.snapshot(),before);assert.equal(emissions,1);
+  events.get('pageshow')({persisted:true});assert.equal(scopeCalls,2);assertUnlocked();
+  resolveScope(structuredClone(result));await controller.checkScope();assertUnlocked();assert.equal(emissions,1);
+  // The dimming rule is driven by inert, which stays false across these events.
+  const css=await readFile(new URL('../css/online-editor.css',import.meta.url),'utf8');assert.match(css,/\[inert\][^{]*\{[^}]*opacity:\s*\.6/);
   const pending = controller.load(), dialog = document.querySelectorAll()[0]; assert.ok(dialog.open);
   assert.equal(document.activeElement.textContent, "キャンセル"); dialog.children.find(child => child.textContent === "キャンセル").handlers.click();
   assert.equal((await pending).status, "cancelled"); assert.equal(controller.snapshot().dirty, true);
