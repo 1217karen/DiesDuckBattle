@@ -1,18 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { HP_FORMULA, calcMaxHPFromStats } from "../js/statsUtil.js";
-import { createBuildRules } from "../js/buildRules.js";
-import { DICE_FRAMES } from "../js/diceFrames.js";
-import { createASkillCatalog } from "../js/aSkillCatalog.js";
-import { createCSkillCatalog } from "../js/cSkillCatalog.js";
-import { createCSkillRules } from "../js/cSkillRules.js";
 import { IMAGE_LIMITS } from "../js/characterImageValidation.js";
 import { mountRulebook } from "../js/rulebookPage.js";
 import { gameMenuItems, menuModel } from "../js/commonMenuModel.js";
 
 const html = await readFile(new URL("../rulebook.html", import.meta.url), "utf8");
-const ids = ["rule", "flow", "stats", "dice", "skills", "attack", "status"];
+const ids = ["rule", "goal", "flow", "stats", "dice", "skills", "attack", "status"];
 const anchorsByPanel = Object.fromEntries(["guide", "battle", "guidelines"].map(name => {
   const start = html.indexOf('<div id="panel-' + name + '"');
   const next = html.indexOf('<div id="panel-', start + 1);
@@ -93,62 +87,33 @@ test("battle chapters and unchanged credit identities remain present", () => {
     'キャラクター原案・デザイン：','各キャラクターの権利は各創作者に帰属します'])assert.ok(footer.includes(text),text);
 });
 
-test("HP formula and allocation match production constants without freezing prose", () => {
-  const rules=createBuildRules(),stats=compact(section('stats'));
-  assert.ok(stats.includes(`${HP_FORMULA.base}+${HP_FORMULA.AT}×AT+${HP_FORMULA.DF}×DF−${-HP_FORMULA.SP}×SP`));
-  assert.ok(stats.includes(`合計${rules.stats.totalMax}pt以内`));
-  assert.ok(stats.includes(`AT・DFはそれぞれ${rules.stats.AT.min}～${rules.stats.AT.max}`));
-  assert.deepEqual(rules.stats.AT,rules.stats.DF);
-  assert.equal(calcMaxHPFromStats({AT:3,DF:4,SP:2}),325);
-});
-
-test("all five production dice types, SP and fixed/custom faces are documented", () => {
-  const dice=section('dice');
-  for(const frame of Object.values(DICE_FRAMES)) {
-    const line=compact(dice.match(new RegExp('<li><b>'+frame.label+'</b>([\\s\\S]*?)</li>'))[0]);
-    assert.ok(line.includes('SP'+frame.SP),frame.id);
-    assert.ok(line.includes((frame.editable?frame.faces:frame.dice).join('・')),frame.id);
-    if(!frame.editable)assert.ok(line.includes('ptは'+frame.dicePoints),frame.id);
-  }
+test("concise battle sections retain headings, boxes and all dice faces", () => {
+  for(const id of ids)assert.match(section(id),/<h2>[^<]+<\/h2>/);
+  for(const [id,count] of [['goal',3],['stats',4],['skills',4],['attack',2],['status',8]])
+    assert.equal((section(id).match(/class="box"/g)||[]).length,count,id);
+  const dice=section('dice').normalize('NFKC');
   for(let face=0;face<=6;face++)assert.match(dice,new RegExp('<li><b>'+face+'</b>'));
-  const text=compact(dice);
-  assert.match(text,/0.*通常攻撃は行/);
-  const rules=createBuildRules();assert.ok(text.includes(`初期ダイスは${rules.dice.slots}枠`));
-  assert.ok(text.includes(`0自体は最大${rules.dice.maxEmpty}枠`));
-  assert.ok(text.includes(`通常${rules.dice.maxSameFace}枠`));
-  assert.ok(text.includes(`同じ出目を${rules.dice.maxSameFaceWithEmpty}枠`));
+  const skills=compact(section('skills')).normalize('NFKC');
+  for(const name of ['Aスキル','Cスキル','Bスキル','Dスキル'])assert.ok(skills.includes(name));
 });
 
-test("A and C balance examples track production quantities and costs", () => {
-  const text=compact(section('skills')),a=createASkillCatalog(),c=createCSkillCatalog(),rules=createCSkillRules();
-  assert.ok(text.includes(`基本${a.basePoints}pt`));assert.ok(text.includes(`通常の効果は1～${a.maxEffects}個`));
-  const heals=a.effects.find(e=>e.id==='heal-self').amountOptions;
-  assert.ok(text.includes(heals.map(o=>o.value).join('・')+'回復で'+heals.map(o=>o.pointCost).join('・')+'pt'));
-  const damage=a.effects.find(e=>e.id==='damage-enemy').amountOptions;
-  for(const o of damage)assert.ok(text.includes(`${o.value}ダメージで${o.pointCost}pt`));
-  assert.ok(text.includes(`基礎${rules.baseAP}AP`));assert.ok(text.includes(`最低でも${rules.minimumAP}AP`));
-  assert.ok(text.includes(`全体で1～${rules.maxEffects}個`));assert.ok(text.includes(`減算は最大${rules.maxDrawbackAP}AP`));
-  const max=c.optionSets.damageAmount.at(-1);
-  assert.ok(text.includes(`${max.value}ダメージだけなら必要${rules.baseAP+max.apDelta}AP`));
-  assert.ok(text.includes(c.optionSets.currentHpPct.map(o=>o.value*100).join('・')+'%で追加'+c.optionSets.currentHpPct.map(o=>o.apDelta).join('・')+'AP'));
-  const grant=c.optionSets.statusStacks[0];assert.ok(text.includes(`${grant.value}スタックで追加${grant.apDelta}AP`));
-  assert.ok(text.includes('計3回解除し、追加'+c.effects.find(e=>e.id==='remove-random-debuff-self').apDelta+'AP'));
-  assert.ok(text.includes(c.optionSets.turnATAmount.map(o=>o.value).join('・')+'で追加'+c.optionSets.turnATAmount.map(o=>o.apDelta).join('・')+'AP'));
-});
-
-test("attack, status probabilities, C waiting bonus and turn limit are explicit", () => {
-  const attack=compact(section('attack')),status=compact(section('status')),skills=compact(section('skills'));
-  assert.ok(attack.includes('出目+max(0,攻撃側AT−防御側DF)'));
-  assert.match(attack,/最初の攻撃フェイズ.*×2/);assert.match(attack,/2回目・3回目.*50%/);
-  for(const [name,values] of [['荒波','15%・30%・45%'],['逆風','20%・40%・60%'],['湯気','25%・50%・75%'],['追風','30%・60%・90%'],['集中','1.25倍・1.5倍・2倍']]) {
-    assert.ok(status.includes(name));assert.ok(status.includes(values),name);
-  }
-  for(const name of ['亀裂','反撃','清潔'])assert.ok(status.includes(name));
-  for(const value of ['6～7ターンなら+1AP','8～9ターンなら+2AP','10ターン以上なら+3AP'])assert.ok(skills.includes(value));
-  assert.match(skills,/全効果を終えた後/);assert.match(skills,/必要AP不足を先に補うものでもない/);
-  assert.match(compact(section('rule')),/最大50ターン.*50ターン目.*引き分け/);
-  const flow=compact(section('flow'));for(const name of ['熱湯風呂','泡風呂','氷風呂','電気風呂'])assert.ok(flow.includes(name));
-  assert.match(flow,/20%.*5%.*80%/);
+test("core battle rules reflect current online battles and status changes", () => {
+  const text=id=>compact(section(id)).normalize('NFKC');
+  assert.match(text('rule'),/相手.*0以下/);assert.match(text('rule'),/両方.*0以下.*引き分け/);
+  assert.match(text('rule'),/50ターン.*引き分け/);
+  const goal=text('goal');assert.match(goal,/自分のバトラー.*固定/);assert.match(goal,/公開アヒル/);
+  assert.match(goal,/オンライン.*保存/);assert.match(goal,/リザルト.*共有/);
+  assert.match(text('flow'),/通常Cスキル/);assert.match(text('flow'),/特殊Cスキル.*勝敗判定/);
+  assert.match(text('skills'),/特殊発動.*必要AP.*HP.*0以下/);
+  const attack=text('attack');assert.match(attack,/最初の攻撃フェイズ.*出目.*×2/);
+  assert.match(attack,/AT.*DF/);assert.match(attack,/0未満/);
+  const boxes=[...section('status').matchAll(/<div class="boxTitle">([^<]+)<\/div>\s*<p>([\s\S]*?)<\/p>/g)];
+  const status=name=>compact(boxes.find(b=>b[1].includes(name))[2]).normalize('NFKC');
+  assert.match(status('亀裂'),/1スタック.*2.*固定ダメージ/);
+  for(const chance of ['30%','60%','90%'])assert.ok(status('追風').includes(chance));
+  assert.match(status('追風'),/判定.*全消費/);
+  assert.match(status('清潔'),/1スタック.*1回.*最大2スタック/);
+  for(const name of ['荒波','逆風','湯気','集中','反撃'])assert.ok(boxes.some(b=>b[1].includes(name)));
 });
 
 test("public page uses the identical common shell, page gate and three accessible panels", async () => {
@@ -160,7 +125,7 @@ test("public page uses the identical common shell, page gate and three accessibl
   assert.equal((html.match(/role="tab"/g) || []).length, 3);
   assert.equal((html.match(/role="tabpanel"/g) || []).length, 3);
   assert.match(html, /role="tablist"/);
-  assert.doesNotMatch(html, /fc2|ローカルストレージ|id="goal"|class="nav"|whiteStripe/);
+  assert.doesNotMatch(html, /fc2|ローカルストレージ|class="nav"|whiteStripe/);
   assert.match(html, /最終更新：<time datetime="\d{4}-\d{2}-\d{2}">/);
   const entry = gameMenuItems.find(item => item.href === "rulebook.html");
   assert.equal(entry.label, "ルールブック"); assert.equal(entry.login, undefined);

@@ -34,3 +34,5 @@ body { margin:0;  }
 }
 
 .rulebook-shell h2, .rulebook-shell .document-section > h3, .rulebook-shell .skillGroupTitle { font-family:var(--font-heading-ja); }
+
+.rulebook-shell #goal .box + .box { margin-top:10px; }
