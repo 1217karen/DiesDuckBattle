@@ -1,12 +1,10 @@
-import { requireLoginPage } from "./authPageGuard.js";
 import { getSupabaseClient } from "./authRuntime.js";
 import { finishPageLoad } from "./pageLoad.js";
 import { createOnlineCharacterListService } from "./onlineCharacterListService.js";
 import { filterCharacters } from "./characterListModel.js";
 import { createCharacterCard } from "./characterListView.js";
-export async function loadCharacterListPage({document=globalThis.document,requireLogin=requireLoginPage,
+export async function loadCharacterListPage({document=globalThis.document,
   getClient=getSupabaseClient,createService=createOnlineCharacterListService,finish=finishPageLoad}={}) {
-  await requireLogin();
   const get=id=>document.getElementById(id),message=get("list-message");
   try {
     const result=await createService(await getClient()).list();

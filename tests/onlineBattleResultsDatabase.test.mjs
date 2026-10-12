@@ -62,13 +62,13 @@ test('battle result database boundary and persistence',{skip:!PGlite&&'Set PGLIT
         {...record,p1:{...record.p1,battlerName:null}}, {...record,p2:{...record.p2,presentation:null}}];
       for(const r of variants)await assert.rejects(save(r));
     });
-    await t.test('direct table/sequence access and anonymous RPCs unavailable',async()=>{
+    await t.test('anonymous public reads allowed; direct tables, sequence and writes unavailable',async()=>{
       for(const sql of ['select * from public.battles',"insert into public.battles default values",'update public.battles set result=\'draw\'','delete from public.battles',"select nextval('public.battles_battle_no_seq')"])
         await assert.rejects(db.exec(sql));
-      await db.exec("reset role;set role anon;");
-      await assert.rejects(load(meta.battleId));await assert.rejects(list());await assert.rejects(save());
+      await db.exec("reset role;set role anon;select set_config('request.jwt.claim.sub','',false);");
+      assert.equal((await load(meta.battleId)).battleId,meta.battleId);assert.equal((await list()).total,1);await assert.rejects(save(),{code:'42501'});
       await db.exec("reset role;set role authenticated;select set_config('request.jwt.claim.sub','',false);");
-      await assert.rejects(load(meta.battleId));await assert.rejects(list());await assert.rejects(save());
+      assert.equal((await load(meta.battleId)).battleId,meta.battleId);assert.equal((await list()).total,1);await assert.rejects(save(),{code:'42501'});
       await db.exec(`select set_config('request.jwt.claim.sub','${user}',false);`);
     });
     await t.test('30 summaries, asc/desc, totals, bounds and no full events',async()=>{
@@ -144,10 +144,10 @@ test('battle result database boundary and persistence',{skip:!PGlite&&'Set PGLIT
       assert.equal((await history(null,'all',true,a)).total,2);
       await favorite(a,ids[0],false);await favorite(a,ids[0],false);
       assert.equal((await history(null,'all',true,a)).total,1);
-      await db.exec("reset role;delete from public.game_account_access where game_account_id='"+b+"';set role anon;");
-      await assert.rejects(favorite(a,ids[1],true));await assert.rejects(history());
+      await db.exec("reset role;delete from public.game_account_access where game_account_id='"+b+"';set role anon;select set_config('request.jwt.claim.sub','',false);");
+      await assert.rejects(favorite(a,ids[1],true));await assert.rejects(history(null,'all',true,a),{code:'42501'});assert.ok((await history(null,'all',false,null)).total>0);
       await db.exec("reset role;set role authenticated;select set_config('request.jwt.claim.sub','',false);");
-      await assert.rejects(favorite(a,ids[1],true));await assert.rejects(history());
+      await assert.rejects(favorite(a,ids[1],true));await assert.rejects(history(null,'all',true,a),{code:'42501'});assert.ok((await history(null,'all',false,null)).total>0);
       await db.exec("select set_config('request.jwt.claim.sub','"+user+"',false);");
     });
     await t.test('snapshots survive presentation changes and participant deletion; result CHECK and RLS enabled',async()=>{

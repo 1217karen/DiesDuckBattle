@@ -90,7 +90,7 @@ export const profileFailure = status => ({ ...onlineFailure(status), message: {
   "unsupported-data": "プロフィールのデータ形式に対応していません。",
 }[status] ?? onlineFailure(status).message });
 
-/** Authenticated read only. Account resolution is intentionally unnecessary. */
+/** Public read only; session changes still invalidate in-flight reads. Account resolution is intentionally unnecessary. */
 export function createOnlineProfileService(client) {
   return {
     async getProfile(inputEno) {
@@ -99,14 +99,13 @@ export function createOnlineProfileService(client) {
       try {
         const before = await client.auth.getSession();
         if (before.error) return profileFailure("load-failed");
-        const identity = before.data?.session?.user?.id;
-        if (!identity) return profileFailure("not-signed-in");
+        const identity = before.data?.session?.user?.id ?? null;
         let response;
         try { response = await client.rpc("get_online_profile", { p_eno: eno }); }
         catch { response = { error: {} }; }
         const after = await client.auth.getSession();
         if (after.error) return profileFailure("load-failed");
-        if (after.data?.session?.user?.id !== identity) return profileFailure("session-changed");
+        if ((after.data?.session?.user?.id ?? null) !== identity) return profileFailure("session-changed");
         if (response.error) return profileFailure(
           ["PGRST202", "42883"].includes(response.error.code) ? "migration-required" :
           ["22023", "22P02"].includes(response.error.code) ? "unsupported-data" :
@@ -115,6 +114,7 @@ export function createOnlineProfileService(client) {
         try {
           const profile = decodeOnlineProfile(response.data);
           requireValue(profile.eno === eno);
+          if (identity === null) profile.isOwner = false;
           return { ok: true, status: "loaded", profile };
         } catch { return profileFailure("unsupported-data"); }
       } catch { return profileFailure("load-failed"); }

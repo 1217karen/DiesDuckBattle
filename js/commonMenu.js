@@ -30,6 +30,16 @@ document.addEventListener("click", event => {
 let displayed = displayCache.read();
 const label = root.querySelector("[data-identity]");
 if (displayed && label.textContent !== displayed.identity) { label.textContent = displayed.identity; label.title = displayed.identity; }
+const publicItems = menuModel({ sessionKnown: false }).items;
+function renderMenu(items) {
+  root.querySelector("nav").replaceChildren(...items.map(item => {
+    const link = document.createElement("a");
+    link.textContent = item.label; link.href = item.href;
+    return link;
+  }));
+}
+// Public navigation is usable even while the authentication SDK is loading.
+renderMenu(publicItems);
 try {
   const controller = await getAuthRuntime();
   let lastMenuKey = "", redirected = false, profileLink, logoutButton;
@@ -57,13 +67,7 @@ try {
     const menuKey = String(visualLoggedIn);
     if (lastMenuKey !== menuKey) {
       lastMenuKey = menuKey;
-      const items = visualModel.items.map(item => {
-        const el = document.createElement(item.href ? "a" : "span");
-        el.textContent = item.label;
-        if (item.href) el.href = item.href; else el.setAttribute("aria-disabled", "true");
-        return el;
-      });
-      root.querySelector("nav").replaceChildren(...items);
+      renderMenu(visualModel.items);
       profileLink = null; logoutButton = null;
       if (visualLoggedIn) {
         profileLink = document.createElement("a");
@@ -100,6 +104,5 @@ try {
   root.querySelector("[data-account-arrow]").hidden = true;
   accountMenu.replaceChildren();
   root.querySelector("[data-identity]").textContent = "ログイン状態を確認できません";
-  const link = document.createElement("a"); link.href = "index.html"; link.textContent = "ホーム";
-  root.querySelector("nav").append(link);
+  renderMenu(publicItems);
 }

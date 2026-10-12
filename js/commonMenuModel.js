@@ -1,11 +1,12 @@
 export const gameMenuItems = Object.freeze([
   { label: "ホーム", href: "index.html" },
-  { label: "キャラクター選択", href: "select.html", login: true },
+  { label: "アヒルバトル", href: "select.html", login: true },
   { label: "戦闘設定", href: "setting.html", login: true },
-  { label: "表示設定", href: "character.html", login: true },
   { label: "バトル履歴", href: "storage.html" },
+  { label: "キャラ設定", href: "character.html", login: true },
   { label: "ルールブック", href: "rulebook.html" },
-  { label: "キャラリスト", href: "character-list.html", login: true },
+  { label: "キャラリスト", href: "character-list.html" },
+  { label: "お知らせ", href: "notice.html" },
 ]);
 export function menuModel(state) {
   const loggedIn = state.sessionKnown && state.signedIn;

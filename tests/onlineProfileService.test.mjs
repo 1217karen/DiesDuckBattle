@@ -69,4 +69,8 @@ test('service normalizes thrown network errors',async()=>{const f=clientFixture(
 for(const user of [null,'different'])for(const throws of [false,true])test(`identity change during RPC (${user}, throw=${throws})`,async()=>{
   const f=clientFixture();f.onRpc(()=>f.user(user));if(throws)f.throw();assert.equal((await f.service.getProfile(1)).status,'session-changed');
 });
-test('signed out caller makes no RPC',async()=>{const f=clientFixture();f.user(null);assert.equal((await f.service.getProfile(1)).status,'not-signed-in');assert.equal(f.calls.length,0);});
+test('guest reads public profile and never becomes owner',async()=>{
+ const f=clientFixture();f.user(null);const profile=profileFixture();profile.isOwner=true;f.response({data:profile});
+ const result=await f.service.getProfile(1);assert.equal(result.ok,true);assert.equal(result.profile.isOwner,false);assert.equal(f.calls.length,1);
+});
+test('guest login during RPC invalidates response',async()=>{const f=clientFixture();f.user(null);f.onRpc(()=>f.user('new'));assert.equal((await f.service.getProfile(1)).status,'session-changed');});

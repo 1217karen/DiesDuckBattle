@@ -14,13 +14,13 @@ test("guest menu hides select/settings/character/logout but preserves public des
   const model = menuModel(base);
   assert.equal(model.identity, "未ログイン");
   assert.equal(model.loggedIn, false);
-  assert.deepEqual(model.items.filter(x => x.href).map(x => x.href), ["index.html", "storage.html", "rulebook.html"]);
+  assert.deepEqual(model.items.filter(x => x.href).map(x => x.href), ["index.html", "storage.html", "rulebook.html", "character-list.html", "notice.html"]);
   assert.equal(model.items.filter(x => !x.href).length, 0);
 });
 test("signed-in menu displays exact DB name and ENo, never HTML markup", () => {
   const m = menuModel({ ...base, signedIn: true, accounts: [{ eno: "77", name: "<b>DBキャラ名</b>" }], enos: ["77"] });
   assert.equal(m.identity, "ENo.77｜<b>DBキャラ名</b>");
-  assert.equal(m.items.filter(x => x.href).length, 7);
+  assert.equal(m.items.filter(x => x.href).length, 8);
 });
 test("missing name, failed profile fetch, unknown session and multiple accounts have explicit states", () => {
   assert.match(menuModel({ ...base, signedIn: true, accounts: [{ eno: "77", name: null }] }).identity, /取得できません/);
@@ -135,4 +135,23 @@ test("menu mount is restricted to requested pages and standalone auth shares the
   for (const file of ["authPage", "indexPage"]) {
     assert.match(await readFile(new URL("../js/" + file + ".js", import.meta.url), "utf8"), /mountAuthView/);
   }
+});
+
+test("menu names/order match index, page titles agree and legal footer stays separate",async()=>{
+ const index=await readFile(new URL('../index.html',import.meta.url),'utf8');
+ const items=menuModel({...base,signedIn:true}).items.map(({label,href})=>[label,href]);
+ assert.deepEqual(items,[["ホーム","index.html"],["アヒルバトル","select.html"],["戦闘設定","setting.html"],
+  ["バトル履歴","storage.html"],["キャラ設定","character.html"],["ルールブック","rulebook.html"],
+  ["キャラリスト","character-list.html"],["お知らせ","notice.html"]]);
+ const indexMenu=index.match(/<nav class="home__menu home__game-menu"[\s\S]*?<\/nav>/)[0];
+ assert.deepEqual([...indexMenu.matchAll(/<a [^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map(m=>[m[2],m[1]]),items.slice(1));
+ for(const [name,file] of items.slice(1)) {
+  const html=await readFile(new URL('../'+file,import.meta.url),'utf8');
+  assert.ok(html.match(/<title>([^<]+)<\/title>/)[1].includes(name),file);
+ }
+ const legal=index.match(/<nav class="home__legal"[\s\S]*?<\/nav>/)[0];
+ assert.deepEqual([...legal.matchAll(/<a href="([^"]+)">([^<]+)<\/a>/g)].map(m=>[m[2],m[1]]),[
+  ["サイトガイドライン","rulebook.html#guidelines"],["利用規約","legal.html#terms"],["プライバシーポリシー","legal.html#privacy"]]);
+ for(const state of [{...base,ready:false,sessionKnown:false},{...base,sessionKnown:false}])
+  assert.deepEqual(menuModel(state).items.map(x=>x.href),['index.html','storage.html','rulebook.html','character-list.html','notice.html']);
 });

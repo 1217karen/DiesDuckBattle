@@ -12,7 +12,7 @@ let PGlite;
 if(process.env.PGLITE_MODULE)({PGlite}=await import(pathToFileURL(process.env.PGLITE_MODULE)));
 const userA='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',userB='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const third='66666666-6666-4666-8666-666666666666',battle='77777777-7777-4777-8777-777777777777';
-test('dedicated authenticated public profile DB boundary',{skip:!PGlite&&'Set PGLITE_MODULE'},async t=>{
+test('dedicated anonymous/authenticated public profile DB boundary',{skip:!PGlite&&'Set PGLITE_MODULE'},async t=>{
   const db=new PGlite();
   try {
     await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;
@@ -102,10 +102,10 @@ test('dedicated authenticated public profile DB boundary',{skip:!PGlite&&'Set PG
       await asUser('cccccccc-cccc-4ccc-8ccc-cccccccccccc');assert.equal((await get()).isOwner,false);
       await asUser(userB);
     });
-    await t.test('unknown ENo returns null; invalid and absent identity are rejected',async()=>{
+    await t.test('unknown ENo returns null; invalid ENo rejected and absent identity is not owner',async()=>{
       assert.equal(await value('select public.get_online_profile(999) data'),null);
       for(const eno of [null,0,-1])await assert.rejects(value('select public.get_online_profile($1) data',[eno]),{code:'22023'});
-      await asUser('');await assert.rejects(get(),{code:'42501'});await asUser(userB);
+      await asUser('');assert.equal((await get()).isOwner,false);await asUser(userB);
     });
     await t.test('registration name-only data returns defaults and no Duck',async()=>{
       const p=decodeOnlineProfile(await value('select public.get_online_profile(1) data'));
@@ -181,15 +181,18 @@ test('dedicated authenticated public profile DB boundary',{skip:!PGlite&&'Set PG
       await asUser(userB);assert.equal((await get()).featuredBattle,null);
       await restore();await asUser(userB);
     });
-    await t.test('RLS remains closed; anon and helper EXECUTE denied; invoker entrypoint and fixed search paths',async()=>{
+    await t.test('RLS remains closed; anonymous public read and helper EXECUTE denied; invoker entrypoint and fixed search paths',async()=>{
       await asUser(userB);assert.equal((await db.query('select * from public.battlers where game_account_id=$1',[a])).rows.length,0);
       await assert.rejects(db.query('select * from public.battle_favorites'),{code:'42501'});
       await assert.rejects(value("select diesduck_private.profile_fields('{}',array['name'],'string') data"),{code:'42501'});
       await db.exec('reset role');
       const procs=(await db.query("select proname,prosecdef,proconfig from pg_proc where proname in ('public_profile','get_online_profile')")).rows;
       for(const p of procs){assert.equal(p.prosecdef,p.proname==='public_profile');assert.ok(p.proconfig.includes('search_path=""'));}
-      await db.exec('set role anon');await assert.rejects(get(),{code:'42501'});
-      await assert.rejects(value('select diesduck_private.public_profile(2) data'),{code:'42501'});
+      await db.exec("set role anon;select set_config('request.jwt.claim.sub','',false)");
+      const guest=decodeOnlineProfile(await get());assert.equal(guest.isOwner,false);
+      assert.doesNotMatch(JSON.stringify(guest),/SECRET/);
+      assert.equal((await value('select diesduck_private.public_profile(2) data')).isOwner,false);
+      await assert.rejects(value("select diesduck_private.profile_fields('{}',array['name'],'string') data"),{code:'42501'});
     });
   } finally {await db.close();}
 });

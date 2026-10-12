@@ -7,7 +7,7 @@ import { menuModel } from "../js/commonMenuModel.js";
 const code = (await readFile(new URL("../js/commonMenu.js", import.meta.url), "utf8")).replace(/^import .*;\r?\n/gm, "");
 const signed = { ready:true, sessionKnown:true, signedIn:true, accountsResolved:true,
   accounts:[{ eno:"2", name:"キャラ名", id:"game-account-uuid" }], enos:["2"], sessionMessage:"" };
-async function screen(cached = null) {
+async function screen(cached = null, sdkFailure = false) {
   const document = { activeElement:null, handlers:{}, addEventListener(type, handler) { this.handlers[type] = handler; } };
   class Element {
     constructor(tag) { this.tagName=tag; this.children=[]; this.handlers={}; this.attributes={}; this.open=false; this.textContent=""; this.isConnected=true; this.replacements=0; }
@@ -27,7 +27,7 @@ async function screen(cached = null) {
   document.getElementById=()=>root; document.createElement=tag=>new Element(tag);
   let render, logoutCalls=0;
   const controller={subscribe(fn){render=fn;}, async logout(){logoutCalls++;}};
-  await vm.runInNewContext(`(async()=>{${code}})()`,{document,location:{replace(){}},menuModel,displayCache:{read:()=>cached},getAuthRuntime:async()=>controller});
+  await vm.runInNewContext(`(async()=>{${code}})()`,{document,location:{replace(){}},menuModel,displayCache:{read:()=>cached},getAuthRuntime:async()=>{if(sdkFailure)throw Error("SDK unavailable");return controller;}});
   const toggle=(details)=>{details.open=true;details.handlers.toggle();};
   return {document,root,left,right,leftTrigger,rightTrigger,nav,accountMenu,identity,render,toggle,logoutCalls:()=>logoutCalls};
 }
@@ -90,4 +90,12 @@ test("black bar protects hamburger width, ellipsis identity and right anchored b
   assert.match(css,/\[data-identity\][^{]*\{[^}]*text-overflow:\s*ellipsis/);
   assert.match(css,/common-menu__account-dropdown\s*\{\s*right:0/);
   assert.doesNotMatch(css,/common-menu__label/);
+});
+
+test("SDK failure preserves all five public destinations and disables owner controls",async()=>{
+ const s=await screen(null,true);
+ assert.deepEqual(s.nav.children.map(n=>[n.textContent,n.href]),[
+  ["ホーム","index.html"],["バトル履歴","storage.html"],["ルールブック","rulebook.html"],
+  ["キャラリスト","character-list.html"],["お知らせ","notice.html"]]);
+ assert.equal(s.accountMenu.children.length,0);assert.equal(s.rightTrigger.attributes['aria-disabled'],'true');
 });

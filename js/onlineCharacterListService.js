@@ -26,11 +26,11 @@ const failure = () => ({ok:false,message:"キャラリストを読み込めま�
 export function createOnlineCharacterListService(client) {
   return { async list() {
     try {
-      const before=await client.auth.getSession(),id=before.data?.session?.user?.id;
-      if (before.error || !id) return failure();
+      const before=await client.auth.getSession(),id=before.data?.session?.user?.id ?? null;
+      if (before.error) return failure();
       const response=await client.rpc("list_online_characters");
       const after=await client.auth.getSession();
-      if(response.error || after.error || after.data?.session?.user?.id!==id) return failure();
+      if(response.error || after.error || (after.data?.session?.user?.id ?? null)!==id) return failure();
       return {ok:true,characters:decodeOnlineCharacters(response.data)};
     } catch { return failure(); }
   }};

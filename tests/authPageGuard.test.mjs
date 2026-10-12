@@ -99,8 +99,8 @@ test("only the explicit protected page entry modules opt in; denied/loading auth
     if (file === "authPageGuard.js" || !file.endsWith(".js")) continue;
     if ((await readFile(new URL("../js/" + file, import.meta.url), "utf8")).includes("authPageGuard.js")) guarded.push(file);
   }
-  assert.deepEqual(guarded.sort(), ["characterListPage.js", "characterPage.js", "profilePage.js", "select.js", "settingPage.js"]);
-  for (const page of ["select", "settingPage", "characterPage", "profilePage", "characterListPage"]) {
+  assert.deepEqual(guarded.sort(), ["characterPage.js", "select.js", "settingPage.js"]);
+  for (const page of ["select", "settingPage", "characterPage"]) {
     const code = (await source(page)).replace(/^import .*;\r?\n/gm, "").replace(/^export /gm, "");
     const env = environment(), r = runtime();
     let touches = 0;
@@ -119,7 +119,7 @@ test("only the explicit protected page entry modules opt in; denied/loading auth
     assert.doesNotMatch(html, /<body class="[^"]*auth-required-pending/);
     assert.match(html, /css\/common-menu.css/);
   }
-  for (const page of ["index", "storage", "result"]) {
+  for (const page of ["index", "storage", "result", "profile", "character-list", "rulebook", "notice", "legal"]) {
     assert.doesNotMatch(await readFile(new URL(`../${page}.html`, import.meta.url), "utf8"), /auth-required-pending|authPageGuard/);
   }
   assert.match(await source("indexPage"), /consumeIndexNotice\(\)/);

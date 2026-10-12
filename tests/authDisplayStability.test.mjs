@@ -149,6 +149,7 @@ for (const cached of [null, signedCache]) test("actual menu retains header/nav/s
   const running = vm.runInNewContext(`(async()=>{${menuCode}})()`, { document: d.document, location: { replace() {} }, menuModel,
     displayCache: { read: () => cached }, getAuthRuntime: () => new Promise(resolve => { resolveRuntime = resolve; }) });
   assert.equal(d.nodes.get("[data-identity]").textContent, cached?.identity ?? "");
+  assert.deepEqual(d.nodes.get("nav").children.map(link => link.href), ["index.html", "storage.html", "rulebook.html", "character-list.html", "notice.html"]);
   resolveRuntime(controller); await running;
   const initial = { sessionKnown: false, ready: false, accounts: [], enos: [], signedIn: false };
   render(initial); assert.equal(d.nodes.get("[data-identity]").textContent, cached?.identity ?? "");
@@ -161,7 +162,7 @@ for (const cached of [null, signedCache]) test("actual menu retains header/nav/s
   assert.equal(d.nodes.get("[data-identity]").textContent, "ENo.12｜Bob");
   assert.equal(d.nodes.get("nav").replacements, replacements);
   assert.deepEqual(d.nodes.get("nav").children, children);
-  if (cached) assert.equal(replacements, 1);
+  if (cached) assert.equal(replacements, 2); // Public links render before SDK/restore completes.
   render({ ...confirmed, signedIn: false, accounts: [] });
   assert.equal(d.nodes.get("[data-identity]").textContent, "未ログイン");
 });

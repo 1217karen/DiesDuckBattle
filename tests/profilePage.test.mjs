@@ -22,21 +22,21 @@ class Element {
 }
 const all = node => [node,...node.children.flatMap(all)];
 const byClass=(node,name)=>all(node).filter(n=>n.className?.split(' ').includes(name));
-async function page({profile=profileFixture(),search='?eno=1',status,throws=false,clientFailure=false}={}) {
+async function page({profile=profileFixture(),search='?eno=1',status,throws=false,clientFailure=false,guest=false}={}) {
   const main=new Element('main'),body=new Element('body'),calls=[];
   const document={body,title:'initial',createElement:t=>new Element(t),createDocumentFragment:()=>new Element('#fragment'),getElementById:id=>{assert.equal(id,'profile');return main;}};
-  const client={auth:{getSession:async()=>({data:{session:{user:{id:'caller'}}}})},
+  const client={auth:{getSession:async()=>({data:{session:guest?null:{user:{id:'caller'}}}})},
     from:()=>{throw Error('No table reads');},rpc:async(name,args)=>{calls.push(['rpc',name,args]);return{data:profile};}};
-  const result=await loadProfilePage({document,location:{search},requireLogin:async()=>calls.push(['login']),getClient:async()=>{calls.push(['client']);if(clientFailure)throw Error('private failure');return client;},
+  const result=await loadProfilePage({document,location:{search},getClient:async()=>{calls.push(['client']);if(clientFailure)throw Error('private failure');return client;},
     createService:c=>status||throws?{getProfile:async eno=>{calls.push(['eno',eno]);if(throws)throw Error('private failure');return profileFailure(status);}}:createOnlineProfileService(c),
     finish:()=>calls.push(['finish'])});
   return {main,document,calls,result};
 }
-test('URL ENo passes service boundary after login; canonical header/title and four theme colors',async()=>{
+test('URL ENo passes service boundary without a login guard; canonical header/title and four theme colors',async()=>{
   const p=profileFixture();p.eno='123';p.isOwner=true;p.battler.name='<img onerror=alert(1)>';
   const {main,document,calls,result}=await page({profile:p,search:'?eno=00123'});
   assert.equal(result.ok,true);assert.equal(result.profile.isOwner,true);
-  assert.deepEqual(calls,[['login'],['client'],['rpc','get_online_profile',{p_eno:'123'}],['finish']]);
+  assert.deepEqual(calls,[['client'],['rpc','get_online_profile',{p_eno:'123'}],['finish']]);
   assert.equal(byClass(main,'profile-header')[0].textContent,`ENo.123 / ${p.battler.name}🎨`);
   assert.equal(document.title,`ENo.123 ${p.battler.name} | DiesDuckBattle`);
   assert.deepEqual(document.body.styles,{'--profile-bg':'#DCEEF3','--profile-panel':'#FFFFFF','--profile-text':'#20282C','--profile-accent':'#4F91B3'});
@@ -203,4 +203,13 @@ test('profile message is omitted when empty; plain text pill precedes visual wit
   assert.equal(pill.className.includes('has-tail'),tail);
   const card=byClass(main,'battler-card')[0];assert.equal(card.children[0],pill);assert.equal(card.children[1].className,'battler-visual');
  }
+});
+
+test('guest renders public profile with no owner editor even if payload claims ownership',async()=>{
+ const profile=profileFixture();profile.isOwner=true;
+ const {main,document,result,calls}=await page({profile,guest:true});
+ assert.equal(result.ok,true);assert.equal(result.profile.isOwner,false);
+ assert.ok(byClass(main,'profile-card').length>0);
+ assert.equal(byClass(main,'profile-theme-trigger').length,0);assert.equal(byClass(document.body,'profile-theme-editor').length,0);
+ assert.deepEqual(calls.map(c=>c[0]),['client','rpc','finish']);
 });

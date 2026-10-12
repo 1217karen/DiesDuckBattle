@@ -21,7 +21,7 @@ test('service uses one RPC, rejects malformed/private responses and identity cha
  let count=0,identity='user',calls=[];const client={auth:{getSession:async()=>({data:{session:{user:{id:identity}}}})},rpc:async name=>{calls.push(name);return{data:[row()]};}};
  assert.equal((await createOnlineCharacterListService(client).list()).ok,true);assert.deepEqual(calls,['list_online_characters']);
  client.rpc=async()=>{identity='changed';return{data:[row()]};};assert.equal((await createOnlineCharacterListService(client).list()).ok,false);
- client.auth.getSession=async()=>({data:{session:null}});client.rpc=()=>{count++;};assert.equal((await createOnlineCharacterListService(client).list()).ok,false);assert.equal(count,0);
+ client.auth.getSession=async()=>({data:{session:null}});client.rpc=async()=>{count++;return{data:[row()]};};assert.equal((await createOnlineCharacterListService(client).list()).ok,true);assert.equal(count,1);
 });
 class El {constructor(tag){this.tagName=tag;this.children=[];this.style={};this.attributes={};this.handlers={};this.value='';}append(...nodes){this.children.push(...nodes);}replaceChildren(...nodes){this.children=nodes;}setAttribute(k,v){this.attributes[k]=v;}addEventListener(k,fn){this.handlers[k]=fn;}set textContent(v){this.text=v;}get textContent(){return(this.text??'')+this.children.map(x=>x.textContent).join('');}}
 const doc=()=>{const nodes=new Map();return{createElement:tag=>new El(tag),getElementById:id=>{if(!nodes.has(id))nodes.set(id,new El('div'));return nodes.get(id);}};};
@@ -33,8 +33,17 @@ test('card exact image dimensions, fallbacks, labels, border-only accent and lin
 });
 test('page fetches once, filters without another RPC, shows no-results and generic error',async()=>{
  const document=doc();let count=0,finished=0;
- await loadCharacterListPage({document,requireLogin:async()=>{},getClient:async()=>({}),createService:()=>({list:async()=>{count++;return{ok:true,characters:[row()]};}}),finish:()=>finished++});
+ await loadCharacterListPage({document,getClient:async()=>({}),createService:()=>({list:async()=>{count++;return{ok:true,characters:[row()]};}}),finish:()=>finished++});
  const name=document.getElementById('name-filter');name.value='missing';name.handlers.input();assert.equal(document.getElementById('character-list').children.length,0);assert.equal(document.getElementById('list-message').textContent,'該当するキャラクターがいません。');
  name.value='abc';name.handlers.input();assert.equal(document.getElementById('character-list').children.length,1);assert.equal(count,1);assert.equal(finished,1);
- await loadCharacterListPage({document:doc(),requireLogin:async()=>{},getClient:async()=>{throw Error('SECRET');},finish:()=>finished++});assert.equal(finished,2);
+ await loadCharacterListPage({document:doc(),getClient:async()=>{throw Error('SECRET');},finish:()=>finished++});assert.equal(finished,2);
+});
+
+test('guest list reaches profile links through real service; login during request is rejected',async()=>{
+ let user=null;
+ const client={auth:{getSession:async()=>({data:{session:user?{user:{id:user}}:null}})},rpc:async()=>({data:[row()]})};
+ const document=doc();await loadCharacterListPage({document,getClient:async()=>client,finish(){}});
+ assert.equal(document.getElementById('character-list').children[0].href,'profile.html?eno=1');
+ client.rpc=async()=>{user='new-user';return{data:[row()]};};
+ assert.equal((await createOnlineCharacterListService(client).list()).ok,false);
 });

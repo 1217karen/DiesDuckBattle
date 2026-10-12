@@ -84,9 +84,23 @@ test('stars wait for RPC, block repeated clicks, preserve failure state and refr
   requests[4].resolve({data:{battleId:'uuid-id',favorite:false}});await tick();respond(requests[5],[],0);await removal;
   assert.equal(elements.get('list').children.length,0);assert.equal(elements.get('next').disabled,true);
 });
-for(const status of ['selection-required','not-signed-in'])test('unresolved account never selects first ENo or enables favorites: '+status,async()=>{
+for(const status of ['selection-required','not-signed-in','no-access'])test('unresolved account never selects first ENo or enables favorites: '+status,async()=>{
   const {requests,elements,loading}=await historyPage({ok:false,status,accounts:[{id:'a',eno:'12'},{id:'b',eno:'13'}]});
+  assert.equal(elements.get('accountNotice').hidden,status==='not-signed-in');
+  if(status==='selection-required')assert.match(elements.get('accountNotice').textContent,/複数のENo/);
   assert.equal(elements.get('eno').value,'');assert.equal(elements.get('favorites').disabled,true);assert.equal(elements.get('outcome').disabled,true);
   assert.equal(requests[0].args.p_game_account_id,null);assert.equal(requests[0].args.p_eno,null);
   respond(requests[0]);await loading;assert.equal(elements.get('list').children[0].children[0].children[0].disabled,true);
+});
+
+test('guest searches ENo/outcome, sorts and pages without favorites or authentication error',async()=>{
+ const {requests,elements,loading}=await historyPage({ok:false,status:'not-signed-in'});
+ respond(requests[0]);await loading;assert.equal(elements.get('error').hidden,true);
+ const star=elements.get('list').children[0].children[0].children[0];await star.listeners.click();assert.equal(requests.length,1);
+ elements.get('eno').value='13';elements.get('eno').listeners.change();
+ assert.equal(requests[1].args.p_eno,'13');assert.equal(elements.get('outcome').disabled,false);respond(requests[1]);await tick();
+ elements.get('outcome').value='win';elements.get('order').value='asc';elements.get('order').listeners.change();
+ assert.equal(requests[2].args.p_outcome,'win');assert.equal(requests[2].args.p_order,'asc');
+ assert.equal(requests[2].args.p_favorites_only,false);assert.equal(requests[2].args.p_game_account_id,null);respond(requests[2]);await tick();
+ elements.get('next').listeners.click();assert.equal(requests[3].args.p_page,2);respond(requests[3]);await tick();
 });

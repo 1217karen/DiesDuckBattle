@@ -26,8 +26,7 @@ test('character list privacy, record atomicity, backfill and ACL in local Postgr
  return value('select public.save_online_battle_result($1,$2,$3,$4,$5::jsonb) data',[p1.battlerId,p1.duckId,p2.battlerId,p2.duckId,JSON.stringify({p1,p2,selectionMode:mode,result,events:[{type:'battleEnd',result:bad?'draw':result}]})]);};
  await asUser(user);for(let i=0;i<3;i++)await save();await save('manual');await save();await save();await save('random','draw');await save();await save('random','P2_win');
  await db.exec('reset role');await db.exec(await readFile(new URL('../supabase/migrations/'+migration,import.meta.url),'utf8'));
- await db.exec(await readFile(new URL('../supabase/migrations/20261007111246_profile_message.sql',import.meta.url),'utf8'));
- await db.exec(await readFile(new URL('../supabase/migrations/20261007135040_duck_skill_quotes.sql',import.meta.url),'utf8'));
+ for(const f of (await readdir(new URL('../supabase/migrations/',import.meta.url))).filter(f=>f.endsWith('.sql')&&f>migration).sort())await db.exec(await readFile(new URL('../supabase/migrations/'+f,import.meta.url),'utf8'));
  const best=async(id=a)=>{await db.exec('reset role');return value('select best_random_win_streak data from public.game_account_records where game_account_id=$1',[id]);};
  const list=async()=>{await asUser(user);return decodeOnlineCharacters(await value('select public.list_online_characters() data'));};
  await t.test('backfill separates manual/draw/loss, defaults zero and includes registration/self/no public Duck',async()=>{
@@ -79,10 +78,13 @@ test('character list privacy, record atomicity, backfill and ACL in local Postgr
  await t.test('first random win records one on an independent account',async()=>{
  await asUser(other);await save('random','P1_win',true);assert.equal(await best(b),1);
  });
- await t.test('anon/no identity/direct table reads and writes denied',async()=>{
+ await t.test('anonymous public reads allowed; direct table reads and writes denied',async()=>{
  await asUser(user);for(const sql of ['select * from public.game_account_records',`update public.game_account_records set best_random_win_streak=999`,`insert into public.game_account_records(game_account_id) values ('${third}')`])await assert.rejects(db.exec(sql),{code:'42501'});
- await db.exec('reset role;set role anon');await assert.rejects(value('select public.list_online_characters() data'),{code:'42501'});
- await asUser('');await assert.rejects(value('select public.list_online_characters() data'),{code:'42501'});
+ await db.exec("reset role;set role anon;select set_config('request.jwt.claim.sub','',false)");
+ const guest=decodeOnlineCharacters(await value('select public.list_online_characters() data'));
+ assert.equal(guest.length,3);assert.equal(guest[0].duck,null);assert.doesNotMatch(JSON.stringify(guest),/SECRET/);
+ await assert.rejects(db.exec('select * from public.game_account_records'),{code:'42501'});
+ await asUser('');assert.deepEqual(decodeOnlineCharacters(await value('select public.list_online_characters() data')),guest);
  await db.exec('reset role');assert.equal(await value("select relrowsecurity data from pg_class where oid='public.game_account_records'::regclass"),true);
  });
  await t.test('record is independent of Duck deletion and cascades with account',async()=>{

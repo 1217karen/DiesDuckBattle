@@ -1,4 +1,3 @@
-import { requireLoginPage } from "./authPageGuard.js";
 import { getSupabaseClient } from "./authRuntime.js";
 import { finishPageLoad } from "./pageLoad.js";
 import { createOnlineProfileService, profileFailure } from "./onlineProfileService.js";
@@ -6,9 +5,8 @@ import { renderProfile } from "./profileView.js";
 import { mountProfileThemeEditor } from "./profileThemeEditor.js";
 
 export async function loadProfilePage({ document = globalThis.document, location = globalThis.location,
-  requireLogin = requireLoginPage, getClient = getSupabaseClient, createService = createOnlineProfileService,
+  getClient = getSupabaseClient, createService = createOnlineProfileService,
   finish = finishPageLoad } = {}) {
-  await requireLogin();
   const main = document.getElementById("profile");
   const error = message => {
     const node = document.createElement("p"); node.className = "profile-error"; node.setAttribute("role", "alert");

@@ -54,7 +54,7 @@ async function initialize() {
     el("eno").value = eno;
   } else {
     el("eno").value = "";
-    el("accountNotice").hidden = false;
+    el("accountNotice").hidden = account.status === "not-signed-in";
     el("accountNotice").textContent = account.status === "selection-required"
       ? "複数のENoがあるため、初期ENoとお気に入りの対象を選択できません。指定ENoで履歴を検索できます。"
       : "アカウントを解決できないため、お気に入りは使用できません。";
