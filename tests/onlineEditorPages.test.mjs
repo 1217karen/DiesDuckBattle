@@ -450,7 +450,7 @@ test('best streak checkbox changes only its profile field and survives save/rehy
  const page=await profileScreen(),before=structuredClone(page.latest());
  const root=page.get('battler-profile');
  assert.equal(root.children[0].tagName,'h3');assert.equal(root.children[0].textContent,'プロフィール');
- assert.deepEqual(root.children.slice(1).map(e=>e.className),['profile-text-editor','profile-message-tail','profile-text-editor','profile-streak-visibility','site-theme-setting']);
+ assert.deepEqual(root.children.slice(1).map(e=>e.className),['profile-text-editor','profile-message-tail','profile-text-editor','profile-streak-visibility']);
  assert.ok(descendants(root.children[3]).includes(aria(root,'プロフィールの文字装飾')));
  const find=()=>aria(page.get('battler-profile'),'キャラリストに最大連勝数を表示する');
  assert.equal(find().checked,true);find().checked=false;find().handlers.change();await page.save();
@@ -459,26 +459,14 @@ test('best streak checkbox changes only its profile field and survives save/rehy
  find().checked=true;find().handlers.change();await page.save();assert.deepEqual(page.saved(),before);
 });
 
-for (const theme of ['light','dark']) test('site theme radio starts at saved '+theme+' and never edits online presentation',async()=>{
+for (const theme of ['light','dark']) test('character editor leaves browser theme '+theme+' and profile colors unchanged',async()=>{
  const page=await characterScreen({siteTheme:theme}),before=structuredClone(page.latest()),edits=page.editCount();
- const radios=()=>page.all().filter(e=>e.tagName==='input'&&e.type==='radio'&&e.name==='site-theme');
- assert.equal(radios().length,2);assert.equal(radios().find(e=>e.value===theme).checked,true);
- const root=page.get('battler-profile');assert.equal(root.children[5].className,'site-theme-setting');
- const next=theme==='light'?'dark':'light',radio=radios().find(e=>e.value===next);
- radio.checked=true;radio.handlers.change();
- assert.equal(page.document.documentElement.dataset.theme,next);
- assert.deepEqual(page.themeWrites,[['diesduck-site-theme',next]]);
- assert.equal(page.editCount(),edits);assert.deepEqual(page.latest(),before);
- assert.deepEqual(page.latest().presentation.battler.profile.theme,before.presentation.battler.profile.theme);
- assert.equal(page.saved(),undefined);
- page.hydrate(before);assert.equal(radios().find(e=>e.value===next).checked,true);
-});
-test('site theme radios still work when localStorage throws',async()=>{
- const page=await characterScreen({storageThrows:true}),before=structuredClone(page.latest()),edits=page.editCount();
- const radio=page.all().find(e=>e.type==='radio'&&e.name==='site-theme'&&e.value==='dark');
- radio.checked=true;assert.doesNotThrow(()=>radio.handlers.change());
- assert.equal(page.document.documentElement.dataset.theme,'dark');
- assert.deepEqual(page.latest(),before);assert.equal(page.editCount(),edits);
+ assert.equal(page.all().some(e=>e.name==='site-theme'||e.className==='site-theme-setting'),false);
+ assert.equal(page.document.documentElement.dataset.theme,theme);
+ assert.deepEqual(page.themeWrites,[]);assert.equal(page.editCount(),edits);
+ assert.deepEqual(page.latest(),before);
+ await page.save();assert.equal(page.saved(),undefined);
+ page.hydrate(before);assert.deepEqual(page.themeWrites,[]);
 });
 
 test('message input and tail use dirty/save validation and preserve sibling data on rehydrate',async()=>{

@@ -5,10 +5,10 @@ import { readFile, readdir } from "node:fs/promises";
 import { createAuthController } from "../js/authController.js";
 
 const code = await readFile(new URL("../js/siteTheme.js", import.meta.url), "utf8");
-function load(value, { readThrows=false, writeThrows=false, missing=false, getterThrows=false }={}) {
+function load(value, { readThrows=false, writeThrows=false, missing=false, getterThrows=false, themed=true }={}) {
   const writes=[], paints=[];
   const dataset=new Proxy({}, {set(target,key,value){if(key==="theme")paints.push(value);target[key]=value;return true;}});
-  const context={document:{documentElement:{dataset}}};
+  const context={document:{querySelector:()=>themed ? {} : null, documentElement:{dataset}}};
   if(getterThrows)Object.defineProperty(context,"localStorage",{get(){throw Error("blocked");}});
   else if(!missing)context.localStorage={
     getItem(key){assert.equal(key,"diesduck-site-theme");if(readThrows)throw Error("blocked");return value;},
@@ -69,8 +69,18 @@ test("real Auth startup, logout and re-login never repaint or overwrite the brow
 });
 
 test("radio CSS overrides generic full-width and minimum-height inputs in its own scope", async () => {
-  const css = await readFile(new URL("../css/character.css", import.meta.url), "utf8");
-  assert.match(css, /\.site-theme-options\s*\{[^}]*display:flex/);
-  assert.match(css, /\.site-theme-options label\s*\{[^}]*flex-direction:row/);
-  assert.match(css, /\.site-theme-options input\[type="radio"\]\s*\{[^}]*width:20px[^}]*height:20px[^}]*min-height:20px/);
+  const css = await readFile(new URL("../css/common-menu.css", import.meta.url), "utf8");
+  assert.match(css, /\.common-menu__theme-options\s*\{[^}]*display:flex/);
+  assert.match(css, /\.common-menu__theme-options label\s*\{[^}]*display:flex/);
+  assert.match(css, /\.common-menu__theme-options input\[type="radio"\]\s*\{[^}]*width:20px[^}]*height:20px[^}]*min-height:20px/);
+});
+
+test("menu module reuses head initialization without repainting; non-themed pages only store preferences",()=>{
+ const themed=load("dark"),api=themed.api;
+ vm.runInNewContext(code,themed.context);assert.equal(themed.context.diesDuckSiteTheme,api);assert.deepEqual(themed.paints,["dark"]);
+ const plain=load("dark",{themed:false});plain.api.set("light");plain.api.set("dark");
+ assert.deepEqual(plain.paints,[]);assert.equal(plain.value(),"dark");assert.equal(load(plain.value()).context.document.documentElement.dataset.theme,"dark");
+});
+test("independent page designs do not opt in to page themes",async()=>{
+ for(const page of ["index.html","select.html","profile.html"]){const html=await readFile(new URL("../"+page,import.meta.url),"utf8");assert.doesNotMatch(html,/css\/common-theme.css|src="js\/siteTheme.js"/);}
 });

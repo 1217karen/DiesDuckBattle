@@ -18,7 +18,7 @@ async function screen(page, { guardFirst = false } = {}) {
     removeAttribute(key) { delete this[key]; }
     addEventListener(event, fn) { this.handlers[event] = fn; }
     replaceChildren(...children) { this.children.forEach(node => { node.isConnected = false; }); this.children = children; }
-    append(node) { this.children.push(node); }
+    append(...nodes) { this.children.push(...nodes); }
     focus() {}
   }
   for (const selector of ["details", "summary", "nav", "[data-identity]", "[data-feedback]", ".common-menu__nav", ".common-menu__account", "[data-account-menu]", "[data-account-arrow]", "account-summary"]) nodes.set(selector, new Element());
@@ -28,7 +28,7 @@ async function screen(page, { guardFirst = false } = {}) {
   const root = new Element();
   root.querySelector = selector => selector === "[data-account-menu] button" ? nodes.get("[data-account-menu]").children.find(node => node.tagName === "button") : nodes.get(selector);
   const document = {
-    getElementById: () => root, createElement: tag => new Element(tag), addEventListener() {},
+    getElementById: () => root, createTextNode: text => ({textContent:text}), createElement: tag => new Element(tag), addEventListener() {},
     body: { classList: { add: value => classes.add(value), remove: value => classes.delete(value) } },
   };
   const location = { replace: url => redirects.push(url) };
@@ -42,7 +42,7 @@ async function screen(page, { guardFirst = false } = {}) {
   const protectedPage = ["select", "setting", "character"].includes(page);
   const guard = () => requireLoginPage({ getRuntime: async () => auth, document, location });
   if (protectedPage && guardFirst) await guard();
-  await vm.runInNewContext(`(async()=>{${menuCode}})()`, { document, location, menuModel, displayCache, getAuthRuntime: async () => auth });
+  await vm.runInNewContext(`(async()=>{${menuCode}})()`, { document, location, menuModel, displayCache, diesDuckSiteTheme: { read:()=>"light", set:value=>value }, getAuthRuntime: async () => auth });
   if (protectedPage && !guardFirst) await guard();
   return { auth, redirects, notifications, classes, state: () => state, calls: () => calls,
     feedback: () => nodes.get("[data-feedback]"),

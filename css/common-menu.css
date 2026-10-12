@@ -41,3 +41,11 @@ body.has-common-menu .home { min-height:calc(100svh - var(--common-menu-height))
 .common-toast[data-kind="success"] { border-color:rgba(120,210,150,.5); background:rgba(28,52,40,.95); }
 .common-toast[data-kind="warning"] { border-color:rgba(243,211,106,.58); background:rgba(60,48,24,.95); }
 .common-toast[data-kind="error"] { border-color:rgba(255,130,130,.55); background:rgba(72,28,36,.95); }
+
+/* Browser preference controls stay independent of account navigation. */
+.common-menu__links { display:grid; gap:4px; }
+.common-menu .common-menu__theme { min-width:0; margin:12px 0 0; padding:12px 0 0; border:0; border-top:1px solid #ffffff40; color:#eee; }
+.common-menu__theme legend { float:left; width:100%; padding:0; margin:0 0 8px; font:inherit; color:#eee; }
+.common-menu__theme-options { clear:both; display:flex; gap:8px; }
+.common-menu__theme-options label { display:flex; flex:1; min-width:0; align-items:center; gap:8px; margin:0; padding:10px 8px; border:1px solid #ffffff40; border-radius:6px; background:#ffffff08; color:#eee; font:inherit; cursor:pointer; }
+.common-menu__theme-options input[type="radio"] { flex:0 0 20px; width:20px; height:20px; min-height:20px; margin:0; padding:0; accent-color:#ffcf60; color-scheme:dark; }

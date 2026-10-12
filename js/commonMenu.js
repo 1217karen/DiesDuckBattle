@@ -1,3 +1,4 @@
+import "./siteTheme.js";
 import { displayCache } from "./authDisplayCache.js";
 import { getAuthRuntime } from "./authRuntime.js";
 import { menuModel } from "./commonMenuModel.js";
@@ -31,8 +32,29 @@ let displayed = displayCache.read();
 const label = root.querySelector("[data-identity]");
 if (displayed && label.textContent !== displayed.identity) { label.textContent = displayed.identity; label.title = displayed.identity; }
 const publicItems = menuModel({ sessionKnown: false }).items;
+const links = document.createElement("div");
+links.className = "common-menu__links";
+const themeSetting = document.createElement("fieldset"), themeLegend = document.createElement("legend"), themeOptions = document.createElement("div");
+themeSetting.className = "common-menu__theme"; themeLegend.textContent = "サイトテーマ";
+themeOptions.className = "common-menu__theme-options";
+const themeRadios = [];
+for (const [value, text] of [["light", "ライト"], ["dark", "ダーク"]]) {
+  const label = document.createElement("label"), radio = document.createElement("input");
+  radio.type = "radio"; radio.name = "site-theme"; radio.value = value;
+  radio.checked = globalThis.diesDuckSiteTheme.read() === value;
+  radio.addEventListener("change", () => {
+    if (!radio.checked) return;
+    const selected = globalThis.diesDuckSiteTheme.set(value);
+    for (const option of themeRadios) option.checked = option.value === selected;
+  });
+  themeRadios.push(radio);
+  label.append(radio, document.createTextNode(text)); themeOptions.append(label);
+}
+themeSetting.append(themeLegend, themeOptions);
+// Keep controls and their focus/listeners intact when authentication redraws links.
+root.querySelector("nav").append(links, themeSetting);
 function renderMenu(items) {
-  root.querySelector("nav").replaceChildren(...items.map(item => {
+  links.replaceChildren(...items.map(item => {
     const link = document.createElement("a");
     link.textContent = item.label; link.href = item.href;
     return link;

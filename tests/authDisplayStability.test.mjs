@@ -31,7 +31,7 @@ function dom() {
     removeAttribute(key) { delete this[key]; }
     addEventListener(event, fn) { this.handlers[event] = fn; }
     replaceChildren(...children) { this.replacements++; this.children = children; }
-    append(node) { this.children.push(node); }
+    append(...nodes) { this.children.push(...nodes); }
     focus() {}
   }
   const nodes = new Map(["details", "summary", "nav", "[data-identity]", "[data-feedback]", ".common-menu__nav", ".common-menu__account", "[data-account-menu]", "[data-account-arrow]", "account-summary"].map(s => [s, new Element(s)]));
@@ -40,7 +40,7 @@ function dom() {
   nodes.get(".common-menu__account").querySelector = () => nodes.get("account-summary");
   const root = new Element("header");
   root.querySelector = s => s === "[data-account-menu] button" ? nodes.get("[data-account-menu]").children.find(n => n.tagName === "button") : nodes.get(s);
-  return { root, nodes, document: { getElementById: () => root, createElement: tag => new Element(tag), addEventListener() {} } };
+  return { root, nodes, document: { getElementById: () => root, createTextNode: text => ({textContent:text}), createElement: tag => new Element(tag), addEventListener() {} } };
 }
 for (const raw of [null, "{", "null", "[]", "{}", JSON.stringify({ ...signedCache, version: 2 }), JSON.stringify({ ...signedCache, loggedIn: "true" }), JSON.stringify({ ...signedCache, identity: 12 }), JSON.stringify({ ...signedCache, access_token: "secret" })]) {
   test("cache/bootstrap ignores absent or invalid schema: " + raw, () => {
@@ -146,10 +146,10 @@ test("forged display cache cannot admit guard or initialize private data with nu
 for (const cached of [null, signedCache]) test("actual menu retains header/nav/summary/links through restore, refresh and name update: " + !!cached, async () => {
   const d = dom(); let render, resolveRuntime;
   const controller = { subscribe: fn => { render = fn; }, logout() {} };
-  const running = vm.runInNewContext(`(async()=>{${menuCode}})()`, { document: d.document, location: { replace() {} }, menuModel,
+  const running = vm.runInNewContext(`(async()=>{${menuCode}})()`, { document: d.document, diesDuckSiteTheme: { read:()=>"light", set:value=>value }, location: { replace() {} }, menuModel,
     displayCache: { read: () => cached }, getAuthRuntime: () => new Promise(resolve => { resolveRuntime = resolve; }) });
   assert.equal(d.nodes.get("[data-identity]").textContent, cached?.identity ?? "");
-  assert.deepEqual(d.nodes.get("nav").children.map(link => link.href), ["index.html", "storage.html", "rulebook.html", "character-list.html", "notice.html"]);
+  assert.deepEqual(d.nodes.get("nav").children[0].children.map(link => link.href), ["index.html", "storage.html", "rulebook.html", "character-list.html", "notice.html"]);
   resolveRuntime(controller); await running;
   const initial = { sessionKnown: false, ready: false, accounts: [], enos: [], signedIn: false };
   render(initial); assert.equal(d.nodes.get("[data-identity]").textContent, cached?.identity ?? "");
@@ -157,11 +157,11 @@ for (const cached of [null, signedCache]) test("actual menu retains header/nav/s
   render(pending); assert.equal(d.nodes.get("[data-identity]").textContent, cached?.identity ?? "");
   const confirmed = { ...pending, ready: true, accountsResolved: true, accounts: [{ eno: "12", name: "Alice" }] };
   render(confirmed);
-  const children = [...d.nodes.get("nav").children], replacements = d.nodes.get("nav").replacements;
+  const children = [...d.nodes.get("nav").children[0].children], replacements = d.nodes.get("nav").children[0].replacements;
   render(confirmed); render({ ...confirmed, accounts: [{ eno: "12", name: "Bob" }] });
   assert.equal(d.nodes.get("[data-identity]").textContent, "ENo.12｜Bob");
-  assert.equal(d.nodes.get("nav").replacements, replacements);
-  assert.deepEqual(d.nodes.get("nav").children, children);
+  assert.equal(d.nodes.get("nav").children[0].replacements, replacements);
+  assert.deepEqual(d.nodes.get("nav").children[0].children, children);
   if (cached) assert.equal(replacements, 2); // Public links render before SDK/restore completes.
   render({ ...confirmed, signedIn: false, accounts: [] });
   assert.equal(d.nodes.get("[data-identity]").textContent, "未ログイン");
@@ -209,7 +209,7 @@ test("failed background accounts request preserves established accounts and cach
 
 test("cached menu survives failed first accounts fetch but confirmed empty accounts replaces stale identity", async () => {
   const d = dom(); let render;
-  await vm.runInNewContext(`(async()=>{${menuCode}})()`, { document: d.document, location: { replace() {} }, menuModel,
+  await vm.runInNewContext(`(async()=>{${menuCode}})()`, { document: d.document, diesDuckSiteTheme: { read:()=>"light", set:value=>value }, location: { replace() {} }, menuModel,
     displayCache: { read: () => signedCache }, getAuthRuntime: async () => ({ subscribe: fn => { render = fn; } }) });
   const failed = { sessionKnown: true, ready: true, signedIn: true, accounts: [], enos: [], accountsResolved: false, sessionMessage: "ENoを取得できません" };
   render(failed); assert.equal(d.nodes.get("[data-identity]").textContent, signedCache.identity);

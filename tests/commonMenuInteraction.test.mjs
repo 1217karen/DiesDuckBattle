@@ -7,7 +7,8 @@ import { menuModel } from "../js/commonMenuModel.js";
 const code = (await readFile(new URL("../js/commonMenu.js", import.meta.url), "utf8")).replace(/^import .*;\r?\n/gm, "");
 const signed = { ready:true, sessionKnown:true, signedIn:true, accountsResolved:true,
   accounts:[{ eno:"2", name:"キャラ名", id:"game-account-uuid" }], enos:["2"], sessionMessage:"" };
-async function screen(cached = null, sdkFailure = false) {
+const themeCode = await readFile(new URL("../js/siteTheme.js", import.meta.url), "utf8");
+async function screen(cached = null, sdkFailure = false, {stored="dark", themed=true, pending=false, storageThrows=false}={}) {
   const document = { activeElement:null, handlers:{}, addEventListener(type, handler) { this.handlers[type] = handler; } };
   class Element {
     constructor(tag) { this.tagName=tag; this.children=[]; this.handlers={}; this.attributes={}; this.open=false; this.textContent=""; this.isConnected=true; this.replacements=0; }
@@ -15,8 +16,8 @@ async function screen(cached = null, sdkFailure = false) {
     setAttribute(key,value) { this.attributes[key]=value; }
     removeAttribute(key) { delete this.attributes[key]; }
     replaceChildren(...items) { this.children.forEach(item=>{item.isConnected=false;}); this.children=items; this.replacements++; }
-    append(item) { this.children.push(item); }
-    contains(item) { return this===item || this.children.some(child=>child.contains(item)); }
+    append(...items) { this.children.push(...items); }
+    contains(item) { return this===item || this.children.some(child=>child.contains?.(item)); }
     focus() { document.activeElement=this; }
   }
   const root=new Element("header"), nav=new Element("nav"), accountMenu=new Element("div"), identity=new Element("span"), feedback=new Element("p"), arrow=new Element("span");
@@ -24,12 +25,21 @@ async function screen(cached = null, sdkFailure = false) {
   left.children=[leftTrigger,nav]; right.children=[rightTrigger,accountMenu,feedback]; rightTrigger.children=[identity,arrow]; root.children=[left,right];
   const nodes=new Map([[".common-menu__nav",left],[".common-menu__account",right],["nav",nav],["[data-account-menu]",accountMenu],["[data-identity]",identity],["[data-feedback]",feedback],["[data-account-arrow]",arrow]]);
   root.querySelector=selector=>nodes.get(selector); left.querySelector=()=>leftTrigger; right.querySelector=()=>rightTrigger;
-  document.getElementById=()=>root; document.createElement=tag=>new Element(tag);
+  document.getElementById=()=>root; document.createElement=tag=>new Element(tag); document.createTextNode=text=>new Element("text");
   let render, logoutCalls=0;
   const controller={subscribe(fn){render=fn;}, async logout(){logoutCalls++;}};
-  await vm.runInNewContext(`(async()=>{${code}})()`,{document,location:{replace(){}},menuModel,displayCache:{read:()=>cached},getAuthRuntime:async()=>{if(sdkFailure)throw Error("SDK unavailable");return controller;}});
+  const writes=[];
+  document.documentElement={dataset:{}};document.querySelector=()=>themed ? {} : null;
+  const context=vm.createContext({document,location:{replace(){}},menuModel,displayCache:{read:()=>cached},
+    localStorage:{getItem(){if(storageThrows)throw Error("blocked");return stored;},setItem(key,value){if(storageThrows)throw Error("blocked");writes.push([key,value]);stored=value;}},
+    getAuthRuntime:async()=>{if(sdkFailure)throw Error("SDK unavailable");if(pending)await new Promise(()=>{});return controller;}});
+  vm.runInContext(themeCode,context);
+  const running=vm.runInContext(`(async()=>{${code}})()`,context);
+  if(!pending)await running;
+  const theme=nav.children[1],radios=theme.children[1].children.map(label=>label.children[0]);
+  const select=value=>{const radio=radios.find(r=>r.value===value);radio.checked=true;radio.handlers.change();};
   const toggle=(details)=>{details.open=true;details.handlers.toggle();};
-  return {document,root,left,right,leftTrigger,rightTrigger,nav,accountMenu,identity,render,toggle,logoutCalls:()=>logoutCalls};
+  return {document,root,left,right,leftTrigger,rightTrigger,nav:nav.children[0],theme,radios,select,writes,stored:()=>stored,accountMenu,identity,render,toggle,logoutCalls:()=>logoutCalls};
 }
 
 test("navigation and account controls stay separate; logout uses existing controller and disables while busy", async()=>{
@@ -98,4 +108,21 @@ test("SDK failure preserves all five public destinations and disables owner cont
   ["ホーム","index.html"],["バトル履歴","storage.html"],["ルールブック","rulebook.html"],
   ["キャラリスト","character-list.html"],["お知らせ","notice.html"]]);
  assert.equal(s.accountMenu.children.length,0);assert.equal(s.rightTrigger.attributes['aria-disabled'],'true');
+});
+
+for(const mode of [{pending:true},{},{failure:true},{themed:false},{storageThrows:true}]) test("theme controls work independently of authentication "+JSON.stringify(mode),async()=>{
+ const s=await screen(null,!!mode.failure,mode);
+ assert.equal(s.theme.tagName,"fieldset");assert.equal(s.theme.children[0].textContent,"サイトテーマ");
+ assert.equal(s.radios.length,2);assert.ok(s.radios.every(r=>r.type==="radio"&&r.name==="site-theme"));
+ assert.equal(s.radios.find(r=>r.checked).value,mode.storageThrows?"light":"dark");
+ for(const value of ["light","dark"]){s.select(value);assert.equal(s.radios.find(r=>r.checked).value,value);}
+ if(!mode.storageThrows){assert.deepEqual(s.writes,[["diesduck-site-theme","light"],["diesduck-site-theme","dark"]]);
+ const reloaded=await screen(null,false,{stored:s.stored(),themed:mode.themed});assert.equal(reloaded.radios.find(r=>r.checked).value,"dark");}
+ assert.equal(s.document.documentElement.dataset.theme,mode.themed===false?undefined:"dark");
+});
+test("authentication redraw preserves theme nodes, focus, selection and a single change handler",async()=>{
+ const s=await screen(),theme=s.theme,radio=s.radios[1];radio.focus();
+ for(const state of [signed,{...signed,signedIn:false,accounts:[],enos:[]},{...signed,ready:false,sessionKnown:false,accounts:[]},signed]){
+ s.render(state);assert.equal(s.root.querySelector("nav").children[1],theme);assert.equal(s.document.activeElement,radio);assert.equal(radio.checked,true);assert.deepEqual(s.writes,[]);}
+ s.select("light");assert.deepEqual(s.writes,[["diesduck-site-theme","light"]]);assert.equal(s.radios[0].checked,true);
 });

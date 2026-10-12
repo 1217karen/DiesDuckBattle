@@ -1,5 +1,8 @@
 // Classic head script: apply this browser's preference synchronously before CSS.
 (() => {
+  if (globalThis.diesDuckSiteTheme) return;
+  // Only pages opting in with the classic head script receive page colors.
+  const themedPage = !!document.querySelector('script[src="js/siteTheme.js"]');
   const key = "diesduck-site-theme";
   const normalize = value => value === "dark" ? "dark" : "light";
   const read = () => {
@@ -8,7 +11,7 @@
   };
   const apply = value => {
     const theme = normalize(value);
-    document.documentElement.dataset.theme = theme;
+    if (themedPage) document.documentElement.dataset.theme = theme;
     return theme;
   };
   const set = value => {

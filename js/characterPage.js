@@ -340,22 +340,7 @@ function renderBattlerProfile() {
   tailLabel.append(tail, document.createTextNode("吹き出しとして表示する")); target.append(tailLabel);
   target.append(profileTextEditor("バトラープロフィール", presentation.battler.profile.text,
     value => { presentation.battler.profile.text = value; }, BATTLER_PROFILE_MAX, "バトラーのプロフィールを入力"));
-  target.append(label, siteThemeSetting());
-}
-
-function siteThemeSetting() {
-  const fieldset = document.createElement("fieldset"), legend = document.createElement("legend"), options = document.createElement("div");
-  fieldset.className = "site-theme-setting"; legend.textContent = "サイトテーマ";
-  options.className = "site-theme-options";
-  for (const [value, text] of [["light", "ライト"], ["dark", "ダーク"]]) {
-    const label = document.createElement("label"), radio = document.createElement("input");
-    radio.type = "radio"; radio.name = "site-theme"; radio.value = value;
-    radio.checked = document.documentElement.dataset.theme === value;
-    radio.addEventListener("change", () => { if (radio.checked) globalThis.diesDuckSiteTheme.set(value); });
-    label.append(radio, document.createTextNode(text)); options.append(label);
-  }
-  fieldset.append(legend, options);
-  return fieldset;
+  target.append(label);
 }
 
 function profileSelect(labelText, value, options, onChange) {
