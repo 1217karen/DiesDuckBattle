@@ -141,13 +141,13 @@ const tableRows = id => {
   return [...table.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].slice(1).map(row=>
     [...row[1].matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/g)].map(cell=>prose(cell[1])));
 };
-test("guide anchors and semantic reference tables support concise and deferred chapters",async()=>{
+test("guide anchors and semantic reference tables support concise chapters",async()=>{
   for(const id of ['start','characters','setting','display','battle','profile','history','mechanics']) {
     assert.match(section('guide-'+id),/<h2>/);
     assert.ok(html.includes('href="#guide-'+id+'"'));
   }
-  // This chapter is deliberately reserved for the author's world-building text.
-  assert.match(section('guide-characters'),/ここは相談してから書く/);
+  // The author can freely edit the world-building prose.
+  assert.match(section('guide-characters'),/<p\b[^>]*>\s*\S/);
   for(const [,body] of html.matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/g)) {
     assert.match(body,/<caption>.+<\/caption>/);assert.match(body,/<thead>/);assert.match(body,/<tbody>/);
     const count=(body.match(/scope="col"/g)||[]).length;assert.ok(count>=2);
