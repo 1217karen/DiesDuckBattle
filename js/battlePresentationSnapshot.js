@@ -1,11 +1,19 @@
 import { normalizePlayerPresentation, createEmptyDuckQuotes, resolveQuoteIconUrl } from "./playerPresentationModel.js";
 
 /** Detached display data captured before battle execution; no DOM, storage or engine data. */
-export function buildBattlePresentationSnapshot(playerPresentation, duckId) {
+export function buildBattlePresentationSnapshot(playerPresentation, duckId, opponentEno = null) {
   const presentation = normalizePlayerPresentation(playerPresentation);
   const { battler, ducks } = presentation;
   const duckQuotes = (ducks[duckId]?.quotes ?? createEmptyDuckQuotes()).skill;
-  const quote = value => ({ text: value.lines[0].text, iconUrl: resolveQuoteIconUrl(presentation, value.lines[0]) });
+  const quote = value => {
+    const resolved = line => ({ text: line.text, iconUrl: resolveQuoteIconUrl(presentation, line) });
+    const primary = resolved(value.lines[0]);
+    if (value.lines.length === 1) return primary;
+    const valid = value.lines.filter(line => line.text.trim());
+    const specific = valid.filter(line => line.opponentEno !== null && line.opponentEno === opponentEno);
+    const candidates = (specific.length ? specific : valid.filter(line => line.opponentEno === null)).map(resolved);
+    return { ...primary, candidates };
+  };
   const group = values => Object.fromEntries(Object.entries(values).map(([key, value]) => [key, quote(value)]));
   return {
     battlerDefaultIconUrl: battler.defaultIconUrl,

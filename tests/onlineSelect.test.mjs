@@ -112,7 +112,7 @@ test('VS uses latest online data, existing engine and start-time presentation sn
   const f=await setup({run:state=>{battle=startSelectedBattle(state,{rng:()=>.5});return battle;}});await ready(f);
   f.rows.get(a).battler.presentation.defaultIconUrl='latest.png';f.rows.get(b).battler.presentation.quotes.battleStart.lines[0].text='最新の相手';
   const started=await f.c.start();assert.equal(started.ok,true);
-  const record=(await f.results.load('online-test')).record;assert.deepEqual(record.events,battle.events);assert.equal(record.events.at(-1).type,'battleEnd');
+  const record=(await f.results.load('online-test')).record;assert.deepEqual(record.events.map(({quoteSelections,...event})=>event),battle.events);assert.equal(record.events.at(-1).type,'battleEnd');
   assert.equal(record.p1.presentation.battlerDefaultIconUrl,'latest.png');
   assert.equal(record.p1.presentation.cutinUrl,'https://example.invalid/cutin88.png');
   assert.equal(record.p2.presentation.cutinUrl,'https://example.invalid/cutin89.png');
@@ -172,4 +172,21 @@ test('session invalidation while saving suppresses navigation',async()=>{
   const gate=deferred();const f=await setup({results:{save:()=>gate.promise}});await ready(f);
   const pending=f.c.start();await new Promise(r=>setImmediate(r));f.c.invalidate();
   gate.resolve({ok:true,battleId:'server-uuid'});assert.equal((await pending).status,'stale');
+});
+
+test('VS freezes targeted dialogue for both ENos and preserves it on reload',async()=>{
+  const f=await setup({quoteRandom:()=>.99});
+  for(const [id,target] of [[a,'89'],[b,'88']]) {
+    f.rows.get(id).battler.presentation.quotes.battleStart.lines=[
+      {text:'base',iconSlot:null,opponentEno:null},
+      {text:'target '+target,iconSlot:null,opponentEno:target},
+      {text:'wrong target',iconSlot:null,opponentEno:'99'},
+    ];
+  }
+  await ready(f);assert.equal((await f.c.start()).ok,true);
+  const first=(await f.results.load('online-test')).record;
+  const selection=first.events.find(e=>e.type==='battleStart').quoteSelections;
+  assert.equal(selection.P1.text,'target 89');assert.equal(selection.P2.text,'target 88');
+  assert.doesNotMatch(JSON.stringify(first),/wrong target|opponentEno|candidates/);
+  assert.deepEqual((await f.results.load('online-test')).record,first);
 });

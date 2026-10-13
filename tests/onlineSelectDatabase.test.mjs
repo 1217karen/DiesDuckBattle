@@ -225,6 +225,63 @@ test('public battle SQL/RLS against local Postgres only',{skip:!PGlite&&'Set PGL
       assert.equal(await value('select public.prepare_online_battle($1,$2,$3,$4) data',[b,privateDuck,b,duckB]),null);
       assert.equal(await value('select public.prepare_online_battle($1,$2,$3,$4) data',[a,privateDuck,b,duckB]),null);
     });
+    await t.test('quote migration exposes only public battle quote lines and preserves access boundaries',async()=>{
+      await db.exec('reset role');
+      await db.exec(await readFile(new URL('../supabase/migrations/20261013103235_battle_quote_candidates.sql',import.meta.url),'utf8'));
+      await asUser(userA);
+      const row=await value('select public.get_online_opponent($1) data',[b]);
+      const decoded=decodePublicOpponent(row,a);
+      assert.equal(row.battler.presentation.schemaVersion,3);
+      assert.equal(row.battler.presentation.quotes.battleStart.lines[1].opponentEno,'9223372036854775807');
+      assert.equal(decoded.presentation.battler.quotes.battleStart.lines[1].text,'PRIVATE-extra');
+      for(const category of ['A','C']) {
+        assert.equal(decoded.presentation.ducks[duckB].quotes.skill[category].lines[1].text,'PRIVATE-extra-'+category);
+        const snapshot=buildBattlePresentationSnapshot(decoded.presentation,duckB,'15');
+        assert.equal(snapshot.quotes.skill[category].candidates[0].text,'PRIVATE-extra-'+category);
+      }
+      assert.deepEqual(row.ducks.map(d=>d.id),[duckB]);
+      assert.doesNotMatch(JSON.stringify(row),/PRIVATE-(BATTLER|DUCK|DETACHED|detached|FUTURE|BUILD|ICON|CUTIN|LABEL|FL)/);
+      assert.equal(row.battler.presentation.profile.text,'');
+      assert.equal(row.ducks[0].presentation.icon.profile.text,'');
+      assert.deepEqual((await prepare()).opponent,row);
+      await assert.rejects(db.query("select diesduck_private.battle_quote_lines('{}'::jsonb)"),{code:'42501'});
+      await db.exec('reset role');
+      const stored=await value('select presentation data from public.battlers where game_account_id=$1',[b]);
+      const storedDuck=await value('select presentation data from public.ducks where id=$1',[duckB]);
+      for(const version of [1,2,3,4,5]) {
+        const legacy=structuredClone(stored);legacy.schemaVersion=version;
+        legacy.quotes.skill.A={lines:[{text:'old A',iconSlot:null,opponentEno:null}]};
+        legacy.quotes.skill.C={lines:[{text:'old C',iconSlot:null,opponentEno:null}]};
+        if(version<3)for(const [key,group] of Object.entries(legacy.quotes)) {
+          if(key==='battleStart')legacy.quotes[key]={text:'legacy'.repeat(50),iconSlot:group.lines[0].iconSlot};
+          else for(const [timing,q] of Object.entries(group))group[timing]={text:q.lines[0].text,iconSlot:q.lines[0].iconSlot};
+        }
+        await db.query('update public.battlers set presentation=$1 where game_account_id=$2',[JSON.stringify(legacy),b]);
+        await asUser(userA);
+        const mixed=decodePublicOpponent(await value('select public.get_online_opponent($1) data',[b]),a);
+        assert.equal(mixed.presentation.ducks[duckB].quotes.skill.A.lines[1].text,'PRIVATE-extra-A');
+        if(version<3)assert.equal(mixed.presentation.battler.quotes.battleStart.lines[0].text,'legacy'.repeat(50));
+        await db.exec('reset role');
+        if(version<3) {
+          const oldDuck=structuredClone(storedDuck);oldDuck.schemaVersion=1;delete oldDuck.icon.quotes;delete oldDuck.icon.profile;
+          await db.query('update public.ducks set presentation=$1 where id=$2',[JSON.stringify(oldDuck),duckB]);
+          await asUser(userA);
+          const old=decodePublicOpponent(await value('select public.get_online_opponent($1) data',[b]),a);
+          assert.equal(old.presentation.battler.quotes.battleStart.lines[0].text,'legacy'.repeat(50));
+          assert.deepEqual(buildBattlePresentationSnapshot(old.presentation,duckB).quotes.skill.A,{text:'old A',iconUrl:old.presentation.battler.defaultIconUrl});
+          await db.exec('reset role');
+          await db.query('update public.ducks set presentation=$1 where id=$2',[JSON.stringify(storedDuck),duckB]);
+        }
+      }
+      await db.query('update public.battlers set presentation=$1 where game_account_id=$2',[JSON.stringify(stored),b]);
+      await db.query("update public.ducks set presentation=jsonb_set(presentation,'{icon}','null') where id=$1",[duckB]);
+      await asUser(userA);
+      const empty=decodePublicOpponent(await value('select public.get_online_opponent($1) data',[b]),a);
+      assert.equal(buildBattlePresentationSnapshot(empty.presentation,duckB).quotes.skill.A.text,'');
+      await db.exec('reset role');
+      await db.query('update public.ducks set presentation=$1 where id=$2',[JSON.stringify(storedDuck),duckB]);await asUser(userA);
+
+    });
     await t.test('unpublish removes list/detail and rejects previous VS selection',async()=>{
       await db.exec(`reset role; update public.game_accounts set public_duck_id=null where id='${b}';`);await asUser(userA);
       assert.deepEqual(await value('select public.list_online_opponents() data'),[]);

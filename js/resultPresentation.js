@@ -36,18 +36,24 @@ export function turnSituationKeyFor(side, state, maxHP) {
 }
 
 /** One presenter per replay. Reads only record snapshots, never current player data. */
-export function createQuotePresenter(presentations = {}, maxHP = {}) {
+export function createQuotePresenter(presentations = {}, maxHP = {}, selectQuote = value => value) {
   let turn;
   let counts = { P1: 0, P2: 0 };
   const seenSkills = new Set();
-  const quote = (side, timing, detail) => detail == null
-    ? presentations[side]?.quotes?.[timing] : presentations[side]?.quotes?.[timing]?.[detail];
+  let currentEvent;
+  const quote = (side, timing, detail) => {
+    // Presence, including null, means a new result already fixed this utterance.
+    if (Object.hasOwn(currentEvent, "quoteSelections")) return currentEvent.quoteSelections?.[side] ?? null;
+    const value = detail == null ? presentations[side]?.quotes?.[timing] : presentations[side]?.quotes?.[timing]?.[detail];
+    return selectQuote(value, side);
+  };
   const pair = (timing, details = {}, order = sides) => makeQuoteRowLine(
     quote("P1", timing, details.P1), quote("P2", timing, details.P2), order);
   const single = (side, timing, detail) => makeQuoteRowLine(
     side === "P1" ? quote(side, timing, detail) : null,
     side === "P2" ? quote(side, timing, detail) : null);
   return event => {
+    currentEvent = event;
     if (event.type === "battleStart") return pair("battleStart");
     if (event.type === "turnStart" || event.type === "phaseStart") {
       if (turn !== event.turn) { turn = event.turn; counts = { P1: 0, P2: 0 }; }

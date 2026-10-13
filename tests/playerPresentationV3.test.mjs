@@ -56,7 +56,7 @@ test('exact 200 code points and tags, max bigint, whitespace, empty pruning and 
  assert.deepEqual(loaded.presentation,presentationForPersistence(p));
  for(const path of QUOTE_PATHS)assert.equal(at(loaded.presentation,path).lines.length,4);
  const snap=buildBattlePresentationSnapshot(p,da);
- for(const path of QUOTE_PATHS)assert.deepEqual(path.reduce((v,k)=>v[k],snap.quotes),{text:'😀'.repeat(200),iconUrl:p.battler.defaultIconUrl});
+ for(const path of QUOTE_PATHS)assert.deepEqual(path.reduce((v,k)=>v[k],snap.quotes),{text:'😀'.repeat(200),iconUrl:p.battler.defaultIconUrl,candidates:[{text:'😀'.repeat(200),iconUrl:p.battler.defaultIconUrl}]});
  assert.doesNotMatch(JSON.stringify(snap),/opponentEno|lines|9223372036854775807/);
 });
 test('ENo lookup debounce, stale responses, missing name, failures and disposal',async()=>{

@@ -1,3 +1,4 @@
+import { freezeBattleQuoteSelections } from "./battleQuoteSelections.js";
 import { createSelectState, selectOwnDuck, selectOpponent, battleStartStatus } from "./selectState.js";
 import { startSelectedBattle } from "./selectBattle.js";
 import { compileBattleLoadout } from "./battleLoadoutCompiler.js";
@@ -8,7 +9,7 @@ import { inspectBattleLoadout } from "./battleLoadoutCompiler.js";
 
 const scopeErrors = new Set(["not-signed-in", "no-access", "selection-required", "session-changed", "forbidden"]);
 export function createOnlineSelectController({ service, results = createBattleResultStorage(), run = startSelectedBattle,
-  random = Math.random, confirmManualBattle = message => globalThis.confirm(message) }) {
+  quoteRandom = Math.random, random = Math.random, confirmManualBattle = message => globalThis.confirm(message) }) {
   let generation = 0, base = null, busy = "", message = "オンライン設定を読み込み中…", blocked = true;
   let state = createSelectState({ ok: false, status: "loading" });
   let selectionMode = null, randomWinStreak = null, streakMessage = "";
@@ -137,15 +138,16 @@ export function createOnlineSelectController({ service, results = createBattleRe
         const p1 = compileBattleLoadout(frozen.build, { duckId, battlerId: frozen.self.id, battlerName: frozen.self.name });
         const p2 = compileBattleLoadout(frozen.opponent.build, { duckId: frozen.opponent.publicDuckId, battlerId: frozen.opponent.id, battlerName: frozen.opponent.name });
         if (!p1.ok || !p2.ok) return fail(selectFailure("unsupported-data"));
-        const display1 = buildBattlePresentationSnapshot(base.data.presentation, duckId);
-        const display2 = buildBattlePresentationSnapshot(frozen.opponent.presentation, frozen.opponent.publicDuckId);
+        const display1 = buildBattlePresentationSnapshot(base.data.presentation, duckId, frozen.opponent.eno);
+        const display2 = buildBattlePresentationSnapshot(frozen.opponent.presentation, frozen.opponent.publicDuckId, base.account.eno);
         const battle = run(frozen);
         if (!current()) return { ok: false, status: "stale" };
         if (!battle.ok) return fail({ ...battle, message: "最新の設定から戦闘を開始できませんでした。" });
+        const display = freezeBattleQuoteSelections(battle.events, { P1: display1, P2: display2 }, quoteRandom);
         const side = (loadout, presentation) => ({ battlerId: loadout.battler.id, battlerName: loadout.battler.name,
           duckId: loadout.duck.id, duckName: loadout.duck.name, presentation });
         const saved = await results.save({
-          p1: side(p1, display1), p2: side(p2, display2), result: battle.result, events: battle.events, selectionMode: mode });
+          p1: side(p1, display.presentations.P1), p2: side(p2, display.presentations.P2), result: battle.result, events: display.events, selectionMode: mode });
         if (!current()) return { ok: false, status: "stale" };
         if (!saved.ok) return fail({ ok: false, status: "result-save-failed", message: "戦闘結果をサーバーに保存できませんでした。通信状況を確認して再試行してください。" });
         blocked = true; message = "戦闘結果を開きます…";

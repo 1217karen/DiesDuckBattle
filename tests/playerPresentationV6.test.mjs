@@ -58,8 +58,8 @@ test('snapshot selects Duck A/C, Battler B/D and Battler icons without changing 
  for(const id of [da,db])for(const c of ['A','C'])p.ducks[id].quotes.skill[c]=timing(id+c);
  p.battler.quotes.skill.B=timing('B',10);p.battler.quotes.skill.D=timing('D',null);
  for(const id of [da,db]){const s=buildBattlePresentationSnapshot(p,id);assert.deepEqual(Object.keys(s.quotes.skill),['A','B','C','D']);
-  for(const c of ['A','C'])assert.deepEqual(s.quotes.skill[c],{text:id+c,iconUrl:'face3'});
-  assert.deepEqual(s.quotes.skill.B,{text:'B',iconUrl:'face10'});assert.deepEqual(s.quotes.skill.D,{text:'D',iconUrl:p.battler.defaultIconUrl});
+  for(const c of ['A','C'])assert.deepEqual(s.quotes.skill[c],{text:id+c,iconUrl:'face3',candidates:[{text:id+c,iconUrl:'face3'}]});
+  assert.deepEqual(s.quotes.skill.B,{text:'B',iconUrl:'face10',candidates:[{text:'B',iconUrl:'face10'}]});assert.deepEqual(s.quotes.skill.D,{text:'D',iconUrl:p.battler.defaultIconUrl,candidates:[{text:'D',iconUrl:p.battler.defaultIconUrl}]});
  }
  const absent=buildBattlePresentationSnapshot(p,'missing');assert.equal(absent.quotes.skill.A.text,'');assert.equal(absent.quotes.skill.C.text,'');assert.equal(absent.quotes.skill.B.text,'B');
  assert.equal(quoteTimings(p).length,16);

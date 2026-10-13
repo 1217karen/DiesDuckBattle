@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile,readdir} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
+import {freezeBattleQuoteSelections} from '../js/battleQuoteSelections.js';
 import {buildBlocks} from '../js/resultBlocks.js';
 import {player} from './onlineSelectFixture.mjs';
 import {createSelectState,selectOwnDuck,selectOpponent} from '../js/selectState.js';
@@ -149,6 +150,19 @@ test('battle result database boundary and persistence',{skip:!PGlite&&'Set PGLIT
       await db.exec("reset role;set role authenticated;select set_config('request.jwt.claim.sub','',false);");
       await assert.rejects(favorite(a,ids[1],true));await assert.rejects(history(null,'all',true,a),{code:'42501'});assert.ok((await history(null,'all',false,null)).total>0);
       await db.exec("select set_config('request.jwt.claim.sub','"+user+"',false);");
+    });
+    await t.test('frozen utterances survive database save and repeated replay without changing engine events',async()=>{
+      const source=structuredClone(record.events);
+      const display=structuredClone(presentation);
+      display.quotes.battleStart.candidates=[{text:'additional',iconUrl:'additional.png'}];
+      const frozen=freezeBattleQuoteSelections(record.events,{P1:display,P2:display},()=>0);
+      const savedMeta=await save({...record,events:frozen.events,p1:{...record.p1,presentation:frozen.presentations.P1},p2:{...record.p2,presentation:frozen.presentations.P2}});
+      const first=await load(savedMeta.battleId),second=await load(savedMeta.battleId);
+      assert.deepEqual(first,second);assert.deepEqual(first.events,frozen.events);assert.deepEqual(record.events,source);
+      assert.equal(first.events.find(e=>e.type==='battleStart').quoteSelections.P2.text,'additional');
+      const context={presentations:{P1:first.p1.presentation,P2:first.p2.presentation},maxHP:{P1:100,P2:100},names:{P1:{battler:'A',duck:'D'},P2:{battler:'B',duck:'E'}}};
+      assert.deepEqual(buildBlocks(first.events,first.result,context),buildBlocks(second.events,second.result,context));
+      assert.doesNotMatch(JSON.stringify(first),/candidates/);
     });
     await t.test('snapshots survive presentation changes and participant deletion; result CHECK and RLS enabled',async()=>{
       await db.exec(`reset role;update public.ducks set presentation='{"name":"Changed"}';`);

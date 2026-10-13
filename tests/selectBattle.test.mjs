@@ -86,5 +86,5 @@ test("VS snapshots latest online presentation before engine execution, detached 
   assert.equal((await controller.start()).ok,true);
   const record=(await results.load("vs-1")).record;
   assert.deepEqual(record.p1.presentation,expectedP1);assert.deepEqual(record.p2.presentation,expectedP2);
-  assert.deepEqual(record.events,latestBattle.events);
+  assert.deepEqual(record.events.map(({quoteSelections,...event})=>event),latestBattle.events);
 });
