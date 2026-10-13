@@ -655,8 +655,14 @@ function renderC(duck, box) {
         const replace = value => setRows(effects.map((old, i) => i === index ? value : old));
         renderCEffect(controls,chosen,replace,`c-effect-${key}-${index}`,c);
         row.append(head, controls);
+        if (price?.polarity === "drawback" && confirmed.costKnown && price.effectDelta != null) {
+          row.append(el("p", `デメリット元価格：${price.optionPrice}AP／適用還元：${Math.abs(price.effectDelta)}AP（分岐内で表示順に配分）`, "description"));
+        }
         branchBox.append(row);
       });
+      const branchPrice = resources.branchBreakdown.find(item => item.path === (key === "flat" ? "structure" : `structure.branches.${key}`));
+      if (branchPrice?.complete && branchPrice.drawbackPrice > 0) branchBox.append(el("p",
+        `デメリット還元合計：${branchPrice.appliedDrawback}AP（元価格合計${branchPrice.drawbackPrice}AP／上限${branchPrice.maxDrawbackAP}AP）`, "description"));
       const add = button("＋ C効果を追加", () => setRows([...effects, { effectId: "", options: {} }]));
       add.disabled = count >= cRules.maxEffects; branchBox.append(add); panel.append(branchBox);
     }

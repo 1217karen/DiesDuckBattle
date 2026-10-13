@@ -28,7 +28,7 @@ function legacycalculateCSkillResources(selection, { catalog = createCSkillCatal
   for (const key of ["baseAP", "minimumAP", "minEffects", "maxEffects", "additionalBenefitSlotAP", "maxDrawbackAP"]) {
     if (!Number.isFinite(rules[key]) || rules[key] < 0) throw new TypeError(`Invalid C rules: ${key}`);
   }
-  let effectCount = 0, benefitCount = 0, drawbackCount = 0, knownOptionDelta = 0, knownStructureDelta = 0;
+  let effectCount = 0, benefitCount = 0, drawbackCount = 0, knownOptionDelta = 0, knownStructureDelta = 0, knownDrawbackPrice = 0;
   const mode = record(selection) && Object.hasOwn(selection, "mode") ? selection.mode : null;
   if (!record(selection)) error("INVALID_SELECTION", "cSkill"); else keys(selection, ["mode", "structure"], "cSkill");
   if (!["normal", "special"].includes(mode)) error("INVALID_MODE", "mode");
@@ -44,7 +44,7 @@ function legacycalculateCSkillResources(selection, { catalog = createCSkillCatal
     if (!["benefit", "drawback"].includes(effect.polarity)) throw new TypeError("Invalid C polarity");
     const benefit = effect.polarity === "benefit";
     if (benefit) benefitCount++; else drawbackCount++;
-    // 効果自体の価格もcatalogを正とし、数量価格と同じ割引・還元上限を適用する。
+    // 効果自体の価格もcatalogを正とする。還元上限は分岐で合算後に適用する。
     const effectPrice = Object.hasOwn(effect, "apDelta") ? effect.apDelta : 0;
     let leafPrice = price(effectPrice, `${path}.apDelta`), priceComplete = effectPrice != null, apDiscount = 0;
     const options = Object.hasOwn(chosen, "options") ? chosen.options : {};
@@ -79,10 +79,11 @@ function legacycalculateCSkillResources(selection, { catalog = createCSkillCatal
     // 他effect・基礎AP・枠・分岐料金へ割引を流さないため、そのleaf価格を上限とする。
     const appliedDiscount = benefit && priceComplete && chance && apDiscount != null ? Math.min(leafPrice, apDiscount) : 0;
     if (!Number.isFinite(leafPrice)) throw new TypeError("C resource arithmetic overflow");
-    const leafDelta = (benefit ? leafPrice - appliedDiscount : -Math.min(leafPrice, rules.maxDrawbackAP));
+    const leafDelta = (benefit ? leafPrice - appliedDiscount : -leafPrice);
     knownOptionDelta += leafDelta;
+    if (!benefit) knownDrawbackPrice += leafPrice;
     const complete = priceComplete && (!chanceEnabled || !!chance) && apDiscount != null;
-    effectBreakdown.push({ path, effectId: effect.id, optionPrice: priceComplete ? leafPrice : null,
+    effectBreakdown.push({ path, effectId: effect.id, polarity: effect.polarity, optionPrice: priceComplete ? leafPrice : null,
       apDiscount, appliedDiscount: complete ? appliedDiscount : null, effectDelta: complete ? leafDelta : null });
   };
   const branch = (value, path) => {
@@ -91,7 +92,7 @@ function legacycalculateCSkillResources(selection, { catalog = createCSkillCatal
     keys(value, ["effects"], path);
     if (!Array.isArray(value.effects)) { error("INVALID_EFFECTS", `${path}.effects`); return; }
     if (!value.effects.length) error("EMPTY_BRANCH", `${path}.effects`);
-    const startBenefit = benefitCount, startDelta = knownOptionDelta;
+    const startBenefit = benefitCount, startDelta = knownOptionDelta, startDrawback = knownDrawbackPrice, startRow = effectBreakdown.length;
     let branchSlotCost = 0;
     for (const [i, chosen] of value.effects.entries()) {
       const beforeBenefit = benefitCount, beforeRows = effectBreakdown.length;
@@ -101,8 +102,19 @@ function legacycalculateCSkillResources(selection, { catalog = createCSkillCatal
       if (effectBreakdown.length > beforeRows) Object.assign(effectBreakdown.at(-1), { branchPath: path, slotCost });
     }
     const complete = value.effects.length > 0 && errors.length === startErrors && unresolved.length === startUnresolved;
+    const drawbackPrice = knownDrawbackPrice - startDrawback;
+    const appliedDrawback = Math.min(drawbackPrice, rules.maxDrawbackAP);
+    knownOptionDelta += drawbackPrice - appliedDrawback;
+    // 分岐合計に上限を適用した還元を表示順に配分し、行と合計を一致させる。
+    let remaining = appliedDrawback;
+    for (const row of effectBreakdown.slice(startRow)) if (row.polarity === "drawback") {
+      const applied = Math.min(row.optionPrice ?? 0, remaining);
+      row.effectDelta = complete ? -applied : null;
+      remaining -= applied;
+    }
     const optionDelta = knownOptionDelta - startDelta;
     branchBreakdown.push({ path, benefitCount: benefitCount - startBenefit, slotCost: branchSlotCost,
+      drawbackPrice: complete ? drawbackPrice : null, appliedDrawback: complete ? appliedDrawback : null, maxDrawbackAP: rules.maxDrawbackAP,
       knownOptionDelta: optionDelta, optionDelta: complete ? optionDelta : null,
       totalAP: complete ? optionDelta + branchSlotCost : null, complete });
   };

@@ -293,3 +293,15 @@ test("C AT/DF amount 1 is selectable on both public targets",async()=>{
   assert.equal(compileCSkill(p.save().ducks[0].cSelection).skill.effect[0].amount,targetId==="self"?1:-1);
  }
 });
+
+test("C UI shows original drawback prices, capped refunds and compiler cost without changing saved settings",async()=>{
+ const c=selection([{effectId:"current-hp-damage-enemy",options:{amountPct:"currentHpPct-1"}},
+ ...Array.from({length:3},()=>({effectId:"damage-self",options:{amount:"damageAmount-75"}}))]);
+ const p=await page(initial(c));
+ assert.equal(compileCSkill(c).skill.costAP,20);
+ assert.match(p.get("c-metrics").textContent,/最低AP5＋20－5＝20/);
+ assert.doesNotMatch(p.get("c-metrics").textContent,/－5－5/);
+ assert.ok(p.all().some(e=>e.textContent==="デメリット還元合計：5AP（元価格合計15AP／上限5AP）"));
+ assert.ok(p.all().some(e=>e.textContent==="デメリット元価格：5AP／適用還元：0AP（分岐内で表示順に配分）"));
+ assert.deepEqual(p.save().ducks[0].cSelection,c);
+});
