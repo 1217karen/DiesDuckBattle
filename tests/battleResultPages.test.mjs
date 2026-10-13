@@ -113,13 +113,17 @@ for(const account of [{ok:false,status:'not-signed-in'},{ok:true,account:{id:'ac
  change('outcome','win');respond(requests.at(-1));await tick();
  elements.get('next').listeners.click();assert.equal(requests.at(-1).args.p_page,2);respond(requests.at(-1));await tick();
  change('opponentEno','13');let args=requests.at(-1).args;
- assert.equal(args.p_page,1);assert.equal(args.p_eno,'12');assert.equal(args.p_opponent_eno,'13');assert.equal(args.p_outcome,'all');
- assert.equal(elements.get('outcome').disabled,true);assert.equal(elements.get('outcome').value,'all');respond(requests.at(-1));await tick();
+ assert.equal(args.p_page,1);assert.equal(args.p_eno,'12');assert.equal(args.p_opponent_eno,'13');assert.equal(args.p_outcome,'win');
+ assert.equal(elements.get('outcome').disabled,false);assert.equal(elements.get('outcome').value,'win');respond(requests.at(-1));await tick();
  if(account.ok){change('favorites','only');assert.equal(requests.at(-1).args.p_favorites_only,true);respond(requests.at(-1));await tick();}
  change('order','asc');assert.equal(requests.at(-1).args.p_order,'asc');respond(requests.at(-1));await tick();
  elements.get('next').listeners.click();assert.equal(requests.at(-1).args.p_page,2);assert.equal(requests.at(-1).args.p_opponent_eno,'13');respond(requests.at(-1));await tick();
- change('eno','');assert.equal(elements.get('outcome').disabled,false);assert.equal(requests.at(-1).args.p_page,1);respond(requests.at(-1));await tick();
- for(const outcome of ['win','lose','draw']){change('outcome',outcome);args=requests.at(-1).args;assert.equal(args.p_eno,null);assert.equal(args.p_opponent_eno,'13');assert.equal(args.p_outcome,outcome);respond(requests.at(-1));await tick();}
+ change('opponentEno','');assert.equal(elements.get('outcome').value,'win');assert.equal(elements.get('outcome').disabled,false);respond(requests.at(-1));await tick();
+ change('opponentEno','13');assert.equal(elements.get('outcome').value,'win');respond(requests.at(-1));await tick();
+ change('eno','');assert.equal(elements.get('outcome').disabled,true);assert.equal(elements.get('outcome').value,'all');assert.equal(requests.at(-1).args.p_outcome,'all');assert.equal(requests.at(-1).args.p_page,1);respond(requests.at(-1));await tick();
+ change('eno','12');assert.equal(elements.get('outcome').disabled,false);respond(requests.at(-1));await tick();
+ for(const outcome of ['win','lose','draw']){change('outcome',outcome);args=requests.at(-1).args;assert.equal(args.p_eno,'12');assert.equal(args.p_opponent_eno,'13');assert.equal(args.p_outcome,outcome);respond(requests.at(-1));await tick();}
+ change('eno','');respond(requests.at(-1));await tick();
  change('opponentEno','');assert.equal(elements.get('outcome').disabled,true);assert.equal(requests.at(-1).args.p_outcome,'all');respond(requests.at(-1),[],0);await tick();
 });
 test('invalid ENo in either box blocks requests and stale responses while editing',async()=>{
@@ -138,6 +142,7 @@ test('invalid ENo in either box blocks requests and stale responses while editin
 });
 test('history markup labels both matching numeric inputs and retains wrapping layout',async()=>{
  const html=await readFile(new URL('../storage.html',import.meta.url),'utf8');
+ const order=['eno','outcome','opponentEno','favorites','order'].map(id=>html.indexOf('for="'+id+'"'));assert.deepEqual(order,[...order].sort((a,b)=>a-b));
  for(const [id,label] of [['eno','指定ENo'],['opponentEno','対戦相手ENo']])assert.match(html,new RegExp('<label for="'+id+'">'+label+' <input id="'+id+'" type="text" inputmode="numeric" pattern="\\[0-9\\]\\*" size="8">'));
  assert.match(await readFile(new URL('../css/storage.css',import.meta.url),'utf8'),/\.tools \{[^}]*flex-wrap:wrap/);
 });

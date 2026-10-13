@@ -23,9 +23,9 @@ let filtersDirty = false;
 const favoritePending = new Set();
 
 function updateOutcome() {
-  const count = ["eno", "opponentEno"].filter(id => el(id).value.trim()).length;
-  el("outcome").disabled = count !== 1;
-  if (count !== 1) el("outcome").value = "all";
+  const hasEno = el("eno").value.trim() !== "";
+  el("outcome").disabled = !hasEno;
+  if (!hasEno) el("outcome").value = "all";
 }
 function invalidateFilters() {
   ++requestVersion;

@@ -182,15 +182,28 @@ test('battle result database boundary and persistence',{skip:!PGlite&&'Set PGLIT
       assert.deepEqual(await pair(202,101),first);assert.equal((await pair(101,101)).total,0);
       assert.equal((await pair(101,202,'all',false,null,1,'desc')).records[0].battleId,ids[44]);
       assert.equal((await pair(101,null)).total,55);assert.deepEqual(await pair(null,101),await pair(101,null));
-      for(const outcome of ['win','lose','draw'])assert.deepEqual(await pair(null,101,outcome),await pair(101,null,outcome));
+      for(const outcome of ['win','lose','draw'])await assert.rejects(pair(null,101,outcome),{code:'22023'});
       for(const args of [[0,202],[-1,202],[101,0],[101,-1],['9223372036854775808',202],[101,'9223372036854775808'],['bad',202]])await assert.rejects(pair(...args));
-      await assert.rejects(pair(101,202,'win'),{code:'22023'});
+      const verifyOutcomes=async()=>{
+        for(const eno of [101,202])for(const outcome of ['win','lose','draw']) {
+          const expected=ids.slice(0,45).filter((id,i)=>{
+            const result=['P1_win','P2_win','draw'][i%3],side=(i%2?202:101)===eno?'P1':'P2';
+            return outcome==='draw'?result==='draw':outcome==='win'?result===side+'_win':result!=='draw'&&result!==side+'_win';
+          });
+          const filtered=await pair(eno,eno===101?202:101,outcome);
+          assert.equal(filtered.total,expected.length);assert.deepEqual(filtered.records.map(r=>r.battleId),expected);
+        }
+        assert.deepEqual(await pair(101,202,'win'),await pair(202,101,'lose'));
+      };
+      await verifyOutcomes();
       await db.query('select public.set_online_battle_favorite($1,$2,true)',[a,ids[0]]);
       await db.query('select public.set_online_battle_favorite($1,$2,true)',[a,ids[44]]);
       const favorites=await pair(101,202,'all',true,a);assert.equal(favorites.total,2);assert.ok(favorites.records.every(r=>r.favorite));
+      assert.deepEqual((await pair(101,202,'win',true,a)).records.map(r=>r.battleId),[ids[0]]);
+      assert.deepEqual((await pair(101,202,'draw',true,a)).records.map(r=>r.battleId),[ids[44]]);
       await assert.rejects(pair(101,202,'all',true,b),{code:'42501'});
       await db.exec("reset role;set role anon;select set_config('request.jwt.claim.sub','',false);");
-      assert.deepEqual(await pair(),first);assert.equal((await pair(null,101,'draw')).total>0,true);
+      assert.deepEqual(await pair(),first);await verifyOutcomes();await assert.rejects(pair(null,101,'draw'),{code:'22023'});
       assert.equal((await pair(null,null)).total>65,true);assert.equal((await pair(null,'9223372036854775807')).total,0);
       await assert.rejects(pair(101,202,'all',true,a),{code:'42501'});
       await assert.rejects(db.query('select public.set_online_battle_favorite($1,$2,false)',[a,ids[0]]),{code:'42501'});
