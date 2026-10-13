@@ -112,8 +112,8 @@
 <tr><th scope="row">0を1枠入れる</th><td>＋1pt</td></tr>
 <tr><th scope="row">同じ出目を3枠にする</th><td>−1pt（0も対象）</td></tr>
 </tbody></table></div>
-<p>残ったダイスptは、そのままAスキルの予算に加わります。<br>
-  <div class="small">例：0を3枠入れた場合は、獲得3pt−消費1pt＝2ptです。 </div></p>
+<p>残ったダイスptは、そのままAスキルの予算に加わります。</p>
+  <p class="small">例：0を3枠入れた場合は、獲得3pt−消費1pt＝2ptです。</p>
         
 <h3 id="build-a">【Aスキル】</h3>
 <p>発動条件は「特定の出目」「指定値以下」「指定値以上」「全ての出目」から選択可能です。<br>
@@ -140,7 +140,7 @@
 <tr><th scope="row">AP操作</th><td>1AP：3pt／2AP：5pt</td></tr>
 <tr><th scope="row">強化状態・状態異常の付与</th><td>1スタック：1pt／2スタック：2pt</td></tr>
 <tr><th scope="row">ランダム状態解除</th><td>1スタック：1pt／2スタック：2pt</td></tr>
-<tr><th scope="row">次回通常攻撃AT・現在の攻撃フェイズのAT/DF操作</th><td>2AT：1pt／3AT：2pt／5AT：3pt</td></tr>
+<tr><th scope="row">次回通常攻撃AT増加</th><td>2AT：1pt／3AT：2pt／5AT：3pt</td></tr>
 </tbody></table></div>
 <p>選ぶ対象・種類は効果ごとに異なります。<br>
   たとえば相手の回復、自分への状態異常などはデメリットになります。</p>
@@ -158,7 +158,7 @@
 <tr><th scope="row">通常発動</th><td>必要APが溜まった自分のダイスロール前</td><td>ランダム分岐・HP条件分岐を選択可能</td></tr>
 <tr><th scope="row">特殊発動</th><td>ターン終了前、自分のHPが0以下で必要APがあるとき</td><td>復活効果を選択可能</td></tr>
 </tbody></table></div>
-<p class="box"><b>最終必要AP＝基礎5AP＋効果による追加AP＋追加枠AP−デメリット還元−確率割引</b><br>
+<p class="box"><b>最終必要AP＝基礎5AP＋効果による追加AP＋追加枠AP−デメリット減算−確率割引</b><br>
   メリットの2個目以降は1枠ごとに追加1APがかかります。効果枠は分岐先を合わせて最大5枠です。</p>
 <p>デメリットは必要な追加APを減算しますが、減算はスキル全体で最大5APまでです。（分岐の場合は各分岐内で5APまで）<br>
   また、最終必要APが5APを下回ることはありません。</p>
@@ -173,9 +173,9 @@
 <tr><th scope="row">AT・DF操作</th><td>1／2／3／4</td><td>0／1／2／3</td></tr>
 <tr><th scope="row">AT・DF操作のターン数</th><td>2／3／4ターン</td><td>0／1／2</td></tr>
 </tbody></table></div>
-<p>AT・DF操作は、効果量とターン数の追加APを合計します。<br>
-  <div class="small">例：固定80ダメージだけなら5＋6＝<b>11AP</b>。<br>
-  そこに3スタックの状態付与を加えると、効果1AP＋追加枠1APで<B>13AP</B>になります。</div></p>
+<p>AT・DF操作は、効果量とターン数の追加APを合計します。</p>
+  <p class="small">例：固定80ダメージだけなら5＋6＝<b>11AP</b>。<br>
+  そこに3スタックの状態付与を加えると、効果1AP＋追加枠1APで<B>13AP</B>になります。</p>
 
 <div class="guide-table-wrap" role="region" aria-label="固定ダメージの成功率と割引" tabindex="0"><table id="guide-c-chance"><caption>固定ダメージの成功率と割引</caption><thead><tr><th scope="col">成功率</th><th scope="col">AP割引</th></tr></thead><tbody>
 <tr><th scope="row">100%</th><td>0</td></tr>
