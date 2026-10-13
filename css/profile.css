@@ -63,7 +63,7 @@ body {
 .skill-name rt { font-size: .6em; }
 .skill-effect { margin: 0; white-space: pre-wrap; }
 .duck-heading { display: flex; align-items: center; gap: 16px; }
-.duck-icon, .battle-icon { width: 60px; height: 60px; object-fit: contain; border-radius: 8px; }
+.duck-icon { width: 60px; height: 60px; object-fit: contain; border-radius: 8px; }
 .duck-name { margin: 0; font-size: 1.3rem; }
 .duck-meta { color: var(--profile-muted); margin: 16px 0 24px; }
 .stat-row { display: grid; grid-template-columns: minmax(65px, 1fr) minmax(0, 3fr); gap: 12px; align-items: center; margin: 12px 0; }
@@ -76,21 +76,14 @@ body {
 .profile-rich-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .quote-text-small { font-size: .8em; } .quote-text-big { font-size: 1.25em; }
 .profile-empty { color: var(--profile-muted); }
-.featured-summary { display: block; color: inherit; text-decoration: none; border: 1px solid var(--profile-line); border-radius: 8px; padding: 20px; }
+.featured-summary { display: block; color: inherit; text-decoration: none; border: 1px solid var(--profile-line); border-radius: 8px; padding: 12px; }
 .featured-summary:hover, .featured-summary:focus-visible { outline: 2px solid var(--profile-accent); }
-.battle-participants { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-.battle-side { min-width: 0; }
-.battle-person { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
-.battle-meta { color: var(--profile-muted); margin: 0 0 16px; }
 .profile-error { padding: 24px; background: var(--profile-panel); border: 1px solid var(--profile-line); border-radius: 12px; }
 /* Below this width, stack the cards while keeping the Battler visual in a row. */
 @media (max-width: 1160px) {
   .profile-page { padding: 10px 16px 40px; }
   .profile-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "visual" "text" "duck" "favorite"; }
   .profile-card { padding: 20px; }
-}
-@media (max-width: 420px) {
-  .battle-participants { grid-template-columns: minmax(0, 1fr); }
 }
 
 .profile-header h1, .profile-card h2 { font-family:var(--font-heading-ja); }
@@ -125,14 +118,50 @@ body {
 /* Owner-only favorite battle selector: independent of public profile colors. */
 .featured-battle > h2 { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .profile-battle-trigger { background: #fff; color: #20282c; border: 1px solid #637178; border-radius: 5px; flex-shrink: 0; font-size: 14px; padding: 5px 12px; cursor: pointer; }
-.profile-battle-editor { color-scheme: light; background: #f4f6f7; color: #20282c; border: 1px solid #637178; border-radius: 12px; width: min(600px, calc(100% - 32px)); max-height: calc(100dvh - 40px); box-sizing: border-box; padding: 20px; overflow: auto; }
+.profile-battle-editor { color-scheme: light; background: #f4f6f7; color: #20282c; border: 1px solid #637178; border-radius: 12px; width: min(880px, calc(100% - 32px)); max-height: calc(100dvh - 40px); box-sizing: border-box; padding: 20px; overflow: auto; }
 .profile-battle-editor::backdrop { background: #0009; }
 .profile-battle-editor h2 { font-size: 1.2rem; margin-top: 0; }
 .profile-battle-list { display: grid; gap: 8px; }
 .profile-battle-option { display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: #fff; border: 1px solid #7a898f; border-radius: 6px; cursor: pointer; }
-.profile-battle-option span { white-space: pre-line; overflow-wrap: anywhere; min-width: 0; }
 .profile-battle-option input { flex-shrink: 0; margin-top: 4px; }
 .profile-battle-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 16px; }
 .profile-battle-editor button { background: #fff; color: #20282c; border: 1px solid #637178; border-radius: 5px; padding: 9px 12px; cursor: pointer; }
 .profile-battle-editor button:disabled { opacity: .5; cursor: default; }
 .profile-battle-editor :focus-visible, .profile-battle-trigger:focus-visible { outline: 3px solid #26779e; outline-offset: 2px; }
+
+/* Battle cards use container width, including the narrower profile grid column. */
+.featured-summary, .profile-battle-option { container-type: inline-size; }
+.profile-battle-option { --profile-line: #7a898f; --profile-accent: #26779e; }
+.profile-battle-option:has(input:checked) { border-color: #26779e; background: #eaf5fc; box-shadow: inset 0 0 0 2px #26779e; }
+.profile-battle-card { display: block; width: 100%; min-width: 0; font-size: 12px; }
+.profile-battle-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; margin-bottom: 12px; overflow-wrap: anywhere; }
+.profile-battle-current { color: #1e617f; }
+.profile-battle-match { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; align-items: center; }
+.profile-battle-side { min-width: 0; text-align: center; }
+.profile-battle-eno { display: block; overflow-wrap: anywhere; margin-bottom: 6px; }
+.profile-battle-people { display: flex; justify-content: center; gap: 8px; }
+.profile-battle-p2 .profile-battle-people { flex-direction: row-reverse; }
+.profile-battle-person { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 0; max-width: 100px; gap: 4px; }
+.profile-battle-icon { display: block; width: 60px; height: 60px; max-width: 100%; object-fit: contain; border: 1px solid var(--profile-line); border-radius: 12px; box-sizing: border-box; }
+.profile-battle-name { overflow-wrap: anywhere; max-width: 100%; }
+.profile-battle-mid { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.profile-battle-badge { color: #20282c; min-width: 48px; padding: 6px 10px; border: 1px solid; border-radius: 999px; text-align: center; font-weight: 900; box-sizing: border-box; }
+.profile-battle-win { background: #ffe78a; }
+.profile-battle-lose { background: #d4c2d8; }
+.profile-battle-draw { background: #e2e2e2; }
+.profile-battle-badge-p1 { border-color: #C83C3C; }
+.profile-battle-badge-p2 { border-color: #3C5AC8; }
+.profile-battle-vs { border: 1px solid var(--profile-line); border-radius: 12px; padding: 10px 14px; font-weight: 900; }
+@container (max-width: 560px) {
+  .profile-battle-match { gap: 6px; }
+  .profile-battle-people, .profile-battle-p2 .profile-battle-people { flex-direction: column; align-items: center; }
+  .profile-battle-mid { flex-direction: column; width: 82px; gap: 6px; }
+  .profile-battle-badge-p1 { align-self: flex-start; }
+  .profile-battle-vs { align-self: center; padding: 7px 9px; }
+  .profile-battle-badge-p2 { align-self: flex-end; }
+  .profile-battle-icon { width: 56px; height: 56px; }
+}
+@media (max-width: 420px) {
+  .profile-battle-editor { padding: 12px; }
+  .profile-battle-option { padding: 8px; gap: 6px; }
+}

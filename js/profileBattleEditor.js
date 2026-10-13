@@ -1,3 +1,4 @@
+import { renderProfileBattleCard } from './profileBattleCard.js';
 import { createOnlinePlayerStorage } from './onlinePlayerStorage.js';
 import { createBattleResultStorage } from './battleResultStorage.js';
 import { createOnlineProfileService } from './onlineProfileService.js';
@@ -33,8 +34,7 @@ export function mountProfileBattleEditor({ document, container, profile, client,
           controller.select(record.battleId);
           Array.from(list.children).find(row => row.children[0].value === record.battleId)?.children[0].focus();
         });
-        const text = el('span', `Battle No.${record.battleNo} / ${new Date(record.dateISO).toLocaleString('ja-JP')}\nP1 ENo.${record.p1.eno} ${record.p1.battlerName}\nP2 ENo.${record.p2.eno} ${record.p2.battlerName}\n${{ P1_win: 'P1 WIN', P2_win: 'P2 WIN', draw: 'DRAW' }[record.result]}${state.original === record.battleId ? '（現在掲載中）' : ''}`);
-        label.append(input, text); list.append(label);
+        label.append(input, renderProfileBattleCard(document, record, { history: true, current: state.original === record.battleId })); list.append(label);
       }
       status.textContent = state.message;
       pageInfo.textContent = `${state.page} / ${Math.max(1, state.totalPages)}`;

@@ -126,7 +126,7 @@ test('SP conversion is display-only, null is empty, flavor 0/5/6 keep unclipped 
 test('Featured Battle uses summary only, links to result, has fixed image fallbacks and neutral result',async()=>{
   const p=profileFixture(),{main,calls}=await page({profile:p}),link=byClass(main,'featured-summary')[0];
   assert.equal(link.href,`result.html?battleId=${p.featuredBattle.battleId}`);assert.match(link.textContent,/DRAW/);assert.match(link.textContent,/P1 \/ ENo/);
-  assert.deepEqual(byClass(link,'battle-icon').map(i=>i.src),[FIXED_IMAGES.battlerIcon,FIXED_IMAGES.duckIcon,FIXED_IMAGES.battlerIcon,FIXED_IMAGES.duckIcon]);
+  assert.deepEqual(byClass(link,'profile-battle-icon').map(i=>i.src),[FIXED_IMAGES.battlerIcon,FIXED_IMAGES.duckIcon,FIXED_IMAGES.battlerIcon,FIXED_IMAGES.duckIcon]);
   assert.equal(calls.filter(c=>c[0]==='rpc').length,1);
   p.featuredBattle=null;const empty=await page({profile:p});assert.match(byClass(empty.main,'featured-battle')[0].textContent,/お気に入りバトルは設定されていません/);
 });
@@ -219,4 +219,19 @@ test('guest renders public profile with no owner editor even if payload claims o
   assert.equal(byClass(main,'profile-battle-trigger').length,0);
   assert.equal(byClass(document.body,'profile-battle-editor').length,0);
  assert.deepEqual(calls.map(c=>c[0]),['client','rpc','finish']);
+});
+
+test('battle cards keep wide rows and switch both sides and outcome to narrow columns',async()=>{
+ const css=await readFile(new URL('../css/profile.css',import.meta.url),'utf8');
+ assert.match(css,/width: min\(880px, calc\(100% - 32px\)\)/);
+ assert.match(css,/\.featured-summary, \.profile-battle-option \{ container-type: inline-size/);
+ assert.match(css,/\.profile-battle-match \{[^}]*grid-template-columns: minmax\(0, 1fr\) auto minmax\(0, 1fr\)/);
+ assert.match(css,/\.profile-battle-p2 \.profile-battle-people \{ flex-direction: row-reverse/);
+ const narrow=css.slice(css.indexOf('@container (max-width: 560px)'));
+ assert.match(narrow,/\.profile-battle-people, \.profile-battle-p2 \.profile-battle-people \{ flex-direction: column/);
+ assert.match(narrow,/\.profile-battle-mid \{ flex-direction: column/);
+ for(const [name,align] of [['badge-p1','flex-start'],['vs','center'],['badge-p2','flex-end']])assert.ok(narrow.includes(`.profile-battle-${name} { align-self: ${align}`));
+ assert.match(css,/\.profile-battle-name \{ overflow-wrap: anywhere/);
+ assert.match(css,/\.profile-battle-option:has\(input:checked\)/);
+ for(const color of ['#ffe78a','#d4c2d8','#e2e2e2'])assert.ok(css.includes(color));
 });

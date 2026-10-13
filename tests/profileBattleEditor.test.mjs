@@ -1,3 +1,5 @@
+import { renderProfileBattleCard } from '../js/profileBattleCard.js';
+import { FIXED_IMAGES } from '../js/fixedImages.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createProfileBattleController } from '../js/profileBattleController.js';
@@ -80,7 +82,7 @@ async function ui(owner){
 }
 for(const owner of [false,undefined,null])test(`non-owner ${owner} has no editor DOM`,async()=>{const f=await ui(owner);assert.equal(f.editor,null);assert.equal(f.body.children.length,0);assert.equal(f.container.children[0].children.length,0);});
 test('safe names, accessible dialog and radio selection, public refresh replaces favorite section only',async()=>{
- const f=await ui(),e=f.editor;e.dialog.showModal();await e.controller.open();assert.equal(e.dialog.attributes['aria-labelledby'],'profile-battle-title');assert.equal(e.list.children[0].children[0].checked,true);assert.match(e.list.children[0].children[1].textContent,/<script>name<\/script>/);assert.equal(e.list.children[0].children[1].children.length,0);
+ const f=await ui(),e=f.editor;e.dialog.showModal();await e.controller.open();assert.equal(e.dialog.attributes['aria-labelledby'],'profile-battle-title');assert.equal(e.list.children[0].children[0].checked,true);const name=descendants(e.list.children[0]).find(n=>n.className==='profile-battle-name');assert.equal(name.textContent,'<script>name</script>');assert.equal(name.children.length,0);
  e.list.children[1].children[0].handlers.change();assert.equal(e.list.children[1].children[0].focused,true);assert.equal(e.save.disabled,false);
  await e.controller.clear();assert.equal(e.dialog.open,false);assert.equal(f.container.children[1].textContent,'お気に入りバトルは設定されていません');assert.equal(f.container.children[0].children[0],e.trigger);
 });
@@ -121,4 +123,23 @@ for(const user of [null,'another-owner'])test(`auth event ${user} blocks open ed
  assert.equal(f.state().canSave,false);assert.equal(f.state().unavailable,true);
  resolve(await load({gameAccountId:a}));await pending;await f.controller.save();
  assert.equal(f.calls.some(c=>c.name==='save_online_player'),false);assert.equal(f.notices.length,0);
+});
+
+function descendants(node){return [node,...node.children.flatMap(descendants)];}
+
+for(const history of [true,false])for(const result of ['P1_win','P2_win','draw'])test(`battle card ${history?'history':'public'} renders icons, names and ${result}`,()=>{
+ const document={createElement:t=>new Element(t)};
+ const makeSide=eno=>({eno,battlerName:'<b>バトラー</b>',duckName:'アヒル',...(history?{presentation:{battlerDefaultIconUrl:`/${eno}-b.png`,duckIconUrl:`/${eno}-d.png`}}:{battlerDefaultIconUrl:`/${eno}-b.png`,duckIconUrl:`/${eno}-d.png`})});
+ const card=renderProfileBattleCard(document,{battleNo:'123',dateISO:'2026-10-14T00:00:00Z',result,p1:makeSide('111'),p2:makeSide('222')},{history,current:true});
+ const nodes=descendants(card),images=nodes.filter(n=>n.tagName==='img');
+ assert.deepEqual(images.map(n=>n.src),['/111-b.png','/111-d.png','/222-b.png','/222-d.png']);
+ images.forEach(n=>n.handlers.error());assert.deepEqual(images.map(n=>n.src),[FIXED_IMAGES.battlerIcon,FIXED_IMAGES.duckIcon,FIXED_IMAGES.battlerIcon,FIXED_IMAGES.duckIcon]);
+ const badges=nodes.filter(n=>n.className.startsWith('profile-battle-badge '));assert.deepEqual(badges.map(n=>n.textContent),result==='draw'?['DRAW','DRAW']:result==='P1_win'?['WIN','LOSE']:['LOSE','WIN']);
+ assert.ok(nodes.some(n=>n.textContent==='現在掲載中'));assert.ok(nodes.some(n=>n.textContent==='Battle No.123'));assert.ok(nodes.some(n=>n.textContent==='P2 / ENo.222'));
+ const name=nodes.find(n=>n.textContent==='<b>バトラー</b>');assert.equal(name.children.length,0);assert.equal(nodes.some(n=>n.tagName==='a'),false);
+});
+test('history cards without registered icons use fixed images',()=>{
+ const document={createElement:t=>new Element(t)},side={eno:'1',battlerName:'name',duckName:'duck'};
+ const card=renderProfileBattleCard(document,{battleNo:'1',dateISO:'2026-10-14T00:00:00Z',result:'draw',p1:side,p2:side},{history:true});
+ assert.deepEqual(descendants(card).filter(n=>n.tagName==='img').map(n=>n.src),[FIXED_IMAGES.battlerIcon,FIXED_IMAGES.duckIcon,FIXED_IMAGES.battlerIcon,FIXED_IMAGES.duckIcon]);
 });

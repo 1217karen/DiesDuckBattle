@@ -1,3 +1,4 @@
+import { renderProfileBattleCard } from './profileBattleCard.js';
 import { FIXED_IMAGES, setImageWithFallback } from "./fixedImages.js";
 import { renderQuoteRichText } from "./quoteRichText.js";
 import { presentProfileSkill } from "./profileSkillPresentation.js";
@@ -104,26 +105,12 @@ export function renderFeaturedBattle(document, profile) {
     if (text !== undefined) node.textContent = text;
     return node;
   };
-  const image = (url, fallback, className, alt) => {
-    const img = el("img", className); img.alt = alt;
-    setImageWithFallback(img, url, fallback); return img;
-  };
   const favorite = el("section", "profile-card featured-battle"), battle = profile.featuredBattle;
   favorite.append(el("h2", "", "FAVORITE BATTLE"));
   if (!battle) favorite.append(el("p", "profile-empty", "お気に入りバトルは設定されていません"));
   else {
     const link = el("a", "featured-summary"); link.href = `result.html?battleId=${encodeURIComponent(battle.battleId)}`;
-    const date = new Date(battle.dateISO).toLocaleString("ja-JP");
-    link.append(el("p", "battle-meta", `Battle No.${battle.battleNo} / ${date} / ${{ P1_win: "P1 WIN", P2_win: "P2 WIN", draw: "DRAW" }[battle.result]}`));
-    const sides = el("div", "battle-participants");
-    for (const [label, side] of [["P1", battle.p1], ["P2", battle.p2]]) {
-      const node = el("div", "battle-side"); node.append(el("strong", "", `${label} / ENo.${side.eno}`));
-      for (const [name, url, fallback] of [[side.battlerName, side.battlerDefaultIconUrl, FIXED_IMAGES.battlerIcon], [side.duckName, side.duckIconUrl, FIXED_IMAGES.duckIcon]]) {
-        const person = el("div", "battle-person"); person.append(image(url, fallback, "battle-icon", ""), el("span", "", name)); node.append(person);
-      }
-      sides.append(node);
-    }
-    link.append(sides); favorite.append(link);
+    link.append(renderProfileBattleCard(document, battle)); favorite.append(link);
   }
   return favorite;
 }
