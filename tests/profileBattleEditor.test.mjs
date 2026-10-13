@@ -99,3 +99,26 @@ test('auth change during public refresh discards response and hides edit trigger
  const heading=f.container.children[0];e.controller.sessionChanged(null);resolve({ok:true,profile:{isOwner:true,accountId:a,featuredBattle:null}});await pending;
  assert.equal(f.container.children[0],heading);assert.equal(e.trigger.hidden,true);assert.equal(e.save.disabled,true);
 });
+
+for(const user of ['owner',null,'another-owner'])test(`closed editor ignores auth event ${user}, before first open and after cancel`,async()=>{
+ const f=await ui(),e=f.editor;
+ e.controller.sessionChanged(user);assert.notEqual(e.trigger.hidden,true);
+ await e.controller.open();assert.equal(e.list.children.length,30);assert.equal(e.next.disabled,false);
+ e.controller.cancel();e.controller.sessionChanged(user);assert.notEqual(e.trigger.hidden,true);
+ await e.controller.open();e.controller.select(f.records[1].battleId);assert.equal(e.save.disabled,false);
+});
+test('same user auth event preserves open draft and pending save',async()=>{
+ const f=await setup();await f.controller.open();f.controller.select(f.records[1].battleId);
+ const before=structuredClone(f.state());f.controller.sessionChanged('owner');assert.deepEqual(f.state(),before);
+ let resolve;const load=f.storage.load;f.storage.load=()=>new Promise(r=>resolve=r);
+ const pending=f.controller.save();f.controller.sessionChanged('owner');assert.equal(f.state().saving,true);
+ resolve(await load({gameAccountId:a}));await pending;assert.equal(f.notices.length,1);
+});
+for(const user of [null,'another-owner'])test(`auth event ${user} blocks open editing and delayed save`,async()=>{
+ const f=await setup();await f.controller.open();f.controller.select(f.records[1].battleId);
+ let resolve;const load=f.storage.load;f.storage.load=()=>new Promise(r=>resolve=r);
+ const pending=f.controller.save();f.controller.sessionChanged(user);
+ assert.equal(f.state().canSave,false);assert.equal(f.state().unavailable,true);
+ resolve(await load({gameAccountId:a}));await pending;await f.controller.save();
+ assert.equal(f.calls.some(c=>c.name==='save_online_player'),false);assert.equal(f.notices.length,0);
+});

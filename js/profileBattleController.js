@@ -57,7 +57,7 @@ export function createProfileBattleController({ storage, battles, service, profi
       ++generation; state.active = false; state.busy = false; emit();
     },
     sessionChanged(userId) {
-      if (identity !== null && identity === userId) return;
+      if (!state.active || (identity !== null && identity === userId)) return;
       ++generation;
       Object.assign(state, { busy: false, saving: false, blocked: true, unavailable: true,
         records: [], message: 'ログイン状態が変わりました。ページを再読み込みしてください。' }); emit();
