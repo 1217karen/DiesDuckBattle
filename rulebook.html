@@ -104,8 +104,8 @@
 <tr><th scope="row">ヴォイド</th><td>1</td><td>0・0・0・0・0・0</td><td>固定／ダイスpt 4</td></tr>
 </tbody></table></div>
 
-<p>Dスキルを考慮しない、初期6枠を設定します。<br>
-  カスタマイズ型は同じ出目を通常2枠まで、0を含めると3枠まで置けます。0自体も最大3枠です。<br>
+<p>ダイスの初期6枠を設定します。<br>
+  カスタマイズ型は同じ出目を通常2枠まで、後述の1ptを使用することで最大3枠まで設定可能です。<br>
   固定型は出目を編集できない代わりに、カスタマイズ型では作れない組み合わせを使用できます。</p>
   
 <div class="guide-table-wrap" role="region" aria-label="カスタマイズ型のダイスpt" tabindex="0"><table id="guide-dice-budget"><caption>カスタマイズ型のダイスpt</caption><thead><tr><th scope="col">配置</th><th scope="col">ダイスpt</th></tr></thead><tbody>
@@ -113,7 +113,7 @@
 <tr><th scope="row">同じ出目を3枠にする</th><td>−1pt（0も対象）</td></tr>
 </tbody></table></div>
 <p>残ったダイスptは、そのままAスキルの予算に加わります。<br>
-  例：0を3枠入れた場合は、獲得3pt−消費1pt＝2ptです。</p>
+  <div class="small">例：0を3枠入れた場合は、獲得3pt−消費1pt＝2ptです。 </div></p>
         
 <h3 id="build-a">【Aスキル】</h3>
 <p>発動条件は「特定の出目」「指定値以下」「指定値以上」「全ての出目」から選択可能です。<br>
@@ -174,8 +174,8 @@
 <tr><th scope="row">AT・DF操作のターン数</th><td>2／3／4ターン</td><td>0／1／2</td></tr>
 </tbody></table></div>
 <p>AT・DF操作は、効果量とターン数の追加APを合計します。<br>
-  例：固定80ダメージだけなら5＋6＝<b>11AP</b>。<br>
-  そこに3スタックの状態付与を加えると、効果1AP＋追加枠1APで<B>13AP</B>になります。</p>
+  <div class="small">例：固定80ダメージだけなら5＋6＝<b>11AP</b>。<br>
+  そこに3スタックの状態付与を加えると、効果1AP＋追加枠1APで<B>13AP</B>になります。</div></p>
 
 <div class="guide-table-wrap" role="region" aria-label="固定ダメージの成功率と割引" tabindex="0"><table id="guide-c-chance"><caption>固定ダメージの成功率と割引</caption><thead><tr><th scope="col">成功率</th><th scope="col">AP割引</th></tr></thead><tbody>
 <tr><th scope="row">100%</th><td>0</td></tr>
@@ -230,7 +230,7 @@
       <section id="guide-display">
 <h2>キャラ設定</h2>
 <p>画像は外部に保存された<b>画像のURL</b>で登録します。<br>
-  規定より大きい画像は設定できません。アイコンのみ240pxまでの画像が設定可能です。<br>
+  規定より大きい画像は設定できません。アイコンのみ250pxまでの画像が設定可能です。<br>
   当ゲーム専用のアップローダーなどはありません。</p>
         
 <div class="guide-table-wrap" role="region" aria-label="画像サイズの規定" tabindex="0"><table id="guide-images"><caption>画像サイズの規定</caption><thead><tr><th scope="col">種類</th><th scope="col">表示サイズ</th></tr></thead><tbody>
@@ -267,7 +267,8 @@
 <h2>バトル履歴</h2>
 <p>お気に入りは星ボタンで登録・解除を行います。お気に入り機能はログイン中のみ利用可能です。<br>
   履歴一覧や戦闘結果自体は未ログインでも閲覧可能です。</p>
-
+</section>
+      
 <section id="guide-mechanics"><h2>戦闘の詳細仕様</h2>
 <h3>【通常攻撃】</h3>
 <p>基本ダメージは<b>出目＋max(0, AT−DF)</b>。<br>
