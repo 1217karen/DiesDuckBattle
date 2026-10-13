@@ -53,7 +53,7 @@ export function updateRowSplitByBattlerHeight(grid, images, midStack, availableH
   const gridHeight = availableHeight;
   // Keep title + gap + stack inside the top row, even on short viewports.
   const centerHeight = titleClearance + midStack.getBoundingClientRect().height + 10;
-  const top = Math.max(centerHeight, Math.min(gridHeight * .85, Math.max(gridHeight * .4, height)));
+  const top = Math.max(centerHeight, Math.min(gridHeight * .70, Math.max(gridHeight * .4, height)));
   grid.style.setProperty("--topH", `${Math.ceil(top)}px`);
 }
 
@@ -70,7 +70,7 @@ export function createSelectPresentation(root = document, viewport = window) {
       grid.style.setProperty("--titleBottom", `${Math.max(0, title.getBoundingClientRect().bottom - rect.top)}px`);
       const titleClearance = Number.parseFloat(viewport.getComputedStyle(root.querySelector(".cell--midTop")).paddingTop);
       const availableHeight = Math.max(0, Math.min(rect.height, (viewport.visualViewport?.height ?? viewport.innerHeight) - rect.top));
-      const maxHeight = Math.max(0, availableHeight * .85);
+      const maxHeight = Math.max(0, availableHeight * .70);
       grid.style.setProperty("--battlerMaxHeight", `${maxHeight}px`);
       const images = [...grid.querySelectorAll(".silhouette__img")].filter(img => !img.hidden);
       for (const img of images) {
