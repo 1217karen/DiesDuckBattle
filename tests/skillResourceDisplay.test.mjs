@@ -28,10 +28,10 @@ test("display takes base and floor from supplied resource/rules, not literal fiv
  assert.equal(formatCRequiredAP(r,custom),"必要AP：最低AP7－4 → 最低6AP＝6");
 });
 
-test("formula subtracts the capped branch total once and retains original prices",()=>{
+test("formula subtracts the capped branch total once without a trailing note",()=>{
  const effects=[{effectId:"current-hp-damage-enemy",options:{amountPct:"currentHpPct-1"}},damage(75,"self"),damage(75,"self"),damage(75,"self")];
  const r=calculateCSkillResources(flat(effects));
- assert.equal(formatCRequiredAP(r,rules),"必要AP：最低AP5＋20－5＝20（デメリット元価格合計15AP／還元上限5AP）");
+ assert.equal(formatCRequiredAP(r,rules),"必要AP：最低AP5＋20－5＝20");
  const custom={...rules,maxDrawbackAP:2},c=calculateCSkillResources(flat(effects),{rules:custom});
- assert.equal(formatCRequiredAP(c,custom),"必要AP：最低AP5＋20－2＝23（デメリット元価格合計15AP／還元上限2AP）");
+ assert.equal(formatCRequiredAP(c,custom),"必要AP：最低AP5＋20－2＝23");
 });

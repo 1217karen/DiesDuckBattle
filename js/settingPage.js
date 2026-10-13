@@ -459,9 +459,9 @@ function confirmedPrices(resources, price, path, index) {
   const precedingIssue = issues.some(i => i.path?.startsWith(prefix) && Number(i.path.slice(prefix.length).split(".")[0]) <= index);
   return { costKnown: !!price && !ownIssue, slotCost: precedingIssue ? null : price?.slotCost };
 }
-function effectMeta(index, id, label, cost, slotLabel, slotCost, remove, unit = "", unsigned = false) {
+function effectMeta(index, id, label, cost, slotLabel, slotCost, remove, unit = "", unsigned = false, costSuffix = "") {
   const meta = el("div", null, "effect-meta");
-  meta.append(el("strong", `効果 ${index + 1}`), priceLabel(id + "-price", label, cost, unit, unsigned),
+  meta.append(el("strong", `効果 ${index + 1}`), priceLabel(id + "-price", label, cost, unit + costSuffix, unsigned),
     priceLabel(id + "-slot-price", slotLabel, slotCost, unit, unsigned), button("削除", remove));
   return meta;
 }
@@ -650,19 +650,15 @@ function renderC(duck, box) {
         const path = key === "flat" ? `structure.effects.${index}` : `structure.branches.${key}.effects.${index}`;
         const price = resources.effectBreakdown.find(item => item.path === path);
         const confirmed = confirmedPrices(resources, price, path, index);
+        const capped = price?.polarity === "drawback" && confirmed.costKnown && price.effectDelta != null
+          && Math.abs(price.effectDelta) < price.optionPrice;
         const head = effectMeta(index, `c-effect-${key}-${index}`, "AP", confirmed.costKnown ? price.effectDelta : null, "枠AP", confirmed.slotCost,
-          () => setRows(effects.filter((_, i) => i !== index)));
+          () => setRows(effects.filter((_, i) => i !== index)), "", false, capped ? "（上限）" : "");
         const replace = value => setRows(effects.map((old, i) => i === index ? value : old));
         renderCEffect(controls,chosen,replace,`c-effect-${key}-${index}`,c);
         row.append(head, controls);
-        if (price?.polarity === "drawback" && confirmed.costKnown && price.effectDelta != null) {
-          row.append(el("p", `デメリット元価格：${price.optionPrice}AP／適用還元：${Math.abs(price.effectDelta)}AP（分岐内で表示順に配分）`, "description"));
-        }
         branchBox.append(row);
       });
-      const branchPrice = resources.branchBreakdown.find(item => item.path === (key === "flat" ? "structure" : `structure.branches.${key}`));
-      if (branchPrice?.complete && branchPrice.drawbackPrice > 0) branchBox.append(el("p",
-        `デメリット還元合計：${branchPrice.appliedDrawback}AP（元価格合計${branchPrice.drawbackPrice}AP／上限${branchPrice.maxDrawbackAP}AP）`, "description"));
       const add = button("＋ C効果を追加", () => setRows([...effects, { effectId: "", options: {} }]));
       add.disabled = count >= cRules.maxEffects; branchBox.append(add); panel.append(branchBox);
     }

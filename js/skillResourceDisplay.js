@@ -9,8 +9,6 @@ export function formatCRequiredAP(resources, rules) {
     return (contribution < 0 ? "－" : "＋") + Math.abs(contribution);
   }).join("");
   const refund = branch.appliedDrawback > 0 ? `－${branch.appliedDrawback}` : "";
-  const cap = branch.drawbackPrice > branch.appliedDrawback
-    ? `（デメリット元価格合計${branch.drawbackPrice}AP／還元上限${branch.maxDrawbackAP}AP）` : "";
   const floor = resources.rawAP < rules.minimumAP ? ` → 最低${rules.minimumAP}AP` : "";
-  return `必要AP：最低AP${resources.baseAP}${terms}${refund}${floor}＝${resources.requiredAP}${cap}`;
+  return `必要AP：最低AP${resources.baseAP}${terms}${refund}${floor}＝${resources.requiredAP}`;
 }

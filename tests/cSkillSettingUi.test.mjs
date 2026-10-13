@@ -294,14 +294,24 @@ test("C AT/DF amount 1 is selectable on both public targets",async()=>{
  }
 });
 
-test("C UI shows original drawback prices, capped refunds and compiler cost without changing saved settings",async()=>{
+test("C UI marks only capped drawback prices and keeps the formula concise",async()=>{
  const c=selection([{effectId:"current-hp-damage-enemy",options:{amountPct:"currentHpPct-1"}},
  ...Array.from({length:3},()=>({effectId:"damage-self",options:{amount:"damageAmount-75"}}))]);
  const p=await page(initial(c));
  assert.equal(compileCSkill(c).skill.costAP,20);
- assert.match(p.get("c-metrics").textContent,/最低AP5＋20－5＝20/);
+ assert.equal(p.get("c-metrics").textContent,"必要AP：最低AP5＋20－5＝20");
  assert.doesNotMatch(p.get("c-metrics").textContent,/－5－5/);
- assert.ok(p.all().some(e=>e.textContent==="デメリット還元合計：5AP（元価格合計15AP／上限5AP）"));
- assert.ok(p.all().some(e=>e.textContent==="デメリット元価格：5AP／適用還元：0AP（分岐内で表示順に配分）"));
+ assert.deepEqual([0,1,2,3].map(i=>p.get(`c-effect-flat-${i}-price`).textContent),["AP +20","AP -5","AP 0（上限）","AP 0（上限）"]);
+ assert.doesNotMatch(p.all().map(e=>e.textContent).join(""),/デメリット元価格|適用還元|デメリット還元合計/);
+ assert.deepEqual(p.save().ducks[0].cSelection,c);
+});
+
+test("C UI distinguishes full, partial and zero refunds without marking discounted benefits",async()=>{
+ const c=selection([
+  {effectId:"damage-enemy",options:{amount:"damageAmount-75"},chanceOptionId:"50"},
+  ...[65,75,75].map(amount=>({effectId:"damage-self",options:{amount:`damageAmount-${amount}`}}))]);
+ const p=await page(initial(c));
+ assert.deepEqual([0,1,2,3].map(i=>p.get(`c-effect-flat-${i}-price`).textContent),["AP +3","AP -3","AP -2（上限）","AP 0（上限）"]);
+ assert.deepEqual([0,1,2,3].map(i=>p.get(`c-effect-flat-${i}-slot-price`).textContent),["枠AP 0","枠AP 0","枠AP 0","枠AP 0"]);
  assert.deepEqual(p.save().ducks[0].cSelection,c);
 });
