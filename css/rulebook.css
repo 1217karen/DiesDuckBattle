@@ -60,3 +60,10 @@ body { margin:0;  }
 :root[data-theme="dark"] #build-b { color: #93c5ed; }
 :root[data-theme="dark"] #build-c { color: #e8cf83; }
 :root[data-theme="dark"] #build-d { color: #9ed7aa; }
+
+
+/* ゲームガイド：文章の下の余白 */
+#panel-guide section > p {
+  margin-bottom: 20px;
+}
+
