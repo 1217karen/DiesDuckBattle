@@ -67,3 +67,17 @@ body { margin:0;  }
   margin-bottom: 20px;
 }
 
+
+/* ゲームガイド：短い表は内容に合わせた横幅にする */
+#panel-guide :is(
+  #guide-dice-budget,
+  #guide-a-trigger,
+  #guide-c-chance,
+  #guide-c-revive,
+  #guide-c-repeat,
+  #guide-c-idle
+) {
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+}
