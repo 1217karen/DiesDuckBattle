@@ -37,6 +37,30 @@ button:disabled,select:disabled { cursor:default; opacity:.4; }
   .identity,.cell { flex-direction:column; gap:4px; }
   .mid { flex-direction:column; gap:6px; }
   .date { text-align:center; }
+
+/* 狭い画面では2Pもバトラー→アヒルの縦並び */
+.cell.p2 {
+  flex-direction: column-reverse;
+}
+
+/* 勝敗表示を左上→中央→右下にずらす */
+.mid {
+  width: 92px;
+  justify-self: center;
+}
+
+.mid .badgeP1 {
+  align-self: flex-start;
+}
+
+.mid .vs {
+  align-self: center;
+}
+
+.mid .badgeP2 {
+  align-self: flex-end;
+}
+
 }
 @media(max-width:420px) {
   :root { --icon:56px; --gap:6px; }
