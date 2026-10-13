@@ -13,6 +13,7 @@ class Element {
   constructor(tag) { this.tagName=tag; this.children=[];this.attributes={};this.handlers={};this.style={setProperty:(k,v)=>this.styles[k]=v};this.styles={}; }
   append(...nodes) { for(const n of nodes) this.children.push(...(n.tagName==='#fragment'?n.children:[n])); }
   replaceChildren(...nodes) { this.children=[];this.append(...nodes); }
+  querySelector(selector) { return byClass(this,selector.slice(1))[0] ?? null; }
   setAttribute(k,v) { this.attributes[k]=v; }
   addEventListener(k,fn) { this.handlers[k]=fn; }
   set textContent(v) { this.text=String(v);this.children=[]; }
@@ -42,11 +43,15 @@ test('URL ENo passes service boundary without a login guard; canonical header/ti
   assert.deepEqual(document.body.styles,{'--profile-bg':'#DCEEF3','--profile-panel':'#FFFFFF','--profile-text':'#20282C','--profile-accent':'#4F91B3'});
   assert.equal(byClass(main,'profile-theme-trigger').length,1);
   assert.equal(byClass(document.body,'profile-theme-editor').length,1);
+  assert.equal(byClass(main,'profile-battle-trigger').length,1);
+  assert.equal(byClass(document.body,'profile-battle-editor').length,1);
 });
 test('non-owner never receives theme editor DOM',async()=>{
   const {main,document}=await page();
   assert.equal(byClass(main,'profile-theme-trigger').length,0);
   assert.equal(byClass(document.body,'profile-theme-editor').length,0);
+  assert.equal(byClass(main,'profile-battle-trigger').length,0);
+  assert.equal(byClass(document.body,'profile-battle-editor').length,0);
 });
 for(const status of ['invalid-eno','profile-not-found','unsupported-data','migration-required','load-failed','forbidden','session-changed'])test(`page error ${status} has no partial cards and finishes loading`,async()=>{
   const p=await page({status});assert.equal(byClass(p.main,'profile-error').length,1);assert.equal(byClass(p.main,'profile-card').length,0);assert.equal(p.calls.at(-1)[0],'finish');
@@ -189,7 +194,7 @@ test('layout keeps standing and five zigzag icons side by side while scaling to 
   assert.match(css,/img\[data-icon-position="2"\], \.profile-icon-rail img\[data-icon-position="4"\]\s*\{ justify-self: end/);
   assert.match(css,/\.stat-track::after\s*\{[^}]*repeating-linear-gradient[^}]*20%[^}]*var\(--profile-line\)/);
   assert.match(css,/@media \(max-width: 1160px\)[\s\S]*"visual" "text" "duck" "favorite"/);
-  assert.doesNotMatch(css,/flex-direction: column|flex-wrap: wrap/);
+  assert.doesNotMatch(css.split("/* Owner-only favorite battle selector")[0],/flex-direction: column|flex-wrap: wrap/);
   assert.match(css,/flex: 0 0 var\(--profile-rail-width\)/);assert.doesNotMatch(css,/overflow:\s*hidden|align-items: center; gap: 16px; margin-bottom/);
 });
 
@@ -211,5 +216,7 @@ test('guest renders public profile with no owner editor even if payload claims o
  assert.equal(result.ok,true);assert.equal(result.profile.isOwner,false);
  assert.ok(byClass(main,'profile-card').length>0);
  assert.equal(byClass(main,'profile-theme-trigger').length,0);assert.equal(byClass(document.body,'profile-theme-editor').length,0);
+  assert.equal(byClass(main,'profile-battle-trigger').length,0);
+  assert.equal(byClass(document.body,'profile-battle-editor').length,0);
  assert.deepEqual(calls.map(c=>c[0]),['client','rpc','finish']);
 });

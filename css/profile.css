@@ -121,3 +121,18 @@ body {
   border-bottom: 1px solid var(--profile-accent);
   transform: rotate(45deg);
 }
+
+/* Owner-only favorite battle selector: independent of public profile colors. */
+.featured-battle > h2 { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.profile-battle-trigger { background: #fff; color: #20282c; border: 1px solid #637178; border-radius: 5px; flex-shrink: 0; font-size: 14px; padding: 5px 12px; cursor: pointer; }
+.profile-battle-editor { color-scheme: light; background: #f4f6f7; color: #20282c; border: 1px solid #637178; border-radius: 12px; width: min(600px, calc(100% - 32px)); max-height: calc(100dvh - 40px); box-sizing: border-box; padding: 20px; overflow: auto; }
+.profile-battle-editor::backdrop { background: #0009; }
+.profile-battle-editor h2 { font-size: 1.2rem; margin-top: 0; }
+.profile-battle-list { display: grid; gap: 8px; }
+.profile-battle-option { display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: #fff; border: 1px solid #7a898f; border-radius: 6px; cursor: pointer; }
+.profile-battle-option span { white-space: pre-line; overflow-wrap: anywhere; min-width: 0; }
+.profile-battle-option input { flex-shrink: 0; margin-top: 4px; }
+.profile-battle-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.profile-battle-editor button { background: #fff; color: #20282c; border: 1px solid #637178; border-radius: 5px; padding: 9px 12px; cursor: pointer; }
+.profile-battle-editor button:disabled { opacity: .5; cursor: default; }
+.profile-battle-editor :focus-visible, .profile-battle-trigger:focus-visible { outline: 3px solid #26779e; outline-offset: 2px; }

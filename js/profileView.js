@@ -93,7 +93,23 @@ export function renderProfile(document, profile) {
     }
     const text = el("div", "duck-profile"); text.append(el("h3", "profile-section-heading", "DUCK PROFILE"), profileText(d.profile.text)); duck.append(stats, text);
   }
-  const favorite = card("featured-battle", "FAVORITE BATTLE"), battle = profile.featuredBattle;
+  const favorite = renderFeaturedBattle(document, profile);
+  grid.append(battler, text, duck, favorite); fragment.append(header, grid); return fragment;
+}
+
+/** Public projection only; shared by the initial page and the owner's post-save refresh. */
+export function renderFeaturedBattle(document, profile) {
+  const el = (tag, className = "", text) => {
+    const node = document.createElement(tag); node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  const image = (url, fallback, className, alt) => {
+    const img = el("img", className); img.alt = alt;
+    setImageWithFallback(img, url, fallback); return img;
+  };
+  const favorite = el("section", "profile-card featured-battle"), battle = profile.featuredBattle;
+  favorite.append(el("h2", "", "FAVORITE BATTLE"));
   if (!battle) favorite.append(el("p", "profile-empty", "お気に入りバトルは設定されていません"));
   else {
     const link = el("a", "featured-summary"); link.href = `result.html?battleId=${encodeURIComponent(battle.battleId)}`;
@@ -109,5 +125,5 @@ export function renderProfile(document, profile) {
     }
     link.append(sides); favorite.append(link);
   }
-  grid.append(battler, text, duck, favorite); fragment.append(header, grid); return fragment;
+  return favorite;
 }

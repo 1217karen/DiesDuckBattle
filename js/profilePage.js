@@ -1,3 +1,4 @@
+import { mountProfileBattleEditor } from "./profileBattleEditor.js";
 import { getSupabaseClient } from "./authRuntime.js";
 import { finishPageLoad } from "./pageLoad.js";
 import { createOnlineProfileService, profileFailure } from "./onlineProfileService.js";
@@ -21,7 +22,10 @@ export async function loadProfilePage({ document = globalThis.document, location
     for (const [key, color] of Object.entries(profile.battler.profile.theme))
       document.body.style.setProperty(`--profile-${key === "background" ? "bg" : key}`, color);
     main.replaceChildren(content);
-    if (profile.isOwner === true) mountProfileThemeEditor({ document, header: main.children[0], profile, client });
+    if (profile.isOwner === true) {
+      mountProfileThemeEditor({ document, header: main.children[0], profile, client });
+      mountProfileBattleEditor({ document, container: main.querySelector(".featured-battle"), profile, client });
+    }
     document.title = `ENo.${profile.eno} ${profile.battler.name} | DiesDuckBattle`;
     return result;
   } catch {
