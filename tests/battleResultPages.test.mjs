@@ -8,7 +8,7 @@ function dom(){
   const elements=new Map();
   const element=()=>({children:[],listeners:{},attributes:{},hidden:false,disabled:false,value:'desc',textContent:'',
     addEventListener(type,fn){this.listeners[type]=fn;},append(...nodes){this.children.push(...nodes);},
-    replaceChildren(...nodes){this.children=nodes;},setAttribute(k,v){this.attributes[k]=v;},checkValidity(){return true;},reportValidity(){},setCustomValidity(v){this.validityMessage=v;}});
+    replaceChildren(...nodes){this.children=nodes;},setAttribute(k,v){this.attributes[k]=v;},checkValidity(){return !this.validityMessage;},reportValidity(){},setCustomValidity(v){this.validityMessage=v;}});
   return {elements,document:{getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id);},
     createElement:element,createDocumentFragment:element}};
 }
@@ -103,4 +103,41 @@ test('guest searches ENo/outcome, sorts and pages without favorites or authentic
  assert.equal(requests[2].args.p_outcome,'win');assert.equal(requests[2].args.p_order,'asc');
  assert.equal(requests[2].args.p_favorites_only,false);assert.equal(requests[2].args.p_game_account_id,null);respond(requests[2]);await tick();
  elements.get('next').listeners.click();assert.equal(requests[3].args.p_page,2);respond(requests[3]);await tick();
+});
+
+for(const account of [{ok:false,status:'not-signed-in'},{ok:true,account:{id:'account',eno:'12'}}])test('two-ENo UI, outcome reset/recovery, paging and favorites: '+account.ok,async()=>{
+ const {requests,elements,loading}=await historyPage(account);
+ assert.equal(elements.get('opponentEno').value,'');respond(requests[0]);await loading;
+ const change=(id,value)=>{elements.get(id).value=value;elements.get(id).listeners.change();};
+ change('eno','12');respond(requests.at(-1));await tick();
+ change('outcome','win');respond(requests.at(-1));await tick();
+ elements.get('next').listeners.click();assert.equal(requests.at(-1).args.p_page,2);respond(requests.at(-1));await tick();
+ change('opponentEno','13');let args=requests.at(-1).args;
+ assert.equal(args.p_page,1);assert.equal(args.p_eno,'12');assert.equal(args.p_opponent_eno,'13');assert.equal(args.p_outcome,'all');
+ assert.equal(elements.get('outcome').disabled,true);assert.equal(elements.get('outcome').value,'all');respond(requests.at(-1));await tick();
+ if(account.ok){change('favorites','only');assert.equal(requests.at(-1).args.p_favorites_only,true);respond(requests.at(-1));await tick();}
+ change('order','asc');assert.equal(requests.at(-1).args.p_order,'asc');respond(requests.at(-1));await tick();
+ elements.get('next').listeners.click();assert.equal(requests.at(-1).args.p_page,2);assert.equal(requests.at(-1).args.p_opponent_eno,'13');respond(requests.at(-1));await tick();
+ change('eno','');assert.equal(elements.get('outcome').disabled,false);assert.equal(requests.at(-1).args.p_page,1);respond(requests.at(-1));await tick();
+ for(const outcome of ['win','lose','draw']){change('outcome',outcome);args=requests.at(-1).args;assert.equal(args.p_eno,null);assert.equal(args.p_opponent_eno,'13');assert.equal(args.p_outcome,outcome);respond(requests.at(-1));await tick();}
+ change('opponentEno','');assert.equal(elements.get('outcome').disabled,true);assert.equal(requests.at(-1).args.p_outcome,'all');respond(requests.at(-1),[],0);await tick();
+});
+test('invalid ENo in either box blocks requests and stale responses while editing',async()=>{
+ const {requests,elements,loading,listeners}=await historyPage({ok:false,status:'not-signed-in'});
+ respond(requests[0]);await loading;
+ const before=elements.get('list').children[0];
+ elements.get('order').listeners.change();const stale=requests.at(-1);
+ for(const id of ['eno','opponentEno']) for(const value of ['0','-1','1.5','abc','01','9223372036854775808']) {
+  const input=elements.get(id);input.value=value;input.listeners.input();input.listeners.change();
+  assert.match(input.validityMessage,/ENo/);assert.equal(requests.length,2);
+  await listeners.focus();assert.equal(requests.length,2);input.value='';input.listeners.input();
+ }
+ respond(stale,[],0);await tick();assert.equal(elements.get('list').children[0],before);
+ const input=elements.get('opponentEno');input.value='9223372036854775807';input.listeners.input();input.listeners.keydown({key:'Enter'});
+ assert.equal(requests.at(-1).args.p_opponent_eno,'9223372036854775807');respond(requests.at(-1));await tick();
+});
+test('history markup labels both matching numeric inputs and retains wrapping layout',async()=>{
+ const html=await readFile(new URL('../storage.html',import.meta.url),'utf8');
+ for(const [id,label] of [['eno','指定ENo'],['opponentEno','対戦相手ENo']])assert.match(html,new RegExp('<label for="'+id+'">'+label+' <input id="'+id+'" type="text" inputmode="numeric" pattern="\\[0-9\\]\\*" size="8">'));
+ assert.match(await readFile(new URL('../css/storage.css',import.meta.url),'utf8'),/\.tools \{[^}]*flex-wrap:wrap/);
 });

@@ -18,25 +18,41 @@ function finishInitialRender() {
   finishPageLoad();
 }
 let eno = null;
+let opponentEno = null;
+let filtersDirty = false;
 const favoritePending = new Set();
 
-function applyFilters() {
-  if (!el("eno").checkValidity()) { el("eno").reportValidity(); return; }
-  const value = el("eno").value.trim();
-  if (value && (!/^[1-9][0-9]*$/.test(value) || BigInt(value) > 9223372036854775807n)) {
-    el("eno").setCustomValidity("ENoは1以上の整数で入力してください。");
-    el("eno").reportValidity();
-    return;
-  }
-  eno = value || null;
-  el("outcome").disabled = eno === null;
-  if (eno === null) el("outcome").value = "all";
+function updateOutcome() {
+  const count = ["eno", "opponentEno"].filter(id => el(id).value.trim()).length;
+  el("outcome").disabled = count !== 1;
+  if (count !== 1) el("outcome").value = "all";
+}
+function invalidateFilters() {
+  ++requestVersion;
+  filtersDirty = true;
   page = 1;
+  el("prev").disabled = el("next").disabled = true;
+  updateOutcome();
+}
+function applyFilters() {
+  invalidateFilters();
+  for (const id of ["eno", "opponentEno"]) {
+    const input = el(id), value = input.value.trim();
+    input.setCustomValidity("");
+    if (value && (!/^[1-9][0-9]*$/.test(value) || BigInt(value) > 9223372036854775807n))
+      input.setCustomValidity("ENoは1〜9223372036854775807の整数で入力してください。");
+    if (!input.checkValidity()) { input.reportValidity(); return; }
+  }
+  eno = el("eno").value.trim() || null;
+  opponentEno = el("opponentEno").value.trim() || null;
+  filtersDirty = false;
   render();
 }
-el("eno").addEventListener("input", () => el("eno").setCustomValidity(""));
-el("eno").addEventListener("change", applyFilters);
-el("eno").addEventListener("keydown", event => { if (event.key === "Enter") applyFilters(); });
+for (const id of ["eno", "opponentEno"]) {
+  el(id).addEventListener("input", () => { el(id).setCustomValidity(""); invalidateFilters(); });
+  el(id).addEventListener("change", applyFilters);
+  el(id).addEventListener("keydown", event => { if (event.key === "Enter") applyFilters(); });
+}
 for (const id of ["outcome", "favorites", "order"]) el(id).addEventListener("change", applyFilters);
 el("prev").addEventListener("click", () => { if (page > 1) { page -= 1; render(); } });
 el("next").addEventListener("click", () => { if (!el("next").disabled) { page += 1; render(); } });
@@ -44,7 +60,7 @@ window.addEventListener("focus", render);
 window.addEventListener("pageshow", render);
 
 async function initialize() {
-  for (const id of ["eno", "outcome", "favorites", "order", "prev", "next"]) el(id).disabled = true;
+  for (const id of ["eno", "opponentEno", "outcome", "favorites", "order", "prev", "next"]) el(id).disabled = true;
   let account;
   try { account = await createOnlinePlayerStorage(await getSupabaseClient()).resolveAccount(); }
   catch { account = { ok: false }; }
@@ -59,10 +75,11 @@ async function initialize() {
       ? "複数のENoがあるため、初期ENoとお気に入りの対象を選択できません。指定ENoで履歴を検索できます。"
       : "アカウントを解決できないため、お気に入りは使用できません。";
   }
+  el("opponentEno").value = "";
   el("outcome").value = "all";
   el("favorites").value = "all";
   el("order").value = "desc";
-  el("eno").disabled = el("order").disabled = false;
+  el("eno").disabled = el("opponentEno").disabled = el("order").disabled = false;
   el("outcome").disabled = eno === null;
   el("favorites").disabled = gameAccountId === null;
   ready = true;
@@ -70,14 +87,14 @@ async function initialize() {
 }
 
 async function render() {
-  if (!ready) return;
+  if (!ready || filtersDirty) return;
   const ticket = ++requestVersion;
   el("prev").disabled = true;
   el("next").disabled = true;
   let result;
   try { result = await storage.list({ page, pageSize: PAGE_SIZE,
-    order: el("order").value === "asc" ? "asc" : "desc", eno,
-    outcome: eno === null ? "all" : el("outcome").value,
+    order: el("order").value === "asc" ? "asc" : "desc", eno, opponentEno,
+    outcome: el("outcome").disabled ? "all" : el("outcome").value,
     favoritesOnly: gameAccountId !== null && el("favorites").value === "only", gameAccountId });
   } catch { result = { ok: false }; }
   if (ticket !== requestVersion) return;

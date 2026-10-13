@@ -164,6 +164,40 @@ test('battle result database boundary and persistence',{skip:!PGlite&&'Set PGLIT
       assert.deepEqual(buildBlocks(first.events,first.result,context),buildBlocks(second.events,second.result,context));
       assert.doesNotMatch(JSON.stringify(first),/candidates/);
     });
+    await t.test('paired ENo SQL filters before pagination and preserves anonymous reads and owner favorites',async()=>{
+      await db.exec('reset role');
+      const ids=[];
+      for(let i=0;i<65;i++) {
+        const enos=i<45?(i%2?[202,101]:[101,202]):(i%2?[101,303]:[202,404]);
+        ids.push((await db.query('insert into public.battles(p1_account_id,p1_eno,p1_duck_id,p2_account_id,p2_eno,p2_duck_id,result,record) values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb) returning id',
+          [a,enos[0],da,b,enos[1],dbb,['P1_win','P2_win','draw'][i%3],JSON.stringify(record)])).rows[0].id);
+      }
+      assert.equal(await value("select count(*)::integer data from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='list_online_battle_results'"),1);
+      const pair=(eno=101,opponent=202,outcome='all',favorites=false,account=null,page=1,order='asc')=>value(
+        'select public.list_online_battle_results($1,30,$2,$3,$4,$5,$6,$7) data',[page,order,eno,outcome,favorites,account,opponent]);
+      await db.exec("set role authenticated;select set_config('request.jwt.claim.sub','"+user+"',false);");
+      const first=await pair(),second=await pair(101,202,'all',false,null,2);
+      assert.equal(first.total,45);assert.equal(first.totalPages,2);assert.equal(first.records.length,30);assert.equal(second.records.length,15);
+      assert.deepEqual([...first.records,...second.records].map(r=>r.battleId),ids.slice(0,45));
+      assert.deepEqual(await pair(202,101),first);assert.equal((await pair(101,101)).total,0);
+      assert.equal((await pair(101,202,'all',false,null,1,'desc')).records[0].battleId,ids[44]);
+      assert.equal((await pair(101,null)).total,55);assert.deepEqual(await pair(null,101),await pair(101,null));
+      for(const outcome of ['win','lose','draw'])assert.deepEqual(await pair(null,101,outcome),await pair(101,null,outcome));
+      for(const args of [[0,202],[-1,202],[101,0],[101,-1],['9223372036854775808',202],[101,'9223372036854775808'],['bad',202]])await assert.rejects(pair(...args));
+      await assert.rejects(pair(101,202,'win'),{code:'22023'});
+      await db.query('select public.set_online_battle_favorite($1,$2,true)',[a,ids[0]]);
+      await db.query('select public.set_online_battle_favorite($1,$2,true)',[a,ids[44]]);
+      const favorites=await pair(101,202,'all',true,a);assert.equal(favorites.total,2);assert.ok(favorites.records.every(r=>r.favorite));
+      await assert.rejects(pair(101,202,'all',true,b),{code:'42501'});
+      await db.exec("reset role;set role anon;select set_config('request.jwt.claim.sub','',false);");
+      assert.deepEqual(await pair(),first);assert.equal((await pair(null,101,'draw')).total>0,true);
+      assert.equal((await pair(null,null)).total>65,true);assert.equal((await pair(null,'9223372036854775807')).total,0);
+      await assert.rejects(pair(101,202,'all',true,a),{code:'42501'});
+      await assert.rejects(db.query('select public.set_online_battle_favorite($1,$2,false)',[a,ids[0]]),{code:'42501'});
+      await assert.rejects(db.query('select * from public.battles'),{code:'42501'});
+      await db.exec("reset role;set role authenticated;select set_config('request.jwt.claim.sub','"+user+"',false);");
+      assert.deepEqual(await pair(101,202,'all',true,a),favorites);
+    });
     await t.test('snapshots survive presentation changes and participant deletion; result CHECK and RLS enabled',async()=>{
       await db.exec(`reset role;update public.ducks set presentation='{"name":"Changed"}';`);
       assert.equal(await value("select relrowsecurity data from pg_class where oid='public.battles'::regclass"),true);
