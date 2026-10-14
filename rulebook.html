@@ -136,7 +136,7 @@
   消費＝発動条件pt＋メリット効果の必要pt＋効果追加枠pt。<br>
   予算を超えるスキル設定は戦闘で使用できません。</p>
   
-<p>効果はメリット・デメリット合わせて最大４枠まで設定可能です。<br>
+<p>効果はメリット・デメリット合わせて<b>最大４枠まで</b>設定可能です。<br>
   効果の強さに応じて必要なptが変わり、メリット効果の２個目以降は１枠ごとに追加１ptが必要です。<br>
   デメリット効果は必要なptを還元し、追加枠コストもかかりません。</p>
 <br>
@@ -153,7 +153,7 @@
 <hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3 id="build-b">【Ｂスキル】</h3>
   <p>様々な条件で発動するスキルです。<br>
-  効果量は設定した発動条件によって自動で決まります。<br>
+  <b>効果量は設定した発動条件によって自動で決まります。</b><br>
   基本的に、発動条件が厳しいほど強い・有利な効果を得られます。
   </p>
 <div class="guide-table-wrap" role="region" aria-label="Ｂスキルの種類" tabindex="0"><table id="guide-b-types"><caption>Ｂスキルの種類</caption><thead><tr><th scope="col">種類</th><th scope="col">発動タイミング</th><th scope="col">効果の例</th></tr></thead><tbody>
@@ -170,8 +170,8 @@
 <tr><th scope="row">特殊発動</th><td>ターン終了前、自分のHPが０以下になった時</td><td>復活効果を選択可能</td></tr>
 </tbody></table></div>
 <p class="box"><b>最終必要AP＝基礎５AP＋効果による追加AP＋追加枠AP−デメリット減算−確率割引</b><br>
-  メリット効果の２個目以降は１枠ごとに追加１APがかかります。効果枠は分岐先を合わせて最大５枠です。</p>
-<p>デメリット効果は必要な追加APを減算しますが、減算はスキル全体で最大５APまでです。（分岐の場合は各分岐内で５APまで）<br>
+  メリット効果の２個目以降は１枠ごとに追加１APがかかります。効果枠は分岐先を合わせて<b>最大５枠</b>です。</p>
+<p>デメリット効果は必要な追加APを減算しますが、<b>減算はスキル全体で最大５APまで</b>です。（分岐の場合は各分岐内で５APまで）<br>
   また、最終必要APが５APを下回ることはありません。</p>
 <br>
 <div class="guide-table-wrap" role="region" aria-label="Ｃスキルの主な効果と追加APの例" tabindex="0"><table id="guide-c-effects"><caption>Ｃスキルの主な効果と追加APの例</caption><thead><tr><th scope="col">効果</th><th scope="col">効果量</th><th scope="col">追加AP</th></tr></thead><tbody>
@@ -259,7 +259,7 @@
 <hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3>【状態変化】</h3>
 <p>各状態は最大３スタック。<br>
-確率判定型の状態は、判定が行われると成功・失敗を問わず全消費します。</p>
+確率判定型の状態は、判定が行われると<b>成功・失敗を問わず全消費</b>します。</p>
 
 <div class="guide-table-wrap" role="region" aria-label="状態のスタック別確率" tabindex="0"><table id="guide-status-chance"><caption>状態のスタック別確率</caption><thead><tr><th scope="col">状態</th><th scope="col">1スタック</th><th scope="col">2スタック</th><th scope="col">3スタック</th><th scope="col">判定時点・効果</th></tr></thead><tbody>
 <tr><th scope="row">荒波</th><td>15%</td><td>30%</td><td>45%</td><td>自分のフェイズ開始時。通常Ｃスキル・ダイスロール以降を中止する。</td></tr>
@@ -276,10 +276,10 @@
   
 <hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3>【ランダム状態付与・解除】</h3>
-<p>付与は指定グループ（強化状態／状態異常）のうち、<b>３スタック未満の種類から等確率</b>で１種類を選びます。<br>
-  選んだ種類にまとめて付与し、３を超える分は切り捨てます。全種類が上限なら付与されません。</p>
-<p>解除は付与中の種類から等確率で１種類を選び、１スタック減らします。<br>
-  複数回なら毎回抽選し直します。スタックの多い種類が選ばれやすくなるわけではありません。</p>
+<p>ランダム付与は<b>３スタック未満の状態変化から等確率で１種類のみ</b>を選んで付与します。<br>
+３を超える分は切り捨てになり、他の状態変化に余剰が回されることはありません。</p>
+<p>ランダム解除は<b>解除の数だけ付与中の状態変化から等確率で１回ずつ</b>選ばれます。<br>
+  スタックの多い種類が選ばれやすくなるわけではありません。</p>
   
 <hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3>【フィールド効果】</h3>
