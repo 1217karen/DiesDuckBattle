@@ -2,6 +2,7 @@ import "./siteTheme.js";
 import { displayCache } from "./authDisplayCache.js";
 import { getAuthRuntime } from "./authRuntime.js";
 import { menuModel } from "./commonMenuModel.js";
+import { createAccountDeletionView } from "./accountDeletionView.js";
 
 const root = document.getElementById("common-menu");
 const details = root.querySelector(".common-menu__nav"), summary = details.querySelector("summary");
@@ -65,7 +66,13 @@ renderMenu(publicItems);
 try {
   const controller = await getAuthRuntime();
   let lastMenuKey = "", redirected = false, profileLink, logoutButton;
+  let authBusy = false;
+  const deletion = createAccountDeletionView({ controller, onBusy(value) {
+    if (logoutButton) logoutButton.disabled = value || authBusy;
+  } });
   controller.subscribe(state => {
+    authBusy = !!state.busy;
+    deletion.update(state);
     if (!redirected && state.sessionKnown && !state.signedIn && !state.busy && state.logoutSucceeded) {
       redirected = true;
       location.replace("index.html?notice=logged-out");
@@ -103,7 +110,7 @@ try {
           if (!button.isConnected) { accountDetails.open = false; summary.focus(); }
         });
         logoutButton = button;
-        accountMenu.replaceChildren(profileLink, button);
+        accountMenu.replaceChildren(profileLink, button, deletion.separator, deletion.launch, deletion.feedback);
       } else {
         accountMenu.replaceChildren();
       }
@@ -115,7 +122,7 @@ try {
       if (account) profileLink.setAttribute("href", "profile.html?eno=" + encodeURIComponent(account.eno));
       else profileLink.removeAttribute("href");
     }
-    if (logoutButton) logoutButton.disabled = !!state.busy;
+    if (logoutButton) logoutButton.disabled = !!state.busy || deletion.busy;
     const feedback = root.querySelector("[data-feedback]");
     const error = state.messageSource === "logout" ? state.message : "";
     feedback.hidden = !error; feedback.textContent = error;

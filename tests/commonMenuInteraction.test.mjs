@@ -4,7 +4,7 @@ import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 import { menuModel } from "../js/commonMenuModel.js";
 
-const code = (await readFile(new URL("../js/commonMenu.js", import.meta.url), "utf8")).replace(/^import .*;\r?\n/gm, "");
+import { menuCodeWithDeletion as code } from './accountDeletionMenuFixture.mjs';
 const signed = { ready:true, sessionKnown:true, signedIn:true, accountsResolved:true,
   accounts:[{ eno:"2", name:"キャラ名", id:"game-account-uuid" }], enos:["2"], sessionMessage:"" };
 const themeCode = await readFile(new URL("../js/siteTheme.js", import.meta.url), "utf8");
@@ -46,7 +46,9 @@ test("navigation and account controls stay separate; logout uses existing contro
   const s=await screen(); s.render(signed);
   assert.equal(s.identity.textContent,"ENo.2｜キャラ名");
   assert.equal(s.nav.children.some(item=>item.tagName==="button"),false);
-  assert.deepEqual(s.accountMenu.children.map(item=>item.textContent),["自分のプロフィールを確認する","ログアウト"]);
+  assert.deepEqual(s.accountMenu.children.map(item=>item.textContent),["自分のプロフィールを確認する","ログアウト","","アカウントを削除",""]);
+  assert.equal(s.accountMenu.children[2].tagName,'hr');
+  assert.equal(s.accountMenu.children[3].disabled,false);
   assert.equal(s.accountMenu.children[0].attributes.href,"profile.html?eno=2");
   s.toggle(s.left); assert.equal(s.left.open,true); assert.equal(s.right.open,false);
   s.toggle(s.right); assert.equal(s.right.open,true); assert.equal(s.left.open,false);

@@ -9,7 +9,8 @@ export function createAuthController(service, render, notifySuccess = () => {}) 
   const listeners = new Set([render]);
   const logoutGuards = new Set();
   const state = { ready: false, sessionKnown: false, busy: "", signedIn: false, accountsResolved: false, enos: [], accounts: [], sessionMessage: "",
-    message: "", messageSource: "", registeredEno: "", logoutSucceeded: false };
+    message: "", messageSource: "", registeredEno: "", logoutSucceeded: false,
+    accountDeletionPending: false, accountDeletionSucceeded: false };
   const snapshot = () => ({ ...state, enos: [...state.enos], accounts: state.accounts.map(a => ({ ...a })) });
   const emit = () => { if (!stopped) listeners.forEach(listener => listener(snapshot())); };
   async function applySession(session, event = "") {
@@ -26,7 +27,7 @@ export function createAuthController(service, render, notifySuccess = () => {}) 
     state.ready = sameUser && accountsKnown;
     if (!session) displayCache.clear();
     state.signedIn = !!session;
-    if (session) state.logoutSucceeded = false;
+    if (session) { state.logoutSucceeded = false; state.accountDeletionSucceeded = false; }
     state.sessionKnown = true;
     if (!sameUser) state.sessionMessage = session ? "" : "ログインしていません。";
     emit();
@@ -67,6 +68,14 @@ export function createAuthController(service, render, notifySuccess = () => {}) 
     finally { state.busy = ""; emit(); }
   }
   return {
+    // Called only after the deletion RPC and local SDK sign-out both succeeded.
+    // Invalidate pending account reads so they cannot restore a deleted identity.
+    beginAccountDeletion() { state.accountDeletionPending = true; state.accountDeletionSucceeded = false; emit(); },
+    endAccountDeletion() { if (state.accountDeletionPending) { state.accountDeletionPending = false; emit(); } },
+    async accountDeleted() {
+      state.logoutSucceeded = false; state.accountDeletionPending = false; state.accountDeletionSucceeded = true;
+      await applySession(null); displayCache.clear();
+    },
     beforeLogout(guard) { logoutGuards.add(guard); return () => logoutGuards.delete(guard); },
     subscribe(listener) { listeners.add(listener); listener(snapshot()); return () => listeners.delete(listener); },
     async start() {

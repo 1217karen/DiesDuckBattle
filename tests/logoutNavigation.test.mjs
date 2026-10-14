@@ -8,7 +8,7 @@ import { requireLoginPage } from "../js/authPageGuard.js";
 import { consumeIndexNotice } from "../js/indexNotice.js";
 import { menuModel } from "../js/commonMenuModel.js";
 
-const menuCode = (await readFile(new URL("../js/commonMenu.js", import.meta.url), "utf8")).replace(/^import .*;\r?\n/gm, "");
+import { menuCodeWithDeletion as menuCode } from './accountDeletionMenuFixture.mjs';
 async function screen(page, { guardFirst = false } = {}) {
   const redirects = [], notifications = [], classes = new Set(), nodes = new Map();
   let watch, state, accepted = true, fail = false, calls = 0, duringLogout = async () => {};

@@ -8,7 +8,7 @@ import { requireLoginPage } from "../js/authPageGuard.js";
 import { menuModel } from "../js/commonMenuModel.js";
 const source = file => readFile(new URL("../" + file, import.meta.url), "utf8");
 const bootstrap = await source("js/menuDisplayCache.js");
-const menuCode = (await source("js/commonMenu.js")).replace(/^import .*;\r?\n/gm, "");
+import { menuCodeWithDeletion as menuCode } from './accountDeletionMenuFixture.mjs';
 const key = "diesduck-menu-display-v1";
 const signedCache = { version: 1, loggedIn: true, identity: "ENo.12｜Alice" };
 const tick = () => new Promise(resolve => setImmediate(resolve));

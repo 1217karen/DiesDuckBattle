@@ -27,12 +27,13 @@ export async function requireLoginPage({ getRuntime = getAuthRuntime, document =
         if (!state.signedIn) {
           // Auth's SIGNED_OUT event can precede the logout promise's outcome.
           // Hide immediately, but let the action settle before choosing its notice.
-          if (admitted && state.busy === "logout") {
+          if (admitted && (state.busy === "logout" || state.accountDeletionPending)) {
             document.body.classList.add("auth-required-pending");
             return;
           }
           redirect(!admitted ? "index.html?notice=login-required"
-            : state.logoutSucceeded ? "index.html?notice=logged-out" : "index.html");
+            : state.accountDeletionSucceeded ? "index.html?notice=account-deleted"
+              : state.logoutSucceeded ? "index.html?notice=logged-out" : "index.html");
           reject(new Error("Login required"));
           return;
         }

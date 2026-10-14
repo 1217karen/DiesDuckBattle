@@ -4,6 +4,7 @@ import { canonicalEno } from "../supabase/functions/_shared/internal-email.mjs";
 const notices = {
   "login-required": { kind: "error", message: "ログインしてください。" },
   "logged-out": { kind: "success", message: "ログアウトしました。" },
+  "account-deleted": { kind: "success", message: "アカウントを削除しました。" },
 };
 
 export function consumeIndexNotice({ location = globalThis.location, history = globalThis.history,
