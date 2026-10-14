@@ -264,7 +264,7 @@
 <div class="guide-table-wrap" role="region" aria-label="状態のスタック別確率" tabindex="0"><table id="guide-status-chance"><caption>状態のスタック別確率</caption><thead><tr><th scope="col">状態</th><th scope="col">1スタック</th><th scope="col">2スタック</th><th scope="col">3スタック</th><th scope="col">判定時点・効果</th></tr></thead><tbody>
 <tr><th scope="row">荒波</th><td>15%</td><td>30%</td><td>45%</td><td>自分のフェイズ開始時。通常Ｃスキル・ダイスロール以降を中止する。</td></tr>
 <tr><th scope="row">逆風</th><td>20%</td><td>40%</td><td>60%</td><td>出目確定後、Ａスキルの発動条件を満たすとき。そのＡスキルを中止する。</td></tr>
-<tr><th scope="row">湯気</th><td>25%</td><td>50%</td><td>75%</td><td>通常攻撃の判定時。攻撃が外れる。</td></tr>
+<tr><th scope="row">湯気</th><td>25%</td><td>50%</td><td>75%</td><td>通常攻撃の判定時。通常攻撃に失敗する。</td></tr>
 <tr><th scope="row">追風</th><td>30%</td><td>60%</td><td>90%</td><td>相手の通常攻撃が外れていないとき。回避する。</td></tr>
 </tbody></table></div>
 <div class="guide-table-wrap" role="region" aria-label="その他の状態の効果と消費" tabindex="0"><table id="guide-status-other"><caption>その他の状態の効果と消費</caption><thead><tr><th scope="col">状態</th><th scope="col">効果</th><th scope="col">消費</th></tr></thead><tbody>
@@ -280,6 +280,12 @@
 ３を超える分は切り捨てになり、他の状態変化に余剰が回されることはありません。</p>
 <p>ランダム解除は<b>解除の数だけ付与中の状態変化から等確率で１回ずつ</b>選ばれます。<br>
   スタックの多い種類が選ばれやすくなるわけではありません。</p>
+  <div class="guide-table-wrap" role="region" aria-label="状態変化グループの分類" tabindex="0"><table id="guide-status-other"><caption>状態変化グループの分類</caption><thead><tr><th scope="col">グループ名</th><th scope="col">内容</th></tr></thead><tbody>
+<tr><th scope="row">状態異常</th><td>亀裂・荒波・逆風・湯気</td></tr>
+<tr><th scope="row">状態強化</th><td>追風・集中・反撃・清潔</td></tr>
+
+
+</tbody></table></div>
   
 <hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3>【フィールド効果】</h3>
