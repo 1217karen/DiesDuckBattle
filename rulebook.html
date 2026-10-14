@@ -168,8 +168,8 @@
 <tr><th scope="row">特殊発動</th><td>ターン終了前、自分のHPが０以下になった時</td><td>復活効果を選択可能</td></tr>
 </tbody></table></div>
 <p class="box"><b>最終必要AP＝基礎５AP＋効果による追加AP＋追加枠AP−デメリット減算−確率割引</b><br>
-  メリットの２個目以降は１枠ごとに追加１APがかかります。効果枠は分岐先を合わせて最大５枠です。</p>
-<p>デメリットは必要な追加APを減算しますが、減算はスキル全体で最大５APまでです。（分岐の場合は各分岐内で５APまで）<br>
+  メリット効果の２個目以降は１枠ごとに追加１APがかかります。効果枠は分岐先を合わせて最大５枠です。</p>
+<p>デメリット効果は必要な追加APを減算しますが、減算はスキル全体で最大５APまでです。（分岐の場合は各分岐内で５APまで）<br>
   また、最終必要APが５APを下回ることはありません。</p>
 
 <div class="guide-table-wrap" role="region" aria-label="Ｃスキルの主な効果と追加APの例" tabindex="0"><table id="guide-c-effects"><caption>Ｃスキルの主な効果と追加APの例</caption><thead><tr><th scope="col">効果</th><th scope="col">効果量</th><th scope="col">追加AP</th></tr></thead><tbody>
@@ -186,15 +186,16 @@
   <p class="small">例：相手に固定80ダメージだけなら５＋６＝<b>11AP</b>。<br>
   そこに４ターンの間自分のAT＋２を加えると、効果１AP＋ターン数２AP＋追加枠１APで<B>15AP</B>になります。</p>
 
-<div class="guide-table-wrap" role="region" aria-label="成功率と減算" tabindex="0"><table id="guide-c-chance"><caption>成功率と減算</caption><thead><tr><th scope="col">成功率</th><th scope="col">AP減算</th></tr></thead><tbody>
+<div class="guide-table-wrap" role="region" aria-label="成功率と割引" tabindex="0"><table id="guide-c-chance"><caption>成功率と割引</caption><thead><tr><th scope="col">成功率</th><th scope="col">AP割引</th></tr></thead><tbody>
 <tr><th scope="row">100%</th><td>０</td></tr>
 <tr><th scope="row">70%</th><td>１</td></tr>
 <tr><th scope="row">50%</th><td>２</td></tr>
 <tr><th scope="row">25%</th><td>３</td></tr>
 </tbody></table></div>
 <p>「相手に固定○ダメージ」のみ、成功率を設定できます。<br>
-  失敗する確率が高いほど必要APを減算しますが、０以下にはできません。<br>
-  失敗時も設定ダメージの20%（小数点以下切り捨て）を与えます。</p>
+  失敗時は元ダメージの20%（小数点以下切り捨て）を与えます。<br>
+  失敗する確率が高いほど必要APを割引しますが、０以下にはできません。<br>
+  また、<b>確率によるAP割引は減算の上限5APに含みません。</b></p>
 
 <div class="guide-table-wrap" role="region" aria-label="通常発動Ｃスキルの効果分岐" tabindex="0"><table id="guide-c-branches"><caption>通常発動Ｃスキルの効果分岐</caption><thead><tr><th scope="col">分岐方式</th><th scope="col">発動する効果</th></tr></thead><tbody>
 <tr><th scope="row">分岐なし</th><td>分岐効果なし（設定した効果がそのまま発動します）</td></tr>
