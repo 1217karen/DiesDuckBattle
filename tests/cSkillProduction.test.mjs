@@ -47,10 +47,10 @@ test('production AP: amount+duration、mirror反転、最低5、turnStep全軸',
   const mirror=compileCSkill(flat([row('damage-self',{amount:80})]));assert.equal(mirror.resources.optionDelta,-5);assert.equal(mirror.skill.costAP,5);
 });
 test('production chance割引はleafだけ、失敗20%維持',()=>{
-  assert.deepEqual(catalog.chanceOptions.map(o=>[o.id,o.apDiscount]),[['100',0],['70',1],['50',2],['25',3]]);
-  for(const [id,amount] of [['damage-enemy',60]]) for(const [chance,discount] of [['100',0],['70',1],['50',2],['25',3]]) {
+  assert.deepEqual(catalog.chanceOptions.map(o=>[o.id,o.value,o.apDiscount]),[['100',1,0],['70',.7,2],['50',.5,3],['25',.25,4]]);
+  for(const [id,amount] of [['damage-enemy',60],['damage-enemy',80]]) for(const [chance,discount] of [['100',0],['70',2],['50',3],['25',4]]) {
     const r=compileCSkill(flat([row(id,{amount},chance),row('damage-enemy',{amount:80})]));
-    assert.equal(r.skill.costAP,12+Math.max(0,2-discount));
+    assert.equal(r.skill.costAP,12+Math.max(0,(amount-50)/5-discount));
     assert.equal(r.skill.effect[0].onFail?.amount,chance==='100'?undefined:Math.floor(amount*.2));
     assert.equal(r.resources.effectCount,2);
   }

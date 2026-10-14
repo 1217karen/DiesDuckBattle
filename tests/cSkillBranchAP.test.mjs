@@ -14,7 +14,7 @@ test("flat retains sum of all effects, local slots, chance discounts and minimum
  const s=flat([damage(60),damage(55),damage(55,"self")]);
  const r=calculate(s);assert.equal(r.optionDelta,2);assert.equal(r.slotCost,1);assert.equal(r.rawAP,8);
  assert.equal(r.requiredAP,8);assert.deepEqual(r.effectBreakdown.map(e=>e.slotCost),[0,1,0]);
- assert.equal(calculate(flat([{...damage(75),chanceOptionId:"50"}])).requiredAP,8);
+ assert.equal(calculate(flat([{...damage(75),chanceOptionId:"50"}])).requiredAP,7);
  assert.equal(calculate(flat([damage(75,"self")])).requiredAP,5);
 });
 test("random2/random3 select one whole largest branch, not separate maxima or sum", () => {
@@ -99,7 +99,7 @@ test("20 AP example, original prices and applied per-row refunds reconcile",()=>
 });
 test("refunds below the cap, discount and extra benefit slot remain independent",()=>{
  verify(flat([percent(),damage(55,"self"),damage(60,"self")]),22);
- verify(flat([{...damage(80),chanceOptionId:"50"},damage(75),damage(75,"self"),damage(75,"self")]),10);
+ verify(flat([{...damage(80),chanceOptionId:"50"},damage(75),damage(75,"self"),damage(75,"self")]),9);
  verify(flat([damage(75,"self"),damage(75,"self")]),5);
 });
 test("each random and HP branch caps independently before choosing the highest cost",()=>{

@@ -40,7 +40,7 @@ function compileOne(id, values = {}, chance = "50") {
 test("production/devのchance候補は100/70/50/25共通、量候補はchanceと独立", () => {
   assert.equal(C_HP_FAILURE_MULTIPLIER, .2);
   const prod = createCSkillCatalog(), dev = createCDevCatalog();
-  assert.deepEqual(prod.chanceOptions.map(o => [o.id, o.value, o.apDiscount]), [["100", 1, 0], ["70", .7, 1], ["50", .5, 2], ["25", .25, 3]]);
+  assert.deepEqual(prod.chanceOptions.map(o => [o.id, o.value, o.apDiscount]), [["100", 1, 0], ["70", .7, 2], ["50", .5, 3], ["25", .25, 4]]);
   assert.deepEqual(dev.chanceOptions.map(o => [o.id, o.value]), prod.chanceOptions.map(o => [o.id, o.value]));
   assert.ok(dev.chanceOptions.every(o => o.apDiscount === 0 && !Object.hasOwn(o, "apDelta")));
   assert.deepEqual(prod.effects.filter(e => e.chanceEnabled === true).map(e => e.id), ["damage-enemy"]);

@@ -162,7 +162,7 @@ knownOptionDelta、optionDelta、rawAP、requiredAP、complete、errors、unreso
 | hpThreshold | 25/50/75% → すべて-1 |
 
 効果自体の`apDelta`（省略時0）とoption価格を合算する。ランダム状態解除はcatalogの効果定義に`apDelta: 1`を持ち、メリット・デメリットで共通。AT/DFはamount+duration、turnStepはbase+every+addを加算する。mirror drawbackは共通価格を反転し、1効果あたり最大5APの減算上限を維持する。
-chanceOptionsは100/70/50/25%、非負のapDiscountは0/1/2/3。割引はそのleaf価格を下限0まで下げるだけで、baseAP・追加枠・分岐・他effectには波及しない。
+chanceOptionsは100/70/50/25%、非負のapDiscountはそれぞれ0/2/3/4AP。割引はそのleaf価格を下限0まで下げるだけで、baseAP・追加枠・分岐・他effectには波及しない。
 
 分岐は通常Cのみ。branchAggregationは正式名称sumで、全branchのleaf価格とbenefit枠を合算する。
 branchAPDeltaはrandom2:-1、random3:-2、hpCondition:0。HP threshold自体の価格は一律-1。

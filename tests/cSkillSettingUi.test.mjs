@@ -311,7 +311,7 @@ test("C UI distinguishes full, partial and zero refunds without marking discount
   {effectId:"damage-enemy",options:{amount:"damageAmount-75"},chanceOptionId:"50"},
   ...[65,75,75].map(amount=>({effectId:"damage-self",options:{amount:`damageAmount-${amount}`}}))]);
  const p=await page(initial(c));
- assert.deepEqual([0,1,2,3].map(i=>p.get(`c-effect-flat-${i}-price`).textContent),["AP +3","AP -3","AP -2（上限）","AP 0（上限）"]);
+ assert.deepEqual([0,1,2,3].map(i=>p.get(`c-effect-flat-${i}-price`).textContent),["AP +2","AP -3","AP -2（上限）","AP 0（上限）"]);
  assert.deepEqual([0,1,2,3].map(i=>p.get(`c-effect-flat-${i}-slot-price`).textContent),["枠AP 0","枠AP 0","枠AP 0","枠AP 0"]);
  assert.deepEqual(p.save().ducks[0].cSelection,c);
 });

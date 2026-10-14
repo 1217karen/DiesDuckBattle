@@ -82,7 +82,7 @@ export function createCSkillCatalog() {
     ...["at", "df"].flatMap(stat => [`turn-${stat}-self-down`, `turn-${stat}-enemy-up`]),
   ];
   const catalog = { effects, optionSets, retiredEffectIds,
-    chanceOptions: [100, 70, 50, 25].map((percent, apDiscount) => ({ id: String(percent), label: `${percent}%`,
+    chanceOptions: [[100, 0], [70, 2], [50, 3], [25, 4]].map(([percent, apDiscount]) => ({ id: String(percent), label: `${percent}%`,
       value: percent / 100, apDiscount })) };
   catalog.selectionEffects = normalizedCCatalog(catalog);
   return catalog;
