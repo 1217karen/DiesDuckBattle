@@ -39,17 +39,16 @@
 </nav>
       <section id="guide-start">
 <h2>はじめかた</h2>
-        <p>まずは<a href="index.html">ホーム</a>から新規登録を開き、アカウント登録を行ってください。<br>
+        <p>まずは<a href="index.html">ホーム</a>から新規登録を開き、アカウント登録を行ってください。<br></p>
         <p>登録が完了すると「ENo」が発行されます。<br>次回以降のログインには、ENoと登録したパスワードが必要になります。<br>
           パスワードの再発行などはできません。紛失等しないようご注意ください。</p>
         <br>
         <b>・おおまかな流れ</b>
         <ol>
-          <li>「戦闘設定」でキャラクターのスキルやステータスなどと設定します。</li>
+          <li>「戦闘設定」でキャラクターのスキルやステータスなどを設定します。</li>
           <li>「キャラ設定」で名前や画像、プロフィールなどを設定します。画像を用意していなくても遊べます。</li>
           <li>「アヒルバトル」で自分のアヒルと対戦相手を選び、VSを押して対戦しましょう。</li>
-        </ol>
-        <br>
+        </ol></p>
 <p><b>ホームの「ひとこと」について</b><br>
   ホーム画面では、60文字以内のひとことを自由に設定できます。<br>
   ひとことは更新するたびに上書きされ、他のバトラーのホーム画面にもランダムで表示されます。<br>
@@ -107,7 +106,7 @@
 </tbody></table></div>
 
 <p>ダイスの初期６枠を設定します。<br>
-  カスタマイズ型は同じ出目を通常２枠まで、ダイスptを１ptを使用することで最大３枠まで設定可能です。<br>
+  カスタマイズ型は同じ出目を通常２枠まで、後述のダイスptを１pt使用することで最大３枠まで設定可能です。<br>
   固定型は出目を編集できない代わりに、カスタマイズ型では作れない組み合わせを使用できます。</p>
   
 <div class="guide-table-wrap" role="region" aria-label="ダイスptについて" tabindex="0"><table id="guide-dice-budget"><caption>ダイスptについて</caption><thead><tr><th scope="col">条件</th><th scope="col">ダイスpt</th></tr></thead><tbody>
@@ -133,9 +132,10 @@
         
 <p class="box"><b>予算＝基本２pt＋残りダイスpt+デメリット効果の還元</b><br>
   消費＝発動条件＋メリット効果の価格＋効果追加枠。<br>
-  予算を超えるスキルは作成できません。</p>
+  予算を超えるスキル設定は戦闘で使用できません。</p>
   
-<p>通常効果はメリット・デメリット合わせて最大４枠まで設定可能です。<br>効果の強さに応じて必要なptが変わり、メリットの２個目以降は１枠ごとに追加１ptが必要です。<br>
+<p>通常効果はメリット・デメリット合わせて最大４枠まで設定可能です。<br>
+  効果の強さに応じて必要なptが変わり、メリットの２個目以降は１枠ごとに追加１ptが必要です。<br>
   デメリットは効果に必要なptを還元し、追加枠コストもかかりません。</p>
 
 <div class="guide-table-wrap" role="region" aria-label="主なＡスキル効果と必要ptの例" tabindex="0"><table id="guide-a-effects"><caption>主なＡスキル効果と必要ptの例</caption><thead><tr><th scope="col">効果</th><th scope="col">効果量：必要pt</th></tr></thead><tbody>
@@ -161,8 +161,9 @@
 
 <h3 id="build-c">【Ｃスキル】</h3>
 <p>APを消費して発動するスキルです。<br>
-必要AP以上にAPが溜まっていた場合は、必要数だけ消費して残りAPを引き継ぎます。</p>
-<div class="guide-table-wrap" role="region" aria-label="Ｃスキルの発動方式" tabindex="0"><table id="guide-c-modes"><caption>Ｃスキルの発動方式</caption><thead><tr><th scope="col">方式</th><th scope="col">タイミング</th><th scope="col">固有要素</th></tr></thead><tbody>
+必要APが溜まっていれば、特定のタイミングで発動します。<br>
+必要AP以上にAPが溜まっていた場合は、必要数だけ消費して残りAPは引き継ぎます。</p>
+<div class="guide-table-wrap" role="region" aria-label="Ｃスキルの発動方式" tabindex="0"><table id="guide-c-modes"><caption>Ｃスキルの発動方式</caption><thead><tr><th scope="col">方式</th><th scope="col">発動タイミング</th><th scope="col">固有要素</th></tr></thead><tbody>
 <tr><th scope="row">通常発動</th><td>自分のダイスロール前</td><td>ランダム分岐・HP条件分岐を選択可能</td></tr>
 <tr><th scope="row">特殊発動</th><td>ターン終了前、自分のHPが０以下になった時</td><td>復活効果を選択可能</td></tr>
 </tbody></table></div>
@@ -172,8 +173,8 @@
   また、最終必要APが５APを下回ることはありません。</p>
 
 <div class="guide-table-wrap" role="region" aria-label="Ｃスキルの主な効果と追加APの例" tabindex="0"><table id="guide-c-effects"><caption>Ｃスキルの主な効果と追加APの例</caption><thead><tr><th scope="col">効果</th><th scope="col">効果量</th><th scope="col">追加AP</th></tr></thead><tbody>
-<tr><th scope="row">固定ダメージ</th><td>50 / 55 / 60 / 65 / 70 / 75 / 0</td><td>０ / １ / ２ / ３ / ４ / ５ / ６</td></tr>
-<tr><th scope="row">固定HP回復</th><td>30／40／50</td><td>０ / １ / ２</td></tr>
+<tr><th scope="row">固定ダメージ</th><td>50 / 55 / 60 / 65 / 70 / 75 / 80</td><td>０ / １ / ２ / ３ / ４ / ５ / ６</td></tr>
+<tr><th scope="row">固定HP回復</th><td>30 / 40 / 50</td><td>０ / １ / ２</td></tr>
 <tr><th scope="row">相手の現在HP割合ダメージ</th><td>25 / 50 / 75 / 100%</td><td>０ / ５ / 10 / 20</td></tr>
 <tr><th scope="row">相手の状態異常の総スタック数×ダメージ</th><td>×10 / ×15 / ×20</td><td>０ / ２ / ４</td></tr>
 <tr><th scope="row">強化状態・状態異常の付与</th><td>３スタック</td><td>１</td></tr>
@@ -183,7 +184,7 @@
 </tbody></table></div>
 <p>AT・DF操作は、効果量とターン数の追加APを合計します。</p>
   <p class="small">例：相手に固定80ダメージだけなら５＋６＝<b>11AP</b>。<br>
-  そこに４ターンの間自分のAT＋２を加えると、効果１AP＋ターン数２pt＋追加枠１APで<B>15AP</B>になります。</p>
+  そこに４ターンの間自分のAT＋２を加えると、効果１AP＋ターン数２AP＋追加枠１APで<B>15AP</B>になります。</p>
 
 <div class="guide-table-wrap" role="region" aria-label="成功率と減算" tabindex="0"><table id="guide-c-chance"><caption>成功率と減算</caption><thead><tr><th scope="col">成功率</th><th scope="col">AP減算</th></tr></thead><tbody>
 <tr><th scope="row">100%</th><td>０</td></tr>
