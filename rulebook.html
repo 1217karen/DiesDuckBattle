@@ -85,7 +85,7 @@
 <h2>戦闘設定</h2>
 <p>スキル設定のための資料です。<br>Ａスキル・Ｃスキルはアヒル、Ｂスキル・Ｄスキルはバトラーのスキルです。</p>
 <nav class="toc" aria-label="戦闘設定の項目"><a class="chip" href="#build-stats">ステータス</a><a class="chip" href="#build-dice">ダイス</a><a class="chip" href="#build-a">Ａスキル</a><a class="chip" href="#build-b">Ｂスキル</a><a class="chip" href="#build-c">Ｃスキル</a><a class="chip" href="#build-d">Ｄスキル</a><a class="chip" href="#build-presets">プリセット</a></nav>
-
+<hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3 id="build-stats">【ステータス】</h3>
 <p>AT・DFはそれぞれ１～５で設定可能です。<br>ダイスタイプで決まるSPを含め、<b>AT＋DF＋SPは合計９pt以内</b>です。<br>
   MHPはステータスによって自動で決定します。</p>
@@ -95,7 +95,7 @@
 <tr><th scope="row">DF</th><td>通常攻撃に対する防御力</td></tr>
 <tr><th scope="row">SP</th><td>１ターンの行動回数。高い側が先攻（同値はランダム）</td></tr>
 </tbody></table></div>
-
+<hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3 id="build-dice">【ダイス】</h3>
 <div class="guide-table-wrap" role="region" aria-label="ダイスタイプ" tabindex="0"><table id="guide-dice-table"><caption>ダイスタイプ</caption><thead><tr><th scope="col">タイプ</th><th scope="col">SP</th><th scope="col">使用できる出目</th><th scope="col">型</th></tr></thead><tbody>
 <tr><th scope="row">スピード</th><td>３</td><td>０、１～４</td><td>カスタマイズ</td></tr>
@@ -115,7 +115,7 @@
 </tbody></table></div>
 <p>余ったダイスptは、そのままＡスキルの予算に加わります。</p>
   <p class="small">例：０を３枠入れた場合は、獲得３pt−消費１pt＝２ptです。</p>
-        
+<hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3 id="build-a">【Ａスキル】</h3>
 <p>ダイスロール後、出目によって発動するスキルです。<br>
   発動条件は「特定の出目」「指定値以下」「指定値以上」「全ての出目」から選択可能です。<br>
@@ -148,7 +148,7 @@
 </tbody></table></div>
 <p>選ぶ対象・種類は効果ごとに異なります。<br>
   たとえば相手の回復、自分への状態異常などはデメリットになります。</p>
-
+<hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3 id="build-b">【Ｂスキル】</h3>
   <p>様々な条件で発動するスキルです。<br>
   効果量は設定した発動条件によって自動で決まります。<br>
@@ -158,7 +158,7 @@
 <tr><th scope="row">トリガー型</th><td>フェイズ開始・通常攻撃前・命中後・回復時など、指定したタイミングで発動</td><td>状態付与・解除、回復、次の攻撃強化</td></tr>
 <tr><th scope="row">パッシブ型</th><td>基本的に常時発動（指定HP％以上などの条件なども含む）</td><td>AT/DF増・攻撃回数増・ダメージに倍率補正</td></tr>
 </tbody></table></div>
-
+<hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3 id="build-c">【Ｃスキル】</h3>
 <p>APを消費して発動するスキルです。<br>
 必要APが溜まっていれば、特定のタイミングで発動します。<br>
@@ -228,17 +228,17 @@
 </tbody></table></div>
 <p>Ｃスキル発動までにかかったターン数に応じて、APボーナスが与えられます。<br>
   通常・特殊どちらも、Ｃスキルの全効果を終えた後に加算され、<B>未発動ターン数はリセット</B>されます。</p>
-        
+<hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3 id="build-d">【Ｄスキル】</h3>
 <p>バトル開始時にダイスへ出目を１つ追加します。<br>
   特別なコストや条件は必要ありません。<br>
   自分アヒルに追加できる出目は０～６、相手アヒルには０のみ追加可能です。<br>
   ダイスの枠が増えるためＡスキルの発動確率も変わりますが、Ａスキル作成時のコストは変わりません。</p>
-
+<hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3 id="build-presets">【プリセット】</h3>
 <p>アタック・ディフェンス・ヒール・テクニカルのプリセットを、スキル設定のサンプルとして使用できます。<br>
   プリセットを元に自由に編集も可能です。</p>
-
+<hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3>【スキル保管】</h3>
 <p>※あとでIDきめてページ内リンク付ける<br>
 作成した各スキルを、スキル事に保管できます。<br>
@@ -255,7 +255,7 @@
 また、１ターン内の２行動目以降は通常攻撃の命中率が50%になります。</p>
   
 <p>荒波で最初の攻撃フェイズが中止されても、次の行動へ出目２倍は持ち越せません。</p>
-
+<hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3>【状態変化】</h3>
 <p>各状態は最大３スタック。<br>
 確率判定型の状態は、判定が行われると成功・失敗を問わず全消費します。</p>
@@ -272,13 +272,15 @@
 <tr><th scope="row">反撃</th><td>受けた通常ダメージの半分（切り捨て）を固定ダメージで返す</td><td>通常ダメージを受けたとき１スタック消費</td></tr>
 <tr><th scope="row">清潔</th><td>１スタックで１回の状態異常付与を最大２スタック分防ぐ</td><td>防ぐ量に応じて必要数を消費</td></tr>
 </tbody></table></div>
-
+  
+<hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3>【ランダム状態付与・解除】</h3>
 <p>付与は指定グループ（強化状態／状態異常）のうち、<b>３スタック未満の種類から等確率</b>で１種類を選びます。<br>
   選んだ種類にまとめて付与し、３を超える分は切り捨てます。全種類が上限なら付与されません。</p>
 <p>解除は付与中の種類から等確率で１種類を選び、１スタック減らします。<br>
   複数回なら毎回抽選し直します。スタックの多い種類が選ばれやすくなるわけではありません。</p>
   
+<hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3>【フィールド効果】</h3>
   <p>バトル開始時に一定確率で発生し、以下の４種類から等確率で選ばれます。</p>
 <div class="guide-table-wrap" role="region" aria-label="フィールドの種類" tabindex="0"><table id="guide-fields"><caption>フィールドの種類</caption><thead><tr><th scope="col">フィールド</th><th scope="col">両者に適用される効果</th></tr></thead><tbody>
@@ -294,7 +296,7 @@
 <p>対戦には、バトラー・アヒル共に完成済みの戦闘設定が必要です。<br>
   公開アヒルが完成している場合、自動で使用アヒルに選択されます。<Br>
   1Pのアヒルアイコンを押すことで、他の完成したアヒルを選択することも可能です。</p>
-        
+<hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <b>【連勝記録】</b>
 <p>ランダム戦闘で勝つと連勝数が記録されます。<br>
 ランダム戦闘で敗北・引き分けになるか、手動で相手を選んで戦闘を行うと連勝記録は途切れます。<br>
