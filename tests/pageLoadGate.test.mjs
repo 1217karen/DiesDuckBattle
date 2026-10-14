@@ -74,7 +74,7 @@ for(const name of ['settingPage','characterPage']) for(const outcome of ['succes
  const noop=()=>({});
  const ctx={...f,requireLoginPage:async()=>{if(outcome==='denied'){f.classes.add('auth-required-pending');throw Error('Login required');}},
  createSettingState:noop,createBuildRules:noop,createASkillCatalog:noop,createBSkillCatalog:noop,createCSkillCatalog:noop,createCSkillRules:noop,
- createIconPicker:noop,createEmptyPlayerPresentation:noop,BATTLER_NAME_MAX,
+ createIconPicker:noop,createEmptyPlayerPresentation:noop,createSkillVaultView:()=>null,BATTLER_NAME_MAX,
  mountOnlineEditor:async()=>{mounted=true;started.resolve();await pending.promise;f.get('editor').textContent=outcome==='success'?'hydrated':'load error';return null;}};
  const running=run(name,ctx);
  if(outcome==='denied'){await assert.rejects(running,/Login required/);assert.equal(mounted,false);assert.equal(f.visible(),false);return;}

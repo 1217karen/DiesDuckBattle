@@ -7,6 +7,8 @@ import { SKILL_NAME_MAX, SKILL_RUBY_MAX } from "./skillLabels.js";
 import { DUCK_NAME_MAX, hasName, duckNameIssues, duckNameError, codePointLength } from "./nameValidation.js";
 import { effectSelectionFields } from "./effectSelectionCatalog.js";
 import { mountOnlineEditor } from "./onlineEditor.js";
+import { createSkillVaultView } from "./skillVaultView.js";
+import { vaultSkillPatch } from "./skillVaultModel.js";
 import { createEmptyDuckProfile } from "./playerPresentationModel.js";
 import { createSettingState, changeSetting, selectedDuck, selectedPublicDuckId, cBranches, createCStructure, duckSummary } from "./settingState.js";
 import { inspectBuildForSave, saveSectionSummary } from "./buildSaveInspection.js";
@@ -33,6 +35,19 @@ let online;
 let displayPresentation;
 let state = createSettingState({ ok: false, status: "loading" });
 let dataVersion = 0;
+let editorSnapshot = {};
+const vaultContext = type => ({
+  key: `${editorSnapshot.base?.authUserId}/${editorSnapshot.base?.account?.id}/${dataVersion}/${state.selectedDuckId}`,
+  canEdit: !!editorSnapshot.canEdit,
+  owner: type === "A" || type === "C" ? selectedDuck(state) : state.build?.battler,
+});
+const vault = createSkillVaultView({ context: vaultContext, apply(type, entry, token) {
+  const current = vaultContext(type);
+  if (!current.canEdit || current.key !== token.key || entry.type !== type) return;
+  const patch = vaultSkillPatch(type, entry, current.owner);
+  if (type === "B") bTraitPath = { category: "", condition: "" };
+  commit({ type: type === "A" || type === "C" ? "duck" : "battler", patch });
+} });
 const rules = createBuildRules(), aCatalog = createASkillCatalog(), bCatalog = createBSkillCatalog();
 const cCatalog = createCSkillCatalog(), cRules = createCSkillRules();
 const $ = id => document.getElementById(id);
@@ -344,12 +359,14 @@ function renderBattler() {
   bBox.append(controls);
   const presentedB = presentSkillSummary("B", state.build.battler);
   if (presentedB.complete && presentedB.text) appendCompletedSentence(bBox, "b", presentedB.text);
+  vault?.append(bBox, "B");
   feedback(bBox, "b");
   const dBox = card("Ｄスキル", "d");
   field(dBox, null, "d-option", [...D_SKILL_OPTIONS, ...(d !== null && !d.optionId ? incomplete : [])], d === null ? "" : d.optionId || "incomplete",
     optionId => patchBattler({ dSelection: optionId ? { optionId } : null }), "未設定").setAttribute("aria-label", "Dスキル");
   const presentedD = presentSkillSummary("D", state.build.battler);
   if (presentedD.complete && presentedD.text) appendCompletedSentence(dBox, "d", presentedD.text);
+  vault?.append(dBox, "D");
   feedback(dBox, "d");
   $("battler-editor").replaceChildren(renderPresets("battler"), bBox, dBox);
 }
@@ -470,7 +487,7 @@ function appendCompletedSentence(panel, key, text) {
 }
 function renderA(duck, box) {
   const panel = card("Ａスキル", "a");
-  if (!skillsUnlocked(duck)) { panel.append(el("p", "ステータスを設定してください", "description")); box.append(panel); return; }
+  if (!skillsUnlocked(duck)) { panel.append(el("p", "ステータスを設定してください", "description")); vault?.append(panel, "A"); box.append(panel); return; }
   const a = aEditingSelection(duck);
   {
     const update = aSelection => patchDuck({ aSelection });
@@ -575,6 +592,7 @@ function renderA(duck, box) {
   }
   const presentedA = presentSkillSummary("A", duck);
   if (presentedA.complete && presentedA.text) appendCompletedSentence(panel, "a", presentedA.text);
+  vault?.append(panel, "A");
   feedback(panel, "a"); box.append(panel);
 }
 
@@ -596,7 +614,7 @@ function renderAPoints(selection, resources) {
 function renderC(duck, box) {
   // Empty rows are view-only until an explicit edit materializes that branch.
   const panel = card("Ｃスキル", "c"), c = duck.cSelection ?? { mode: "", structure: createCStructure("flat") };
-  if (!skillsUnlocked(duck)) { panel.append(el("p", "ステータスを設定してください", "description")); box.append(panel); return; }
+  if (!skillsUnlocked(duck)) { panel.append(el("p", "ステータスを設定してください", "description")); vault?.append(panel, "C"); box.append(panel); return; }
   const resources = calculateCSkillResources(c, { catalog: cCatalog, rules: cRules });
   const top = el("div", null, "skill-settings c-setting-form"), modeEditor = el("div"); top.id = "c-settings"; panel.append(top);
   top.append(modeEditor);
@@ -669,6 +687,7 @@ function renderC(duck, box) {
   panel.append(metrics);
   const presentedC = presentSkillSummary("C", duck);
   if (presentedC.complete && presentedC.text) appendCompletedSentence(panel, "c", presentedC.text);
+  vault?.append(panel, "C");
   feedback(panel, "c"); box.append(panel);
 }
 function renderDuck() {
@@ -715,6 +734,7 @@ function inspectSettingsForSave() {
   return { ...inspection, invalid, canSave: invalid.length === 0, complete: inspection.complete && invalid.length === 0 };
 }
 function renderSummaries() {
+  vault?.update();
   $("duck-name")?.setAttribute("aria-invalid", String(!!duckNameError(selectedDuck(state)?.name)));
   if ($("duck-name-error")) $("duck-name-error").textContent = duckNameError(selectedDuck(state)?.name);
   const inspection = inspectSettingsForSave();
@@ -776,7 +796,7 @@ online = await mountOnlineEditor({
     if (data) render();
     else for (const id of ["battler-editor", "duck-tabs", "duck-editor"]) $(id).replaceChildren();
   },
-  onState(next) { state.dirty = next.dirty; },
+  onState(next) { state.dirty = next.dirty; editorSnapshot = next; vault?.sync(next); },
 });
 
 finishPageLoad();

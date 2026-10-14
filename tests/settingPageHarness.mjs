@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { createEmptyPlayerPresentation } from "../js/playerPresentationModel.js";
 
 // Replace only the browser connection boundary. All production editor handlers/catalogs run unchanged.
-export async function loadSettingPage(build, onSave, mount) {
+export async function loadSettingPage(build, onSave, mount, vaultFactory) {
   const file = new URL("../js/settingPage.js", import.meta.url);
   globalThis.__mountSettingForTest = mount ?? (async ({ hydrate, onState }) => {
     let data = { build: structuredClone(build), presentation: createEmptyPlayerPresentation(),
@@ -20,9 +20,12 @@ export async function loadSettingPage(build, onSave, mount) {
     };
   });
   let source = await readFile(file, "utf8");
+  globalThis.__vaultForTest = vaultFactory ?? (() => null);
+  source = source.replace('import { createSkillVaultView } from "./skillVaultView.js";', 'const createSkillVaultView = globalThis.__vaultForTest;');
   source = source.replace('import { requireLoginPage } from "./authPageGuard.js";', 'const requireLoginPage = async () => {};');
   source = source.replace('import { mountOnlineEditor } from "./onlineEditor.js";', 'const mountOnlineEditor = globalThis.__mountSettingForTest;');
   source = source.replace(/from "(\.\/[^\"]+)"/g, (_, path) => `from ${JSON.stringify(new URL(path, file).href)}`);
   await import(`data:text/javascript;base64,${Buffer.from(source + `\n// ${crypto.randomUUID()}`).toString("base64")}`);
   delete globalThis.__mountSettingForTest;
+  delete globalThis.__vaultForTest;
 }

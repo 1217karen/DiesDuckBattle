@@ -272,3 +272,13 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
   .a-effect-row > .effect-meta > button,
   .skill-c .priced-effect-row > .effect-meta > button { margin-left:auto; flex-shrink:0; max-width:100%; }
 }
+.skill-vault { margin-top: 1rem; }
+.skill-vault details { margin-top: .65rem; }
+.skill-vault summary { cursor: pointer; }
+.skill-vault-list { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0; }
+.skill-vault-list button { overflow-wrap: anywhere; max-width: 100%; }
+.skill-vault-status { font-size: .9rem; }
+.skill-vault-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; }
+.skill-vault-actions .skill-vault-delete { margin-left: auto; color: #c94343; background: transparent; border-color: transparent; }
+.skill-vault-actions .skill-vault-delete-confirm { background: #a52b2b; color: white; border-color: #a52b2b; }
+.skill-vault-dialog p { white-space: pre-wrap; overflow-wrap: anywhere; }
