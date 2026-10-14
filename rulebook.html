@@ -40,7 +40,6 @@
       <section id="guide-start">
 <h2>はじめかた</h2>
         <p>まずは<a href="index.html">ホーム</a>から新規登録を開き、アカウント登録を行ってください。<br>
-          パスワードは６文字以上で、半角英字と数字がそれぞれ1文字以上必須です。</p>
         <p>登録が完了すると「ENo」が発行されます。<br>次回以降のログインには、ENoと登録したパスワードが必要になります。<br>
           パスワードの再発行などはできません。紛失等しないようご注意ください。</p>
         <br>
@@ -54,7 +53,7 @@
 <p><b>ホームの「ひとこと」について</b><br>
   ホーム画面では、60文字以内のひとことを自由に設定できます。<br>
   ひとことは更新するたびに上書きされ、他のバトラーのホーム画面にもランダムで表示されます。<br>
-  なお、プロフィールに表示されるプロフィールメッセージとは別のものです。</p>
+  ※プロフィールに表示されるプロフィールメッセージとは別のものです。</p>
       </section>
 
 <section id="guide-characters">
@@ -85,11 +84,11 @@
 
       <section id="guide-setting">
 <h2>戦闘設定</h2>
-<p>数値やコストを確認しながら組み立てるための資料です。<br>Ａスキル・Ｃスキルはアヒル、Ｂスキル・Ｄスキルはバトラーのスキルです。</p>
+<p>スキル設定のための資料です。<br>Ａスキル・Ｃスキルはアヒル、Ｂスキル・Ｄスキルはバトラーのスキルです。</p>
 <nav class="toc" aria-label="戦闘設定の項目"><a class="chip" href="#build-stats">ステータス</a><a class="chip" href="#build-dice">ダイス</a><a class="chip" href="#build-a">Ａスキル</a><a class="chip" href="#build-b">Ｂスキル</a><a class="chip" href="#build-c">Ｃスキル</a><a class="chip" href="#build-d">Ｄスキル</a><a class="chip" href="#build-presets">プリセット</a></nav>
 
 <h3 id="build-stats">【ステータス】</h3>
-<p>AT・DFはそれぞれ１～５。<br>ダイスタイプで決まるSPを含め、<b>AT＋DF＋SPは合計９pt以内</b>で設定可能です。<br>
+<p>AT・DFはそれぞれ１～５で設定可能です。<br>ダイスタイプで決まるSPを含め、<b>AT＋DF＋SPは合計９pt以内</b>です。<br>
   MHPはステータスによって自動で決定します。</p>
 
 <div class="guide-table-wrap" role="region" aria-label="ステータスの役割" tabindex="0"><table id="guide-stats-table"><caption>ステータスの役割</caption><thead><tr><th scope="col">能力</th><th scope="col">役割</th></tr></thead><tbody>
@@ -108,27 +107,29 @@
 </tbody></table></div>
 
 <p>ダイスの初期６枠を設定します。<br>
-  カスタマイズ型は同じ出目を通常２枠まで、後述の１ptを使用することで最大３枠まで設定可能です。<br>
+  カスタマイズ型は同じ出目を通常２枠まで、ダイスptを１ptを使用することで最大３枠まで設定可能です。<br>
   固定型は出目を編集できない代わりに、カスタマイズ型では作れない組み合わせを使用できます。</p>
   
-<div class="guide-table-wrap" role="region" aria-label="カスタマイズ型のダイスpt" tabindex="0"><table id="guide-dice-budget"><caption>カスタマイズ型のダイスpt</caption><thead><tr><th scope="col">配置</th><th scope="col">ダイスpt</th></tr></thead><tbody>
+<div class="guide-table-wrap" role="region" aria-label="ダイスptについて" tabindex="0"><table id="guide-dice-budget"><caption>ダイスptについて</caption><thead><tr><th scope="col">条件</th><th scope="col">ダイスpt</th></tr></thead><tbody>
 <tr><th scope="row">０を１枠入れる</th><td>＋１pt</td></tr>
 <tr><th scope="row">同じ出目を３枠にする</th><td>−１pt（０も対象）</td></tr>
 </tbody></table></div>
-<p>残ったダイスptは、そのままＡスキルの予算に加わります。</p>
+<p>余ったダイスptは、そのままＡスキルの予算に加わります。</p>
   <p class="small">例：０を３枠入れた場合は、獲得３pt−消費１pt＝２ptです。</p>
         
 <h3 id="build-a">【Ａスキル】</h3>
-<p>発動条件は「特定の出目」「指定値以下」「指定値以上」「全ての出目」から選択可能です。<br>
+<p>ダイスロール後、出目によって発動するスキルです。<br>
+  発動条件は「特定の出目」「指定値以下」「指定値以上」「全ての出目」から選択可能です。<br>
   以下・以上には０を含めず、全ての出目には０を含めます。<br>
   条件の選択肢と必要ptは初期６枠で決まり、Ｄスキルで増えた出目は計算などに含めません。</p>
-<div class="guide-table-wrap" role="region" aria-label="条件に当てはまる初期出目の枠数" tabindex="0"><table id="guide-a-trigger"><caption>条件に当てはまる初期出目の枠数</caption><thead><tr><th scope="col">該当枠数</th><th scope="col">発動条件コスト</th><th scope="col">通常攻撃キャンセル時の還元</th></tr></thead><tbody>
-<tr><th scope="row">１～２枠</th><td>0pt</td><td>１pt</td></tr>
-<tr><th scope="row">３～４枠</th><td>1pt</td><td>２pt</td></tr>
-<tr><th scope="row">５～６枠</th><td>2pt</td><td>３pt</td></tr>
+<div class="guide-table-wrap" role="region" aria-label="発動条件による必要pt" tabindex="0"><table id="guide-a-trigger"><caption>発動条件による必要pt</caption><thead><tr><th scope="col">該当枠数</th><th scope="col">必要pt</th><th scope="col">通常攻撃キャンセル時の還元</th></tr></thead><tbody>
+<tr><th scope="row">１～２枠</th><td>０pt</td><td>１pt</td></tr>
+<tr><th scope="row">３～４枠</th><td>１pt</td><td>２pt</td></tr>
+<tr><th scope="row">５～６枠</th><td>２pt</td><td>３pt</td></tr>
 </tbody></table></div>
-<p>※「通常攻撃をキャンセル」は、該当出目の枠数に応じて上表のptを還元します。<br>
-  通常攻撃をキャンセルしても出目効果は発動されます。また、攻撃回数追加・その攻撃フェイズのAT/DF操作・追加反動など、通常攻撃が必要な効果とは併用できません。</p>
+<p>「通常攻撃をキャンセル」は、該当出目の枠数に応じて上表のptを還元します。<br>
+  通常攻撃をキャンセルしても出目効果は発動されます。<br>
+  また、攻撃回数追加・その攻撃フェイズのAT/DF操作・追加反動など、通常攻撃が必要な効果とは併用できません。</p>
         
 <p class="box"><b>予算＝基本２pt＋残りダイスpt+デメリット効果の還元</b><br>
   消費＝発動条件＋メリット効果の価格＋効果追加枠。<br>
@@ -137,67 +138,73 @@
 <p>通常効果はメリット・デメリット合わせて最大４枠まで設定可能です。<br>効果の強さに応じて必要なptが変わり、メリットの２個目以降は１枠ごとに追加１ptが必要です。<br>
   デメリットは効果に必要なptを還元し、追加枠コストもかかりません。</p>
 
-<div class="guide-table-wrap" role="region" aria-label="A効果の数量と価格の例" tabindex="0"><table id="guide-a-effects"><caption>主なA効果の数量と価格の例</caption><thead><tr><th scope="col">効果</th><th scope="col">効果量：pt</th></tr></thead><tbody>
-<tr><th scope="row">固定ダメージ</th><td>３ダメージ：２pt　/　５ダメージ：３pt</td></tr>
-<tr><th scope="row">固定HP回復</th><td>３回復：１pt　/　５回復：２pt　/　７回復：３pt</td></tr>
-<tr><th scope="row">AP操作</th><td>１AP：３pt　/　２AP：５pt</td></tr>
-<tr><th scope="row">強化状態・状態異常の付与</th><td>１スタック：１pt　/　２スタック：２pt</td></tr>
-<tr><th scope="row">ランダム状態解除</th><td>１スタック：１pt　/　２スタック：２pt</td></tr>
-<tr><th scope="row">次回通常攻撃AT増加</th><td>２AT：１pt　/　３AT：２pt　/　５AT：３pt</td></tr>
+<div class="guide-table-wrap" role="region" aria-label="主なＡスキル効果と必要ptの例" tabindex="0"><table id="guide-a-effects"><caption>主なＡスキル効果と必要ptの例</caption><thead><tr><th scope="col">効果</th><th scope="col">効果量：必要pt</th></tr></thead><tbody>
+<tr><th scope="row">固定ダメージ</th><td>３ダメージ：２pt / ５ダメージ：３pt</td></tr>
+<tr><th scope="row">固定HP回復</th><td>３回復：１pt / ５回復：２pt / ７回復：３pt</td></tr>
+<tr><th scope="row">AP操作</th><td>１AP：３pt / ２AP：５pt</td></tr>
+<tr><th scope="row">強化状態・状態異常の付与</th><td>１スタック：１pt / ２スタック：２pt</td></tr>
+<tr><th scope="row">ランダム状態解除</th><td>１スタック：１pt / ２スタック：２pt</td></tr>
+<tr><th scope="row">次回通常攻撃AT増加</th><td>２AT：１pt / ３AT：２pt / ５AT：３pt</td></tr>
 </tbody></table></div>
 <p>選ぶ対象・種類は効果ごとに異なります。<br>
   たとえば相手の回復、自分への状態異常などはデメリットになります。</p>
 
 <h3 id="build-b">【Ｂスキル】</h3>
+  <p>様々な条件で発動するスキルです。<br>
+  効果量は設定した発動条件によって自動で決まります。<br>
+  基本的に、発動条件が厳しいほど強い・有利な効果を得られます。
+  </p>
 <div class="guide-table-wrap" role="region" aria-label="Ｂスキルの種類" tabindex="0"><table id="guide-b-types"><caption>Ｂスキルの種類</caption><thead><tr><th scope="col">種類</th><th scope="col">発動タイミング</th><th scope="col">効果の例</th></tr></thead><tbody>
 <tr><th scope="row">トリガー型</th><td>フェイズ開始・通常攻撃前・命中後・回復時など、指定したタイミングで発動</td><td>状態付与・解除、回復、次の攻撃強化</td></tr>
 <tr><th scope="row">パッシブ型</th><td>基本的に常時発動（指定HP％以上などの条件なども含む）</td><td>AT/DF増・攻撃回数増・ダメージに倍率補正</td></tr>
 </tbody></table></div>
-<p>効果量は設定した発動条件によって自動で決まります。<br>
-  基本的に、発動条件が厳しいほど強い・有利な効果を得られます。</p>
 
 <h3 id="build-c">【Ｃスキル】</h3>
+<p>APを消費して発動するスキルです。<br>
+必要AP以上にAPが溜まっていた場合は、必要数だけ消費して残りAPを引き継ぎます。</p>
 <div class="guide-table-wrap" role="region" aria-label="Ｃスキルの発動方式" tabindex="0"><table id="guide-c-modes"><caption>Ｃスキルの発動方式</caption><thead><tr><th scope="col">方式</th><th scope="col">タイミング</th><th scope="col">固有要素</th></tr></thead><tbody>
-<tr><th scope="row">通常発動</th><td>必要APが溜まった自分のダイスロール前</td><td>ランダム分岐・HP条件分岐を選択可能</td></tr>
-<tr><th scope="row">特殊発動</th><td>ターン終了前、自分のHPが０以下で必要APがあるとき</td><td>復活効果を選択可能</td></tr>
+<tr><th scope="row">通常発動</th><td>自分のダイスロール前</td><td>ランダム分岐・HP条件分岐を選択可能</td></tr>
+<tr><th scope="row">特殊発動</th><td>ターン終了前、自分のHPが０以下になった時</td><td>復活効果を選択可能</td></tr>
 </tbody></table></div>
 <p class="box"><b>最終必要AP＝基礎５AP＋効果による追加AP＋追加枠AP−デメリット減算−確率割引</b><br>
   メリットの２個目以降は１枠ごとに追加１APがかかります。効果枠は分岐先を合わせて最大５枠です。</p>
 <p>デメリットは必要な追加APを減算しますが、減算はスキル全体で最大５APまでです。（分岐の場合は各分岐内で５APまで）<br>
   また、最終必要APが５APを下回ることはありません。</p>
 
-<div class="guide-table-wrap" role="region" aria-label="C効果の効果と追加APの例" tabindex="0"><table id="guide-c-effects"><caption>C効果の効果量と追加APの例</caption><thead><tr><th scope="col">効果</th><th scope="col">効果量</th><th scope="col">追加AP</th></tr></thead><tbody>
-<tr><th scope="row">固定ダメージ</th><td>50／55／60／65／70／75／80</td><td>０／１／２／３／４／５／６</td></tr>
-<tr><th scope="row">固定HP回復</th><td>30／40／50</td><td>０／１／２</td></tr>
-<tr><th scope="row">相手の現在HP割合ダメージ</th><td>25／50／75／100%</td><td>０／５／10／20</td></tr>
-<tr><th scope="row">相手の状態異常の総スタック数×ダメージ</th><td>×10／×15／×20</td><td>０／２／４</td></tr>
+<div class="guide-table-wrap" role="region" aria-label="Ｃスキルの主な効果と追加APの例" tabindex="0"><table id="guide-c-effects"><caption>Ｃスキルの主な効果と追加APの例</caption><thead><tr><th scope="col">効果</th><th scope="col">効果量</th><th scope="col">追加AP</th></tr></thead><tbody>
+<tr><th scope="row">固定ダメージ</th><td>50 / 55 / 60 / 65 / 70 / 75 / 0</td><td>０ / １ / ２ / ３ / ４ / ５ / ６</td></tr>
+<tr><th scope="row">固定HP回復</th><td>30／40／50</td><td>０ / １ / ２</td></tr>
+<tr><th scope="row">相手の現在HP割合ダメージ</th><td>25 / 50 / 75 / 100%</td><td>０ / ５ / 10 / 20</td></tr>
+<tr><th scope="row">相手の状態異常の総スタック数×ダメージ</th><td>×10 / ×15 / ×20</td><td>０ / ２ / ４</td></tr>
 <tr><th scope="row">強化状態・状態異常の付与</th><td>３スタック</td><td>１</td></tr>
 <tr><th scope="row">ランダム状態解除</th><td>３スタック</td><td>１</td></tr>
-<tr><th scope="row">AT・DF操作</th><td>１／２／３／４</td><td>０／１／２／３</td></tr>
-<tr><th scope="row">AT・DF操作のターン数</th><td>２／３／４ターン</td><td>０／１／２</td></tr>
+<tr><th scope="row">AT・DF操作</th><td>１ / ２ / ３ / ４</td><td>０ / １ / ２ / ３</td></tr>
+<tr><th scope="row">AT・DF操作のターン数</th><td>２ / ３ / ４ターン</td><td>０ / １ / ２</td></tr>
 </tbody></table></div>
 <p>AT・DF操作は、効果量とターン数の追加APを合計します。</p>
-  <p class="small">例：固定80ダメージだけなら５＋６＝<b>11AP</b>。<br>
-  そこに3スタックの状態付与を加えると、効果１AP＋追加枠１APで<B>13AP</B>になります。</p>
+  <p class="small">例：相手に固定80ダメージだけなら５＋６＝<b>11AP</b>。<br>
+  そこに４ターンの間自分のAT＋２を加えると、効果１AP＋ターン数２pt＋追加枠１APで<B>15AP</B>になります。</p>
 
-<div class="guide-table-wrap" role="region" aria-label="成功率と割引" tabindex="0"><table id="guide-c-chance"><caption>成功率と割引</caption><thead><tr><th scope="col">成功率</th><th scope="col">AP割引</th></tr></thead><tbody>
+<div class="guide-table-wrap" role="region" aria-label="成功率と減算" tabindex="0"><table id="guide-c-chance"><caption>成功率と減算</caption><thead><tr><th scope="col">成功率</th><th scope="col">AP減算</th></tr></thead><tbody>
 <tr><th scope="row">100%</th><td>０</td></tr>
 <tr><th scope="row">70%</th><td>１</td></tr>
 <tr><th scope="row">50%</th><td>２</td></tr>
 <tr><th scope="row">25%</th><td>３</td></tr>
 </tbody></table></div>
-<p>「相手に固定○ダメージ」のみ、成功率を設定できます。<br>失敗時も設定ダメージの20%（小数点以下切り捨て）を与えます。</p>
+<p>「相手に固定○ダメージ」のみ、成功率を設定できます。<br>
+  失敗する確率が高いほど必要APを減算しますが、０以下にはできません。<br>
+  失敗時も設定ダメージの20%（小数点以下切り捨て）を与えます。</p>
 
-<div class="guide-table-wrap" role="region" aria-label="通常発動の効果分岐" tabindex="0"><table id="guide-c-branches"><caption>通常発動の効果分岐</caption><thead><tr><th scope="col">分岐方式</th><th scope="col">発動する効果</th></tr></thead><tbody>
+<div class="guide-table-wrap" role="region" aria-label="通常発動Ｃスキルの効果分岐" tabindex="0"><table id="guide-c-branches"><caption>通常発動Ｃスキルの効果分岐</caption><thead><tr><th scope="col">分岐方式</th><th scope="col">発動する効果</th></tr></thead><tbody>
 <tr><th scope="row">分岐なし</th><td>分岐効果なし（設定した効果がそのまま発動します）</td></tr>
 <tr><th scope="row">ランダム</th><td>２～３つの分岐した効果から、ランダムに１つ発動</td></tr>
 <tr><th scope="row">HP条件</th><td>発動時の自分のHPによって発動する効果が分岐</td></tr>
 </tbody></table></div>
-<p>効果分岐を選択した場合、<b>最も必要APが高い枝</b>が最終必要APに採用されます。<br>
-  また、分岐自体に追加APはかかりません。</p>
+<p>効果分岐を選択した場合、<b>最も必要APが高い分岐</b>が最終必要AP計算に採用されます。<br>
+  分岐自体に追加APはかかりません。</p>
         
 
-<div class="guide-table-wrap" role="region" aria-label="特殊発動の復活" tabindex="0"><table id="guide-c-revive"><caption>特殊発動の復活</caption><thead><tr><th scope="col">最大HPに対するHP割合</th><th scope="col">追加AP</th></tr></thead><tbody>
+<div class="guide-table-wrap" role="region" aria-label="特殊発動Ｃスキルの復活" tabindex="0"><table id="guide-c-revive"><caption>特殊発動Ｃスキルの復活</caption><thead><tr><th scope="col">最大HPに対するHP割合</th><th scope="col">追加AP</th></tr></thead><tbody>
 <tr><th scope="row">１%</th><td>０</td></tr>
 <tr><th scope="row">10%</th><td>２</td></tr>
 <tr><th scope="row">25%</th><td>４</td></tr>
@@ -209,9 +216,9 @@
 <tr><th scope="row">４回目以降</th><td>10%</td></tr>
 </tbody></table></div>
 <p>復活HPは最大HP×割合の小数点以下を切り捨てた値です。<br>
-  成功した回数ではなく、Ｃスキルを発動した回数で確率が変わり、復活に失敗してもAPは消費します。</p>
+  成功した回数ではなく、Ｃスキルを発動した回数で成功確率が変わり、復活に失敗してもAPは消費します。</p>
 
-<div class="guide-table-wrap" role="region" aria-label="長期未発動APボーナス" tabindex="0"><table id="guide-c-idle"><caption>長期未発動APボーナス</caption><thead><tr><th scope="col">Ｃスキル未発動の連続ターン数</th><th scope="col">Ｃスキル発動後のAP加算</th></tr></thead><tbody>
+<div class="guide-table-wrap" role="region" aria-label="Ｃスキル長期未発動APボーナス" tabindex="0"><table id="guide-c-idle"><caption>Ｃスキル長期未発動APボーナス</caption><thead><tr><th scope="col">Ｃスキル未発動の連続ターン数</th><th scope="col">Ｃスキル発動後のAP加算</th></tr></thead><tbody>
 <tr><th scope="row">０～５ターン</th><td>０（ボーナスなし）</td></tr>
 <tr><th scope="row">６～７ターン</th><td>＋１</td></tr>
 <tr><th scope="row">８～９ターン</th><td>＋２</td></tr>
@@ -222,58 +229,22 @@
         
 <h3 id="build-d">【Ｄスキル】</h3>
 <p>バトル開始時にダイスへ出目を１つ追加します。<br>
-  自分アヒルに追加できる出目は０～６、相手アヒルには０のみです。<br>
-  ダイスの枠が増えるためＡスキルの発動確率も変わりますが、スキル作成時のコストは変わりません。</p>
+  特別なコストや条件は必要ありません。<br>
+  自分アヒルに追加できる出目は０～６、相手アヒルには０のみ追加可能です。<br>
+  ダイスの枠が増えるためＡスキルの発動確率も変わりますが、Ａスキル作成時のコストは変わりません。</p>
 
 <h3 id="build-presets">【プリセット】</h3>
 <p>アタック・ディフェンス・ヒール・テクニカルのプリセットを、スキル設定のサンプルとして使用できます。<br>
   プリセットを元に自由に編集も可能です。</p>
-        
+
+<h3>【スキル保管】</h3>
+<p>※あとでIDきめてページ内リンク付ける<br>
+作成した各スキルを、スキル事に保管できます。<br>
+保管したスキルを読み込むことで現在のスキル設定に上書きできます。<br>
+Ａスキル・Ｃスキルは他のアヒルにも上書き可能です。<br>
+セリフ設定などは保管・上書きされません。</p>
 </section>
-      <section id="guide-display">
-<h2>キャラ設定</h2>
-<p>画像は外部に保存された画像URLで登録します。<br>
-  規定より大きい画像は設定できません。アイコンのみ250pxまでの画像が設定可能です。<br>
-  当ゲーム専用のアップローダーなどはありません。</p>
         
-<div class="guide-table-wrap" role="region" aria-label="画像の表示サイズ一覧" tabindex="0"><table id="guide-images"><caption>画像の表示サイズ一覧</caption><thead><tr><th scope="col">種類</th><th scope="col">表示サイズ</th></tr></thead><tbody>
-<tr><th scope="row">バトラーの立ち絵</th><td>横最大500×縦最大800px</td></tr>
-<tr><th scope="row">バトラーのアイコン</th><td>横120×縦120px</td></tr>
-<tr><th scope="row">アヒルのアイコン</th><td>横60×縦60px</td></tr>
-<tr><th scope="row">Ｃスキルカットイン</th><td>横最大480×縦最大480px</td></tr>
-</tbody></table></div>
-<p>追加アイコンは10枠。プロフィールに表示する追加アイコンはそのうち最大４枠まで選択可能です。<br>
-セリフなどのテキスト設定は、装飾ボタンで文字色・強調・ルビなどを付けられます。</p>
-        
-<p>セリフはタイミング別に設定可能で、アイコン横の▶から追加の台詞が設定可能です。設定されたセリフの中からランダムに発言します。<br>
-対象ENoを入力することでその相手限定の台詞が設定できます。その場合ENo未指定の発言はせず、同じ対象ENoのセリフが複数ある場合はその中からランダムに発言します。<br>
-<br>
-プロフィール用のタイプ・属性・フレーバーステータスは戦闘能力に影響しません。</p></section>
-  
-      <section id="guide-battle">
-<h2>アヒルバトル</h2>  
-<p>対戦には、バトラー・アヒル共に完成済みの戦闘設定が必要です。<br>
-  公開アヒルが完成している場合、自動で使用アヒルに選択されます。<Br>
-  1Pのアヒルアイコンを押すことで、他の完成したアヒルを選択することも可能です。</p>
-        
-<b>【連勝記録】</b>
-<p>ランダム戦闘で勝つと連勝数が記録されます。<br>
-ランダム戦闘で敗北・引き分けになるか、手動で相手を選んで戦闘を行うと連勝記録は途切れます。<br>
-キャラリストに最大連勝数が表示されますが、設定でオフにすることが可能です。非表示にしても記録は削除されません。</p></section>
-      
-      <section id="guide-profile">
-<h2>プロフィール・キャラリスト</h2>
-<p>キャラリストと公開プロフィールは未ログインでも閲覧でき、マイアヒルは公開設定した１体が表示されます。</p>
-<p>プロフィールのカラー変更はログイン中の本人のみ、プロフィール画面にあるパレットボタンから行えます。<br>
-  サイトテーマ（ライト／ダーク）とは異なり、常に設定したカラーで表示されます。</p></section>
-      <section id="guide-history">
-        
-<h2>バトル履歴</h2>
-<p>バトル結果をお気に入り登録することができます。お気に入り機能はログイン中のみ利用可能です。<br>
-  お気に入り登録した結果は、プロフィールに表示することができます。<br>
-  履歴一覧や戦闘結果自体は未ログインでも閲覧可能です。</p>
-</section>
-      
 <section id="guide-mechanics"><h2>戦闘の詳細仕様</h2>
 <h3>【通常攻撃】</h3>
 <p>基本ダメージは<b>出目＋max(0, AT−DF)</b>。<br>
@@ -314,6 +285,52 @@
 <tr><th scope="row">氷風呂</th><td>通常攻撃ダメージが２倍になる</td></tr>
 <tr><th scope="row">電気風呂</th><td>ターン開始時のAP増加が２になる</td></tr>
 </tbody></table></div>
+</section>
+
+<section id="guide-battle">
+<h2>アヒルバトル</h2>  
+<p>対戦には、バトラー・アヒル共に完成済みの戦闘設定が必要です。<br>
+  公開アヒルが完成している場合、自動で使用アヒルに選択されます。<Br>
+  1Pのアヒルアイコンを押すことで、他の完成したアヒルを選択することも可能です。</p>
+        
+<b>【連勝記録】</b>
+<p>ランダム戦闘で勝つと連勝数が記録されます。<br>
+ランダム戦闘で敗北・引き分けになるか、手動で相手を選んで戦闘を行うと連勝記録は途切れます。<br>
+キャラリストに最大連勝数が表示されますが、設定でオフにすることが可能です。非表示にしても記録は削除されません。</p></section>
+
+<section id="guide-display">
+<h2>キャラ設定</h2>
+<p>画像は外部に保存された画像URLで登録します。<br>
+  規定より大きい画像は設定できません。アイコンのみ250pxまでの画像が設定可能です。<br>
+  当ゲーム専用のアップローダーなどはありません。</p>
+        
+<div class="guide-table-wrap" role="region" aria-label="画像の表示サイズ一覧" tabindex="0"><table id="guide-images"><caption>画像の表示サイズ一覧</caption><thead><tr><th scope="col">種類</th><th scope="col">表示サイズ</th></tr></thead><tbody>
+<tr><th scope="row">バトラーの立ち絵</th><td>横最大500×縦最大800px</td></tr>
+<tr><th scope="row">バトラーのアイコン</th><td>横120×縦120px</td></tr>
+<tr><th scope="row">アヒルのアイコン</th><td>横60×縦60px</td></tr>
+<tr><th scope="row">Ｃスキルカットイン</th><td>横最大480×縦最大480px</td></tr>
+</tbody></table></div>
+<p>追加アイコンは10枠。プロフィールに表示する追加アイコンはそのうち最大４枠まで選択可能です。<br>
+セリフなどのテキスト設定は、装飾ボタンで文字色・強調・ルビなどを付けられます。</p>
+        
+<p>セリフはタイミング別に設定可能で、アイコン横の▶から追加の台詞が設定可能です。設定されたセリフの中からランダムに発言します。<br>
+対象ENoを入力することでその相手限定の台詞が設定できます。その場合ENo未指定の発言はせず、同じ対象ENoのセリフが複数ある場合はその中からランダムに発言します。<br>
+<br>
+プロフィール用のタイプ・属性・フレーバーステータスは戦闘能力に影響しません。</p></section>
+
+<section id="guide-profile">
+<h2>プロフィール・キャラリスト</h2>
+<p>キャラリストと公開プロフィールは未ログインでも閲覧でき、マイアヒルは公開設定した１体が表示されます。</p>
+<p>プロフィールのカラー変更はログイン中の本人のみ、プロフィール画面にあるパレットボタンから行えます。<br>
+サイトテーマ（ライト／ダーク）とは異なり、常に設定したカラーで表示されます。</p>
+<p>バトル履歴でお気に入り登録した戦闘結果の中から、１つを選んでプロフィールに表示できます。</p>
+</section>
+      
+<section id="guide-history">
+<h2>バトル履歴</h2>
+<p>バトル結果をお気に入り登録することができます。お気に入り機能はログイン中のみ利用可能です。<br>
+  お気に入り登録した結果は、プロフィールに表示することができます。<br>
+  履歴一覧や戦闘結果自体は未ログインでも閲覧可能です。</p>
 </section>
     </div>
 
