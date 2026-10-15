@@ -43,13 +43,19 @@ export function createAccountSessionManager({ createClient, config,
 }) {
   const clients = new Map(), subscriptions = new Map();
   let generation = 0, leaseEpoch = 0, closed = false, activeLease = null;
-  const invalidate = () => { generation++; leaseEpoch++; activeLease = null; };
+  const invalidationListeners = new Set();
+  const invalidate = (reason = "invalidated") => {
+    generation++; leaseEpoch++; activeLease = null;
+    for (const listener of invalidationListeners) {
+      try { listener(reason); } catch { /* Observers do not own session state. */ }
+    }
+  };
   const onStorage = event => {
     if (event.key === null || event.key === SESSION_REGISTRY_KEY || event.key === LEGACY_SESSION_KEY
-      || event.key?.startsWith(PREFIX)) invalidate();
+      || event.key?.startsWith(PREFIX)) invalidate("storage");
   };
   events?.addEventListener("storage", onStorage);
-  const onPageShow = () => invalidate();
+  const onPageShow = () => invalidate("pageshow");
   events?.addEventListener("pageshow", onPageShow);
   function read() {
     try { const raw = storage().getItem(SESSION_REGISTRY_KEY); return { raw, value: decode(raw) }; }
@@ -77,7 +83,7 @@ export function createAccountSessionManager({ createClient, config,
       const { data } = client.auth.onAuthStateChange((event, session) => {
         // No asynchronous SDK calls inside the Auth lock.
         if (activeLease?.client === client && (event === "SIGNED_OUT"
-          || session?.user?.id !== activeLease.account.authUserId)) invalidate();
+          || session?.user?.id !== activeLease.account.authUserId)) invalidate("auth");
       });
       subscriptions.set(slot, data.subscription);
     }
@@ -267,10 +273,11 @@ export function createAccountSessionManager({ createClient, config,
         return { ok: true, active: null };
       });
     },
+    subscribeInvalidation(listener) { invalidationListeners.add(listener); return () => invalidationListeners.delete(listener); },
     getActiveLease() { return activeLease?.isCurrent() ? activeLease : null; },
     invalidate,
     dispose() {
-      closed = true; invalidate();
+      closed = true; invalidate("closed"); invalidationListeners.clear();
       events?.removeEventListener("storage", onStorage); events?.removeEventListener("pageshow", onPageShow);
       for (const subscription of subscriptions.values()) subscription.unsubscribe();
       subscriptions.clear();

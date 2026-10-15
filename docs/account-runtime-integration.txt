@@ -1,0 +1,59 @@
+アカウント切り替え・第2段階前半 接続契約
+
+追加モジュール: js/accountRuntime.js
+既存authRuntime.js / getSupabaseClient() / getAuthRuntime() / 本番ページは未変更。
+第1段階managerはSDK・保存キー・認証検証・Web Locksの唯一の担当。アダプタはUI向け状態・操作結果・検証済みleaseの寿命だけを管理する。
+managerの変更はsubscribeInvalidation通知口のみ。既存のstorage/pageshow/Auth無効化をアダプタへ通知する。通知内ではSDKを呼ばず、UI通知をmicrotaskへ遅延する。
+
+取得
+  const runtime = await getAccountRuntime();
+モジュール単位のPromiseを共有し、同じページでSDKとmanagerを1つだけ生成。SDKは現行と同じ@supabase/supabase-js@2.117.2を固定使用。読み込み失敗後の再試行可。importだけでは生成も旧セッション採用も行わない。
+テスト用にはcreateAccountRuntimeProviderへ模擬loadSDK/getLegacyClient/managerOptionsを注入する。createAccountRuntimeはmanagerを注入する薄いアダプタ。
+
+操作
+restore(), add(eno,password), select(eno), adoptLegacy(), logoutCurrent(), cleanupPending(slot)
+結果: {ok,code,state,completed}（古い処理は{ok:false,code:'stale-operation'}）。
+completedはcleanup/adopt-legacy本体成功後の再検証を区別する印。その後の検証に失敗した場合も、本体が未実行とは扱わない。無条件再送しない。
+restoreは掲載された全セッションをmanagerで検証し、レジストリで選択されているslotだけを復元する。他のreadyなENoを代わりに選ばない。
+cleanup/adopt-legacy成功後は既存の選択を再検証する。アカウントの追加・選択・旧採用を自動で行うことはない。
+戻る/別タブ/ページ非表示後はgetCurrentがnullとなり、明示restoreで再検証する。自動遷移はしない。
+
+操作対象の取得
+  const context = runtime.getCurrent();
+  if (!context || !context.isCurrent()) return;
+  // context.account: eno / gameAccountId / authUserId / name
+  // context.client: 上記アカウントの検証済み専用クライアント
+必ずIDとclientを同じcontextから取得する。accountとcontextは凍結済みコピー。トークンは公開しない。
+ローカル保存一覧・DOMのENo・従来のgetSupabaseClientで操作先を補完しない。nullは未検証/未選択/処理中を意味し、旧クライアントへのfallbackは禁止。
+操作開始時と結果反映時の両方でisCurrentを確認する。新たなランタイム操作が始まった時点で古いcontextは無効。途中失敗で元のアカウントが維持されても古いcontextを使い回さず再取得する。
+処理中はgetCurrentを返さない。選択成功の返却前にもrevisionを確認し、購読者が次の選択を始めた場合も古い結果を成功扱いにしない。
+SDKのsign-out/ユーザー変更、レジストリ変更、ページ復帰はmanagerがleaseを無効化。アダプタはpagehide/visibility hiddenでもmanager.invalidateを呼ぶ。SDKの同一ユーザーのtoken refreshは引き続きSDKに任せる。
+
+UIへの状態
+snapshot() / subscribe(listener) はphase、busy、code、current、entries、pendingのコピーを返す。
+phase: unverified / busy / ready / unselected / reauthentication-required。
+currentだけが検証済みアカウント情報。entries/pendingは表示用メタデータで、操作権限ではない。クライアントはsnapshotに含めずgetCurrentから取得する。
+期限切れはreauthentication-required、通信失敗はverification-unavailableなど第1段階のcodeを維持。restoreが一覧取得に成功しても選択中セッションを検証できなければok:falseとする。
+失敗した追加/選択によって旧セッション自体を削除しない。有効な元のleaseが残っている場合はそのアカウントを引き続き表示できるが、選択失敗を成功通知しない。
+購読者は未保存確認・UI更新のみを行い、無条件に毎通知でrestoreを呼ばない。戻る/再表示など必要なタイミングで明示的に再検証する。
+disposeはページの最終破棄向け。BFCache復帰ではdisposeせずinvalidate/restoreを使用する。セッションをログアウトせず購読と当該managerの新slotの自動更新を停止する。
+
+旧セッション
+adoptLegacyを明示的に実行する際だけ、従来authRuntimeのgetSupabaseClientを遅延importで取得しmanagerへ渡す。旧キーで新しいクライアントを生成しない。旧トークンのコピー・移動・削除はしない。
+第2段階後半では初回導入の引き継ぎ条件をUI/ランタイム起動側で設ける。ログアウト後や未選択復元のたびにadoptLegacyを実行してはいけない。複数ENoは推測せず拒否する。
+この段階では本番画面は旧runtimeのままなので既存ログイン状態に影響しない。
+
+後半の接続箇所と注意点
+- commonMenu、追加ログインポップアップ: 新runtimeへの操作、busy制御、エラー表示。add/select成功後だけホームへ移動。未保存変更確認を先に実施。
+- authPageGuard: 新snapshot/currentを使う未検証・未選択・再認証の判定へ一体的に移行。
+- authController/authService: 現行は1clientと旧キーを前提。新runtimeと同時に同じ旧セッションへlogin/logoutを行わない。通常登録/ログインの統合方針を決めてから変更。
+- onlineEditor/onlinePlayerStorage: contextからclientと明示gameAccountIdを渡し、既存beforeLogout相当のcanLeaveを追加/切替にも適用。選択変更時のエディター破棄、リクエスト世代管理、未保存ドラフトの扱いを実装。
+- バトル・結果保存・履歴/お気に入り・ひとこと・掲示板・保管庫: 保持済みclientを使う箇所を同時に移行し、結果反映前のisCurrentと対象ID固定を追加。
+- accountDeletionView/Service: 現在は旧getSupabaseClientとauthControllerを使用。削除済みENoだけのセッション一覧除去/SDK清掃/キャッシュ無効化は未対応。現行削除フローには未接続。
+- authDisplayCache/menuDisplayCache/各画面キャッシュ: 新しい選択に対して破棄・再取得。旧ENo表示を新ENoの保存先決定に利用しない。
+- getSupabaseClient/getAuthRuntimeの既存契約は維持。後半で全依存先を移行するまでは新旧のクライアント取得口を混用しない。
+
+未対応・検証範囲
+UI・遷移・未保存ガード・削除済みslotの除去・既存保存処理の移行は後半。送信済みの書込みやsignOutは取り消せないため、busy制御/対象ID固定/結果不明時の再照会が必要。
+SDK実機での自動更新・複数タブ・BFCache動作は未検証。今回は模擬SDKで検証し、本番ログイン/DB変更/デプロイは行わない。
+Web Locks非対応、ストレージ不可、権限を検証できない状態は第1段階どおり拒否する。
