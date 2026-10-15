@@ -193,13 +193,22 @@ body.home-page::before {
   z-index: 0;
   pointer-events: none;
 }
+
+.home__standing {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
 .home__standing img {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
-  object-position: center;
 }
+
 .home__dashboard-ui { position: relative; z-index: 1; display: grid; gap: 22px; min-width: 0; }
 .home__voice { height: auto; padding: 18px; border: 1px solid #ffffff80; border-radius: 14px; background: #181818eb; color: #eee; box-shadow: 0 4px 16px #0002; }
 .home__voice:has(.home__voices) {
