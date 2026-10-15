@@ -15,6 +15,9 @@ export function createCharacterCard(document, character) {
   card.style.borderColor = character.accent;
 
 card.style.setProperty("--card-accent", character.accent);
+card.style.setProperty("--card-bg", character.background);
+card.style.setProperty("--card-panel", character.panel);
+card.style.setProperty("--card-text", character.text);
 
 const header = el("div", undefined, "character-card-header");
 const body = el("div", undefined, "character-card-body");

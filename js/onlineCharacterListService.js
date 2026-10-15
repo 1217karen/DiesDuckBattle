@@ -7,10 +7,11 @@ export function decodeOnlineCharacters(value) {
   check(Array.isArray(value));
   const seen = new Set();
   for (const v of value) {
-    keys(v,["eno","battlerName","battlerIconUrl","accent","duck","bestStreak"]);
+    keys(v,["eno","battlerName","battlerIconUrl","accent","background","panel","text","duck","bestStreak"]);
     check(typeof v.eno === "string" && canonicalEno(v.eno) === v.eno && !seen.has(v.eno)); seen.add(v.eno);
     check(typeof v.battlerName === "string" && typeof v.battlerIconUrl === "string");
-    check(typeof v.accent === "string" && /^#[0-9a-f]{6}$/i.test(v.accent));
+    for (const key of ["accent", "background", "panel", "text"])
+      check(typeof v[key] === "string" && /^#[0-9a-f]{6}$/i.test(v[key]));
     check(v.bestStreak === null || Number.isSafeInteger(v.bestStreak) && v.bestStreak >= 0);
     if (v.duck !== null) {
       const d=v.duck; keys(d,["name","iconUrl","type","attributes"]);

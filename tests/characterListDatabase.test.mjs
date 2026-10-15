@@ -30,7 +30,7 @@ test('character list privacy, record atomicity, backfill and ACL in local Postgr
  const best=async(id=a)=>{await db.exec('reset role');return value('select best_random_win_streak data from public.game_account_records where game_account_id=$1',[id]);};
  const list=async()=>{await asUser(user);return decodeOnlineCharacters(await value('select public.list_online_characters() data'));};
  await t.test('backfill separates manual/draw/loss, defaults zero and includes registration/self/no public Duck',async()=>{
- assert.equal(await best(),3);assert.equal(await best(b),0);const rows=await list();assert.equal(rows.length,3);assert.deepEqual(rows[2],{eno:'3',battlerName:'new',battlerIconUrl:'',accent:'#4F91B3',duck:null,bestStreak:0});assert.equal(rows[0].bestStreak,3);
+ assert.equal(await best(),3);assert.equal(await best(b),0);const rows=await list();assert.equal(rows.length,3);assert.deepEqual(rows[2],{eno:'3',battlerName:'new',battlerIconUrl:'',accent:'#4F91B3',background:'#DCEEF3',panel:'#FFFFFF',text:'#20282C',duck:null,bestStreak:0});assert.equal(rows[0].bestStreak,3);
  });
  await t.test('win/loss/draw/manual/P2 and monotonic best; current contract and save_revision retained',async()=>{
  await db.exec('reset role');const revision=await value('select save_revision::text data from public.game_accounts where id=$1',[a]);
@@ -52,10 +52,26 @@ test('character list privacy, record atomicity, backfill and ACL in local Postgr
  await db.exec('reset role');await db.query('update public.battlers set build=$2,presentation=$3 where game_account_id=$1',[a,JSON.stringify(dto.battler.build),JSON.stringify(dto.battler.presentation)]);
  await db.query('update public.ducks set build=$2,presentation=$3 where id=$1',[da,JSON.stringify(dto.ducks[0].build),JSON.stringify(dto.ducks[0].presentation)]);
  await db.query('update public.game_accounts set public_duck_id=$2 where id=$1',[a,da]);
- await t.test('v5 whitelist hides private data and best; only accent and public Duck fields',async()=>{
+ await t.test('v5 whitelist hides private data and best; profile colors and public Duck fields',async()=>{
  const rows=await list(),v=rows[0];assert.equal(v.bestStreak,null);assert.equal(v.accent,'#123ABC');assert.deepEqual(v.duck,{name:data.build.ducks[0].name,iconUrl:data.presentation.ducks[da].iconUrl,type:'attack',attributes:['炎','','🔥']});
- assert.doesNotMatch(JSON.stringify(rows),/SECRET|cutin|skills|stats|flavorStats|detached|accountId|background|showBestStreak/);
+ assert.doesNotMatch(JSON.stringify(rows),/SECRET|cutin|skills|stats|flavorStats|detached|accountId|showBestStreak/);
  await db.exec('reset role');await db.query("update public.battlers set presentation=jsonb_set(presentation,'{profile,showBestStreak}','true') where game_account_id=$1",[a]);assert.equal((await list())[0].bestStreak,4);
+ });
+ await t.test('four profile colors preserve saved values and independently default malformed/missing values for guests',async()=>{
+ const defaults={background:'#DCEEF3',panel:'#FFFFFF',text:'#20282C',accent:'#4F91B3'};
+ const theme={background:'#123aBc',panel:'#234567',text:'#abcdef',accent:'#987654'};
+ for(const version of [2,3,4,5,6]) {
+  await db.exec('reset role');
+  await db.query("update public.battlers set presentation=jsonb_set(jsonb_set(presentation,'{schemaVersion}',$2::jsonb),'{profile,theme}',$3::jsonb) where game_account_id=$1",[a,String(version),JSON.stringify(theme)]);
+  const v=(await list())[0];for(const key of Object.keys(theme))assert.equal(v[key],theme[key]);
+ }
+ for(const key of Object.keys(theme))for(const invalid of [undefined,null,123,'#abc','red','url(secret)']) {
+  const saved={...theme};if(invalid===undefined)delete saved[key];else saved[key]=invalid;
+  await db.exec('reset role');await db.query("update public.battlers set presentation=jsonb_set(presentation,'{profile,theme}',$2::jsonb) where game_account_id=$1",[a,JSON.stringify(saved)]);
+  await db.exec("set role anon;select set_config('request.jwt.claim.sub','',false)");
+  const v=decodeOnlineCharacters(await value('select public.list_online_characters() data'))[0];
+  for(const color of Object.keys(theme))assert.equal(v[color],color===key?defaults[color]:theme[color]);
+ }
  });
  await t.test('v4-v6 preserve the same explicit best streak privacy',async()=>{
  for(const version of [4,5,6])for(const visible of [true,false,null,'true']){
