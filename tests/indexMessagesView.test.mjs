@@ -11,8 +11,8 @@ function screen() {
  const get=id=>{if(!nodes.has(id))nodes.set(id,create());return nodes.get(id);};
  let loadData={eno:'1',ownMessage:'元の本文',others:['2','3','4'].map(eno=>({eno,battlerName:'<b>名前</b>',defaultIconUrl:'',message:'他人の本文'}))},fail=false,pending=null,calls=[];
  const client={auth:{getSession:async()=>({data:{session:{user:{id:'user'}}}})},rpc:async(name,args)=>{calls.push(name);if(pending)return new Promise(r=>pending.resolve=r);return {error:fail?{}:null,data:name==='get_index_messages'?loadData:{eno:args.p_eno,message:args.p_message}};}};
- const view=mountIndexMessages({getElementById:get,createElement:create},async()=>client);
- return {get,view,calls,fail(v){fail=v;},empty(){loadData={eno:'1',ownMessage:'',others:[]};},delay(){pending={};return pending;}};
+ const notices=[];const view=mountIndexMessages({getElementById:get,createElement:create},async()=>client,n=>notices.push(n));
+ return {get,view,calls,notices,fail(v){fail=v;},empty(){loadData={eno:'1',ownMessage:'',others:[]};},delay(){pending={};return pending;}};
 }
 const tick=()=>new Promise(r=>setImmediate(r));
 const submit=s=>s.get('home-message-form').handlers.submit({preventDefault(){}});
@@ -25,7 +25,7 @@ test('real UI display, edit boundary, cancel, save failure retention and success
  input.value+='😀';input.handlers.input();assert.equal(s.get('home-message-save').disabled,true);await submit(s);assert.equal(s.calls.length,1);
  s.get('home-message-cancel').handlers.click();assert.equal(s.get('home-message-form').hidden,true);assert.equal(s.get('home-message').textContent,'元の本文');
  s.get('home-message-edit').handlers.click();input.value='新しい本文';s.fail(true);await submit(s);assert.equal(input.value,'新しい本文');assert.equal(s.get('home-message-form').hidden,false);assert.match(s.get('home-message-status').textContent,/保存できません/);
- s.fail(false);await submit(s);assert.equal(s.get('home-message').textContent,'新しい本文');assert.equal(s.get('home-message-form').hidden,true);assert.equal(s.calls.filter(n=>n==='get_index_messages').length,1);
+ assert.deepEqual(s.notices,[]);s.fail(false);await submit(s);assert.deepEqual(s.notices,[{message:"ひとことを保存しました。",kind:"success"}]);assert.equal(s.get('home-message').textContent,'新しい本文');assert.equal(s.get('home-message-form').hidden,true);assert.equal(s.calls.filter(n=>n==='get_index_messages').length,1);
  s.get('home-message-edit').handlers.click();input.value='　 \n';await submit(s);assert.equal(s.get('home-message').textContent,'右のペンマークからひとことを編集できます。');
  assert.equal(s.get('home-message').classList.contains('is-placeholder'),true);
 });
@@ -37,7 +37,7 @@ test('empty/load failure isolated to cards; late load and double save ignored',a
  assert.equal(s.get('home-message').classList.contains('is-placeholder'),false);
  s.view.update(state(null));s.fail(false);const p=s.delay();s.view.update(state('1'));await tick();s.view.update(state(null));p.resolve({data:{eno:'1',ownMessage:'old',others:[]}});await tick();assert.equal(s.get('home-message').textContent,'');
  const t=screen();t.view.update(state('1'));await tick();t.get('home-message-edit').handlers.click();const q=t.delay();const first=submit(t);await tick();await submit(t);assert.equal(t.calls.filter(n=>n==='set_index_message').length,1);
- t.view.update(state(null));q.resolve({data:{eno:'1',message:'元の本文'}});await first;assert.equal(t.get('home-message').textContent,'');
+ t.view.update(state(null));q.resolve({data:{eno:'1',message:'元の本文'}});await first;assert.equal(t.get('home-message').textContent,'');assert.deepEqual(t.notices,[]);
 });
 
 test('account switch rejects old account load even if it completes after new account',async()=>{

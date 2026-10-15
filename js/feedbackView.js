@@ -1,7 +1,8 @@
+import { showToast } from "./toast.js";
 import { FEEDBACK_TITLE_MAX, FEEDBACK_BODY_MAX, FEEDBACK_CATEGORIES, FEEDBACK_STATUSES,
   codePointLength, selectFeedback, validateFeedbackInput } from './feedbackService.js';
 
-export function mountFeedbackBoard(document, service, confirm = message => globalThis.confirm(message)) {
+export function mountFeedbackBoard(document, service, confirm = message => globalThis.confirm(message), notify = showToast) {
   const get = id => document.getElementById(id);
   const root=get('panel-reports'), list=get('feedback-list'), message=get('feedback-message');
   const form=get('feedback-form'), newButton=get('feedback-new'), authMessage=get('feedback-auth');
@@ -42,14 +43,14 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
     if(!result.ok) { message.textContent=result.stale?'ログイン状態が変わりました。再読み込みしてください。':result.message;return; }
     data=result.data;replies.clear();message.textContent='';render();enabled();
   }
-  async function mutate(action, success, output=message) {
+  async function mutate(action, success, output=message, notice) {
     if(busy)return;
     const current=epoch;busy=true;enabled();output.textContent='送信中…';
     try {
       const result=await action();
       if(disposed||current!==epoch)return;
       if(!result.ok){output.textContent=result.stale?'ログイン状態が変わりました。再読み込みしてください。':result.message;return;}
-      output.textContent='';await success(result.data);
+      output.textContent='';if(notice)notify({message:notice,kind:'success'});await success(result.data);
     } finally {if(current===epoch){busy=false;enabled();}}
   }
   form.addEventListener('submit',event=>{
@@ -61,7 +62,7 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
       root.querySelector('input[name="report-type"][value="all"]').checked=true;
       root.querySelector('input[name="report-status"][value="all"]').checked=true;
       get('report-sort').value='newest';await load();
-    },get('feedback-form-message'));
+    },get('feedback-form-message'),'投稿しました。');
   });
   get('feedback-reload').addEventListener('click',()=>{if(!busy)void load();});
   for(const control of root.querySelectorAll('.notice-filters input, .notice-filters select')) control.addEventListener('change',render);
@@ -99,7 +100,7 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
     replyForm.addEventListener('submit',event=>{
       event.preventDefault();if(!canReply(thread)||busy)return;
       try{validateFeedbackInput({body:input.value},true);}catch{feedback.textContent='本文を1〜2000文字で入力してください。';return;}
-      void mutate(()=>service.reply(auth.eno,thread.id,input.value),async()=>{drafts.delete(thread.id);await load();},feedback);
+      void mutate(()=>service.reply(auth.eno,thread.id,input.value),async()=>{drafts.delete(thread.id);await load();},feedback,'返信を投稿しました。');
     });
     container.append(opener,replyForm);enabled();
   }
@@ -129,7 +130,7 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
       footer.append(reaction);card.append(footer);
       const operations=el('div','feedback-actions');
       if(canUserWrite()&&thread.isOwn&&['open','confirmed'].includes(thread.status))operations.append(button('取り下げる',()=>{
-        if(confirm('投稿を取り下げますか？ 本文・返信・同意は記録として残り、元に戻すことはできません。'))void mutate(()=>service.withdraw(auth.eno,thread.id),load);
+        if(confirm('投稿を取り下げますか？ 本文・返信・同意は記録として残り、元に戻すことはできません。'))void mutate(()=>service.withdraw(auth.eno,thread.id),load,message,'投稿を取り下げました。');
       },'account'));
       if(canModerate()){
         if(thread.status!=='withdrawn'){

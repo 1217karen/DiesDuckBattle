@@ -1,3 +1,4 @@
+import { showToast } from "./toast.js";
 import { finishPageLoad } from "./pageLoad.js";
 import { createBattleResultStorage } from "./battleResultStorage.js";
 import { getSupabaseClient } from "./authRuntime.js";
@@ -134,7 +135,7 @@ function buildRow(record) {
     ++requestVersion;
     const result = await storage.setFavorite({ gameAccountId, battleId: record.battleId, favorite });
     favoritePending.delete(record.battleId);
-    if (result.ok) { record.favorite = result.favorite; setStar(star, record.favorite); }
+    if (result.ok) { record.favorite = result.favorite; setStar(star, record.favorite); showToast({ message: result.favorite ? "お気に入りに登録しました。" : "お気に入りを解除しました。", kind: "success" }); }
     else el("favoriteError").hidden = false;
     star.disabled = gameAccountId === null;
     await render();

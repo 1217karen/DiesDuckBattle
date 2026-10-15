@@ -51,7 +51,7 @@ async function page(data=initial(),vaultStorage=server()) {
     online.subscribe(next=>{if(next.dataVersion!==version){version=next.dataVersion;hydrate(next.draft);}onState(next);});
     const edit=online.edit;online.edit=(...args)=>{edits.push(structuredClone(args));return edit(...args);};
     await online.load();return online;
-  },options=>vault=createSkillVaultView({...options,storage:vaultStorage}));
+  },options=>vault=createSkillVaultView({...options,storage:vaultStorage,notify:()=>{}}));
   await tick();
   const dialog=()=>all().find(e=>e.tagName==='dialog');
   const button=(text,root=body)=>walk(root).find(e=>e.tagName==='button'&&e.textContent===text);

@@ -1,8 +1,9 @@
+import { showToast } from "./toast.js";
 import { createIndexMessageService, HOME_MESSAGE_MAX, codePointLength, normalizeHomeMessage } from './indexMessageService.js';
 import { FIXED_IMAGES, setImageFromCandidates } from './fixedImages.js';
 import { menuModel } from './commonMenuModel.js';
 
-export function mountIndexMessages(document, getClient) {
+export function mountIndexMessages(document, getClient, notify = showToast) {
   const el = id => document.getElementById(id);
   const text = el('home-message'), edit = el('home-message-edit'), form = el('home-message-form');
   const input = el('home-message-input'), count = el('home-message-count'), save = el('home-message-save');
@@ -34,6 +35,7 @@ export function mountIndexMessages(document, getClient) {
     saving = false; input.disabled = false; cancel.disabled = false; validate();
     if (!result.ok) { status.textContent = result.message; return; }
     current = result.message; renderOwnMessage(); close(); edit.focus();
+    notify({ message: "ひとことを保存しました。", kind: "success" });
   });
   function renderOthers(rows) {
     list.replaceChildren(...rows.map(row => {

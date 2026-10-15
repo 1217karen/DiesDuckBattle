@@ -30,18 +30,26 @@ test('result page waits for server record then initializes unchanged renderer',a
 });
 const fixed={battlerIcon:'/img/B00_icon.png',duckIcon:'/img/D00.png'};
 async function historyPage(account={ok:true,account:{id:'account',eno:'12'}}) {
-  const d=dom(),requests=[],listeners={},started=gate();
-  const loading=page('storagePage',{...d,window:{addEventListener:(name,fn)=>listeners[name]=fn},
+  const d=dom(),requests=[],listeners={},started=gate(),notices=[];
+  const loading=page('storagePage',{...d,showToast:n=>notices.push(n),window:{addEventListener:(name,fn)=>listeners[name]=fn},
     getSupabaseClient:async()=>({}),createOnlinePlayerStorage:()=>({resolveAccount:async()=>account}),
     FIXED_IMAGES:fixed,setImageWithFallback(img,url,fallback){img.src=url||fallback;img.addEventListener('error',()=>img.src=fallback);},
     createBattleResultStorage:()=>createBattleResultStorage({rpc:(name,args)=>{const pending=gate();requests.push({name,args,...pending});started.resolve();return pending.promise;}})});
   await started.promise;
-  return {...d,requests,listeners,loading};
+  return {...d,requests,listeners,loading,notices};
 }
 const row={battleId:'uuid-id',battleNo:1234,dateISO:'2026-10-04T12:30:00Z',result:'P2_win',favorite:false,
   p1:{eno:'12',battlerName:'A',duckName:'D',presentation:{battlerDefaultIconUrl:'old-a.png',duckIconUrl:'old-d.png'}},
   p2:{eno:'13',battlerName:'B',duckName:'E',presentation:{battlerDefaultIconUrl:'old-b.png',duckIconUrl:''}}};
 const respond=(r,records=[row],total=31)=>r.resolve({data:{records:structuredClone(records),page:r.args.p_page,pageSize:30,total,totalPages:Math.ceil(total/30)}});
+test('favorite registration toast waits for confirmed DB success and is not repeated by render',async()=>{
+ const {requests,elements,loading,notices}=await historyPage();respond(requests[0]);await loading;
+ const star=elements.get('list').children[0].children[0].children[0];
+ const pending=star.listeners.click();await tick();await star.listeners.click();assert.equal(notices.length,0);
+ requests[1].resolve({data:{battleId:'uuid-id',favorite:true}});await tick();
+ assert.equal(notices.length,1);assert.equal(notices[0].message,'お気に入りに登録しました。');assert.equal(notices[0].kind,'success');
+ respond(requests[2],[{...row,favorite:true}]);await pending;assert.equal(notices.length,1);
+});
 test('storage initializes own ENo, renders snapshot icons and VS, resets filters and ignores stale responses',async()=>{
   const d=await historyPage(),{requests,elements,loading}=d;
   assert.equal(elements.get('eno').value,'12');assert.equal(requests[0].args.p_eno,'12');
@@ -70,18 +78,18 @@ test('storage initializes own ENo, renders snapshot icons and VS, resets filters
   respond(requests[4],[],0);await tick();respond(requests[3]);await tick();assert.equal(elements.get('list').children.length,0);
 });
 test('stars wait for RPC, block repeated clicks, preserve failure state and refresh favorites-only pager',async()=>{
-  const {requests,elements,loading}=await historyPage();respond(requests[0]);await loading;
+  const {requests,elements,loading,notices}=await historyPage();respond(requests[0]);await loading;
   const star=elements.get('list').children[0].children[0].children[0];
   const pending=star.listeners.click();await tick();assert.equal(star.disabled,true);assert.equal(star.textContent,'☆');
   await star.listeners.click();assert.equal(requests.length,2);
   assert.deepEqual(requests[1].args,{p_game_account_id:'account',p_battle_id:'uuid-id',p_favorite:true});
   requests[1].resolve({error:{message:'failure'}});await tick();assert.equal(star.textContent,'☆');assert.equal(elements.get('favoriteError').hidden,false);
-  respond(requests[2]);await pending;
+  respond(requests[2]);await pending;assert.equal(notices.length,0);
   elements.get('favorites').value='only';elements.get('favorites').listeners.change();
   assert.equal(requests[3].args.p_favorites_only,true);respond(requests[3],[{...row,favorite:true}],1);await tick();
   const selected=elements.get('list').children[0].children[0].children[0];assert.equal(selected.textContent,'★');
   const removal=selected.listeners.click();await tick();assert.equal(requests[4].args.p_favorite,false);
-  requests[4].resolve({data:{battleId:'uuid-id',favorite:false}});await tick();respond(requests[5],[],0);await removal;
+  requests[4].resolve({data:{battleId:'uuid-id',favorite:false}});await tick();respond(requests[5],[],0);await removal;assert.equal(notices.length,1);assert.equal(notices[0].message,"お気に入りを解除しました。");assert.equal(notices[0].kind,"success");
   assert.equal(elements.get('list').children.length,0);assert.equal(elements.get('next').disabled,true);
 });
 for(const status of ['selection-required','not-signed-in','no-access'])test('unresolved account never selects first ENo or enables favorites: '+status,async()=>{

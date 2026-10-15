@@ -1,6 +1,6 @@
 const copy = value => structuredClone(value);
 const scopeKey = scope => scope ? `${scope.authUserId}/${scope.gameAccountId}` : "";
-export function createSkillVaultController({ storage, onChange = () => {}, idFactory = () => crypto.randomUUID() }) {
+export function createSkillVaultController({ storage, onChange = () => {}, onSuccess = () => {}, idFactory = () => crypto.randomUUID() }) {
   let scope = null, generation = 0;
   let state = { entries: [], busy: false, ready: false, uncertain: null, message: "" };
   const snapshot = () => copy(state);
@@ -38,6 +38,7 @@ export function createSkillVaultController({ storage, onChange = () => {}, idFac
         ? "通信が途切れたため操作の成否が不明です。『一覧を再取得』でサーバーの状態を確認してください。"
         : "スキル保管庫の通信に失敗しました。通信状況とDBの準備を確認し、一覧を再取得してください。";
     }
+    if (result.ok && pending) onSuccess({ message: pending.kind === "store" ? "スキルを保管しました。" : "スキルを削除しました。", kind: "success" });
     emit(); return result.ok;
   }
   function refresh() { return run(target => storage.list(target)); }

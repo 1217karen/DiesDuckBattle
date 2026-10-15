@@ -53,6 +53,20 @@ test('known legacy leaves load through existing migration without changing store
   }
 });
 const scope={authUserId:'user',gameAccountId:'account'};
+test('vault success notices occur once per confirmed mutation, never on refresh, unknown or stale responses',async()=>{
+ const notices=[];let mode='ok',rows=[],resolve;
+ const c=createSkillVaultController({onSuccess:n=>notices.push(n),idFactory:()=> 'notice-id',storage:{
+  list:async()=>({ok:true,entries:rows}),
+  store:async(_s,e)=>{if(mode==='wait')return new Promise(r=>resolve=r);if(mode!=='ok')return {ok:false,status:mode};rows=[e];return {ok:true,entries:rows};},
+  remove:async()=>{rows=[];return {ok:true,entries:rows};}
+ }});
+ c.setScope(scope);await tick();const entry=captureVaultSkill('A',owner('A'));
+ await c.store(entry);await c.refresh();c.snapshot();
+ assert.deepEqual(notices,[{message:'スキルを保管しました。',kind:'success'}]);
+ await c.remove('notice-id');await c.refresh();assert.equal(notices[1].message,'スキルを削除しました。');
+ mode='unknown';await c.store(entry);await c.refresh();assert.equal(notices.length,2);
+ mode='wait';const pending=c.retry();c.setScope(null);resolve({ok:true,entries:[]});await pending;assert.equal(notices.length,2);
+});
 test('controller immediate list, double-send guard, unknown reconciliation, stale ENo responses',async()=>{
   let resolveStore, stores=0; const rows=[];
   const storage={list:async()=>({ok:true,entries:rows}),store:async(_scope,entry)=>{stores++;rows.push(entry);return new Promise(r=>resolveStore=r);},remove:async()=>({ok:true,entries:[]})};

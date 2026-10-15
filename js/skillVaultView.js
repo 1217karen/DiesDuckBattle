@@ -1,10 +1,11 @@
+import { showToast } from "./toast.js";
 import { getSupabaseClient } from "./authRuntime.js";
 import { createSkillVaultStorage } from "./skillVaultStorage.js";
 import { createSkillVaultController } from "./skillVaultController.js";
 import { captureVaultSkill, presentVaultSkill } from "./skillVaultModel.js";
 import { calculateASkillResources } from "./aSkillResources.js";
 
-export function createSkillVaultView({ context, apply, storage }) {
+export function createSkillVaultView({ context, apply, storage, notify = showToast }) {
   const node = (tag, text, className) => {
     const element = document.createElement(tag);
     if (text != null) element.textContent = text;
@@ -33,6 +34,7 @@ export function createSkillVaultView({ context, apply, storage }) {
     storage: storage ?? Object.fromEntries(["list", "store", "remove"].map(method => [method, async (...args) =>
       createSkillVaultStorage(await getSupabaseClient())[method](...args)])),
     onChange: () => update(),
+    onSuccess: notify,
   });
   function sync(next) {
     controller.setScope(next.base && next.draft && !next.blocked ? {
