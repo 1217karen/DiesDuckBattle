@@ -165,3 +165,13 @@ body {
   .profile-battle-editor { padding: 12px; }
   .profile-battle-option { padding: 8px; gap: 6px; }
 }
+
+@media (max-width: 600px) {
+  .profile-page { font-size: 14px; line-height: 1.65; }
+  .profile-header h1 { font-size: 22px; }
+  .duck-name { font-size: 19px; }
+  .skill-name { font-size: 15px; }
+  .profile-card h2 { margin-bottom: 14px; }
+  .skill-list { gap: 12px; }
+  .battler-card > .skill-list, .duck-card > .skill-list, .stat-section, .duck-profile { margin-top: 18px; padding-top: 18px; }
+}

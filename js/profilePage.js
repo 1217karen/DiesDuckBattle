@@ -26,7 +26,7 @@ export async function loadProfilePage({ document = globalThis.document, location
       mountProfileThemeEditor({ document, header: main.children[0], profile, client });
       mountProfileBattleEditor({ document, container: main.querySelector(".featured-battle"), profile, client });
     }
-    document.title = `ENo.${profile.eno} ${profile.battler.name} | DiesDuckBattle`;
+    document.title = `ENo.${profile.eno} ${profile.battler.name} | ダイスで対戦！アヒルバトラーONLINE`;
     return result;
   } catch {
     const result = profileFailure("load-failed"); error("プロフィールを表示できませんでした。" + result.message); return result;

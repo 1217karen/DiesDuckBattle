@@ -50,7 +50,9 @@ button.silhouette { width:100%; border:0; background:transparent; color:inherit;
 #random-win-streak { color:#ffcf60; font-weight:700; margin:8px 0; }
 .vs:not(:disabled) { cursor:pointer; filter:drop-shadow(0 0 10px #ffb40088); }
 
-.infoPanel__name { margin:0 0 4px; font-weight:700; font-size:1.05em; overflow-wrap:anywhere; }
+.infoPanel__name { margin:0 0 4px; font-weight:700; font-size:15px; overflow-wrap:anywhere; }
 .infoPanel__name:empty { display:none; }
 
 .tray__header h2 { font-family:var(--font-heading-ja); }
+
+@media(max-width:600px) { .infoPanel__name { font-size:14px; } }

@@ -19,8 +19,8 @@ body {
 .character-list-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  padding: 18px;
+  gap: 10px;
+  padding: 12px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -29,22 +29,28 @@ body {
 .character-list-filters label {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+  min-width: 0;
+  font-size: 13px;
 }
 
 .character-list-filters input,
 .character-list-filters select {
   font: inherit;
+  font-size: 14px;
+  min-height: 40px;
+  min-width: 0;
+  width: 100%;
   color: var(--text);
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 5px;
-  padding: 8px;
+  padding: 6px 8px;
   max-width: 100%;
 }
 
 .character-list-filters input[type=search] {
-  width: 260px;
+  width: 220px;
 }
 
 /* 登録証一覧 */
@@ -196,9 +202,13 @@ body {
     --page-margin-block: 12px;
   }
 
-  .character-list-filters label {
-    width: 100%;
+  .character-list-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 8px;
+    padding: 10px;
   }
+  .character-list-filters input, .character-list-filters select { font-size: 16px; min-height: 44px; }
 
   .character-list-filters input[type=search] {
     width: 100%;

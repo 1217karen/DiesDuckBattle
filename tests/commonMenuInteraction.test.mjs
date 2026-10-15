@@ -107,8 +107,8 @@ test("black bar protects hamburger width, ellipsis identity and right anchored b
 test("SDK failure preserves all five public destinations and disables owner controls",async()=>{
  const s=await screen(null,true);
  assert.deepEqual(s.nav.children.map(n=>[n.textContent,n.href]),[
-  ["ホーム","index.html"],["バトル履歴","storage.html"],["ルールブック","rulebook.html"],
-  ["キャラリスト","character-list.html"],["お知らせ","notice.html"]]);
+  ["ホーム","index.html"],["バトル履歴","storage.html"],["キャラリスト","character-list.html"],
+  ["ルールブック","rulebook.html"],["お知らせ","notice.html"]]);
  assert.equal(s.accountMenu.children.length,0);assert.equal(s.rightTrigger.attributes['aria-disabled'],'true');
 });
 

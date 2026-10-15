@@ -14,7 +14,7 @@ test("guest menu hides select/settings/character/logout but preserves public des
   const model = menuModel(base);
   assert.equal(model.identity, "未ログイン");
   assert.equal(model.loggedIn, false);
-  assert.deepEqual(model.items.filter(x => x.href).map(x => x.href), ["index.html", "storage.html", "rulebook.html", "character-list.html", "notice.html"]);
+  assert.deepEqual(model.items.filter(x => x.href).map(x => x.href), ["index.html", "storage.html", "character-list.html", "rulebook.html", "notice.html"]);
   assert.equal(model.items.filter(x => !x.href).length, 0);
 });
 test("signed-in menu displays exact DB name and ENo, never HTML markup", () => {
@@ -141,8 +141,8 @@ test("menu names/order match index, page titles agree and legal footer stays sep
  const index=await readFile(new URL('../index.html',import.meta.url),'utf8');
  const items=menuModel({...base,signedIn:true}).items.map(({label,href})=>[label,href]);
  assert.deepEqual(items,[["ホーム","index.html"],["アヒルバトル","select.html"],["戦闘設定","setting.html"],
-  ["バトル履歴","storage.html"],["キャラ設定","character.html"],["ルールブック","rulebook.html"],
-  ["キャラリスト","character-list.html"],["お知らせ","notice.html"]]);
+  ["バトル履歴","storage.html"],["キャラ設定","character.html"],["キャラリスト","character-list.html"],
+  ["ルールブック","rulebook.html"],["お知らせ","notice.html"]]);
  const indexMenu=index.match(/<nav class="home__menu home__game-menu"[\s\S]*?<\/nav>/)[0];
  assert.deepEqual([...indexMenu.matchAll(/<a [^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map(m=>[m[2],m[1]]),items.slice(1));
  for(const [name,file] of items.slice(1)) {
@@ -153,5 +153,5 @@ test("menu names/order match index, page titles agree and legal footer stays sep
  assert.deepEqual([...legal.matchAll(/<a href="([^"]+)">([^<]+)<\/a>/g)].map(m=>[m[2],m[1]]),[
   ["サイトガイドライン","rulebook.html#guidelines"],["利用規約","legal.html#terms"],["プライバシーポリシー","legal.html#privacy"]]);
  for(const state of [{...base,ready:false,sessionKnown:false},{...base,sessionKnown:false}])
-  assert.deepEqual(menuModel(state).items.map(x=>x.href),['index.html','storage.html','rulebook.html','character-list.html','notice.html']);
+  assert.deepEqual(menuModel(state).items.map(x=>x.href),['index.html','storage.html','character-list.html','rulebook.html','notice.html']);
 });

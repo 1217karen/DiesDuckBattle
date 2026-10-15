@@ -20,7 +20,7 @@
 .page-title {
   font-family:var(--font-heading-ja);
   margin:var(--page-title-margin, 0 0 24px);
-  font-size:var(--page-title-size, 2em);
+  font-size:var(--page-title-size, 26px);
   letter-spacing:var(--page-title-spacing, normal);
   line-height:var(--page-title-line-height, normal);
   font-weight:var(--page-title-weight, 700);
@@ -41,10 +41,11 @@
   --page-eyebrow-size:.75rem;
   --page-eyebrow-spacing:.23em;
   --page-eyebrow-weight:700;
-  --page-title-size:clamp(1.7rem,4vw,2.8rem);
-  --page-title-spacing:.045em;
-  --page-title-line-height:1.15;
-  --page-title-margin:16px 0 22px;
+  font-size:14px;
+  line-height:1.7;
+  --page-title-spacing:normal;
+  --page-title-line-height:1.4;
+  --page-title-margin:10px 0 24px;
 }
 .page-shell--editor .muted { color:var(--muted); font-size:.85rem; }
 @media(max-width:700px) {

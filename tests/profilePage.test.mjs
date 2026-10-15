@@ -39,7 +39,7 @@ test('URL ENo passes service boundary without a login guard; canonical header/ti
   assert.equal(result.ok,true);assert.equal(result.profile.isOwner,true);
   assert.deepEqual(calls,[['client'],['rpc','get_online_profile',{p_eno:'123'}],['finish']]);
   assert.equal(byClass(main,'profile-header')[0].textContent,`ENo.123 / ${p.battler.name}🎨`);
-  assert.equal(document.title,`ENo.123 ${p.battler.name} | DiesDuckBattle`);
+  assert.equal(document.title,`ENo.123 ${p.battler.name} | ダイスで対戦！アヒルバトラーONLINE`);
   assert.deepEqual(document.body.styles,{'--profile-bg':'#DCEEF3','--profile-panel':'#FFFFFF','--profile-text':'#20282C','--profile-accent':'#4F91B3'});
   assert.equal(byClass(main,'profile-theme-trigger').length,1);
   assert.equal(byClass(document.body,'profile-theme-editor').length,1);
