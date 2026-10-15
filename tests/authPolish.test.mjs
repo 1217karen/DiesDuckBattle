@@ -52,7 +52,7 @@ async function screen({ standalone = false } = {}) {
   const document = { focused: null, getElementById: id => get(id), querySelectorAll: () => buttons,
     createElement: () => element() };
   function element(id = "") {
-    return { id, checked: false, reportValidity() { this.reported = true; }, value: "", textContent: "", hidden: false, disabled: false, dataset: {}, handlers: {}, children: [],
+    return { style: {}, id, checked: false, reportValidity() { this.reported = true; }, value: "", textContent: "", hidden: false, disabled: false, dataset: {}, handlers: {}, children: [],
       setAttribute() {}, addEventListener(event, fn) { this.handlers[event] = fn; },
       focus() { document.focused = this; }, replaceChildren(...children) { this.children = children; },
       getClientRects() { return (id.startsWith("opener") && get("home-guest").hidden) ? [] : [1]; },

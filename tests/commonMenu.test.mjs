@@ -93,7 +93,7 @@ test("short password error from deployed server is displayed specifically", asyn
 test("INDEX actual handlers hide pre-restore menus and manage modal close/focus/password clearing", async () => {
   const elements = new Map();
   function el() {
-    return { hidden: true, handlers: {}, dataset: {}, children: [], textContent: "", visible: true,
+    return { style: {}, hidden: true, handlers: {}, dataset: {}, children: [], textContent: "", visible: true,
       addEventListener(k, f) { this.handlers[k] = f; }, focus() { document.focused = this; },
       getClientRects() { return this.visible ? [1] : []; },
       querySelector() { return input; }, replaceChildren(...children) { this.children = children; },

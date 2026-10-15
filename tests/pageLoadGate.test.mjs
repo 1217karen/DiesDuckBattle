@@ -12,7 +12,7 @@ const deferred = () => { let resolve, reject; const promise = new Promise((a,b) 
 function fixture() {
   const nodes=new Map(), events={}, classes=new Set(['page-loading','has-common-menu']);
   const classList={add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x),toggle(){}};
-  const element=()=>({children:[],handlers:{},attributes:{},textContent:'',value:'',hidden:false,classList,
+  const element=()=>({style:{},children:[],handlers:{},attributes:{},textContent:'',value:'',hidden:false,classList,
     append(...n){this.children.push(...n);},replaceChildren(...n){this.children=n;},remove(){this.removed=true;},
     setAttribute(k,v){this.attributes[k]=v;},addEventListener(k,v){this.handlers[k]=v;},close(){},focus(){},checkValidity(){return true;}});
   const get=id=>{if(!nodes.has(id))nodes.set(id,element());return nodes.get(id);};

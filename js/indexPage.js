@@ -12,28 +12,50 @@ consumeIndexNotice();
 
 const standing = document.getElementById("home-standing");
 const icon = document.getElementById("home-icon");
-function showBattlerImages(battler = {}) {
-  setImageFromCandidates(standing, [battler.standingImageUrl], FIXED_IMAGES.battlerStanding);
-  setImageFromCandidates(icon, [battler.defaultIconUrl], FIXED_IMAGES.battlerIcon);
+let imageAccount, imageRevision = 0;
+function hideBattlerImages() {
+  for (const image of [standing, icon]) image.style.visibility = "hidden";
 }
-showBattlerImages();
-let imageAccount = null, imageRevision = 0;
+function showBattlerImages(battler = {}, revision = imageRevision) {
+  for (const [image, url, fallback] of [
+    [standing, battler.standingImageUrl, FIXED_IMAGES.battlerStanding],
+    [icon, battler.defaultIconUrl, FIXED_IMAGES.battlerIcon],
+  ]) {
+    // Load fallback candidates off-screen so an old request cannot reveal another account.
+    const pendingImage = document.createElement("img");
+    pendingImage.onload = async () => {
+      if (revision !== imageRevision) return;
+      image.src = pendingImage.src;
+      try {
+        await image.decode();
+        if (revision === imageRevision) image.style.visibility = "visible";
+      } catch {
+        if (revision === imageRevision) pendingImage.onerror?.();
+      }
+    };
+    setImageFromCandidates(pendingImage, [url], fallback);
+  }
+}
+hideBattlerImages();
 function updateBattlerImages(state) {
   const account = state.ready ? menuModel(state).currentAccount : null;
   const eno = account?.eno ?? null;
-  if (eno === imageAccount) return;
-  imageAccount = eno;
+  const key = !state.ready || !state.sessionKnown || (state.signedIn && !state.accountsResolved) ? undefined : eno;
+  if (key === imageAccount) return;
+  imageAccount = key;
   const revision = ++imageRevision;
-  showBattlerImages();
-  if (!eno) return;
+  hideBattlerImages();
+  if (key === undefined) return;
+  if (!eno) { showBattlerImages({}, revision); return; }
   void (async () => {
     try {
       const storage = createOnlinePlayerStorage(await getSupabaseClient());
       const result = await storage.load();
-      if (revision === imageRevision && result.ok && result.account.eno === eno) {
-        showBattlerImages(result.data.presentation.battler);
-      }
-    } catch { /* Keep the existing fixed images when online data is unavailable. */ }
+      if (revision !== imageRevision) return;
+      showBattlerImages(result.ok && result.account.eno === eno ? result.data.presentation.battler : {}, revision);
+    } catch {
+      if (revision === imageRevision) showBattlerImages({}, revision);
+    }
   })();
 }
 
