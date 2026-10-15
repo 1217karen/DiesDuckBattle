@@ -1,23 +1,243 @@
-body { margin:0; }
-.character-list-shell { --page-max-width:1240px; --page-margin-block:24px; --page-padding:24px; --page-padding-narrow:12px; --page-eyebrow-size:.8rem; }
-.character-list-shell * { box-sizing:border-box; }
-.character-list-filters { display:flex; flex-wrap:wrap; gap:16px; padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:10px; }
-.character-list-filters label { display:flex; flex-direction:column; gap:6px; }
-.character-list-filters input,.character-list-filters select { font:inherit; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:5px; padding:8px; max-width:100%; }
-.character-list-filters input[type=search] { width:260px; }
-.character-list-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
-.character-card { display:block; padding:16px; border:2px solid #4F91B3; border-radius:10px; background:var(--panel); color:var(--text); text-decoration:none; box-shadow:0 3px 10px #0000000d; min-width:0; }
-.character-card:hover { background:var(--ui-hover); box-shadow:0 5px 16px #0000001a; }
-.character-card:focus-visible { outline:3px solid var(--text); outline-offset:4px; }
-.character-eno { color:var(--muted); font-size:.8rem; }
-.character-name { font-size:1.15rem; margin:4px 0 14px; overflow-wrap:anywhere; }
-.character-card-body { display:flex; align-items:flex-start; gap:14px; }
-.character-battler-icon { width:120px; height:120px; flex:0 0 120px; object-fit:cover; border-radius:5px; }
-.character-duck { min-width:0; flex:1; font-size:.85rem; }
-.character-duck p { margin:6px 0 0; overflow-wrap:anywhere; }
-.character-duck-identity { display:flex; align-items:center; gap:8px; }
-.character-duck-icon { width:60px; height:60px; flex:0 0 60px; object-fit:cover; border-radius:4px; }
-.character-duck-name { overflow-wrap:anywhere; }
-@media(max-width:1140px) { .character-list-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-@media(max-width:760px) { .character-list-shell { --page-padding:12px; --page-margin-block:12px; } .character-list-grid { grid-template-columns:minmax(0,1fr); } .character-list-filters label { width:100%; } .character-list-filters input[type=search] { width:100%; } }
-@media(max-width:370px) { .character-card { padding:12px; } .character-card-body { gap:10px; } .character-duck-identity { flex-wrap:wrap; } }
+
+body {
+  margin: 0;
+}
+
+.character-list-shell {
+  --page-max-width: 1240px;
+  --page-margin-block: 24px;
+  --page-padding: 24px;
+  --page-padding-narrow: 12px;
+  --page-eyebrow-size: .8rem;
+}
+
+.character-list-shell * {
+  box-sizing: border-box;
+}
+
+/* 検索・絞り込み */
+.character-list-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.character-list-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.character-list-filters input,
+.character-list-filters select {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 8px;
+  max-width: 100%;
+}
+
+.character-list-filters input[type=search] {
+  width: 260px;
+}
+
+/* 登録証一覧 */
+.character-list-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+/* バトラー登録証 */
+.character-card {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  padding: 15px;
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  text-decoration: none;
+  box-shadow: 0 3px 10px #0000000d;
+  transition: box-shadow .15s, transform .15s;
+}
+
+.character-card:hover {
+  box-shadow: 0 6px 18px #00000020;
+  transform: translateY(-2px);
+}
+
+.character-card:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 4px;
+}
+
+/* 証明写真 */
+.character-battler-icon {
+  display: block;
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--ui-surface);
+}
+
+/* 登録情報 */
+.character-card-details {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  min-width: 0;
+}
+
+.character-eno {
+  align-self: flex-end;
+  font-family: "Iceberg", sans-serif;
+  font-size: 1.5rem;
+  line-height: 1;
+  letter-spacing: .04em;
+}
+
+.character-name {
+  margin: 5px 0 10px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--line);
+  font-size: 1.2rem;
+  line-height: 1.25;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+/* パートナーアヒル */
+.character-duck {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.character-duck-icon {
+  display: block;
+  width: 60px;
+  height: 60px;
+  flex: 0 0 60px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.character-duck-info {
+  min-width: 0;
+}
+
+.character-duck-name {
+  font-size: .95rem;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* タイプ・属性を横並び */
+.character-duck-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: .77rem;
+  line-height: 1.5;
+}
+
+.character-duck-meta span {
+  white-space: nowrap;
+}
+
+/* 連勝記録 */
+.character-streak {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 6px;
+  font-family: "Iceberg", sans-serif;
+}
+
+.character-streak-label {
+  font-size: .7rem;
+  letter-spacing: .07em;
+  color: var(--muted);
+}
+
+.character-streak-number {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+/* スマホ対応 */
+@media (max-width: 880px) {
+  .character-list-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .character-list-shell {
+    --page-padding: 12px;
+    --page-margin-block: 12px;
+  }
+
+  .character-list-filters label {
+    width: 100%;
+  }
+
+  .character-list-filters input[type=search] {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .character-card {
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .character-battler-icon {
+    width: 88px;
+    height: 88px;
+  }
+
+  .character-duck-icon {
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
+  }
+
+  .character-eno {
+    font-size: 1.25rem;
+  }
+
+  .character-name {
+    font-size: 1.05rem;
+    margin-bottom: 7px;
+  }
+
+  .character-duck-name {
+    font-size: .88rem;
+  }
+
+  .character-duck-meta {
+    font-size: .72rem;
+    gap: 2px 8px;
+  }
+}
