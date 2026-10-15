@@ -67,3 +67,16 @@ body.auth-required-pending > .account-deletion-dialog * { visibility:visible !im
 .account-deletion-dialog button:disabled { opacity:.45; cursor:not-allowed; }
 .account-deletion-dialog :focus-visible { outline:3px solid #ffcf60; outline-offset:3px; }
 @media(max-width:480px) { .account-deletion-dialog { padding:18px; } .account-deletion-actions button { flex:1; } }
+
+/* Unread notices share one understated marker in navigation and the home menu. */
+a[data-notice-unread="true"]::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-inline-start: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: middle;
+  flex-shrink: 0;
+}

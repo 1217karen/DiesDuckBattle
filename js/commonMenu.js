@@ -1,3 +1,4 @@
+import "./noticeIndicators.js";
 import "./siteTheme.js";
 import { displayCache } from "./authDisplayCache.js";
 import { getAuthRuntime } from "./authRuntime.js";

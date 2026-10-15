@@ -1,3 +1,4 @@
+import { noticeReadState } from "./noticeReadState.js";
 import { finishPageLoad } from "./pageLoad.js";
 import { notices } from "./noticeData.js";
 
@@ -59,6 +60,7 @@ const tabs = [...document.querySelectorAll('.notice-tabs [role="tab"]')];
 const panels = tabs.map(tab => document.getElementById(tab.getAttribute("aria-controls")));
 
 function activate(index) {
+  if (index === 0) noticeReadState.markRead();
   tabs.forEach((tab, i) => {
     tab.setAttribute("aria-selected", String(i === index));
     tab.tabIndex = i === index ? 0 : -1;
