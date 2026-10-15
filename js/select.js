@@ -47,12 +47,12 @@ function renderScreen() {
   el("vsButton").setAttribute("aria-label", `戦闘開始：${start.reason}`);
   renderSelf();
   el("p2-battler-name").textContent = state.opponent?.name ?? "";
-  el("p2-battler-info").textContent = state.opponent ? battlerSummary(state.opponent.build.battler) : "右側の2P枠から相手を選択してください。";
+  el("p2-battler-info").textContent = state.opponent ? battlerSummary(state.opponent.build.battler) : "2P側のシルエットを押して対戦相手を選択してください。";
   const duck = state.opponent?.build.ducks.find(d => d.id === state.opponent.publicDuckId);
   const name = duck?.name || (duck ? `アヒル ${state.opponent.build.ducks.indexOf(duck) + 1}` : null);
   el("opponent-name").textContent = state.opponent ? `ENo.${state.opponent.eno}｜${state.opponent.name}` + (duck ? ` ＋ ${name}` : "") : "相手を選択";
   el("p2-duck-name").textContent = name ?? "";
-  el("p2-duck-info").textContent = duck ? duckSummary(duck) : state.opponent ? "この相手は現在対戦できません。" : "相手を選択してください。";
+  el("p2-duck-info").textContent = duck ? duckSummary(duck) : state.opponent ? "この相手は現在対戦できません。" : "─";
   if (masked) for (const id of ["opponent-name", "p2-battler-name", "p2-battler-info", "p2-duck-name", "p2-duck-info"])
     el(id).textContent = "？？？";
 }
