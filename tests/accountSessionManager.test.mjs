@@ -12,6 +12,7 @@ function fixture() {
   const c={key,loginCount:0,signouts:[],auth:{
    onAuthStateChange(fn){c.authEvent=fn;return {data:{subscription:{unsubscribe(){c.authEvent=null;}}}};},
    async signInWithPassword({email,password}){c.loginCount++;if(c.loginWait)await c.loginWait;if(password!=='correct')return {error:{}};const eno=email.match(/eno-(\d+)@/)[1];sessions.set(key,{id:'user-'+eno,email});return {data:{session:{user:sessions.get(key)}}};},
+   async getSession(){return {data:{session:sessions.has(key)?{user:sessions.get(key)}:null},error:null};},
    async getUser(){if(c.userWait)await c.userWait;if(c.network)throw Error('offline');return {data:{user:sessions.get(key)??null}};},
    async signOut(options){c.signouts.push(options);if(c.signoutWait)await c.signoutWait;if(c.logoutError) return {error:{}};sessions.delete(key);return {error:null};},stopAutoRefresh(){c.stopped=true;}
   },from(table){assert.equal(table,'game_account_access');return {select(columns){assert.match(columns,/game_account_id/);return {async eq(field,uid){assert.equal(field,'auth_user_id');if(c.accessWait)await c.accessWait;assert.equal(uid,sessions.get(key)?.id);if(c.accessError)return {error:{}};const eno=sessions.get(key)?.email.match(/eno-(\d+)@/)[1];return {data:c.rows??[{game_account_id:'11111111-1111-4111-8111-111111111111',game_accounts:{eno,battlers:{presentation:{name:'Name '+eno}}}}]};}};}};}};
@@ -118,4 +119,50 @@ test('production runtime stays on legacy key and does not import the stage-one m
 test('SDK sign-out or identity change invalidates active lease; token refresh of same user does not',async()=>{
  const f=fixture(),m=f.manager();await m.add('1','correct');const c=f.instances[0],lease=m.getActiveLease();c.authEvent('TOKEN_REFRESHED',{user:f.sessions.get(c.key)});assert.equal(lease.isCurrent(),true);
  c.authEvent('SIGNED_OUT',null);assert.equal(m.getActiveLease(),null);await m.select('1');c.authEvent('SIGNED_IN',{user:{id:'other'}});assert.equal(m.getActiveLease(),null);
+});
+// Interrupted before signIn: only journal metadata was persisted.
+async function interrupted() {
+ const f=fixture(),m=f.manager();await m.add('1','correct');
+ const slot='ffffffff-ffff-4fff-8fff-ffffffffffff',other='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+ const registry=m.list();delete registry.ok;registry.pending=[{slot,eno:'2'},{slot:other,eno:'3'}];f.disk.set(SESSION_REGISTRY_KEY,JSON.stringify(registry));
+ let candidate;
+ const n=f.manager({createClient:(url,key,opts)=>candidate=f.client(opts.auth.storageKey)});
+ return {f,m,n,slot,other,registry,candidate:()=>candidate};
+}
+for(const missingError of [false,true])test('absent session cleans only requested pending, releases resources and allows later add: '+missingError,async()=>{
+ const s=await interrupted();const {f,n,slot,other,registry}=s;
+ const work=n.cleanupPending(slot);await tick(); // default null user/session path completes
+ assert.equal((await work).ok,true);assert.equal(s.candidate().authEvent,null);assert.equal(s.candidate().stopped,true);assert.deepEqual(s.candidate().signouts,[]);
+ if(missingError){
+  // Restore a second interrupted slot and emulate SDK AuthSessionMissingError on reload.
+  const r=n.list();delete r.ok;f.disk.set(SESSION_REGISTRY_KEY,JSON.stringify(r));
+  const reload=f.manager({createClient:(url,key,opts)=>{const c=f.client(opts.auth.storageKey);c.auth.getUser=async()=>({data:{user:null},error:{name:'AuthSessionMissingError'}});return c;}});
+  assert.equal((await reload.cleanupPending(other)).ok,true);
+ }else assert.equal((await n.cleanupPending(other)).ok,true);
+ assert.deepEqual(n.list().entries,registry.entries);assert.equal(n.list().active,registry.active);assert.equal(f.sessions.size,1);assert.equal(f.instances[0].stopped,undefined);
+ assert.equal((await n.cleanupPending(slot)).code,'not-pending');assert.equal((await n.add('2','correct')).ok,true);
+});
+for(const mode of ['network','refresh','unknown-user','session-error','ambiguous-session','session-present','throw-session'])test('uncertain cleanup preserves journal and never signs out: '+mode,async()=>{
+ const {f,slot}=await interrupted();const before=f.disk.get(SESSION_REGISTRY_KEY);let candidate;
+ const m=f.manager({createClient:(url,key,opts)=>{
+  const c=candidate=f.client(opts.auth.storageKey);
+  c.auth.getUser=async()=> mode==='network'?{data:{user:null},error:{name:'AuthRetryableFetchError'}}:mode==='refresh'?{data:{user:null},error:{code:'refresh_token_not_found'}}:mode==='unknown-user'?{data:{}}:{data:{user:null},error:{name:'AuthSessionMissingError'}};
+  c.auth.getSession=async()=>{if(mode==='throw-session')throw Error('offline');return mode==='session-error'?{data:{session:null},error:{}}:mode==='session-present'?{data:{session:{user:{id:'other'}}}}:mode==='ambiguous-session'?{data:{}}:{data:{session:null}};};return c;
+ }});
+ assert.equal((await m.cleanupPending(slot)).code,'verification-unavailable');assert.equal(f.disk.get(SESSION_REGISTRY_KEY),before);assert.deepEqual(candidate.signouts,[]);assert.equal(candidate.stopped,undefined);assert.equal(f.sessions.size,1);
+});
+test('live pending session with wrong ENo is never signed out',async()=>{
+ const {f,slot}=await interrupted();const key='diesduck-auth-account-v1-'+slot;f.sessions.set(key,{id:'user-9',email:internalEmailForEno('9')});const before=f.disk.get(SESSION_REGISTRY_KEY);let c;
+ const m=f.manager({createClient:(u,k,o)=>c=f.client(o.auth.storageKey)});assert.equal((await m.cleanupPending(slot)).code,'eno-mismatch');assert.deepEqual(c.signouts,[]);assert.equal(f.disk.get(SESSION_REGISTRY_KEY),before);assert.equal(f.sessions.size,2);
+});
+test('absence confirmation cannot commit over changed registry or failed storage write',async()=>{
+ for(const conflict of [true,false]){
+  const {f,slot}=await interrupted();const gate=defer();let c;
+  const m=f.manager({createClient:(u,k,o)=>{c=f.client(o.auth.storageKey);c.auth.getSession=async()=>{await gate.promise;return {data:{session:null}};};return c;}});
+  const work=m.cleanupPending(slot);await tick();if(conflict){const r=JSON.parse(f.disk.get(SESSION_REGISTRY_KEY));r.active=null;f.disk.set(SESSION_REGISTRY_KEY,JSON.stringify(r));}else f.storage.setItem=()=>{throw Error('quota');};
+  const before=f.disk.get(SESSION_REGISTRY_KEY);gate.resolve();assert.equal((await work).code,conflict?'stale-operation':'storage-unavailable');assert.equal(f.disk.get(SESSION_REGISTRY_KEY),before);assert.deepEqual(c.signouts,[]);assert.equal(c.stopped,undefined);
+ }
+});
+test('two tabs cleaning the same empty slot serialize and only one succeeds',async()=>{
+ const {f,n,slot}=await interrupted();const other=f.manager();const results=await Promise.all([n.cleanupPending(slot),other.cleanupPending(slot)]);assert.equal(results[0].ok,true);assert.equal(results[1].code,'not-pending');assert.equal(f.sessions.size,1);
 });

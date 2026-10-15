@@ -189,11 +189,22 @@ export function createAccountSessionManager({ createClient, config,
         if (!entry) return fail("not-pending");
         const client = await clientFor(slot);
         const user = await client.auth.getUser();
-        if (user.error) return fail("verification-unavailable");
-        if (user.data?.user) await verify(client, entry.eno);
-        check();
-        if (!await discard(client)) return fail("cleanup-required");
+        if (!user.error && user.data?.user) {
+          await verify(client, entry.eno);
+          check();
+          if (!await discard(client)) return fail("cleanup-required");
+        } else {
+          // Only an explicit missing-user result is eligible for local absence confirmation.
+          // Network/refresh errors must not become permission to remove the recovery journal.
+          const missing = user.data?.user === null && (!user.error
+            || user.error.name === "AuthSessionMissingError");
+          if (!missing) return fail("verification-unavailable");
+          const session = await client.auth.getSession();
+          if (session.error || session.data?.session !== null) return fail("verification-unavailable");
+          // No session exists: do not send a sign-out request at all.
+        }
         check(); registry.pending = registry.pending.filter(item => item.slot !== slot); write(registry);
+        subscriptions.get(slot)?.unsubscribe(); subscriptions.delete(slot);
         client.auth.stopAutoRefresh?.(); clients.delete(slot);
         return { ok: true };
       });
