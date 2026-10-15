@@ -188,8 +188,8 @@ test("INDEX has one login-first entrance and existing assets; shared cards remai
   const css = await readFile(new URL("../css/index.css", import.meta.url), "utf8");
   assert.equal([...html.matchAll(/data-auth-mode=/g)].length, 1);
   assert.match(html, /data-auth-mode="login">ログイン \/ 新規登録/);
-  assert.match(html, /src="img\/Dice_logo.png"[^>]*alt="DIES DUCK BATTLE"/);
-  assert.match(html, /<h1>DIES DUCK BATTLE<\/h1>/);
+  assert.match(html, /src="img\/Dice_logo.png"[^>]*alt="ダイスで対戦！アヒルバトラーONLINE"/);
+  assert.doesNotMatch(html, /DIES DUCK BATTLE/);
   assert.match(css, /body\.home-page::before\s*\{[^}]*position: fixed[^}]*pointer-events: none[^}]*index_BG\.png[^}]*cover/s);
   assert.match(css, /#auth-dialog \.panel\[aria-labelledby="session-title"\],\s*#auth-dialog #registered\s*\{\s*display: none !important/);
   assert.match(css, /#auth-dialog #form-message\[data-kind="error"\]/);

@@ -5,13 +5,13 @@ import { createServer } from "node:net";
 import { once } from "node:events";
 import { fileURLToPath } from "node:url";
 
-test("ローカルserverはsetting・character・A/B/C/Dと依存JS/CSSを配信しwhitelist外を拒否", { timeout: 20000 }, async t => {
+test("ローカルserverは通常ページと依存JS/CSSを配信しwhitelist外を拒否", { timeout: 20000 }, async t => {
   const reservation = createServer(); reservation.listen(0, "127.0.0.1"); await once(reservation, "listening");
   const port = reservation.address().port; await new Promise(resolve => reservation.close(resolve));
   const child = spawn(process.execPath, [fileURLToPath(new URL("../scripts/serve-a-skill-test.mjs", import.meta.url)), String(port)], { windowsHide: true });
   t.after(() => { child.kill(); });
   await Promise.race([once(child.stdout, "data"), once(child, "exit").then(([code]) => { throw new Error(`server exit ${code}`); })]);
-  const base = `http://127.0.0.1:${port}`, queue = ["/index.html", "/img/Dice_logo.png", "/img/index_BG.png", "/rulebook.html", "/img/B00.png", "/img/B00_icon.png", "/img/D00.png", "/select.html", "/result.html", "/storage.html", "/setting.html", "/character.html", "/a-skill-test.html", "/b-skill-test.html", "/c-skill-test.html", "/d-skill-test.html"], visited = new Set();
+  const base = `http://127.0.0.1:${port}`, queue = ["/index.html", "/img/Dice_logo.png", "/img/index_BG.png", "/rulebook.html", "/img/B00.png", "/img/B00_icon.png", "/img/D00.png", "/select.html", "/result.html", "/storage.html", "/setting.html", "/character.html"], visited = new Set();
   while (queue.length) {
     const path = queue.shift(); if (visited.has(path)) continue; visited.add(path);
     const response = await fetch(base + path); assert.equal(response.status, 200, path);
@@ -28,18 +28,21 @@ test("ローカルserverはsetting・character・A/B/C/Dと依存JS/CSSを配信
       if (url.origin === base) queue.push(url.pathname);
     }
   }
-  assert.ok(visited.has("/js/bSkillTestHarness.js") && visited.has("/js/battleEngine.js") && visited.has("/css/b-skill-test.css"));
+  assert.ok(visited.has("/js/battleEngine.js"));
+  assert.equal(await (await fetch(base + "/")).text(), await (await fetch(base + "/index.html")).text());
+  for (const letter of "abcd") for (const path of [`/${letter}-skill-test.html`, `/css/${letter}-skill-test.css`, `/js/${letter}SkillTestPage.js`]) assert.equal((await fetch(base + path)).status,404,path);
+  for (const letter of "abcd") assert.equal((await fetch(base + `/js/${letter}SkillTestHarness.js`)).status,200);
   for (const path of ["/js/select.js", "/js/selectState.js", "/css/select.css", "/js/result.js", "/js/storagePage.js", "/js/battleResultStorage.js", "/css/result.css", "/css/storage.css", "/js/settingPage.js", "/js/settingState.js", "/js/onlineSelectService.js", "/js/onlineSelectController.js", "/css/setting.css"]) assert.ok(visited.has(path), path);
   for (const path of ["/js/playerPublicSettingsModel.js", "/js/onlinePlayerStorage.js", "/js/onlineEditor.js", "/css/online-editor.css"]) assert.ok(visited.has(path), path);
   assert.equal((await fetch(base + "/js/playerPublicSettingsStorage.js")).status, 200);
   for (const path of ["/js/characterPage.js", "/js/playerPresentationModel.js", "/js/iconPicker.js", "/css/character.css"]) assert.ok(visited.has(path), path);
   for (const path of ["/js/playerBuildStorage.js", "/js/playerPresentationStorage.js"]) assert.equal((await fetch(base + path)).status,200,path);
-  for (const path of ["/js/dSkillCatalog.js", "/js/dSkillCompiler.js", "/js/dSkillTestHarness.js", "/css/d-skill-test.css"]) assert.ok(visited.has(path), path);
+  for (const path of ["/js/dSkillCatalog.js", "/js/dSkillCompiler.js"]) assert.ok(visited.has(path), path);
   for (const path of ["/rulebook.html", "/js/rulebookPage.js", "/css/rulebook.css", "/index.html", "/auth.html", "/js/authPage.js", "/css/auth.css", "/supabase/functions/_shared/internal-email.mjs"])
     assert.equal((await fetch(base + path)).status, 200, path);
   assert.match((await fetch(base + "/supabase/functions/_shared/internal-email.mjs")).headers.get("content-type"), /javascript/);
   for (const path of ["/.git/config", "/docs/b-skill-building.md", "/package.json", "/js/%2e%2e%2fREADME.md", "/supabase/functions/_shared/admin-client.mjs", "/supabase/functions/_shared/registration.mjs"])
     assert.equal((await fetch(base + path)).status, 404, path);
-  assert.equal((await fetch(base + "/b-skill-test.html", { method: "POST" })).status, 405);
-  const head = await fetch(base + "/b-skill-test.html", { method: "HEAD" }); assert.equal(head.status, 200); assert.equal(await head.text(), "");
+  assert.equal((await fetch(base + "/index.html", { method: "POST" })).status, 405);
+  const head = await fetch(base + "/index.html", { method: "HEAD" }); assert.equal(head.status, 200); assert.equal(await head.text(), "");
 });

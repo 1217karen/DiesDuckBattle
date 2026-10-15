@@ -1,6 +1,6 @@
 # Aスキル作成・compile
 
-開発UIは [A開発ページ](a-skill-test-page.md)。新版の選択DTOから
+撤去済み開発UIの設計資料は [A開発ページ](a-skill-test-page.md)。新版の選択DTOから
 `calculateASkillResources → compileASkill → duck.aSkill → battleEngine` まで実装済み。
 本番キャラ登録・保存とgeneric buildCompilerへの統合は対象外。
 旧Aのtrusted内部データは変更しない。engine capabilityと新版の公開範囲は別である。

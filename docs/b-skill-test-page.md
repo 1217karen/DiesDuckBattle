@@ -1,8 +1,7 @@
 # Bスキル実戦確認ページ（開発専用）
 
-リポジトリで `node scripts/serve-a-skill-test.mjs` を実行し、
-`http://127.0.0.1:4173/b-skill-test.html` を開く。ポートは引数で変更できる。
-A/B/Cページ上部から相互移動できる。追加依存パッケージは不要。
+この開発確認画面は撤去済みです。以下は過去のUI設計資料として残しています。
+現在の検証には `node --test tests/bSkill*.test.mjs` を使用します。Harness・Fixturesは維持しています。
 
 ## 操作
 
@@ -21,7 +20,7 @@ A/B/Cページ上部から相互移動できる。追加依存パッケージは
 
 ## 接続と信頼境界
 
-`bSkillTestPage.js` はcatalogを絞り込んでIDのみのselectionを生成する。
+撤去済みの `bSkillTestPage.js` はcatalogを絞り込んでIDのみのselectionを生成する。
 日本語trigger/condition/effect/trait・status・tuningの表示metadataとquery helperは `bSkillCatalog.js` に置く。
 合法性をページ側へ複製しない。B候補・semantics・本番値は変更していない。
 

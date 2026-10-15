@@ -1,7 +1,7 @@
 # A開発ページ
 
-`node scripts/serve-a-skill-test.mjs` で起動し、http://127.0.0.1:4173/a-skill-test.html を開く。
-追加依存は不要。本番保存・キャラ登録は行わない。
+この開発確認画面は撤去済みです。以下は過去のUI設計資料として残しています。
+現在の検証には `node --test tests/aSkill*.test.mjs` を使用します。Harness・Fixturesは維持しています。
 
 1. 素体と初期6枠を選ぶ。基礎3ptと共通dice資源を表示する。
 2. triggerを選ぶ。rangeは0を含まない。専用effectはexact一致のみ選択可能。
@@ -29,6 +29,6 @@ production catalogを書き換えたり保存したりしない。
 A用の初期diceは検査するが、statsや他カテゴリを含むキャラ全体の合法性は判定しない。
 D追加出目・MISS・legacy互換などの決定的な確認はA対象テストで行う。
 
-主な実装：aSkillTestPage.js（UI）、aSkillDevFixtures.js（仮値）、
+当時の主な実装：aSkillTestPage.js（撤去済みUI）、aSkillDevFixtures.js（仮値）、
 aSkillTestHarness.js（compiler→battle）、aSkillCompiler.js（trusted変換）。
 仕様詳細は [A作成・compile](a-skill-building.md) を参照。

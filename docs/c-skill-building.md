@@ -357,20 +357,10 @@ DTOのraw effect/value/costAP/apDelta/target/duration/repeatReviveChanceは拒�
 
 specialにだけtrusted rulesの回数別repeatReviveChanceをコピーする。legacy/fixture用の単一数値0～1も許可する。開発ページの0/50/100%上書きはfixture ON時だけであり、selectionには入らない。
 
-### 起動と操作
+### 過去の開発画面の操作（画面は撤去済み）
 
-リポジトリ直下で実行する（Node標準機能のみ）。
-
-```powershell
-node scripts/serve-a-skill-test.mjs
-# 既に4173が使用中なら別portを指定
-node scripts/serve-a-skill-test.mjs 4174
-```
-
-`http://127.0.0.1:4173/c-skill-test.html`へアクセスする。
-portを変更した場合はURLも合わせる。既存`a-skill-test.html`も同じserverで開ける。
-serverは127.0.0.1限定で、A/B/C/D HTMLとjs/cssの許可パスだけを配信する。
-`.git`、docs、任意ローカルファイルは配信しない。
+以下は設計資料として残しています。現在は `node --test tests/cSkill*.test.mjs` で検証します。Harness・Fixturesは維持しています。
+通常ページのローカル確認は `node scripts/serve-a-skill-test.mjs` → `http://127.0.0.1:4173/`（ホーム）を使用します。
 
 本番catalogは初期状態でcompile不能になることが正常。
 「開発用fixture」をONにすると`createCDevCatalog()`が独立catalogを作り、

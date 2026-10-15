@@ -1,3 +1,4 @@
+/* キャラリストと登録証カード。プロフィールの4色はカードごとのCSS変数で反映。 */
 
 body {
   margin: 0;
@@ -15,7 +16,6 @@ body {
   box-sizing: border-box;
 }
 
-/* 検索・絞り込み */
 .character-list-filters {
   display: flex;
   flex-wrap: wrap;
@@ -53,28 +53,27 @@ body {
   width: 220px;
 }
 
-/* 登録証一覧 */
 .character-list-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
 }
 
-/* バトラー登録証 */
 .character-card {
-  display: grid;
-  grid-template-columns: 120px minmax(0, 1fr);
-  align-items: center;
-  gap: 16px;
+  display: block;
   min-width: 0;
-  padding: 15px;
-  border: 2px solid var(--accent);
-  border-radius: 12px;
-  background: var(--panel);
-  color: var(--text);
+  padding: 0;
+  border: 2px solid var(--card-accent);
+  border-radius: 7px;
+  background: var(--card-panel);
+  color: var(--card-text);
   text-decoration: none;
   box-shadow: 0 3px 10px #0000000d;
   transition: box-shadow .15s, transform .15s;
+  --card-bg: var(--bg);
+  --card-panel: var(--panel);
+  --card-text: var(--text);
+  overflow: hidden;
 }
 
 .character-card:hover {
@@ -87,7 +86,6 @@ body {
   outline-offset: 4px;
 }
 
-/* 証明写真 */
 .character-battler-icon {
   display: block;
   width: 120px;
@@ -98,7 +96,6 @@ body {
   background: var(--ui-surface);
 }
 
-/* 登録情報 */
 .character-card-details {
   display: flex;
   flex-direction: column;
@@ -107,28 +104,30 @@ body {
 }
 
 .character-eno {
-  align-self: flex-end;
-  font-family: "Iceberg", sans-serif;
-  font-size: 1.5rem;
-  line-height: 1;
-  letter-spacing: .04em;
+  align-self: auto;
+  font-family: "Roboto Slab", serif;
+  font-size: .85rem;
+  line-height: 1.2;
+  letter-spacing: .02em;
+  font-weight: 600;
+  color: var(--card-accent);
 }
 
 .character-name {
-  margin: 5px 0 10px;
-  padding-bottom: 7px;
-  border-bottom: 1px solid var(--line);
+  margin: 0 0 9px;
   font-size: 1.2rem;
-  line-height: 1.25;
+  line-height: 1.3;
   font-weight: 800;
   overflow-wrap: anywhere;
+  padding: 0;
+  border: 0;
+  color: var(--card-accent);
 }
 
-/* パートナーアヒル */
 .character-duck {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -150,16 +149,16 @@ body {
   font-weight: 700;
   line-height: 1.4;
   overflow-wrap: anywhere;
+  color: var(--card-text);
 }
 
-/* タイプ・属性を横並び */
 .character-duck-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 2px 10px;
-  margin-top: 4px;
-  color: var(--muted);
-  font-size: .77rem;
+  margin-top: 3px;
+  color: var(--card-text);
+  font-size: .76rem;
   line-height: 1.5;
 }
 
@@ -167,112 +166,29 @@ body {
   white-space: nowrap;
 }
 
-/* 連勝記録 */
 .character-streak {
   display: flex;
   justify-content: flex-end;
   align-items: baseline;
   gap: 8px;
   margin-top: auto;
-  padding-top: 6px;
-  font-family: "Iceberg", sans-serif;
-}
-
-.character-streak-label {
-  font-size: .7rem;
-  letter-spacing: .07em;
-  color: var(--muted);
-}
-
-.character-streak-number {
-  font-size: 1.25rem;
-  line-height: 1;
-}
-
-/* スマホ対応 */
-@media (max-width: 880px) {
-  .character-list-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 760px) {
-  .character-list-shell {
-    --page-padding: 12px;
-    --page-margin-block: 12px;
-  }
-
-  .character-list-filters {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px 8px;
-    padding: 10px;
-  }
-  .character-list-filters input, .character-list-filters select { font-size: 16px; min-height: 44px; }
-
-  .character-list-filters input[type=search] {
-    width: 100%;
-  }
-}
-
-@media (max-width: 520px) {
-  .character-card {
-    grid-template-columns: 88px minmax(0, 1fr);
-    gap: 10px;
-    padding: 12px;
-  }
-
-  .character-battler-icon {
-    width: 88px;
-    height: 88px;
-  }
-
-  .character-duck-icon {
-    width: 44px;
-    height: 44px;
-    flex-basis: 44px;
-  }
-
-  .character-eno {
-    font-size: 1.25rem;
-  }
-
-  .character-name {
-    font-size: 1.05rem;
-    margin-bottom: 7px;
-  }
-
-  .character-duck-name {
-    font-size: .88rem;
-  }
-
-  .character-duck-meta {
-    font-size: .72rem;
-    gap: 2px 8px;
-  }
-}
-
-/* ========================================
-   キャラリスト：バトラー登録証デザイン
-   既存カードレイアウトの上書き
-   ======================================== */
-
-/* カード全体 */
-.character-card {
-  --card-bg: var(--bg);
-  --card-panel: var(--panel);
-  --card-text: var(--text);
-
-  display: block;
-  padding: 0;
-  overflow: hidden;
-  border: 2px solid var(--card-accent);
-  border-radius: 7px;
-  background: var(--card-panel);
+  padding-top: 5px;
+  font-family: "Roboto Slab", serif;
   color: var(--card-text);
 }
 
-/* 上部の細い帯 */
+.character-streak-label {
+  font-size: .65rem;
+  letter-spacing: .07em;
+  color: inherit;
+  opacity: .7;
+}
+
+.character-streak-number {
+  font-size: .95rem;
+  line-height: 1;
+}
+
 .character-card-header {
   display: flex;
   align-items: center;
@@ -283,18 +199,6 @@ body {
   border-bottom: 1px solid var(--card-accent);
 }
 
-/* 登録番号 */
-.character-eno {
-  align-self: auto;
-  font-family: "Roboto Slab", serif;
-  font-size: .85rem;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: .02em;
-  color: var(--card-accent);
-}
-
-/* カード本体 */
 .character-card-body {
   display: grid;
   grid-template-columns: 120px minmax(0, 1fr);
@@ -304,69 +208,52 @@ body {
   background: var(--card-panel);
 }
 
-/* バトラー名 */
-.character-name {
-  margin: 0 0 9px;
-  padding: 0;
-  border: 0;
-  font-size: 1.2rem;
-  line-height: 1.3;
-  font-weight: 800;
-  color: var(--card-accent);
+@media (max-width: 880px) {
+ .character-list-grid {
+   grid-template-columns: minmax(0, 1fr);
+ }
 }
 
-/* アヒル情報 */
-.character-duck {
-  gap: 8px;
+@media (max-width: 760px) {
+ .character-list-shell {
+   --page-margin-block: 12px;
+   --page-padding: 12px;
+ }
+ .character-list-filters {
+   display: grid;
+   gap: 10px 8px;
+   padding: 10px;
+   grid-template-columns: repeat(2, minmax(0, 1fr));
+ }
+ .character-list-filters input[type=search] {
+   width: 100%;
+ }
+ .character-list-filters input, .character-list-filters select {
+   font-size: 16px;
+   min-height: 44px;
+ }
 }
 
-.character-duck-name {
-  font-size: .95rem;
-  font-weight: 700;
-  color: var(--card-text);
-}
-
-.character-duck-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 10px;
-  margin-top: 3px;
-  font-size: .76rem;
-  color: var(--card-text);
-}
-
-/* 最大連勝数は控えめに */
-.character-streak {
-  margin-top: auto;
-  padding-top: 5px;
-  font-family: "Roboto Slab", serif;
-  color: var(--card-text);
-}
-
-.character-streak-label {
-  font-size: .65rem;
-  color: inherit;
-  opacity: .7;
-}
-
-.character-streak-number {
-  font-size: .95rem;
-}
-
-/* スマホ */
 @media (max-width: 520px) {
-  .character-card-body {
-    grid-template-columns: 88px minmax(0, 1fr);
-    gap: 10px;
-    padding: 10px;
-  }
-
-  .character-eno {
-    font-size: .8rem;
-  }
-
-  .character-name {
-    font-size: 1.05rem;
-    margin-bottom: 7px;
-  }
+ .character-battler-icon {
+   width: 88px;
+   height: 88px;
+ }
+ .character-eno {
+   font-size: .8rem;
+ }
+ .character-name {
+   font-size: 1.05rem;
+   margin-bottom: 7px;
+ }
+ .character-duck-icon {
+   width: 44px;
+   height: 44px;
+   flex-basis: 44px;
+ }
+ .character-card-body {
+   grid-template-columns: 88px minmax(0, 1fr);
+   gap: 10px;
+   padding: 10px;
+ }
 }

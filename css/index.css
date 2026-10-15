@@ -32,16 +32,6 @@ body {
   max-width: 720px;
 }
 
-.home h1 {
-  margin: 0;
-  font-family: Impact, system-ui, sans-serif;
-  font-size: clamp(2rem, 8vw, 4.5rem);
-  font-weight: 900;
-  line-height: 1.15;
-  letter-spacing: .06em;
-  overflow-wrap: anywhere;
-}
-
 .home__notice {
   margin: 16px 0 0;
   color: #bbb;
