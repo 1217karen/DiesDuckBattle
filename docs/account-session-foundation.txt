@@ -1,0 +1,56 @@
+アカウント切り替え基盤・第1段階
+
+範囲
+js/accountSessionManager.js と模擬テストのみの独立基盤。既存 authRuntime / authService / authController / onlinePlayerStorage、全画面の接続は変更しない。SDKは呼び出し側から現在と同じ固定版 createClient を注入する。本番アカウントへの操作なし。
+
+保持方式
+- クライアントごとに diesduck-auth-account-v1-<ランダムUUID> を使用。同一ページではslotごとにクライアントを再利用する。
+- persistSession / autoRefreshToken を有効化し、トークン保存・更新・削除はSDKのみが行う。パスワードはsignInWithPasswordの引数としてだけ使う。
+- diesduck-account-sessions-v1には version / entries / pending / active を保存。entriesはslot・ENo・表示名のみ、pendingは未完了の追加操作のslot・ENoのみ。トークン・パスワード・AuthユーザーIDは保存しない。
+- 表示用一覧は未検証メタデータであり認可情報ではない。変更された・壊れた形式は拒否し、勝手に初期化しない。
+- サーバーのgetUser、game_account_accessとgame_accountsの参照、internalEmailForEno、再度のgetUserでユーザーとENoの一致を確認する。明示したENoへのアクセスとgame_account_idを確認し、最初の行を推測で使わない。
+- ゲームアカウントIDとAuthユーザーIDは検証済みのメモリ内leaseにのみ保持する。
+
+API
+createAccountSessionManager({createClient, config, storage, locks, events, randomUUID, getLegacyClient})
+configは既存と同じurl / publishableKey。storageはStorageを返す関数、locksはWeb Locks互換。
+add(eno,password): 新しいslotで認証・ENo照合後に一覧へ追加してactiveを変更。同じENoが既にある場合はalready-addedで拒否し、既存セッションを再ログインで上書きしない。
+select(eno): 保存済みslotをサーバーで検証してから切り替える。
+restore(): 全slotを再検証。期限切れ・通信失敗を個別statusで返す。別アカウントへ自動切り替えしない。
+list(): 表示用のコピーのみ。認可やクライアント取得に使わない。
+getActiveLease(): 検証済みのclient / account / isCurrent()。存在しない場合はrestore/selectが必要。
+logoutCurrent(): 現在選択中だけsignOut({scope:'local'})し、確認できた場合のみそのentryを除去。activeはnull。成否不明はlogout-unknown。
+adoptLegacy(): 明示的な旧セッション引き継ぎ。下記参照。
+cleanupPending(slot): 中断された追加をサーバーで確認し、その新規slotだけSDKでログアウト。自動再ログインしない。
+invalidate(): 外部ライフサイクルから既存leaseと未完了結果を無効化。
+dispose(): listener/subscriptionと新slotの自動更新を停止。永続セッションはログアウトしない。共有旧クライアントの自動更新には触れない。
+
+並行処理と障害
+Web Locksの同一名の排他ロックで全タブの操作を直列化。Web Locks不可ではlocking-unavailableとし、危険なlocalStorageロック代替は実装しない。ストレージ不可も既存セッションを書き換えず拒否。
+同じ画面の新しい操作意図、storageイベント、pageshow、SDKのsign-out/ユーザー変更、処理前後のレジストリ比較により古い結果を無効化する。トークン更新はSDKが担当する。
+追加前にpendingのslotとENoだけを記録。中断・後処理失敗は再読み込み後も確認可能。pendingが残っている間の追加はcleanup-required。select/restoreにより既存アカウントは検証可能。cleanupPendingを明示的に実施する。
+アクセス権が失われたpendingの後処理など、安全に本人確認できない場合は拒否する。権限を推測して別のセッションを削除しない。
+ネットワーク待ち中のロックは処理が解決するまで保持する。第2段階では待機表示とキャンセル方針が必要。不可逆なsignOutを送信した後のキャンセルは取り消し扱いにしない。
+local signOutでも既発行access tokenは有効期限まで使える点はSDK仕様。即時のサーバー側トークン無効化を保証するものではない。
+
+旧形式との互換性
+旧キー diesduck-auth-session を自動移動・コピー・削除しない。第1段階の本番は従来のgetSupabaseClientのまま。
+将来のadoptLegacyには getLegacyClient: getSupabaseClient を渡し、同じキーのクライアントをもう1つ生成しない。認証済みユーザーとアクセス可能ENoが一意の場合だけlegacy slotとして一覧に記録する。複数アクセスならambiguous-account。
+既に新基盤の選択がある場合はlegacy採用で変更しない。初めての一覧がlegacyだけならその選択を維持する。
+本番で旧authControllerと新managerを同時にログイン制御へ接続してはならない。旧キーに対して旧UIから別ENoのsignInを呼ぶと旧セッションが変わるため、制御権の切り替えは第2段階のUI・保存処理と一緒に行う。
+
+第2段階で必要な接続
+1. 1ページ1managerのライフサイクルをauthRuntimeに設け、旧clientを引き継ぐ。現在のgetSupabaseClientを無条件に置き換えない。
+2. 選択・追加前に既存beforeLogout相当の未保存変更確認を実施。確定後のadd/select成功だけでホームへ遷移する。
+3. authController / authDisplayCache / menuDisplayCache / 各ページのデータキャッシュを選択変更時に破棄し、SDKイベントの購読先を交換する。
+4. 戦闘設定、キャラ設定、対戦・結果保存、お気に入り、掲示板、ひとこと、保管庫、削除処理へ同じ検証済みclientと明示gameAccountIdを渡す。処理直前とレスポンス反映前にlease.isCurrent()を確認し、旧結果を表示しない。
+5. isCurrentはクライアントの保持先を後から自動変更しない。送信済み書込みは取り消せないので、busyガード・対象ID固定・成否不明時の再照会を既存フローに統合する。DBのRLSを認可の最終境界として維持する。
+6. ログアウトは現在選択だけ。成功後は未選択UIへ戻り、残るアカウントを勝手に選ばない。期限切れentryの再認証は、旧slotの確認・明示的な差し替え手順を追加する（第1段階のaddは重複拒否）。
+7. 別タブはstorage/pageshow後にrestoreして状態を表示。再認証要求・通信失敗・cleanup-required・logout-unknownを区別し、成功通知や自動再送を行わない。
+8. アカウント削除は独立したAuthユーザー・many-to-manyを考慮し、削除対象だけの一覧/cache/sessionを消す。既存サーバー削除処理を無検討に使い回さない。
+9. SDKの実ブラウザでのセッション更新、複数タブ、バックグラウンド復帰、モバイルでのWeb Locks対応を隔離環境で確認する。今回は模擬SDKのみ。
+
+参照（公式）
+https://supabase.com/docs/reference/javascript/initializing
+https://supabase.com/docs/reference/javascript/auth-getuser
+https://supabase.com/docs/reference/javascript/auth-signout
