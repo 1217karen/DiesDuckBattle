@@ -22,10 +22,11 @@ const source = async name => (await readFile(new URL(`../js/${name}.js`, import.
 test("authRuntime shares exactly one SDK client/session key across editor and auth initialization", async () => {
   let clients = 0, options, passed;
   const client = {}, controller = { start() {} };
-  const context = { supabasePublicConfig: { url: "mock", publishableKey: "public" }, showToast() {},
+  const context = { ACCOUNT_SWITCHING_ENABLED: false, supabasePublicConfig: { url: "mock", publishableKey: "public" }, showToast() {},
     sdk: { createClient(_url, _key, opts) { clients++; options = opts; return client; } },
     createAuthService({ client }) { passed = client; }, createAuthController: () => controller };
-  const code = (await source("authRuntime")).replaceAll("export function", "function").replace(/await import\("https:[^\"]+"\)/, "sdk");
+  const factory = (await source("supabaseClients")).replace(/^export /gm, '').replace(/await import\("https:[^\"]+"\)/, "sdk");
+  const code = factory + '\n' + (await source("authRuntime")).replace(/^export /gm, '');
   const result = await vm.runInNewContext(`(async()=>{${code}\nreturn Promise.all([getSupabaseClient(),getAuthRuntime(),getSupabaseClient()]);})()`, context);
   assert.equal(clients, 1); assert.equal(passed, client); assert.equal(result[0], result[2]); assert.equal(result[1], controller);
   assert.equal(options.auth.storageKey, "diesduck-auth-session");

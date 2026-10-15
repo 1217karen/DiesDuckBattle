@@ -80,3 +80,13 @@ a[data-notice-unread="true"]::after {
   vertical-align: middle;
   flex-shrink: 0;
 }
+/* Account switching uses the existing menu and native modal focus management. */
+.account-switch-dialog { box-sizing: border-box; width: min(420px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; padding: 20px; color: var(--text, #20282c); background: var(--panel, #fff); border: 1px solid var(--accent, #4f91b3); border-radius: 12px; }
+.account-switch-dialog::backdrop { background: #0008; }
+.account-switch-dialog h2 { font-size: 20px; margin: 0 0 16px; }
+.account-switch-dialog fieldset { border: 0; padding: 0; min-width: 0; }
+.account-switch-dialog label { display: grid; gap: 6px; margin-bottom: 14px; }
+.account-switch-dialog input { box-sizing: border-box; width: 100%; min-width: 0; font-size: 16px; padding: 8px; }
+.account-switch-actions { display: flex; gap: 12px; justify-content: flex-end; }
+.account-switch-actions button { min-height: 40px; }
+.account-switch-status { font-size: 13px; overflow-wrap: anywhere; }

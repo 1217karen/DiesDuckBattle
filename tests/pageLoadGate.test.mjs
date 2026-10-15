@@ -87,6 +87,7 @@ for(const outcome of ['success','error','denied']) test('SELECT waits for load/r
  const ctx={...f,requireLoginPage:async()=>{if(outcome==='denied'){f.classes.add('auth-required-pending');throw Error('Login required');}},
  createSelectState:()=>state,createSelectPresentation:()=>()=>{},FIXED_IMAGES:{},duckChoices:()=>[],battlerSummary:()=>'',duckSummary:()=>'',battleStartStatus:()=>({reason:'choose'}),
  getSupabaseClient:async()=>{clients++;return {auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}};},createOnlineSelectService:()=>({}),
+ createBattleResultStorage:client=>{assert.ok(client.auth);return {};},
  createOnlineSelectController:()=>({subscribe:fn=>listener=fn,load:async()=>{started.resolve();await pending.promise;if(outcome==='error')throw Error('offline');listener({state,eno:'12',message:'complete',canStart:false});},checkScope(){checks++;},invalidate(){}})};
  const running=run('select',ctx);
  if(outcome==='denied'){await assert.rejects(running,/Login required/);assert.equal(clients,0);assert.equal(f.visible(),false);return;}

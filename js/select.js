@@ -2,6 +2,7 @@ import { finishPageLoad } from "./pageLoad.js";
 import { duckChoices, battleStartStatus, battlerSummary, duckSummary, createSelectState } from "./selectState.js";
 import { getSupabaseClient } from "./authRuntime.js";
 import { createOnlineSelectService } from "./onlineSelectService.js";
+import { createBattleResultStorage } from "./battleResultStorage.js";
 import { createOnlineSelectController } from "./onlineSelectController.js";
 import { createSelectPresentation } from "./selectPresentation.js";
 import { requireLoginPage } from "./authPageGuard.js";
@@ -108,7 +109,8 @@ renderScreen();
 async function initialize() {
   try {
     const client = await getSupabaseClient();
-    online = createOnlineSelectController({ service: createOnlineSelectService(client) });
+    online = createOnlineSelectController({ service: createOnlineSelectService(client), results: createBattleResultStorage(client) });
+    client.beforeAccountChange?.(() => !current.busy);
     online.subscribe(next => {
       current = next; state = next.state; ownPresentation = next.ownPresentation;
       if (!state.build) { requestVersion++; el("trayGrid").replaceChildren(); if (tray.open) tray.close(); }

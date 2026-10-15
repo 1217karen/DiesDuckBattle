@@ -6,7 +6,7 @@ import { createOnlinePlayerStorage } from "./onlinePlayerStorage.js";
 import { FIXED_IMAGES, setImageWithFallback } from "./fixedImages.js";
 
 const PAGE_SIZE = 30;
-const storage = createBattleResultStorage();
+let storage;
 const el = id => document.getElementById(id);
 let page = 1;
 let requestVersion = 0;
@@ -63,7 +63,12 @@ window.addEventListener("pageshow", render);
 async function initialize() {
   for (const id of ["eno", "opponentEno", "outcome", "favorites", "order", "prev", "next"]) el(id).disabled = true;
   let account;
-  try { account = await createOnlinePlayerStorage(await getSupabaseClient()).resolveAccount(); }
+  try {
+    const client = await getSupabaseClient();
+    storage = createBattleResultStorage(client);
+    client.beforeAccountChange?.(() => favoritePending.size === 0);
+    account = await createOnlinePlayerStorage(client).resolveAccount();
+  }
   catch { account = { ok: false }; }
   if (account.ok) {
     gameAccountId = account.account.id;

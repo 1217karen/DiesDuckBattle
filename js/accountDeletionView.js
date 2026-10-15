@@ -17,6 +17,7 @@ export function createAccountDeletionView({ controller, getService, onBusy = () 
   let account = null, target = null, dialog = null, stage = "", generation = 0, busy = false, deleted = false;
   let servicePromise;
   const service = () => servicePromise ??= getService ? Promise.resolve(getService())
+    : controller.createDeletionService ? Promise.resolve(controller.createDeletionService())
     : getSupabaseClient().then(client => createAccountDeletionService(client));
   const el = (tag, text) => { const node = document.createElement(tag); if (text != null) node.textContent = text; return node; };
   const button = (text, action) => {
@@ -129,6 +130,7 @@ export function createAccountDeletionView({ controller, getService, onBusy = () 
       // acknowledged deletion before clearing this browser's auth state.
       if (deleted && stage === "cleanup" && !state.signedIn) return;
       if (key(account) !== key(next)) {
+        servicePromise = null;
         generation++; account = next; target = null; stage = ""; dialog?.close(); lock(false);
         controller.endAccountDeletion?.();
         message("");

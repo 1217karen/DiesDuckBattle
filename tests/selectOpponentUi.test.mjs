@@ -34,6 +34,7 @@ test("real SELECT handlers switch public names and presentation with no P2 Duck 
     finishPageLoad() {}, ...selectState, document, window:{addEventListener() {}},
     requireLoginPage: async () => {}, renderChoices, FIXED_IMAGES,
     getSupabaseClient:async()=>({auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}}),
+    createBattleResultStorage:client=>{assert.ok(client.auth);return {};},
     createOnlineSelectController: args => (controller = createOnlineSelectController(args)),
     createOnlineSelectService:()=>({loadSelf:async()=>({ok:true,account:{id:'own',eno:'88'},authUserId:'auth',data:{publicSettings:{schemaVersion:1,publicDuckId:null},build:opponents[1].build,presentation:{},battlerName:'DB名'}}),
       listOpponents:async()=>({ok:true,opponents:opponents.map(({id,name})=>({id,name,eno:'89',ready:true,reasons:[]}))}),

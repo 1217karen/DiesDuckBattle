@@ -1,5 +1,8 @@
 アカウント切り替え・第2段階前半 接続契約
 
+注: 以下は第2段階前半時点の記録。現在の接続状況と公開保留条件は
+account-switching-integration.txtを参照。
+
 追加モジュール: js/accountRuntime.js
 既存authRuntime.js / getSupabaseClient() / getAuthRuntime() / 本番ページは未変更。
 第1段階managerはSDK・保存キー・認証検証・Web Locksの唯一の担当。アダプタはUI向け状態・操作結果・検証済みleaseの寿命だけを管理する。

@@ -42,6 +42,7 @@ export function createAccountSessionManager({ createClient, config,
   getLegacyClient,
 }) {
   const clients = new Map(), subscriptions = new Map();
+  const deletedReceipts = new Map();
   let generation = 0, leaseEpoch = 0, closed = false, activeLease = null;
   const invalidationListeners = new Set();
   const invalidate = (reason = "invalidated") => {
@@ -55,7 +56,9 @@ export function createAccountSessionManager({ createClient, config,
       || event.key?.startsWith(PREFIX)) invalidate("storage");
   };
   events?.addEventListener("storage", onStorage);
-  const onPageShow = () => invalidate("pageshow");
+  // Normal initial pageshow fires after module initialization; it must not cancel
+  // the just-verified session. A BFCache restore must discard the old lease.
+  const onPageShow = event => { if (event?.persisted) invalidate("pageshow"); };
   events?.addEventListener("pageshow", onPageShow);
   function read() {
     try { const raw = storage().getItem(SESSION_REGISTRY_KEY); return { raw, value: decode(raw) }; }
@@ -147,6 +150,74 @@ export function createAccountSessionManager({ createClient, config,
     list() {
       try { return { ok: true, ...read().value, entries: read().value.entries.map(entry => ({ ...entry })) }; }
       catch (error) { return fail(error.code); }
+    },
+    initialize() {
+      return operation(async (registry, check) => {
+        if (read().raw !== null) return { ok: true };
+        const client = await clientFor("legacy");
+        const session = await client.auth.getSession(); check();
+        if (session.error) return fail("verification-unavailable");
+        if (session.data?.session === null) { write(registry); return { ok: true }; }
+        const account = await verify(client); check();
+        registry.entries.push({ slot: "legacy", eno: account.eno, name: account.name });
+        registry.active = "legacy"; write(registry);
+        return lease(client, account, "legacy");
+      });
+    },
+    deleteCurrent(target) {
+      return operation(async (registry, check) => {
+        const entry = registry.entries.find(item => item.slot === registry.active);
+        if (!entry || entry.eno !== target?.eno || deletedReceipts.has(entry.slot)) return fail("deletion-denied");
+        const client = await clientFor(entry.slot), account = await verify(client, entry.eno); check();
+        if (["eno", "name", "gameAccountId", "authUserId"].some(key => account[key] !== target[key])) return fail("deletion-denied");
+        let response;
+        try { response = await client.rpc("delete_own_account", { p_game_account_id: account.gameAccountId,
+          p_auth_user_id: account.authUserId, p_eno: account.eno, p_name: account.name }); }
+        catch { return fail("deletion-unknown"); }
+        const receipt = response.data;
+        if (response.error || receipt?.deleted !== true || ["eno", "gameAccountId", "authUserId"].some(key => receipt[key] !== account[key])) return fail("deletion-unknown");
+        // Authentication may already be gone. The exact server receipt is authoritative.
+        deletedReceipts.set(entry.slot, { client, account }); activeLease = null; leaseEpoch++;
+        return { ok: true, deleted: true };
+      });
+    },
+    cleanupDeleted(target) {
+      return operation(async (registry, check) => {
+        const entry = registry.entries.find(item => item.eno === target?.eno);
+        const saved = entry && deletedReceipts.get(entry.slot);
+        if (!saved || ["eno", "gameAccountId", "authUserId"].some(key => saved.account[key] !== target[key])) return fail("deletion-cleanup-required");
+        if (registry.active !== null && registry.active !== entry.slot) return fail("deletion-cleanup-required");
+        const session = await saved.client.auth.getSession(); check();
+        if (session.error || (session.data?.session?.user?.id && session.data.session.user.id !== target.authUserId)) return fail("deletion-cleanup-required");
+        if (!await discard(saved.client)) return fail("deletion-cleanup-required");
+        check();
+        registry.entries = registry.entries.filter(item => item.slot !== entry.slot);
+        if (registry.active === entry.slot) registry.active = null;
+        write(registry);
+        subscriptions.get(entry.slot)?.unsubscribe(); subscriptions.delete(entry.slot);
+        if (entry.slot !== "legacy") saved.client.auth.stopAutoRefresh?.();
+        clients.delete(entry.slot); deletedReceipts.delete(entry.slot);
+        return { ok: true };
+      });
+    },
+    reauthenticate(eno, password) {
+      return operation(async (registry, check) => {
+        const entry = registry.entries.find(item => item.eno === eno);
+        if (!entry || typeof password !== "string" || !password) return fail("invalid-eno");
+        const client = await clientFor(entry.slot);
+        // A healthy or temporarily unreachable session must never be overwritten.
+        try { await verify(client, eno); return fail("already-added"); }
+        catch (error) { if (error.code !== "reauthentication-required") return fail(error.code ?? "verification-unavailable"); }
+        check();
+        const local = await client.auth.getSession(); check();
+        if (local.error || (local.data?.session?.user && local.data.session.user.email !== internalEmailForEno(eno))) return fail("verification-unavailable");
+        const signed = await client.auth.signInWithPassword({ email: internalEmailForEno(eno), password });
+        password = undefined;
+        if (signed.error || !signed.data?.session) return fail("login-failed");
+        const account = await verify(client, eno); check();
+        entry.name = account.name; registry.active = entry.slot; write(registry);
+        return lease(client, account, entry.slot);
+      });
     },
     add(eno, password) {
       return operation(async (registry, check) => {

@@ -26,9 +26,11 @@ export function mountProfileThemeEditor({ document, header, profile, client, sto
   const actions = element('div'); actions.className = 'profile-theme-actions';
   const cancel = button('キャンセル'), save = button('保存'); actions.append(cancel, save);
   dialog.append(presets, status, actions); header.append(trigger); document.body.append(dialog);
+  let editState;
   const controller = createProfileThemeController({ storage, gameAccountId: profile.accountId,
     preview: theme => applyProfileTheme(document, theme),
     changed: state => {
+      editState = state;
       for (const key of THEME_KEYS) {
         const { picker, hex } = fields[key], value = state.draft[key] ?? '';
         hex.value = value; hex.setAttribute('aria-invalid', String(!!state.original && !isThemeColor(value)));
@@ -49,7 +51,10 @@ export function mountProfileThemeEditor({ document, header, profile, client, sto
   const subscription = client.auth.onAuthStateChange?.((event, session) => {
     if (event !== 'INITIAL_SESSION' && event !== 'TOKEN_REFRESHED') controller.sessionChanged(session?.user?.id ?? null);
   });
-  const dispose = () => subscription?.data?.subscription?.unsubscribe();
+  const stopGuard = client.beforeAccountChange?.(() => !editState?.busy && (!editState?.active
+    || JSON.stringify(editState.draft) === JSON.stringify(editState.original)
+    || globalThis.confirm('未保存のプロフィールカラーを破棄してアカウントを変更しますか？')));
+  const dispose = () => { stopGuard?.(); subscription?.data?.subscription?.unsubscribe(); };
   document.defaultView?.addEventListener('pagehide', dispose, { once: true });
   return { controller, trigger, dialog, fields, light, dark, cancel, save, status, dispose };
 }

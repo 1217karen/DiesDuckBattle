@@ -10,7 +10,7 @@ import { createIconPicker } from "./iconPicker.js";
 import { createImageValidation, imageValidationSummary } from "./characterImageValidation.js";
 import { requireLoginPage } from "./authPageGuard.js";
 
-import { getSupabaseClient } from "./authRuntime.js";
+import { getPublicSupabaseClient as getSupabaseClient } from "./supabaseClients.js";
 import { createOnlineProfileService } from "./onlineProfileService.js";
 import { createQuoteEnoLookup } from "./quoteEnoLookup.js";
 

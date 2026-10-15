@@ -1,11 +1,13 @@
 import { getSupabaseClient } from './authRuntime.js';
+import { getOperatorSupabaseClient } from './supabaseClients.js';
+import { ACCOUNT_SWITCHING_ENABLED } from './accountSwitchingConfig.js';
 import { createOperatorLoginService } from './operatorLoginService.js';
 
 const form=document.getElementById('operator-form'),fields=document.getElementById('operator-fields');
 const logout=document.getElementById('operator-logout'),message=document.getElementById('operator-message');
 const password=document.getElementById('operator-password');
 try {
-  const client=await getSupabaseClient(),service=createOperatorLoginService(client);
+  const client=await (ACCOUNT_SWITCHING_ENABLED ? getOperatorSupabaseClient() : getSupabaseClient()),service=createOperatorLoginService(client);
   let busy=false;
   const lock=value=>{busy=value;fields.disabled=value;logout.disabled=value;};
   lock(false);message.textContent='';
@@ -14,7 +16,7 @@ try {
     const pending=service.login(document.getElementById('operator-email').value,password.value);
     password.value='';
     const result=await pending;
-    if(result.ok){location.replace('notice.html?tab=reports');return;}
+    if(result.ok){location.replace(ACCOUNT_SWITCHING_ENABLED ? 'notice.html?tab=reports&operator=1' : 'notice.html?tab=reports');return;}
     message.textContent=result.message;lock(false);
   });
   logout.addEventListener('click',async()=>{

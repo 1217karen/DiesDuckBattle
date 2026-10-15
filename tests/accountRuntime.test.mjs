@@ -61,7 +61,7 @@ test('expired selected session and temporary network error have distinct results
 });
 test('storage, pagehide, pageshow and visibility suspend old leases until revalidation',async()=>{
  const f=environment(),p=f.page(),r=await p.get();await r.add('1','valid');
- for(const fire of [()=>p.events.fire('storage',{key:SESSION_REGISTRY_KEY}),()=>p.events.fire('pagehide'),()=>p.events.fire('pageshow'),()=>{p.document.visibilityState='hidden';p.document.fire('visibilitychange');}]){
+ for(const fire of [()=>p.events.fire('storage',{key:SESSION_REGISTRY_KEY}),()=>p.events.fire('pagehide'),()=>p.events.fire('pageshow',{persisted:true}),()=>{p.document.visibilityState='hidden';p.document.fire('visibilitychange');}]){
   const old=r.getCurrent();fire();assert.equal(old.isCurrent(),false);assert.equal(r.getCurrent(),null);assert.equal((await r.restore()).ok,true);
  }
 });
@@ -85,10 +85,12 @@ test('failed add preserves active account; subscriber cannot convert old result 
  let triggered=false,next;const stop=r.subscribe(s=>{if(!triggered&&s.current?.eno==='2'){triggered=true;next=r.select('1');}});
  assert.equal((await r.add('2','valid')).code,'stale-operation');assert.equal((await next).ok,true);assert.equal(r.getCurrent().account.eno,'1');stop();
 });
-test('existing entry points remain separate and SDK version matches legacy runtime',async()=>{
- const legacy=await readFile(new URL('../js/authRuntime.js',import.meta.url),'utf8'),next=await readFile(new URL('../js/accountRuntime.js',import.meta.url),'utf8');assert.equal(next.match(/supabase-js@([\d.]+)/)[1],legacy.match(/supabase-js@([\d.]+)/)[1]);assert.match(legacy,/storageKey: "diesduck-auth-session"/);
- for(const file of ['authRuntime','commonMenu','authPageGuard','onlineEditor','accountDeletionView'])assert.doesNotMatch(await readFile(new URL('../js/'+file+'.js',import.meta.url),'utf8'),/accountRuntime\.js/);
+test('runtime and legacy use the same pinned SDK; legacy handoff cannot recurse through selected-client lookup',async()=>{
+ const clients=await readFile(new URL('../js/supabaseClients.js',import.meta.url),'utf8'),next=await readFile(new URL('../js/accountRuntime.js',import.meta.url),'utf8');
+ assert.equal(next.match(/supabase-js@([\d.]+)/)[1],clients.match(/supabase-js@([\d.]+)/)[1]);
+ assert.match(clients,/client\("diesduck-auth-session"\)/);assert.match(next,/getLegacySupabaseClient/);assert.doesNotMatch(next,/import\("\.\/authRuntime.js"\)/);
 });
+
 test('new intent from a busy subscriber prevents the superseded operation from starting',async()=>{
  const f=environment(),r=await f.page().get();await r.add('1','valid');let next,once=false;
  const stop=r.subscribe(s=>{if(s.busy==='add'&&!once){once=true;next=r.select('1');}});

@@ -50,11 +50,11 @@ for (const raw of [null, "{", "null", "[]", "{}", JSON.stringify({ ...signedCach
     assert.equal(d.nodes.get("[data-identity]").textContent, "");
   });
 }
-test("cache bootstrap uses textContent before any Auth/SDK load; writes whitelist only", t => {
+test("cache bootstrap never displays an unverified identity; writes whitelist only", t => {
   const value = { ...signedCache, identity: "ENo.12｜<img src=x onerror=alert(1)>" };
   const d = dom();
   vm.runInNewContext(bootstrap, { document: d.document, sessionStorage: storage(JSON.stringify(value)) });
-  assert.equal(d.nodes.get("[data-identity]").textContent, value.identity);
+  assert.notEqual(d.nodes.get("[data-identity]").textContent, value.identity);
   const store = useStorage(t);
   displayCache.write({ ...value, access_token: "secret", user: { id: "uuid" } });
   assert.deepEqual(JSON.parse(store.getItem(key)), value);

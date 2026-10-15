@@ -177,8 +177,8 @@ export function createOnlineEditController({ storage, sections, allowDuckPresent
       install(result, draft, keepEdits); emit(); return true;
     },
     async canLeave() {
-      if (state.busy) { state.message = "オンライン処理中です。完了してからログアウトしてください。"; emit(); return false; }
-      return !state.dirty || await ask("未保存変更を破棄してログアウトしますか？");
+      if (state.busy) { state.message = "オンライン処理中です。完了してからアカウントを変更してください。"; emit(); return false; }
+      return !state.dirty || await ask("未保存変更を破棄してアカウントを変更しますか？");
     },
   };
   return api;

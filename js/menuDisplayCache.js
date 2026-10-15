@@ -23,7 +23,6 @@
     },
   };
   globalThis.diesDuckMenuDisplayCache = cache;
-  const label = globalThis.document?.getElementById("common-menu")?.querySelector("[data-identity]");
-  const saved = cache.read();
-  if (label && saved && label.textContent !== saved.identity) { label.textContent = saved.identity; label.title = saved.identity; }
+  // Account names are rendered only after runtime verification. A cache from a
+  // different tab/account must not briefly identify the current viewer.
 })();

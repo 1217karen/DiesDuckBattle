@@ -20,9 +20,10 @@ export function mountProfileBattleEditor({ document, container, profile, client,
   const actions = el('div'); actions.className = 'profile-battle-actions';
   const cancel = button('キャンセル'), clear = button('掲載解除'), save = button('保存'); actions.append(cancel, clear, save);
   dialog.append(title, status, list, pager, actions); container.children[0].append(trigger); document.body.append(dialog);
-  let currentPage = 1;
+  let currentPage = 1, editState;
   const controller = createProfileBattleController({ storage, battles, service, profile,
     changed: state => {
+      editState = state;
       currentPage = state.page;
       trigger.hidden = state.unavailable;
       list.replaceChildren();
@@ -59,7 +60,10 @@ export function mountProfileBattleEditor({ document, container, profile, client,
   const subscription = client.auth.onAuthStateChange?.((event, session) => {
     if (!['INITIAL_SESSION', 'TOKEN_REFRESHED'].includes(event)) controller.sessionChanged(session?.user?.id ?? null);
   });
-  const dispose = () => subscription?.data?.subscription?.unsubscribe();
+  const stopGuard = client.beforeAccountChange?.(() => !editState?.busy && (!editState?.active
+    || editState.selected === editState.original
+    || globalThis.confirm('未保存の掲載設定を破棄してアカウントを変更しますか？')));
+  const dispose = () => { stopGuard?.(); subscription?.data?.subscription?.unsubscribe(); };
   document.defaultView?.addEventListener('pagehide', dispose, { once: true });
   return { controller, trigger, dialog, status, list, prev, next, pageInfo, cancel, clear, save, dispose };
 }

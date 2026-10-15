@@ -52,7 +52,7 @@ export function mountIndexMessages(document, getClient, notify = showToast) {
     }));
     el('home-messages-status').textContent = rows.length ? '' : 'ひとことはまだありません。';
   }
-  return { update(state) {
+  return { canLeave() { return !saving && (form.hidden || input.value === current || globalThis.confirm("未保存のひとことを破棄してアカウントを変更しますか？")); }, update(state) {
     const next = state.ready ? menuModel(state).currentAccount?.eno ?? null : null;
     if (next === eno) return;
     eno = next; const version = ++revision; service?.invalidate(); service = null;

@@ -4,6 +4,8 @@ import { displayCache } from "./authDisplayCache.js";
 import { getAuthRuntime } from "./authRuntime.js";
 import { menuModel } from "./commonMenuModel.js";
 import { createAccountDeletionView } from "./accountDeletionView.js";
+import { createAccountSwitchView } from "./accountSwitchView.js";
+import { ACCOUNT_SWITCHING_ENABLED } from "./accountSwitchingConfig.js";
 
 const root = document.getElementById("common-menu");
 const details = root.querySelector(".common-menu__nav"), summary = details.querySelector("summary");
@@ -30,7 +32,7 @@ document.addEventListener("keydown", event => {
 document.addEventListener("click", event => {
   if (!root.contains(event.target)) { details.open = false; accountDetails.open = false; }
 });
-let displayed = displayCache.read();
+let displayed = ACCOUNT_SWITCHING_ENABLED ? null : displayCache.read();
 const label = root.querySelector("[data-identity]");
 if (displayed && label.textContent !== displayed.identity) { label.textContent = displayed.identity; label.title = displayed.identity; }
 const publicItems = menuModel({ sessionKnown: false }).items;
@@ -71,9 +73,23 @@ try {
   const deletion = createAccountDeletionView({ controller, onBusy(value) {
     if (logoutButton) logoutButton.disabled = value || authBusy;
   } });
+  const switching = ACCOUNT_SWITCHING_ENABLED ? createAccountSwitchView({ document, controller, menu: accountMenu, summary: accountSummary, deletion }) : null;
   controller.subscribe(state => {
     authBusy = !!state.busy;
     deletion.update(state);
+    if (switching) {
+      const model = menuModel(state);
+      label.textContent = state.ready ? model.identity : "確認中…"; label.title = label.textContent;
+      accountEnabled = state.ready || !!state.savedAccounts?.length;
+      accountSummary.setAttribute("aria-disabled", String(!accountEnabled));
+      accountSummary.setAttribute("tabindex", accountEnabled ? "0" : "-1");
+      root.querySelector("[data-account-arrow]").hidden = !accountEnabled;
+      if (!accountEnabled) accountDetails.open = false;
+      const key = String(model.loggedIn);
+      if (lastMenuKey !== key) { lastMenuKey = key; renderMenu(model.items); }
+      switching.update(state);
+      return;
+    }
     if (!redirected && state.sessionKnown && !state.signedIn && !state.busy && state.logoutSucceeded) {
       redirected = true;
       location.replace("index.html?notice=logged-out");

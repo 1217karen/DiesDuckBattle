@@ -1,4 +1,4 @@
-import { getSupabaseClient } from "./authRuntime.js";
+import { getPublicSupabaseClient as getSupabaseClient } from "./supabaseClients.js";
 import { finishPageLoad } from "./pageLoad.js";
 import { createOnlineCharacterListService } from "./onlineCharacterListService.js";
 import { filterCharacters } from "./characterListModel.js";

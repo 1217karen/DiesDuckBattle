@@ -24,7 +24,7 @@ test('service binds prepared target to identity, ENo, UUID and name; exactly one
   assert.equal((await f.service.cleanup(target)).ok,true);assert.equal(f.logouts,1);
 });
 test('service rejects changed/unknown targets and reports uncertain transport without retry or signout',async()=>{
-  for(const mode of ['throw','malformed','reject','failure','switch']){
+  for(const mode of ['throw','malformed','reject','failure']){
     const f=serviceFixture();f.mode(mode);const result=await f.service.remove(target);
     assert.equal(result.ok,false);assert.equal(f.calls.length,1);assert.equal(f.logouts,0);
     assert.ok(!result.message.includes('secret'));
@@ -34,6 +34,13 @@ test('service rejects changed/unknown targets and reports uncertain transport wi
   f.user('other');assert.equal((await f.service.cleanup(target)).status,'changed');assert.equal(f.logouts,0);
   f.user(target.authUserId);assert.equal((await f.service.prepare({eno:'1',name:'stale'})).status,'changed');
   f.mode('cleanup');assert.equal((await f.service.cleanup(target)).status,'cleanup');
+});
+
+test('matching deletion receipt survives post-delete Auth loss; cleanup never signs out a new user',async()=>{
+  const f=serviceFixture();f.mode('switch');assert.equal((await f.service.remove(target)).ok,true);
+  assert.equal((await f.service.cleanup(target)).status,'changed');assert.equal(f.logouts,0);
+  const g=serviceFixture();let calls=0;g.client.auth.getSession=async()=>{if(++calls>1)throw Error('Auth deleted');return {data:{session:{user:{id:target.authUserId}}}};};
+  assert.equal((await g.service.remove(target)).ok,true);assert.equal(calls,1);
 });
 test('only confirmed single ENo with a known name enables deletion',()=>{
   assert.deepEqual(deletionAccount(signed),signed.accounts[0]);

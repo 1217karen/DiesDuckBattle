@@ -4,8 +4,8 @@ import { supabasePublicConfig } from "./supabasePublicConfig.js";
 /** Opt-in adapter only: production page entry points still use authRuntime.js.
  * Session creation, persistence, access verification and locking belong to the manager.
  */
-export function createAccountRuntime({ manager, events = globalThis.window, document = globalThis.document }) {
-  let revision = 0, disposed = false, busy = null, code = null, phase = "unverified";
+export function createAccountRuntime({ manager, events = globalThis.window, document = globalThis.document, suspendOnHidden = true }) {
+  let revision = 0, selectionVersion = 0, disposed = false, busy = null, code = null, phase = "unverified";
   let entries = [], pending = [], verified = null;
   const listeners = new Set();
   function current() {
@@ -28,12 +28,13 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
   }
   // Manager owns SDK/storage/pageshow invalidation. Notification callbacks never call SDK APIs.
   const stopInvalidation = manager.subscribeInvalidation(reason => {
+    selectionVersion++;
     verified = null;
     if (reason !== "auth" || !busy) { revision++; busy = null; phase = "unverified"; code = reason; }
     queueMicrotask(emit);
   });
   function pageHidden() {
-    if (document.visibilityState === "hidden") manager.invalidate("page-hidden");
+    if (suspendOnHidden && document.visibilityState === "hidden") manager.invalidate("page-hidden");
   }
   function pageHide() { manager.invalidate("pagehide"); }
   document?.addEventListener("visibilitychange", pageHidden);
@@ -64,18 +65,19 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
     try { result = await work(); } catch { result = { ok: false, code: "verification-unavailable" }; }
     if (disposed || token !== revision) return { ok: false, code: "stale-operation" };
     let completed = null;
-    if (result.ok && ["cleanup", "adopt-legacy"].includes(action)) {
+    if (result.ok && ["cleanup", "adopt-legacy", "initialize", "cleanup-deleted"].includes(action)) {
       completed = action;
       try { result = await manager.restore(); } catch { result = { ok: false, code: "verification-unavailable" }; }
       if (disposed || token !== revision) return { ok: false, code: "stale-operation", completed };
     }
     busy = null;
+    if (result.ok && ["add", "select", "reauthenticate", "logout"].includes(action)) selectionVersion++;
     const list = manager.list();
     entries = result.entries?.map(entry => ({ ...entry })) ?? (list.ok ? list.entries : []);
     pending = result.pending?.map(entry => ({ ...entry })) ?? (list.ok ? list.pending : []);
     if (action !== "restore" || result.ok) installLease(token);
     // Do not turn a restore with an invalid selected session into a successful login.
-    code = !result.ok ? result.code : !list.ok ? list.code
+    code = result.deleted ? null : !result.ok ? result.code : !list.ok ? list.code
       : !current() ? selectedFailure(list, result) : null;
     if (!code && ["add", "select"].includes(action) && !current()) code = "stale-operation";
     phase = current() ? "ready" : code === "reauthentication-required" ? "reauthentication-required"
@@ -85,18 +87,23 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
     emit();
     // Subscribers may synchronously request a different selection; old work must not win.
     if (token !== revision || (state.current && !current())) return { ok: false, code: "stale-operation" };
-    return { ...outcome, completed, state };
+    return { ...outcome, deleted: result.deleted, completed, state };
   }
   return {
     snapshot,
+    getSelectionVersion: () => selectionVersion,
     subscribe(listener) { listeners.add(listener); listener(snapshot()); return () => listeners.delete(listener); },
     restore: () => run("restore", () => manager.restore()),
+    initialize: () => run("initialize", () => manager.initialize()),
     add: (eno, password) => run("add", () => manager.add(eno, password)),
     select: eno => run("select", () => manager.select(eno)),
+    reauthenticate: (eno, password) => run("reauthenticate", () => manager.reauthenticate(eno, password)),
     // Explicit handoff only. Never automatically adopt on restore or after logout.
     adoptLegacy: () => run("adopt-legacy", () => manager.adoptLegacy()),
     logoutCurrent: () => run("logout", () => manager.logoutCurrent()),
     cleanupPending: slot => run("cleanup", () => manager.cleanupPending(slot)),
+    deleteCurrent: target => run("delete", () => manager.deleteCurrent(target)),
+    cleanupDeleted: target => run("cleanup-deleted", () => manager.cleanupDeleted(target)),
     getCurrent: current,
     invalidate() { manager.invalidate("explicit"); },
     dispose() {
@@ -113,7 +120,7 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
 /** Provider closure is also injectable: tests use independent mock SDK clients, never the network. */
 export function createAccountRuntimeProvider({
   loadSDK = () => import("https://esm.sh/@supabase/supabase-js@2.117.2?bundle"),
-  getLegacyClient = async () => (await import("./authRuntime.js")).getSupabaseClient(),
+  getLegacyClient = async () => (await import("./supabaseClients.js")).getLegacySupabaseClient(),
   config = supabasePublicConfig, managerOptions = {},
 } = {}) {
   let runtime;
@@ -121,9 +128,9 @@ export function createAccountRuntimeProvider({
     return runtime ??= (async () => {
       const { createClient } = await loadSDK();
       const manager = createAccountSessionManager({ ...managerOptions, createClient, config, getLegacyClient });
-      return createAccountRuntime({ manager, events: managerOptions.events, document: managerOptions.document });
+      return createAccountRuntime({ manager, events: managerOptions.events, document: managerOptions.document, suspendOnHidden: managerOptions.suspendOnHidden });
     })().catch(error => { runtime = undefined; throw error; });
   };
 }
 // Importing this module alone neither creates SDK clients nor adopts any legacy session.
-export const getAccountRuntime = createAccountRuntimeProvider();
+export const getAccountRuntime = createAccountRuntimeProvider({ managerOptions: { suspendOnHidden: false } });

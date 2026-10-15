@@ -56,6 +56,8 @@ export function createAccountOperationCoordinator(runtime) {
     write: work => execute(true, work),
     add: (eno, password) => change("add", [eno, password]),
     select: eno => change("select", [eno]),
+    reauthenticate: (eno, password) => change("reauthenticate", [eno, password]),
+    cleanupPending: slot => change("cleanupPending", [slot]),
     logoutCurrent: () => change("logoutCurrent", []),
     snapshot: () => ({ changing, writes, closed }),
     dispose() { closed = true; guards.clear(); },

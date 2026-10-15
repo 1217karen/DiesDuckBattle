@@ -161,6 +161,11 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
     get('feedback-form-message').textContent='';message.textContent='';enabled();
   }
   return {
+    canLeave() {
+      return !busy && ((!Array.from(form.querySelectorAll('input, textarea')).some(node => node.value?.trim())
+        && !Array.from(drafts.values()).some(value => String(value).trim()))
+        || globalThis.confirm('未送信の投稿・返信を破棄してアカウントを変更しますか？'));
+    },
     updateAuth(next) {
       if(disposed)return;
       const key=JSON.stringify(next);auth=next;

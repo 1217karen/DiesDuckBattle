@@ -26,6 +26,13 @@ function errorStatus(error, saving) {
 /** Inject the existing publishable-key, signed-in Supabase client. No local storage or admin credentials. */
 export function createOnlinePlayerStorage(client) {
   async function access(gameAccountId) {
+    const context = client.accountContext;
+    if (context) {
+      const session = await client.auth.getSession();
+      if (session.error) return onlineFailure("session-changed");
+      if (gameAccountId !== undefined && gameAccountId !== context.account.gameAccountId) return onlineFailure("forbidden");
+      return { ok: true, account: { id: context.account.gameAccountId, eno: context.account.eno }, authUserId: context.account.authUserId };
+    }
     const { data, error } = await client.auth.getSession();
     if (error) return onlineFailure("load-failed");
     const userId = data?.session?.user?.id;

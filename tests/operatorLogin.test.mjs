@@ -25,5 +25,5 @@ test('session change while checking operator permission rejects old response',as
 test('operator login is unlinked, has no signup, and routes only verified success',async()=>{
  const html=await readFile(new URL('../operator-login.html',import.meta.url),'utf8');assert.match(html,/type="email"/);assert.match(html,/type="password"/);assert.doesNotMatch(html,/signUp|新規登録|アカウントを作成/);
  for(const file of ['index.html','js/commonMenuModel.js'])assert.ok(!(await readFile(new URL('../'+file,import.meta.url),'utf8')).includes('operator-login'));
- const page=await readFile(new URL('../js/operatorLoginPage.js',import.meta.url),'utf8');assert.match(page,/if\(result.ok\)\{location.replace\('notice.html\?tab=reports'\)/);
+ const page=await readFile(new URL('../js/operatorLoginPage.js',import.meta.url),'utf8');assert.match(page,/if\(result.ok\)\{location.replace\(ACCOUNT_SWITCHING_ENABLED \? 'notice.html\?tab=reports&operator=1'/);
 });

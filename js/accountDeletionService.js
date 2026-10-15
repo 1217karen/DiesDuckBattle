@@ -42,12 +42,12 @@ export function createAccountDeletionService(client) {
         });
         // Server success is accepted only for this exact transaction target. A
         // different logged-in user must never be signed out by a delayed result.
-        const current = await user();
-        if (current && current !== target.authUserId) return fail("changed");
         if (error) return fail(["42501", "22023"].includes(error.code) ? "changed"
           : /^(23|40|P0)/.test(error.code ?? "") ? "failed" : "unknown");
         if (data?.deleted !== true || data.gameAccountId !== target.gameAccountId
           || data.authUserId !== target.authUserId || data.eno !== target.eno) return fail("unknown");
+        // A matching committed receipt remains success even if Auth was removed.
+        // cleanup() separately checks the current user before local sign-out.
         return { ok: true };
       } catch { return fail(sent ? "unknown" : "changed"); }
     },

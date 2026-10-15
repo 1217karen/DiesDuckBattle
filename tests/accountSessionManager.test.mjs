@@ -83,7 +83,7 @@ test('new selection intent invalidates slow add, and failed cleanup is never suc
 });
 test('cross-tab lock prevents duplicate additions and storage/pageshow invalidate leases',async()=>{
  const f=fixture(),a=f.manager(),b=f.manager();const results=await Promise.all([a.add('1','correct'),b.add('1','correct')]);assert.equal(results.filter(r=>r.ok).length,1);assert.equal(f.sessions.size,1);
- await a.select('1');const lease=a.getActiveLease();f.events[0].storage({key:SESSION_REGISTRY_KEY});assert.equal(lease.isCurrent(),false);await a.restore();f.events[0].pageshow();assert.equal(a.getActiveLease(),null);
+ await a.select('1');const lease=a.getActiveLease();f.events[0].storage({key:SESSION_REGISTRY_KEY});assert.equal(lease.isCurrent(),false);await a.restore();f.events[0].pageshow({persisted:true});assert.equal(a.getActiveLease(),null);
 });
 test('external selection change during a request rejects old result even without storage event',async()=>{
  const f=fixture(),m=f.manager();await m.add('1','correct');await m.add('2','correct');const gate=defer();f.instances[0].accessWait=gate.promise;
@@ -113,9 +113,11 @@ test('UUID collision is rejected and dispose cancels pending activation without 
  const f=fixture(),m=f.manager();await m.add('1','correct');const slot=m.list().entries[0].slot;assert.equal((await f.manager({randomUUID:()=>slot}).add('2','correct')).code,'slot-collision');
  const gate=defer();f.instances[0].accessWait=gate.promise;const selecting=m.select('1');await tick();m.dispose();gate.resolve();assert.equal((await selecting).code,'stale-operation');assert.equal(f.sessions.size,1);assert.equal(m.getActiveLease(),null);
 });
-test('production runtime stays on legacy key and does not import the stage-one manager',async()=>{
- const {readFile}=await import('node:fs/promises');const runtime=await readFile(new URL('../js/authRuntime.js',import.meta.url),'utf8');assert.match(runtime,/storageKey: "diesduck-auth-session"/);assert.doesNotMatch(runtime,/accountSessionManager/);
+test('production obtains legacy SDK through its single shared factory',async()=>{
+ const {readFile}=await import('node:fs/promises');const runtime=await readFile(new URL('../js/authRuntime.js',import.meta.url),'utf8');
+ assert.match(runtime,/getLegacySupabaseClient/);assert.doesNotMatch(runtime,/createClient\(/);
 });
+
 test('SDK sign-out or identity change invalidates active lease; token refresh of same user does not',async()=>{
  const f=fixture(),m=f.manager();await m.add('1','correct');const c=f.instances[0],lease=m.getActiveLease();c.authEvent('TOKEN_REFRESHED',{user:f.sessions.get(c.key)});assert.equal(lease.isCurrent(),true);
  c.authEvent('SIGNED_OUT',null);assert.equal(m.getActiveLease(),null);await m.select('1');c.authEvent('SIGNED_IN',{user:{id:'other'}});assert.equal(m.getActiveLease(),null);

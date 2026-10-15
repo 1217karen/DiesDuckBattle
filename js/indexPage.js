@@ -85,6 +85,7 @@ try {
     },
   });
   const messages = mountIndexMessages(document, getSupabaseClient);
+  controller.beforeLogout?.(() => messages.canLeave());
   const logout = document.getElementById("home-logout");
   logout.addEventListener("click", () => controller.logout());
   controller.subscribe(state => {
