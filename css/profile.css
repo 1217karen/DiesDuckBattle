@@ -26,7 +26,7 @@ body {
 .duck-card { grid-area: duck; }
 .featured-battle { grid-area: favorite; }
 .battler-visual { container-type: inline-size; display: flex; justify-content: center; align-items: flex-start; gap: min(16px, calc(100% * 16 / 672)); }
-.battler-standing-wrap { min-width: 0; display: flex; justify-content: center; }
+.battler-standing-wrap { min-width: 0; display: flex; justify-content: center; align-self: flex-end; }
 .battler-standing { display: block; width: auto; height: auto; max-width: min(100%, 500px); max-height: 800px; }
 /* Scale from the desktop group width: 500px standing + 156px rail + 16px gap. */
 .profile-icon-rail {
