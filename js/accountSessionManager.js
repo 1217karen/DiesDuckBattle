@@ -1,6 +1,7 @@
 import { canonicalEno, internalEmailForEno } from "../supabase/functions/_shared/internal-email.mjs";
 
 export const SESSION_REGISTRY_KEY = "diesduck-account-sessions-v1";
+export const DELETION_JOURNAL_KEY = "diesduck-account-deletions-v1";
 export const LEGACY_SESSION_KEY = "diesduck-auth-session";
 const PREFIX = "diesduck-auth-account-v1-";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -32,7 +33,7 @@ function decode(raw) {
   return value;
 }
 
-/** Stage 1 only. Not imported by authRuntime or production page entry points.
+/** Enabled only through the gated account runtime.
  * createClient is the pinned SDK factory; SDK alone owns tokens in its storage.
  * One manager per page; Web Locks serialize registry operations across tabs.
  */
@@ -42,7 +43,35 @@ export function createAccountSessionManager({ createClient, config,
   getLegacyClient,
 }) {
   const clients = new Map(), subscriptions = new Map();
-  const deletedReceipts = new Map();
+  // Recovery metadata permits local cleanup only; it never authorizes a server request.
+  function journal() {
+    let raw, value;
+    try { raw = storage().getItem(DELETION_JOURNAL_KEY); value = raw === null ? { version: 1, entries: [] } : JSON.parse(raw); }
+    catch { abort("deletion-journal-unavailable"); }
+    if (!exact(value, ["version", "entries"]) || value.version !== 1 || !Array.isArray(value.entries) || value.entries.length > 50) abort("invalid-deletion-journal");
+    const slots = new Set(), enos = new Set();
+    for (const item of value.entries) {
+      if (!exact(item, ["slot", "eno", "gameAccountId", "authUserId", "state"])
+        || !(UUID.test(item.slot) || item.slot === "legacy") || typeof item.eno !== "string"
+        || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.gameAccountId)
+        || typeof item.authUserId !== "string" || !item.authUserId || item.authUserId.length > 256
+        || !["deletion-pending", "deletion-confirmed"].includes(item.state)
+        || slots.has(item.slot) || enos.has(item.eno)) abort("invalid-deletion-journal");
+      try { if (canonicalEno(item.eno) !== item.eno) abort("invalid-deletion-journal"); }
+      catch { abort("invalid-deletion-journal"); }
+      slots.add(item.slot); enos.add(item.eno);
+    }
+    return { raw, value };
+  }
+  function recoveryFor(entry) {
+    return journal().value.entries.find(item => item.slot === entry.slot || item.eno === entry.eno);
+  }
+  function requireAvailable(entry) { if (recoveryFor(entry)) abort("deletion-recovery-required"); }
+  function release(slot, client) {
+    subscriptions.get(slot)?.unsubscribe(); subscriptions.delete(slot);
+    if (slot !== "legacy") client.auth.stopAutoRefresh?.();
+    clients.delete(slot);
+  }
   let generation = 0, leaseEpoch = 0, closed = false, activeLease = null;
   const invalidationListeners = new Set();
   const invalidate = (reason = "invalidated") => {
@@ -52,7 +81,7 @@ export function createAccountSessionManager({ createClient, config,
     }
   };
   const onStorage = event => {
-    if (event.key === null || event.key === SESSION_REGISTRY_KEY || event.key === LEGACY_SESSION_KEY
+    if (event.key === null || event.key === SESSION_REGISTRY_KEY || event.key === DELETION_JOURNAL_KEY || event.key === LEGACY_SESSION_KEY
       || event.key?.startsWith(PREFIX)) invalidate("storage");
   };
   events?.addEventListener("storage", onStorage);
@@ -125,17 +154,26 @@ export function createAccountSessionManager({ createClient, config,
     if (!locks?.request) return Promise.resolve(fail("locking-unavailable"));
     return locks.request(SESSION_REGISTRY_KEY, { mode: "exclusive" }, async () => {
       const { raw, value } = read();
-      const check = () => {
-        if (closed || intent !== generation || read().raw !== raw) abort("stale-operation");
+      let journalRaw = journal().raw;
+      const check = (expectedRegistry = raw) => {
+        if (closed || intent !== generation || read().raw !== expectedRegistry || journal().raw !== journalRaw) abort("stale-operation");
+      };
+      const saveJournal = (next, expectedRegistry = raw) => {
+        check(expectedRegistry);
+        const encoded = JSON.stringify(next);
+        try { storage().setItem(DELETION_JOURNAL_KEY, encoded); }
+        catch { abort("deletion-journal-unavailable"); }
+        if (journal().raw !== encoded) abort("deletion-journal-unavailable");
+        journalRaw = encoded;
       };
       check();
-      return work(value, check, intent);
+      return work(value, check, intent, saveJournal);
     }).catch(error => fail(error.code ?? "verification-unavailable"));
   }
   function lease(client, account, slot) {
     const raw = read().raw, revision = ++leaseEpoch;
     const result = { client, account: { ...account }, isCurrent() {
-      try { return !closed && revision === leaseEpoch && read().raw === raw && activeLease === result; }
+      try { return !closed && revision === leaseEpoch && read().raw === raw && !recoveryFor({ slot, eno: account.eno }) && activeLease === result; }
       catch { return false; }
     } };
     activeLease = result;
@@ -148,7 +186,7 @@ export function createAccountSessionManager({ createClient, config,
   return {
     // Listing is display-only. No cached entry grants access to a client.
     list() {
-      try { return { ok: true, ...read().value, entries: read().value.entries.map(entry => ({ ...entry })) }; }
+      try { return { ok: true, ...read().value, deletions: journal().value.entries.map(item => ({ ...item })), entries: read().value.entries.map(entry => ({ ...entry })) }; }
       catch (error) { return fail(error.code); }
     },
     initialize() {
@@ -159,44 +197,68 @@ export function createAccountSessionManager({ createClient, config,
         if (session.error) return fail("verification-unavailable");
         if (session.data?.session === null) { write(registry); return { ok: true }; }
         const account = await verify(client); check();
+        requireAvailable({ slot: "legacy", eno: account.eno });
         registry.entries.push({ slot: "legacy", eno: account.eno, name: account.name });
         registry.active = "legacy"; write(registry);
         return lease(client, account, "legacy");
       });
     },
     deleteCurrent(target) {
-      return operation(async (registry, check) => {
+      return operation(async (registry, check, intent, saveJournal) => {
         const entry = registry.entries.find(item => item.slot === registry.active);
-        if (!entry || entry.eno !== target?.eno || deletedReceipts.has(entry.slot)) return fail("deletion-denied");
+        if (!entry || entry.eno !== target?.eno) return fail("deletion-denied");
+        requireAvailable(entry);
         const client = await clientFor(entry.slot), account = await verify(client, entry.eno); check();
         if (["eno", "name", "gameAccountId", "authUserId"].some(key => account[key] !== target[key])) return fail("deletion-denied");
+        const record = { slot: entry.slot, eno: account.eno, gameAccountId: account.gameAccountId,
+          authUserId: account.authUserId, state: "deletion-pending" };
+        const next = journal().value;
+        if (next.entries.length >= 50) return fail("deletion-cleanup-required");
+        next.entries.push(record);
+        saveJournal(next); // If durability fails, no deletion request is sent.
+        activeLease = null; leaseEpoch++;
         let response;
         try { response = await client.rpc("delete_own_account", { p_game_account_id: account.gameAccountId,
           p_auth_user_id: account.authUserId, p_eno: account.eno, p_name: account.name }); }
         catch { return fail("deletion-unknown"); }
-        const receipt = response.data;
-        if (response.error || receipt?.deleted !== true || ["eno", "gameAccountId", "authUserId"].some(key => receipt[key] !== account[key])) return fail("deletion-unknown");
-        // Authentication may already be gone. The exact server receipt is authoritative.
-        deletedReceipts.set(entry.slot, { client, account }); activeLease = null; leaseEpoch++;
+        const receipt = response?.data;
+        if (response?.error || receipt?.deleted !== true || ["eno", "gameAccountId", "authUserId"].some(key => receipt[key] !== account[key])) return fail("deletion-unknown");
+        // A changed registry/journal or failed write leaves pending, never a retryable delete.
+        record.state = "deletion-confirmed";
+        saveJournal(next);
         return { ok: true, deleted: true };
       });
     },
     cleanupDeleted(target) {
-      return operation(async (registry, check) => {
-        const entry = registry.entries.find(item => item.eno === target?.eno);
-        const saved = entry && deletedReceipts.get(entry.slot);
-        if (!saved || ["eno", "gameAccountId", "authUserId"].some(key => saved.account[key] !== target[key])) return fail("deletion-cleanup-required");
-        if (registry.active !== null && registry.active !== entry.slot) return fail("deletion-cleanup-required");
-        const session = await saved.client.auth.getSession(); check();
-        if (session.error || (session.data?.session?.user?.id && session.data.session.user.id !== target.authUserId)) return fail("deletion-cleanup-required");
-        if (!await discard(saved.client)) return fail("deletion-cleanup-required");
+      return operation(async (registry, check, intent, saveJournal) => {
+        const records = journal().value;
+        const saved = records.entries.find(item => item.eno === target?.eno);
+        if (!saved || saved.state !== "deletion-confirmed"
+          || ["eno", "gameAccountId", "authUserId"].some(key => saved[key] !== target[key])
+          || (target.slot !== undefined && saved.slot !== target.slot)) return fail("deletion-cleanup-required");
+        const entry = registry.entries.find(item => item.slot === saved.slot);
+        // An absent entry is allowed: the last journal write may have failed after removal.
+        if ((entry && entry.eno !== saved.eno) || registry.entries.some(item => item.eno === saved.eno && item.slot !== saved.slot)
+          || registry.pending.some(item => item.slot === saved.slot || item.eno === saved.eno)) return fail("deletion-cleanup-required");
+        const client = await clientFor(saved.slot);
+        const session = await client.auth.getSession(); check();
+        if (session.error || !session.data || session.data.session === undefined) return fail("deletion-cleanup-required");
+        if (session.data.session !== null) {
+          const user = session.data.session.user;
+          if (user?.id !== saved.authUserId || user?.email !== internalEmailForEno(saved.eno)) return fail("deletion-cleanup-required");
+          if (!await discard(client)) return fail("deletion-cleanup-required");
+          check();
+          const after = await client.auth.getSession(); check();
+          if (after.error || after.data?.session !== null) return fail("deletion-cleanup-required");
+        }
         check();
-        registry.entries = registry.entries.filter(item => item.slot !== entry.slot);
-        if (registry.active === entry.slot) registry.active = null;
+        registry.entries = registry.entries.filter(item => item.slot !== saved.slot);
+        if (registry.active === saved.slot) registry.active = null;
         write(registry);
-        subscriptions.get(entry.slot)?.unsubscribe(); subscriptions.delete(entry.slot);
-        if (entry.slot !== "legacy") saved.client.auth.stopAutoRefresh?.();
-        clients.delete(entry.slot); deletedReceipts.delete(entry.slot);
+        const committed = JSON.stringify(registry);
+        // Retain confirmed until BOTH SDK cleanup and registry persistence have succeeded.
+        saveJournal({ version: 1, entries: records.entries.filter(item => item.slot !== saved.slot) }, committed);
+        release(saved.slot, client);
         return { ok: true };
       });
     },
@@ -204,6 +266,7 @@ export function createAccountSessionManager({ createClient, config,
       return operation(async (registry, check) => {
         const entry = registry.entries.find(item => item.eno === eno);
         if (!entry || typeof password !== "string" || !password) return fail("invalid-eno");
+        requireAvailable(entry);
         const client = await clientFor(entry.slot);
         // A healthy or temporarily unreachable session must never be overwritten.
         try { await verify(client, eno); return fail("already-added"); }
@@ -223,16 +286,17 @@ export function createAccountSessionManager({ createClient, config,
       return operation(async (registry, check) => {
         try { eno = canonicalEno(eno); } catch { return fail("invalid-eno"); }
         if (typeof password !== "string" || !password) return fail("invalid-password");
+        requireAvailable({ eno });
         if (registry.entries.some(entry => entry.eno === eno)) return fail("already-added");
         if (registry.entries.length >= 50) return fail("account-limit");
         if (registry.pending.length) return fail("cleanup-required");
         // Journal only slot/ENo before creating a session, so interrupted adds can be cleaned after reload.
         const slot = randomUUID();
         if (!UUID.test(slot) || clients.has(slot) || registry.entries.some(entry => entry.slot === slot)
-          || storage().getItem(PREFIX + slot) !== null) abort("slot-collision");
+          || journal().value.entries.some(item => item.slot === slot) || storage().getItem(PREFIX + slot) !== null) abort("slot-collision");
         registry.pending.push({ slot, eno }); write(registry);
-        const baseline = read().raw, token = generation;
-        check = () => { if (closed || generation !== token || read().raw !== baseline) abort("stale-operation"); };
+        const baseline = read().raw, journalBaseline = journal().raw, token = generation;
+        check = () => { if (closed || generation !== token || read().raw !== baseline || journal().raw !== journalBaseline) abort("stale-operation"); };
         const client = await clientFor(slot);
         let committed = false;
         try {
@@ -264,6 +328,7 @@ export function createAccountSessionManager({ createClient, config,
       return operation(async (registry, check) => {
         const entry = registry.pending.find(item => item.slot === slot);
         if (!entry) return fail("not-pending");
+        requireAvailable(entry);
         const client = await clientFor(slot);
         const user = await client.auth.getUser();
         if (!user.error && user.data?.user) {
@@ -290,6 +355,7 @@ export function createAccountSessionManager({ createClient, config,
       return operation(async (registry, check) => {
         const entry = registry.entries.find(item => item.eno === eno);
         if (!entry) return fail("not-added");
+        requireAvailable(entry);
         const client = await clientFor(entry.slot), account = await verify(client, entry.eno); check();
         entry.name = account.name; registry.active = entry.slot; write(registry);
         return lease(client, account, entry.slot);
@@ -300,6 +366,7 @@ export function createAccountSessionManager({ createClient, config,
         const entries = []; let verified;
         for (const entry of registry.entries) {
           try {
+            requireAvailable(entry);
             const client = await clientFor(entry.slot), account = await verify(client, entry.eno); check();
             entries.push({ ...entry, name: account.name, status: "ready" });
             if (registry.active === entry.slot) verified = { client, account, slot: entry.slot };
@@ -312,10 +379,12 @@ export function createAccountSessionManager({ createClient, config,
     },
     adoptLegacy() {
       return operation(async (registry, check) => {
+        requireAvailable({ slot: "legacy" });
         if (registry.entries.some(entry => entry.slot === "legacy")) return fail("already-added");
         const client = await clientFor("legacy"), account = await verify(client); check();
         if (registry.entries.some(entry => entry.eno === account.eno)) return fail("already-added");
         if (registry.entries.length >= 50) return fail("account-limit");
+        requireAvailable({ slot: "legacy", eno: account.eno });
         registry.entries.push({ slot: "legacy", eno: account.eno, name: account.name });
         // Preserve an existing selection. Adoption is explicit and never copies/removes old tokens.
         if (registry.active === null && registry.entries.length === 1) registry.active = "legacy";
@@ -328,6 +397,7 @@ export function createAccountSessionManager({ createClient, config,
       return operation(async (registry, check) => {
         const entry = registry.entries.find(item => item.slot === registry.active);
         if (!entry) return fail("no-selection");
+        requireAvailable(entry);
         const client = await clientFor(entry.slot); await verify(client, entry.eno); check();
         // Irreversible request starts only after identity and intent checks.
         const beforeLogout = read().raw;

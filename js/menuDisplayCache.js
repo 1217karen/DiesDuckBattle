@@ -1,5 +1,6 @@
+import { ACCOUNT_SWITCHING_ENABLED } from "./accountSwitchingConfig.js";
 // Display-only data. Never consult this cache for authorization or page admission.
-// Classic script runs beside the static header, before module/SDK loading.
+// Module bootstrap runs before the auth runtime/SDK; the shared flag is the only source.
 (() => {
   const key = "diesduck-menu-display-v1";
   const valid = value => value && value.version === 1 && typeof value.loggedIn === "boolean"
@@ -23,6 +24,9 @@
     },
   };
   globalThis.diesDuckMenuDisplayCache = cache;
-  // Account names are rendered only after runtime verification. A cache from a
-  // different tab/account must not briefly identify the current viewer.
+  if (!ACCOUNT_SWITCHING_ENABLED) {
+    const label = globalThis.document?.getElementById("common-menu")?.querySelector("[data-identity]");
+    const saved = cache.read();
+    if (label && saved && label.textContent !== saved.identity) { label.textContent = saved.identity; label.title = saved.identity; }
+  }
 })();

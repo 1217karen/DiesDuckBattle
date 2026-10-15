@@ -82,7 +82,7 @@ test("row split uses image height without reserving old label space", async () =
   const images = [{ getBoundingClientRect: () => ({ height: 800 }) }];
   const middle = { getBoundingClientRect: () => ({ height: 364 }) };
   updateRowSplitByBattlerHeight(grid, images, middle, 1000);
-  assert.equal(top, 800);
+  assert.equal(top, 700, "image height is capped at 70% of the available viewport");
   images[0].getBoundingClientRect = () => ({ height: 300 });
   updateRowSplitByBattlerHeight(grid, images, middle, 700);
   assert.equal(top, 374);

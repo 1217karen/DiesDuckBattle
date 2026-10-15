@@ -57,6 +57,7 @@ export function createAccountOperationCoordinator(runtime) {
     add: (eno, password) => change("add", [eno, password]),
     select: eno => change("select", [eno]),
     reauthenticate: (eno, password) => change("reauthenticate", [eno, password]),
+    cleanupDeleted: target => change("cleanupDeleted", [target]),
     cleanupPending: slot => change("cleanupPending", [slot]),
     logoutCurrent: () => change("logoutCurrent", []),
     snapshot: () => ({ changing, writes, closed }),

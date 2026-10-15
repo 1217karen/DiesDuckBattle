@@ -18,7 +18,7 @@ function fixture(){
   remove(){this.isConnected=false;this.parent.children=this.parent.children.filter(n=>n!==this);}
  }
  document.body=new Node('body');const menu=new Node('menu'),summary=new Node('summary');document.body.append(menu,summary);
- const controller={snapshot:()=>state,async login(eno,password){calls.push(['login',eno,password]);if(gate)await gate;return answer;},async select(eno){calls.push(['select',eno]);return answer;},logout(){calls.push(['logout']);},cleanupPending(slot){calls.push(['cleanup',slot]);}};
+ const controller={snapshot:()=>state,async login(eno,password){calls.push(['login',eno,password]);if(gate)await gate;return answer;},async select(eno){calls.push(['select',eno]);return answer;},logout(){calls.push(['logout']);},cleanupPending(slot){calls.push(['cleanup',slot]);},cleanupDeleted(target){calls.push(['cleanup-deleted',target]);}};
  view=createAccountSwitchView({document,controller,menu,summary,deletion:{busy:false,separator:new Node('hr'),launch:new Node('button'),feedback:new Node('p')}});view.update(state);
  const walk=n=>[n,...n.children.flatMap(walk)],all=()=>walk(document.body),button=label=>all().find(n=>n.tagName==='button'&&n.textContent===label);
  return {view,document,menu,summary,calls,all,button,set(next){state={...state,...next};view.update(state);},answer(result){answer=result;},wait(p){gate=p;},open(){button('＋ 別のアカウントを追加').focus();button('＋ 別のアカウントを追加').handlers.click();},dialog:()=>all().find(n=>n.tagName==='dialog')};
@@ -48,4 +48,19 @@ test('expired selection opens login prefilled with the exact ENo; successful sub
 test('busy state disables account actions and cleanup explicitly names its pending slot',()=>{
  const f=fixture();f.set({pendingAccounts:[{eno:'2',slot:'slot-2'}]});f.button('ENo.2の未完了ログインを清掃').handlers.click();assert.deepEqual(f.calls,[['cleanup','slot-2']]);
  f.set({busy:'select'});assert.ok(f.all().filter(n=>n.tagName==='button').every(n=>n.disabled));f.open();assert.equal(f.dialog(),undefined);
+});
+
+test('confirmed recovery is separate from deletion and targets only its recorded slot',()=>{
+ const f=fixture(),record={slot:'slot-2',eno:'2',gameAccountId:'game-2',authUserId:'auth-2',state:'deletion-confirmed'};
+ f.set({savedAccounts:[{eno:'1',name:'一郎'},{eno:'2',name:'二郎'}],deletionRecoveries:[record]});
+ assert.equal(f.button('ENo.2｜二郎').disabled,true);assert.equal(f.button('ENo.1｜一郎').disabled,false);
+ assert.ok(f.all().some(n=>n.textContent.includes('ENo.2の削除成功応答を記録')));
+ f.button('端末側の処理を完了する').handlers.click();assert.deepEqual(f.calls,[['cleanup-deleted',record]]);
+ f.set({busy:'cleanup-deleted'});assert.equal(f.button('端末側の処理を完了する').disabled,true);
+});
+test('pending recovery explicitly says unknown and offers neither cleanup nor repeat deletion',()=>{
+ const f=fixture();f.set({deletionRecoveries:[{slot:'slot-1',eno:'1',state:'deletion-pending'}]});
+ assert.ok(f.all().some(n=>n.textContent.includes('削除結果は不明')));
+ assert.equal(f.button('端末側の処理を完了する'),undefined);assert.equal(f.button('アカウントを削除'),undefined);
+ assert.equal(f.button('ENo.1｜一郎').disabled,true);assert.deepEqual(f.calls,[]);
 });

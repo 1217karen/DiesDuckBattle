@@ -8,6 +8,7 @@ const messages = {
   "reauthentication-required": "セッションの期限が切れています。このENoで再ログインしてください。",
   "operation-in-progress": "保存などの処理中です。完了してから操作してください。",
   "cleanup-required": "未完了のログインがあります。メニューの清掃操作を実行してください。",
+  "deletion-recovery-required": "削除の復旧待ちです。メニューの削除状況を確認してください。",
   "login-failed": "ENoまたはパスワードを確認してください。",
   "cancelled": "操作をキャンセルしました。",
 };
@@ -24,7 +25,7 @@ export function createAccountAuthController({ runtime, registrationService, noti
     const state = runtime.snapshot();
     return { ready: ready && (!state.busy || accountDeletionPending), sessionKnown: ready && (!state.busy || accountDeletionPending), busy: busy || (accountDeletionPending ? "" : state.busy) || "",
       signedIn: !!selected, accountsResolved: !!selected, accounts: selected ? [{ ...selected }] : [],
-      enos: selected ? [selected.eno] : [], savedAccounts: state.entries, pendingAccounts: state.pending,
+      enos: selected ? [selected.eno] : [], savedAccounts: state.entries, pendingAccounts: state.pending, deletionRecoveries: state.deletions,
       sessionMessage: selected ? "ログイン中" : "ログインしていません。", message, messageSource: source,
       registeredEno, logoutSucceeded, accountDeletionPending, accountDeletionSucceeded,
       accountSwitching: true };
@@ -67,6 +68,7 @@ export function createAccountAuthController({ runtime, registrationService, noti
     login, add: login,
     select: eno => action("select", () => coordinator.select(eno)),
     logout: () => action("logout", () => coordinator.logoutCurrent()),
+    cleanupDeleted: target => action("cleanup-deleted", () => coordinator.cleanupDeleted(target), false),
     cleanupPending: slot => action("cleanup", () => coordinator.cleanupPending(slot), false),
     register: (input, { notify: shouldNotify = true } = {}) => action("register", async () => {
       // Registration is available only while unselected. Never overwrite an active session.

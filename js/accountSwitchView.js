@@ -43,12 +43,13 @@ export function createAccountSwitchView({ document, controller, menu, summary, d
   function update(state) {
     latest = state;
     const current = state.accounts?.[0];
-    const key = JSON.stringify([state.savedAccounts, state.pendingAccounts, current?.eno]);
+    const key = JSON.stringify([state.savedAccounts, state.pendingAccounts, state.deletionRecoveries, current?.eno]);
     if (key !== renderingKey) {
       renderingKey = key; controls = [];
       const nodes = (state.savedAccounts ?? []).map(entry => {
         const selected = current?.eno === entry.eno;
         const node = button(`ENo.${entry.eno}｜${entry.name || "名前未取得"}${selected ? "（現在使用中）" : ""}`, () => void select(entry));
+        node.dataset.recovery = String((state.deletionRecoveries ?? []).some(item => item.eno === entry.eno));
         node.dataset.current = String(selected); if (selected) node.setAttribute("aria-current", "true");
         controls.push(node); return node;
       });
@@ -57,6 +58,16 @@ export function createAccountSwitchView({ document, controller, menu, summary, d
         const cleanup = button(`ENo.${entry.eno}の未完了ログインを清掃`, () => void controller.cleanupPending(entry.slot));
         controls.push(cleanup); nodes.push(cleanup);
       }
+      for (const item of state.deletionRecoveries ?? []) {
+        const confirmed = item.state === "deletion-confirmed";
+        nodes.push(el("p", confirmed
+          ? `ENo.${item.eno}の削除成功応答を記録しています。この端末のログイン情報の清掃が未完了です。`
+          : `ENo.${item.eno}の削除結果は不明です。削除要求は再送しません。通信状況とサーバー側の状態の確認が必要です。`));
+        if (confirmed) {
+          const cleanup = button("端末側の処理を完了する", () => void controller.cleanupDeleted({ ...item }));
+          controls.push(cleanup); nodes.push(cleanup);
+        }
+      }
       if (current) {
         const profile = el("a", "自分のプロフィールを確認する"); profile.href = `profile.html?eno=${encodeURIComponent(current.eno)}`;
         const logout = button("ログアウト", () => void controller.logout()); controls.push(logout);
@@ -64,7 +75,7 @@ export function createAccountSwitchView({ document, controller, menu, summary, d
       }
       menu.replaceChildren(...nodes, status);
     }
-    for (const control of controls) control.disabled = !!state.busy || deletion.busy || control.dataset.current === "true";
+    for (const control of controls) control.disabled = !!state.busy || deletion.busy || control.dataset.current === "true" || control.dataset.recovery === "true";
     status.textContent = state.message || (state.busy ? "処理中…" : "");
   }
   return { update, openLogin };

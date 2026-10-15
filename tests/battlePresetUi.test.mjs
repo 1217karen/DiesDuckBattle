@@ -167,8 +167,8 @@ test("card widths, left aligned dice, shared skill borders and mobile layout rul
 test("compact editor headings and responsive battle layout are scoped",async()=>{
  const css=await readFile(new URL("../css/setting.css",import.meta.url),"utf8");
  const common=await readFile(new URL("../css/common-page.css",import.meta.url),"utf8");
- assert.match(common,/\.page-shell--editor\s*\{[^}]*--page-title-size:clamp\(1\.7rem,4vw,2\.8rem\)/);
- assert.match(common,/font-size:var\(--page-title-size, 2em\)/);
+ assert.doesNotMatch(common.match(/\.page-shell--editor\s*\{[^}]*\}/)[0], /--page-title-size\s*:/);
+ assert.match(common,/font-size:\s*var\(--page-title-size,\s*26px\)/);
  assert.match(css,/grid-template-columns:repeat\(6,minmax\(70px,90px\)\); justify-content:start/);
  assert.match(css,/\.a-condition-card\s*\{ background:transparent/);
  const mobile=css.slice(css.indexOf("  .setting-shell {"));

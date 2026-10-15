@@ -2,7 +2,6 @@ import { createASkillCatalog } from "../js/aSkillCatalog.js";
 import { createCSkillCatalog } from "../js/cSkillCatalog.js";
 import { createCSkillRules } from "../js/cSkillRules.js";
 import { DICE_FRAMES } from "../js/diceFrames.js";
-import { HP_FORMULA } from "../js/statsUtil.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -64,7 +63,7 @@ test("click, hashchange/history and keyboard keep tab state and focus consistent
 });
 const section = id => html.match(new RegExp('<section id="' + id + '"[^>]*>([\\s\\S]*?)</section>'))[1];
 const prose = value => value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-const compact = value => prose(value).replace(/\s+/g, "");
+const compact = value => prose(value).normalize("NFKC").replace(/\s+/g, "");
 
 test("all section IDs are unique and table-of-contents links resolve inside their tab", () => {
   const allIds = [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
@@ -73,7 +72,7 @@ test("all section IDs are unique and table-of-contents links resolve inside thei
     assert.match(html, new RegExp('id="tab-' + name + '"[^>]*aria-controls="panel-' + name + '"'));
     assert.match(html, new RegExp('id="panel-' + name + '"[^>]*aria-labelledby="tab-' + name + '"'));
   }
-  for (const [name, sectionIds] of [["guide", ["start","characters","setting","display","battle","profile","history","mechanics"].map(id=>"guide-"+id)], ["battle",ids]]) {
+  for (const [name, sectionIds] of [["guide", ["start","characters","account","setting","mechanics","battle","display","profile","notice"].map(id=>"guide-"+id)], ["battle",ids]]) {
     const start=html.indexOf('<div id="panel-'+name+'"');
     const next=html.indexOf('<div id="panel-',start+1);
     const panel=html.slice(start,next);
@@ -87,9 +86,8 @@ test("all section IDs are unique and table-of-contents links resolve inside thei
 test("battle chapters and unchanged credit identities remain present", () => {
   for(const id of ids)assert.ok(prose(section(id)).length>100,id);
   const footer=prose(html.match(/<footer>[\s\S]*?<\/footer>/)[0]);
-  for(const text of ['WoodenRabbitWorks(うでらび)','シマナガサレV3','「アヒル島」','非公式二次創作作品',
-    '画像・UIデザイン・テキスト：1217karen','プログラム：ChatGPT（OpenAI）を利用して作成',
-    'キャラクター原案・デザイン：','各キャラクターの権利は各創作者に帰属します'])assert.ok(footer.includes(text),text);
+  for(const text of ['WoodenRabbitWorks(うでらび)','シマナガサレV3','「アヒル島」','非公式ファンメイド作品',
+    '各種画像・UIデザイン・テキスト：なすのすな','プログラム：Codex（OpenAI）を利用して作成'])assert.ok(footer.includes(text),text);
 });
 
 test("concise battle sections retain headings, boxes and all dice faces", () => {
@@ -139,10 +137,10 @@ const tableRows = id => {
   const table=html.match(new RegExp('<table id="'+id+'">([\\s\\S]*?)</table>'))?.[1];
   assert.ok(table,id);
   return [...table.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].slice(1).map(row=>
-    [...row[1].matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/g)].map(cell=>prose(cell[1])));
+    [...row[1].matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/g)].map(cell=>prose(cell[1]).normalize("NFKC")));
 };
 test("guide anchors and semantic reference tables support concise chapters",async()=>{
-  for(const id of ['start','characters','setting','display','battle','profile','history','mechanics']) {
+  for(const id of ['start','characters','account','setting','mechanics','battle','display','profile','notice']) {
     assert.match(section('guide-'+id),/<h2>/);
     assert.ok(html.includes('href="#guide-'+id+'"'));
   }
@@ -161,21 +159,23 @@ test("guide anchors and semantic reference tables support concise chapters",asyn
 });
 test("guide HP, dice and A reference values match production catalogs",()=>{
   const stats=compact(section('guide-setting'));
-  assert.ok(stats.includes(`${HP_FORMULA.base}＋${HP_FORMULA.AT}×AT＋${HP_FORMULA.DF}×DF−${-HP_FORMULA.SP}×SP`));
+  assert.match(stats, /MHPはステータスによって自動で決定/);
+  assert.match(stats, /AT\+DF\+SPは合計9pt以内/);
+  for (const label of ["AT", "DF", "SP"]) assert.ok(tableRows("guide-stats-table").some(row => row[0] === label));
   const dice=tableRows('guide-dice-table');
   for(const frame of Object.values(DICE_FRAMES)) {
     const row=dice.find(r=>r[0]===frame.label);assert.equal(row[1],String(frame.SP));
     if(!frame.editable){assert.equal(row[2],frame.dice.join('・'));assert.ok(row[3].includes(String(frame.dicePoints)));}
-    else assert.equal(row[2],`0、${frame.faces[0]}～${frame.faces.at(-1)}`);
+    else assert.equal(row[2],`0、${frame.faces[0]}~${frame.faces.at(-1)}`);
   }
   const a=createASkillCatalog(),rows=tableRows('guide-a-effects');
   for(const [id,label] of [['damage-enemy','固定ダメージ'],['heal-self','固定HP回復'],['ap-self-increase','AP操作'],['grant-crack-enemy','強化状態・状態異常の付与'],['remove-random-debuff-self','ランダム状態解除']]){
     const row=rows.find(r=>r[0]===label);for(const option of a.effects.find(e=>e.id===id).amountOptions)
-      assert.ok(row[1].includes(`${option.value}：${option.pointCost}pt`),id);
+      assert.ok(new RegExp(`${option.value}(?:ダメージ|回復|AP|スタック)?[:：]${option.pointCost}pt`).test(row[1]),id);
   }
   const trigger=tableRows('guide-a-trigger');
   for(let i=1;i<=6;i++)assert.equal(trigger[Math.ceil(i/2)-1][1],a.triggerCosts.byFrequency[i]+'pt');
-  assert.ok(stats.includes(`基本${a.basePoints}pt`));assert.ok(stats.includes(`1～${a.maxEffects}個`));
+  assert.ok(stats.includes(`基本${a.basePoints}pt`));assert.ok(stats.includes(`最大${a.maxEffects}枠まで`));
 });
 test("C tables reflect shared quantity prices, discounts, revival and minimum AP",()=>{
   const c=createCSkillCatalog(),rules=createCSkillRules(),rows=tableRows('guide-c-effects');
@@ -189,14 +189,16 @@ test("C tables reflect shared quantity prices, discounts, revival and minimum AP
   assert.deepEqual(tableRows('guide-c-revive'),c.optionSets.revivePct.map(o=>[o.value*100+'%',String(o.apDelta)]));
   assert.deepEqual(tableRows('guide-c-repeat').map(r=>r[1]),['100%',...['2','3','default'].map(k=>rules.repeatReviveChance[k]*100+'%')]);
   const text=compact(section('guide-setting'));
-  assert.ok(text.includes(`基礎${rules.baseAP}AP`));assert.ok(text.includes(`最低でも${rules.minimumAP}AP`));
-  assert.ok(text.includes(`減算は最大${rules.maxDrawbackAP}AP`));
+  assert.ok(text.includes(`基礎${rules.baseAP}AP`));assert.ok(text.includes(`最終必要APが${rules.minimumAP}APを下回ることはありません`));
+  assert.ok(text.includes(`減算はスキル全体で最大${rules.maxDrawbackAP}APまで`));
 });
 test("guide image limits and public/owner functions remain documented",()=>{
   const display=compact(section('guide-display'));
-  for(const {width,height} of Object.values(IMAGE_LIMITS))assert.ok(display.includes(`横${width}×縦${height}px以内`));
-  assert.match(display,/画像のURL/);
-  assert.match(compact(section('guide-history')),/お気に入り/);
+  for(const {width,height} of [IMAGE_LIMITS.standing, IMAGE_LIMITS.cutin])assert.ok(new RegExp(`横(?:最大)?${width}×縦(?:最大)?${height}px`).test(display));
+  assert.ok(display.includes(`アイコンのみ${IMAGE_LIMITS.icon.width}pxまでの画像が設定可能`));
+  assert.deepEqual(tableRows("guide-images").slice(1,3).map(row=>row[1]), ["横120×縦120px", "横60×縦60px"]);
+  assert.match(display,/画像URL/);
+  assert.match(compact(section('guide-profile')),/お気に入り/);
   assert.match(compact(section('guide-profile')),/本人/);
   assert.match(compact(section('guide-profile')),/サイトテーマ/);
 });

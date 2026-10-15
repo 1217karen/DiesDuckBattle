@@ -126,7 +126,7 @@ test('SDK sign-out or identity change invalidates active lease; token refresh of
 async function interrupted() {
  const f=fixture(),m=f.manager();await m.add('1','correct');
  const slot='ffffffff-ffff-4fff-8fff-ffffffffffff',other='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
- const registry=m.list();delete registry.ok;registry.pending=[{slot,eno:'2'},{slot:other,eno:'3'}];f.disk.set(SESSION_REGISTRY_KEY,JSON.stringify(registry));
+ const registry=m.list();delete registry.ok;delete registry.deletions;registry.pending=[{slot,eno:'2'},{slot:other,eno:'3'}];f.disk.set(SESSION_REGISTRY_KEY,JSON.stringify(registry));
  let candidate;
  const n=f.manager({createClient:(url,key,opts)=>candidate=f.client(opts.auth.storageKey)});
  return {f,m,n,slot,other,registry,candidate:()=>candidate};
@@ -137,7 +137,7 @@ for(const missingError of [false,true])test('absent session cleans only requeste
  assert.equal((await work).ok,true);assert.equal(s.candidate().authEvent,null);assert.equal(s.candidate().stopped,true);assert.deepEqual(s.candidate().signouts,[]);
  if(missingError){
   // Restore a second interrupted slot and emulate SDK AuthSessionMissingError on reload.
-  const r=n.list();delete r.ok;f.disk.set(SESSION_REGISTRY_KEY,JSON.stringify(r));
+  const r=n.list();delete r.ok;delete r.deletions;f.disk.set(SESSION_REGISTRY_KEY,JSON.stringify(r));
   const reload=f.manager({createClient:(url,key,opts)=>{const c=f.client(opts.auth.storageKey);c.auth.getUser=async()=>({data:{user:null},error:{name:'AuthSessionMissingError'}});return c;}});
   assert.equal((await reload.cleanupPending(other)).ok,true);
  }else assert.equal((await n.cleanupPending(other)).ok,true);

@@ -6,7 +6,7 @@ import { supabasePublicConfig } from "./supabasePublicConfig.js";
  */
 export function createAccountRuntime({ manager, events = globalThis.window, document = globalThis.document, suspendOnHidden = true }) {
   let revision = 0, selectionVersion = 0, disposed = false, busy = null, code = null, phase = "unverified";
-  let entries = [], pending = [], verified = null;
+  let entries = [], pending = [], deletions = [], verified = null;
   const listeners = new Set();
   function current() {
     if (disposed || busy || !verified?.isCurrent()) return null;
@@ -17,6 +17,7 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
     return {
       phase: phase === "ready" && !selected ? "unverified" : phase,
       busy, code, current: selected ? { ...selected.account } : null,
+      deletions: deletions.map(item => ({ ...item })),
       entries: entries.map(entry => ({ ...entry })), pending: pending.map(entry => ({ ...entry })),
     };
   }
@@ -29,6 +30,10 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
   // Manager owns SDK/storage/pageshow invalidation. Notification callbacks never call SDK APIs.
   const stopInvalidation = manager.subscribeInvalidation(reason => {
     selectionVersion++;
+    const list = manager.list();
+    entries = list.ok ? list.entries : [];
+    pending = list.ok ? list.pending : [];
+    deletions = list.ok ? list.deletions ?? [] : [];
     verified = null;
     if (reason !== "auth" || !busy) { revision++; busy = null; phase = "unverified"; code = reason; }
     queueMicrotask(emit);
@@ -74,10 +79,11 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
     if (result.ok && ["add", "select", "reauthenticate", "logout"].includes(action)) selectionVersion++;
     const list = manager.list();
     entries = result.entries?.map(entry => ({ ...entry })) ?? (list.ok ? list.entries : []);
+    deletions = list.ok ? list.deletions ?? [] : [];
     pending = result.pending?.map(entry => ({ ...entry })) ?? (list.ok ? list.pending : []);
     if (action !== "restore" || result.ok) installLease(token);
     // Do not turn a restore with an invalid selected session into a successful login.
-    code = result.deleted ? null : !result.ok ? result.code : !list.ok ? list.code
+    code = result.deleted || (completed === "cleanup-deleted" && result.ok) ? null : !result.ok ? result.code : !list.ok ? list.code
       : !current() ? selectedFailure(list, result) : null;
     if (!code && ["add", "select"].includes(action) && !current()) code = "stale-operation";
     phase = current() ? "ready" : code === "reauthentication-required" ? "reauthentication-required"

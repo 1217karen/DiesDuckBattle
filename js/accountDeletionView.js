@@ -98,9 +98,12 @@ export function createAccountDeletionView({ controller, getService, onBusy = () 
     if (!result.ok) {
       lock(false); message(result.message);
       if (result.status === "changed") { dialog?.close(); controller.endAccountDeletion?.(); return; }
-      show("ログアウト処理の確認", [result.message], { label: "ログアウトを完了", run: () => {
+      const switching = controller.snapshot?.().accountSwitching;
+      show("ログアウト処理の確認", [result.message], { label: switching ? "端末側の処理を完了する" : "ログアウトを完了", run: () => {
         if (busy) return; lock(true); void finish(ticket, expected);
       } });
+      // Recovery metadata now owns this target. Do not block healthy accounts until reload.
+      if (switching) controller.endAccountDeletion?.();
       return;
     }
     clearCache(); await controller.accountDeleted?.(); clearCache(); navigate();

@@ -48,7 +48,7 @@ test('only confirmed single ENo with a known name enables deletion',()=>{
     {accounts:[]},{accounts:[...signed.accounts,...signed.accounts]},{accounts:[{eno:'1',name:''}]},{accounts:[{eno:'uuid',name:'x'}]}])
     assert.equal(deletionAccount({...signed,...patch}),null);
 });
-function ui({failure=false,prepareFailure=false,cleanupFailure=false}={}){
+function ui({failure=false,prepareFailure=false,cleanupFailure=false,switching=false}={}){
   class Element {
     constructor(tag){this.tagName=tag;this.children=[];this.handlers={};this.attributes={};this.classList={add(){}};this.disabled=false;}
     append(...nodes){for(const node of nodes){node.parent=this;this.children.push(node);}}
@@ -63,16 +63,16 @@ function ui({failure=false,prepareFailure=false,cleanupFailure=false}={}){
   }
   const walk=n=>[n,...n.children.flatMap(walk)],body=new Element('body');
   globalThis.document={body,createElement:tag=>new Element(tag)};
-  let calls=0,cleanups=0,clears=0,navigations=0,forgotten=0,gate=null,prepareGate=null;
+  let calls=0,cleanups=0,clears=0,navigations=0,forgotten=0,ended=0,gate=null,prepareGate=null;
   const service={prepare:async()=>{if(prepareGate)await prepareGate;return prepareFailure?{ok:false,message:'拒否'}:{ok:true,target};},
     remove:async()=>{calls++;if(gate)await gate;return failure?{ok:false,message:'結果不明'}:{ok:true};},
     cleanup:async()=>{cleanups++;return cleanupFailure&&cleanups===1?{ok:false,status:'cleanup',message:'cleanup failed'}:{ok:true};}};
-  const view=createAccountDeletionView({controller:{accountDeleted(){forgotten++;}},getService:()=>service,clearCache(){clears++;},navigate(){navigations++;}});
+  const view=createAccountDeletionView({controller:{snapshot:()=>({accountSwitching:switching}),endAccountDeletion(){ended++;},accountDeleted(){forgotten++;}},getService:()=>service,clearCache(){clears++;},navigate(){navigations++;}});
   view.update(signed);body.append(view.launch);
   const dialog=()=>walk(body).find(n=>n.tagName==='dialog');
   const button=text=>walk(dialog()).find(n=>n.tagName==='button'&&n.textContent===text);
   const click=node=>node.handlers.click();
-  return {view,dialog,button,click,counts:()=>({calls,cleanups,clears,navigations,forgotten}),gate:v=>gate=v,prepareGate:v=>prepareGate=v,
+  return {view,dialog,button,click,counts:()=>({calls,cleanups,clears,navigations,forgotten,ended}),gate:v=>gate=v,prepareGate:v=>prepareGate=v,
     async open(){click(view.launch);await tick();},
     consent(){const input=walk(dialog()).find(n=>n.tagName==='input');input.checked=true;input.handlers.change();},
     async final(){await this.open();this.consent();click(button('削除する'));},
@@ -119,4 +119,10 @@ test('protected page waits for deletion cleanup then redirects with deletion not
   await auth.start();await requireLoginPage({getRuntime:async()=>auth,document:{body:{classList:{add(){},remove(){}}}},location:{replace:url=>redirects.push(url)}});
   auth.beginAccountDeletion();watch(null);await tick();assert.deepEqual(redirects,[]);
   await auth.accountDeleted();assert.deepEqual(redirects,['index.html?notice=account-deleted']);assert.equal(latest.signedIn,false);assert.deepEqual(latest.accounts,[]);
+});
+
+test('switching-mode cleanup failure releases the account-change guard and offers local recovery only',async()=>{
+ const f=ui({cleanupFailure:true,switching:true});await f.final();const endedBefore=f.counts().ended;f.click(f.button('削除を実行'));await tick();
+ assert.equal(f.counts().ended,endedBefore+1);assert.equal(f.view.busy,false);assert.equal(f.counts().calls,1);
+ f.click(f.button('端末側の処理を完了する'));await tick();assert.equal(f.counts().calls,1);assert.equal(f.counts().cleanups,2);assert.equal(f.counts().navigations,1);
 });

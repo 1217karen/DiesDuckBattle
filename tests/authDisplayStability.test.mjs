@@ -7,7 +7,8 @@ import { createAuthController } from "../js/authController.js";
 import { requireLoginPage } from "../js/authPageGuard.js";
 import { menuModel } from "../js/commonMenuModel.js";
 const source = file => readFile(new URL("../" + file, import.meta.url), "utf8");
-const bootstrap = await source("js/menuDisplayCache.js");
+const bootstrap = (await source("js/menuDisplayCache.js")).replace(/^import .*;\r?\n/, "");
+const runBootstrap = (context, enabled = false) => vm.runInNewContext(bootstrap, Object.assign(context, { ACCOUNT_SWITCHING_ENABLED: enabled }));
 import { menuCodeWithDeletion as menuCode } from './accountDeletionMenuFixture.mjs';
 const key = "diesduck-menu-display-v1";
 const signedCache = { version: 1, loggedIn: true, identity: "ENo.12｜Alice" };
@@ -45,7 +46,7 @@ function dom() {
 for (const raw of [null, "{", "null", "[]", "{}", JSON.stringify({ ...signedCache, version: 2 }), JSON.stringify({ ...signedCache, loggedIn: "true" }), JSON.stringify({ ...signedCache, identity: 12 }), JSON.stringify({ ...signedCache, access_token: "secret" })]) {
   test("cache/bootstrap ignores absent or invalid schema: " + raw, () => {
     const d = dom(), context = { document: d.document, sessionStorage: storage(raw) };
-    vm.runInNewContext(bootstrap, context);
+    runBootstrap(context);
     assert.equal(context.diesDuckMenuDisplayCache.read(), null);
     assert.equal(d.nodes.get("[data-identity]").textContent, "");
   });
@@ -53,7 +54,7 @@ for (const raw of [null, "{", "null", "[]", "{}", JSON.stringify({ ...signedCach
 test("cache bootstrap never displays an unverified identity; writes whitelist only", t => {
   const value = { ...signedCache, identity: "ENo.12｜<img src=x onerror=alert(1)>" };
   const d = dom();
-  vm.runInNewContext(bootstrap, { document: d.document, sessionStorage: storage(JSON.stringify(value)) });
+  runBootstrap({ document: d.document, sessionStorage: storage(JSON.stringify(value)) }, true);
   assert.notEqual(d.nodes.get("[data-identity]").textContent, value.identity);
   const store = useStorage(t);
   displayCache.write({ ...value, access_token: "secret", user: { id: "uuid" } });
@@ -62,14 +63,14 @@ test("cache bootstrap never displays an unverified identity; writes whitelist on
 test("blocked storage getter/read/write/delete never breaks page", () => {
   const context = { document: dom().document };
   Object.defineProperty(context, "sessionStorage", { get() { throw Error("blocked"); } });
-  vm.runInNewContext(bootstrap, context);
+  runBootstrap(context);
   assert.equal(context.diesDuckMenuDisplayCache.read(), null);
   context.diesDuckMenuDisplayCache.write(signedCache);
   context.diesDuckMenuDisplayCache.clear();
   for (const operation of ["getItem", "setItem", "removeItem"]) {
     const store = storage(); store[operation] = () => { throw Error("blocked"); };
     const ctx = { sessionStorage: store };
-    vm.runInNewContext(bootstrap, ctx);
+    runBootstrap(ctx);
     ctx.diesDuckMenuDisplayCache.read(); ctx.diesDuckMenuDisplayCache.write(signedCache); ctx.diesDuckMenuDisplayCache.clear();
   }
 });
@@ -149,7 +150,7 @@ for (const cached of [null, signedCache]) test("actual menu retains header/nav/s
   const running = vm.runInNewContext(`(async()=>{${menuCode}})()`, { document: d.document, diesDuckSiteTheme: { read:()=>"light", set:value=>value }, location: { replace() {} }, menuModel,
     displayCache: { read: () => cached }, getAuthRuntime: () => new Promise(resolve => { resolveRuntime = resolve; }) });
   assert.equal(d.nodes.get("[data-identity]").textContent, cached?.identity ?? "");
-  assert.deepEqual(d.nodes.get("nav").children[0].children.map(link => link.href), ["index.html", "storage.html", "rulebook.html", "character-list.html", "notice.html"]);
+  assert.deepEqual(d.nodes.get("nav").children[0].children.map(link => link.href), ["index.html", "storage.html", "character-list.html", "rulebook.html", "notice.html"]);
   resolveRuntime(controller); await running;
   const initial = { sessionKnown: false, ready: false, accounts: [], enos: [], signedIn: false };
   render(initial); assert.equal(d.nodes.get("[data-identity]").textContent, cached?.identity ?? "");
@@ -215,4 +216,11 @@ test("cached menu survives failed first accounts fetch but confirmed empty accou
   render(failed); assert.equal(d.nodes.get("[data-identity]").textContent, signedCache.identity);
   render({ ...failed, accountsResolved: true, sessionMessage: "アクセスできるゲームアカウントがありません。" });
   assert.match(d.nodes.get("[data-identity]").textContent, /ありません/);
+});
+
+test("flag OFF restores display-only cache before SDK; ON never paints the old ENo", () => {
+  for (const enabled of [false, true]) {
+    const d = dom(); runBootstrap({ document: d.document, sessionStorage: storage(JSON.stringify(signedCache)) }, enabled);
+    assert.equal(d.nodes.get("[data-identity]").textContent, enabled ? "" : signedCache.identity);
+  }
 });
