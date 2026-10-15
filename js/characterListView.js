@@ -14,6 +14,11 @@ export function createCharacterCard(document, character) {
   card.href = `profile.html?eno=${character.eno}`;
   card.style.borderColor = character.accent;
 
+card.style.setProperty("--card-accent", character.accent);
+
+const header = el("div", undefined, "character-card-header");
+const body = el("div", undefined, "character-card-body");
+
   // バトラーの証明写真
   const battler = el("img", undefined, "character-battler-icon");
   battler.alt = "";
@@ -76,8 +81,12 @@ export function createCharacterCard(document, character) {
     el("span", String(character.bestStreak ?? "―"), "character-streak-number")
   );
 
-  details.append(eno, name, duckRow, streak);
-  card.append(battler, details);
 
-  return card;
+header.append(eno);
+details.append(name, duckRow, streak);
+body.append(battler, details);
+card.append(header, body);
+
+return card;
+
 }
