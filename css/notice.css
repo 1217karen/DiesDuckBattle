@@ -72,13 +72,30 @@ body { margin:0; }
 .feedback-reply p { margin:10px 0; font-size:14px; }
 .feedback-reply-form { margin-top:12px; }
 .feedback-reply-form [role="status"], #feedback-form-message, #feedback-message { font-size:13px; line-height:1.7; }
+.notice-disclosure { min-width:0; }
+.notice-disclosure > summary { display:none; }
 @media(max-width:760px) {
   .notice-layout { grid-template-columns:minmax(0,1fr); gap:18px; }
   .notice-sidebar { grid-column:1; grid-row:1; position:static; }
+  .notice-disclosure > summary { display:list-item; list-style:none; cursor:pointer; padding:10px 12px; min-height:44px; box-sizing:border-box; font-size:14px; font-weight:700; border:1px solid var(--line); border-radius:6px; background:var(--ui-surface); }
+  .notice-disclosure > summary::-webkit-details-marker { display:none; }
+  .notice-disclosure > summary::after { content:" ▼"; }
+  .notice-disclosure[open] > summary::after { content:" ▲"; }
+  .notice-disclosure > summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  #notice-index-heading { display:none; }
+  .notice-report-sidebar { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; align-items:start; }
+  #feedback-new { grid-column:1; grid-row:1; z-index:1; min-width:0; min-height:44px; margin:0; font-size:14px; }
+  #notice-filter-disclosure { grid-column:1 / -1; grid-row:1; }
+  #notice-filter-disclosure > summary { margin-left:calc(50% + 4px); }
+  #feedback-auth { grid-column:1 / -1; grid-row:2; margin:0; font-size:12px; line-height:1.5; }
+  #notice-filter-disclosure > .notice-filters { margin-top:12px; }
+  #notice-filter-disclosure:not([open]) > .notice-filters { display:none; }
+  .notice-sort select, .feedback-form input, .feedback-form select, .feedback-form textarea { font-size:16px; }
   .notice-main { grid-column:1; grid-row:2; }
   .notice-filters { grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
   .notice-sort { grid-column:1 / -1; }
   .notice-tabs { gap:8px; }
   .notice-tabs button { font-size:16px; }
-  .notice-article, .report-card, .notice-sidebar { padding:16px; }
+  .notice-article, .report-card { padding:16px; }
+  .notice-sidebar { padding:10px; }
 }

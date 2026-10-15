@@ -32,7 +32,9 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
   const titleCount=countInput(get('feedback-title'),get('feedback-title-count'),FEEDBACK_TITLE_MAX);
   const bodyCount=countInput(get('feedback-body'),get('feedback-body-count'),FEEDBACK_BODY_MAX);
   function closeForm() { form.hidden=true;newButton.setAttribute('aria-expanded','false'); }
-  newButton.addEventListener('click',()=>{if(!canUserWrite()||busy)return;form.hidden=false;newButton.setAttribute('aria-expanded','true');get('feedback-category').focus();});
+  newButton.addEventListener('click',()=>{if(!canUserWrite()||busy)return;form.hidden=false;newButton.setAttribute('aria-expanded','true');const mobile = globalThis.matchMedia?.('(max-width:760px)').matches;
+    get('feedback-category').focus(mobile ? {preventScroll:true} : undefined);
+    if(mobile) form.scrollIntoView({block:'start',behavior:globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});});
   get('feedback-cancel').addEventListener('click',()=>{closeForm();newButton.focus();});
 
   async function load() {

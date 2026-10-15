@@ -87,3 +87,17 @@ test('pending board mutation emits no success after authentication changes',asyn
  await f.get('feedback-form').fire('submit');await tick();assert.equal(f.notices.length,0);
  f.view.updateAuth(guest);resolve({ok:true,data:id});await tick();assert.equal(f.notices.length,0);
 });
+
+test('new post scrolls on mobile only, respects reduced motion, and remains unavailable to guests',async()=>{
+ const original=globalThis.matchMedia;
+ try {
+  for(const [mobile,reduced] of [[true,false],[true,true],[false,false]]) {
+   globalThis.matchMedia=query=>({matches:query.includes('reduced-motion')?reduced:mobile});
+   const f=fixture(),scrolls=[];f.get('feedback-form').scrollIntoView=options=>scrolls.push(options);
+   f.view.updateAuth(guest);await tick();await f.get('feedback-new').fire('click');assert.equal(scrolls.length,0);
+   f.view.updateAuth(logged);await tick();await f.get('feedback-new').fire('click');
+   assert.equal(f.get('feedback-form').hidden,false);assert.ok(f.get('feedback-category').focused);
+   assert.deepEqual(scrolls,mobile?[{block:'start',behavior:reduced?'auto':'smooth'}]:[]);
+  }
+ } finally {if(original===undefined)delete globalThis.matchMedia;else globalThis.matchMedia=original;}
+});

@@ -11,6 +11,14 @@ function element(tag, className, text) {
 
 const articles = document.getElementById("notice-articles");
 const noticeIndex = document.getElementById("notice-index");
+const mobileSidebar = window.matchMedia("(max-width:760px)");
+const indexDisclosure = document.getElementById("notice-index-disclosure");
+const filterDisclosure = document.getElementById("notice-filter-disclosure");
+function syncSidebars() {
+  for (const disclosure of [indexDisclosure, filterDisclosure]) disclosure.open = !mobileSidebar.matches;
+}
+mobileSidebar.addEventListener("change", syncSidebars);
+syncSidebars();
 
 for (const notice of notices) {
   const article = element("article", "notice-article page-panel");
@@ -34,6 +42,15 @@ for (const notice of notices) {
   const shortDate = element("time", "", notice.date.slice(5).replace("-", "/"));
   shortDate.dateTime = notice.date;
   link.append(shortDate, element("span", "", notice.title));
+  link.addEventListener("click", event => {
+    if (!mobileSidebar.matches || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    indexDisclosure.open = false;
+    location.hash = "#" + encodeURIComponent(notice.id);
+    revealArticle();
+    article.tabIndex = -1;
+    article.focus({ preventScroll: true });
+  });
   noticeIndex.append(link);
 }
 

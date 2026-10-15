@@ -28,18 +28,23 @@
     <section id="panel-notices" role="tabpanel" aria-labelledby="tab-notices" tabindex="0">
       <div class="notice-layout">
         <aside class="notice-sidebar page-panel" aria-labelledby="notice-index-heading">
+          <details id="notice-index-disclosure" class="notice-disclosure" open>
+          <summary>お知らせ一覧</summary>
           <h2 id="notice-index-heading" class="notice-side-title">NOTICE LIST</h2>
           <p class="notice-side-help">タイトルを選ぶと記事へ移動します。</p>
           <nav id="notice-index" class="notice-index" aria-label="お知らせ一覧"></nav>
+          </details>
         </aside>
         <div id="notice-articles" class="notice-main"></div>
       </div>
     </section>
     <section id="panel-reports" role="tabpanel" aria-labelledby="tab-reports" tabindex="0" hidden>
       <div class="notice-layout">
-        <aside class="notice-sidebar page-panel" aria-label="投稿・一覧の絞り込み">
+        <aside class="notice-sidebar notice-report-sidebar page-panel" aria-label="投稿・一覧の絞り込み">
           <button id="feedback-new" class="notice-new-post" type="button" disabled aria-controls="feedback-form" aria-expanded="false">＋ 新規投稿</button>
           <p id="feedback-auth" class="notice-side-help">ログイン状態を確認中です。</p>
+          <details id="notice-filter-disclosure" class="notice-disclosure" open>
+            <summary>絞り込み</summary>
           <div class="notice-filters">
             <fieldset><legend>種別</legend>
               <label><input type="radio" name="report-type" value="all" checked>すべて</label>
@@ -56,6 +61,7 @@
             </fieldset>
             <div class="notice-sort"><label for="report-sort">並び順</label><select id="report-sort"><option value="newest">新しい順</option><option value="reactions">いいねが多い順</option></select></div>
           </div>
+          </details>
         </aside>
         <div class="notice-main">
           <form id="feedback-form" class="feedback-form page-panel" hidden>
