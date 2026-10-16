@@ -32,9 +32,12 @@ class El {constructor(tag){this.tagName=tag;this.children=[];this.style={setProp
 const doc=()=>{const nodes=new Map();return{createElement:tag=>new El(tag),getElementById:id=>{if(!nodes.has(id))nodes.set(id,new El('div'));return nodes.get(id);}};};
 test('card exact image dimensions, fallbacks, labels, profile colors and link',()=>{
  const document=doc(),v=row(),c=createCharacterCard(document,v);assert.equal(c.tagName,'a');assert.equal(c.href,'profile.html?eno=1');assert.equal(c.style.borderColor,v.accent); for(const [key,value] of Object.entries({'--card-accent':v.accent,'--card-bg':v.background,'--card-panel':v.panel,'--card-text':v.text})) assert.equal(c.style[key],value);
- const [b,info]=c.children[1].children,d=info.children[1].children[0];assert.equal(b.width,120);assert.equal(d.width,60);assert.equal(b.src,'/img/B00_icon.png');assert.equal(d.src,'/img/D00.png');
+ const [eno,streak]=c.children[0].children;
+ assert.equal(eno.textContent,'ENo.1');assert.equal(streak.textContent,'MAX STREAK0');
+ const [b,info]=c.children[1].children,d=info.children[1].children[0];assert.equal(info.children.length,2);
+ assert.equal(b.width,120);assert.equal(d.width,60);assert.equal(b.src,'/img/B00_icon.png');assert.equal(d.src,'/img/D00.png');
  assert.match(c.textContent,/アタックタイプ.*属性：炎・🔥.*MAX STREAK0/);
- v.duck=null;v.bestStreak=null;v.battlerIconUrl='broken';const empty=createCharacterCard(document,v),img=empty.children[1].children[0];img.handlers.error();assert.equal(img.src,'/img/B00_icon.png');assert.match(empty.textContent,/属性：―.*MAX STREAK―/);
+ v.duck=null;v.bestStreak=null;v.battlerIconUrl='broken';const empty=createCharacterCard(document,v),img=empty.children[1].children[0];img.handlers.error();assert.equal(img.src,'/img/B00_icon.png');assert.equal(empty.children[0].children[1].textContent,'MAX STREAK―');assert.match(empty.textContent,/MAX STREAK―.*属性：―/);
 });
 test('page fetches once, filters without another RPC, shows no-results and generic error',async()=>{
  const document=doc();let count=0,finished=0;
