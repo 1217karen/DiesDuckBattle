@@ -296,6 +296,18 @@ function eventToLines(event, context) {
       const label = { tempDfPlus: "DFがターン中", nextAttackATPlus: "次の攻撃にAT", attackTimesAdd: "攻撃回数が" }[event.key];
       if (label) return [{ kind: "soft", text: `${target}の${label} ${signed(delta)}！` }];
       if (event.key === "recoilMinus") return [{ kind: "soft", text: `${target}の反動ダメージが ${amount(delta < 0 ? "damage" : "buff", signed(-delta))}！` }];
+      if (event.key === "additionalRecoil") return [{ kind: "soft", text: delta > 0
+        ? `${target}の攻撃に反動ダメージを${delta}追加！`
+        : `${target}の攻撃の反動ダメージを${Math.abs(delta)}減少！` }];
+      const canceledDiceEffect = {
+        skipDice1: "AP増加",
+        skipDice3: "HP回復",
+        skipDice4: "反撃付与",
+        skipDice5: "AP減少",
+      }[event.key];
+      if (canceledDiceEffect) return [{ kind: "soft", text: delta > 0
+        ? `${target}はダイス効果の${canceledDiceEffect}をキャンセルした！`
+        : `${target}はダイス効果の${canceledDiceEffect}のキャンセルを解除した！` }];
       return [{ kind: "meta", text: `${target}の${escapeHTML(event.tag ?? event.key)}が${delta > 0 ? "+" : ""}${escapeHTML(delta)}変化` }];
     }
     case "statusChange": {
