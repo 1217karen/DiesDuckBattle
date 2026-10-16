@@ -4,7 +4,7 @@ export function createAccountSwitchView({ document, controller, menu, summary, d
   let dialog, latest, renderingKey = "", controls = [];
   const status = el("p"); status.setAttribute("role", "status"); status.className = "account-switch-status";
   function openLogin(eno = "") {
-    if (dialog || latest?.busy || deletion.busy) return;
+    if (!latest?.signedIn || dialog || latest?.busy || deletion.busy) return;
     const previous = document.activeElement;
     dialog = el("dialog"); dialog.className = "account-switch-dialog";
     dialog.setAttribute("aria-labelledby", "account-switch-title");
@@ -36,13 +36,14 @@ export function createAccountSwitchView({ document, controller, menu, summary, d
     dialog.append(title, form); document.body.append(dialog); dialog.showModal(); enoInput.focus();
   }
   async function select(entry) {
-    if (latest?.busy || deletion.busy) return;
+    if (!latest?.signedIn || latest?.busy || deletion.busy) return;
     const result = await controller.select(entry.eno);
     if (result?.code === "reauthentication-required") openLogin(entry.eno);
   }
   function update(state) {
     latest = state;
     const current = state.accounts?.[0];
+    if (!current) { menu.replaceChildren(); renderingKey = ""; controls = []; return; }
     const key = JSON.stringify([state.savedAccounts, state.pendingAccounts, state.deletionRecoveries, current?.eno]);
     if (key !== renderingKey) {
       renderingKey = key; controls = [];

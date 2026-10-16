@@ -1,3 +1,4 @@
+import { createAccountRecoveryView } from "./accountRecoveryView.js";
 import "./noticeIndicators.js";
 import "./siteTheme.js";
 import { displayCache } from "./authDisplayCache.js";
@@ -74,13 +75,15 @@ try {
     if (logoutButton) logoutButton.disabled = value || authBusy;
   } });
   const switching = ACCOUNT_SWITCHING_ENABLED ? createAccountSwitchView({ document, controller, menu: accountMenu, summary: accountSummary, deletion }) : null;
+  const recovery = ACCOUNT_SWITCHING_ENABLED ? createAccountRecoveryView({ document, controller }) : null;
   controller.subscribe(state => {
+    recovery?.update(state);
     authBusy = !!state.busy;
     deletion.update(state);
     if (switching) {
       const model = menuModel(state);
       label.textContent = state.ready ? model.identity : "確認中…"; label.title = label.textContent;
-      accountEnabled = state.ready || !!state.savedAccounts?.length;
+      accountEnabled = state.ready && state.signedIn;
       accountSummary.setAttribute("aria-disabled", String(!accountEnabled));
       accountSummary.setAttribute("tabindex", accountEnabled ? "0" : "-1");
       root.querySelector("[data-account-arrow]").hidden = !accountEnabled;

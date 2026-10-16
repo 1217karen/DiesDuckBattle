@@ -268,9 +268,12 @@ export function createAccountSessionManager({ createClient, config,
         if (!entry || typeof password !== "string" || !password) return fail("invalid-eno");
         requireAvailable(entry);
         const client = await clientFor(entry.slot);
-        // A healthy or temporarily unreachable session must never be overwritten.
-        try { await verify(client, eno); return fail("already-added"); }
-        catch (error) { if (error.code !== "reauthentication-required") return fail(error.code ?? "verification-unavailable"); }
+        // Guest reentry always authenticates the supplied password, even with a healthy saved session.
+        // While signed in, retain the existing expired-session recovery rules.
+        if (registry.active !== null && activeLease?.isCurrent()) {
+          try { await verify(client, eno); return fail("already-added"); }
+          catch (error) { if (error.code !== "reauthentication-required") return fail(error.code ?? "verification-unavailable"); }
+        }
         check();
         const local = await client.auth.getSession(); check();
         if (local.error || (local.data?.session?.user && local.data.session.user.email !== internalEmailForEno(eno))) return fail("verification-unavailable");
@@ -353,6 +356,7 @@ export function createAccountSessionManager({ createClient, config,
     },
     select(eno) {
       return operation(async (registry, check) => {
+        if (registry.active === null || !activeLease?.isCurrent()) return fail("login-required");
         const entry = registry.entries.find(item => item.eno === eno);
         if (!entry) return fail("not-added");
         requireAvailable(entry);
@@ -364,6 +368,11 @@ export function createAccountSessionManager({ createClient, config,
     restore() {
       return operation(async (registry, check) => {
         const entries = []; let verified;
+        // active:null is durable game logout; never probe or adopt saved sessions here.
+        if (registry.active === null) {
+          activeLease = null;
+          return { ok: true, entries: registry.entries, pending: registry.pending, active: null };
+        }
         for (const entry of registry.entries) {
           try {
             requireAvailable(entry);
@@ -379,6 +388,7 @@ export function createAccountSessionManager({ createClient, config,
     },
     adoptLegacy() {
       return operation(async (registry, check) => {
+        if (registry.active === null && read().raw !== null) return fail("login-required");
         requireAvailable({ slot: "legacy" });
         if (registry.entries.some(entry => entry.slot === "legacy")) return fail("already-added");
         const client = await clientFor("legacy"), account = await verify(client); check();
@@ -393,10 +403,24 @@ export function createAccountSessionManager({ createClient, config,
         return { ok: true, account };
       });
     },
+    logoutGame() {
+      const expected = activeLease;
+      return operation(async (registry, check) => {
+        if (registry.active === null) return fail("no-selection");
+        if (!expected?.isCurrent()) return fail("stale-operation");
+        check();
+        registry.active = null;
+        write(registry);
+        activeLease = null;
+        return { ok: true, active: null };
+      });
+    },
     logoutCurrent() {
+      const expected = activeLease;
       return operation(async (registry, check) => {
         const entry = registry.entries.find(item => item.slot === registry.active);
         if (!entry) return fail("no-selection");
+        if (!expected?.isCurrent()) return fail("stale-operation");
         requireAvailable(entry);
         const client = await clientFor(entry.slot); await verify(client, entry.eno); check();
         // Irreversible request starts only after identity and intent checks.

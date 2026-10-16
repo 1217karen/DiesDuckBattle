@@ -6,7 +6,7 @@ const input={characterName:'New',password:'valid',confirmation:'valid'};
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {resolve,promise};};
 async function setup(register=async()=>({ok:true,eno:'3'}),signedIn=true){
  const f=environment(),runtime=await f.page().get(),paths=[],notifications=[];let calls=0;
- const auth=createAccountAuthController({runtime,registrationService:{register:async value=>{calls++;return register(value);}},navigate:p=>paths.push(p),notify:m=>notifications.push(m)});
+ const auth=createAccountAuthController({runtime,chooseLogout:async()=>'game',registrationService:{register:async value=>{calls++;return register(value);}},navigate:p=>paths.push(p),notify:m=>notifications.push(m)});
  await auth.start();
  if(signedIn){await auth.login('1','valid');await auth.login('2','valid');await auth.select('1');}
  paths.length=0;notifications.length=0;
@@ -37,10 +37,10 @@ test('ordinary guest registration uses the issued ENo and signs in successfully'
 });
 test('unselected registration keeps other saved ENo without logging it out',async()=>{
  const s=await setup();await s.auth.logout();const before=new Map(s.f.sessions);s.paths.length=0;
- assert.equal(s.auth.snapshot().signedIn,false);assert.deepEqual(s.auth.snapshot().savedAccounts.map(e=>e.eno),['2']);
+ assert.equal(s.auth.snapshot().signedIn,false);assert.deepEqual(s.auth.snapshot().savedAccounts,[]);assert.deepEqual(s.runtime.snapshot().entries.map(e=>e.eno),['1','2']);
  assert.equal((await s.auth.register(input)).signedIn,true);assert.equal(s.auth.snapshot().enos[0],'3');
  for(const [key,user] of before)assert.deepEqual(s.f.sessions.get(key),user);
- assert.deepEqual(s.auth.snapshot().savedAccounts.map(e=>e.eno),['2','3']);
+ assert.deepEqual(s.auth.snapshot().savedAccounts.map(e=>e.eno),['1','2','3']);
  assert.equal((await s.auth.select('2')).ok,true);
 });
 test('guest duplicate submit during pending registration is rejected without retry',async()=>{
@@ -53,7 +53,7 @@ test('successful registration with failed login retains issued ENo and previousl
  assert.deepEqual(await s.auth.register({...input,password:'bad'}),{ok:true,signedIn:false,eno:'3'});
  assert.equal(s.auth.snapshot().registeredEno,'3');assert.match(s.auth.snapshot().message,/登録は完了.*ENo.3/);
  assert.equal(s.auth.snapshot().signedIn,false);assert.deepEqual(s.f.sessions,before);assert.deepEqual(s.paths,[]);assert.deepEqual(s.notifications,[]);assert.equal(s.calls(),1);
- assert.equal((await s.auth.login('3','valid')).ok,true);assert.equal(s.f.sessions.size,2);
+ assert.equal((await s.auth.login('3','valid')).ok,true);assert.equal(s.f.sessions.size,3);
 });
 for(const kind of ['failed','unknown','throw'])test('unselected registration '+kind+' preserves saved B without auto-retry',async()=>{
  const s=await setup(async()=>{if(kind==='throw')throw Error();return {ok:false,message:kind==='unknown'?'結果不明。自動再送しません':'登録できません'};});

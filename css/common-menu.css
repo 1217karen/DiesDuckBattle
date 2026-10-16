@@ -98,3 +98,6 @@ a[data-notice-unread="true"]::after {
 .account-switch-choice[data-current="true"]::before { content:"✓"; margin-right:8px; color:#9ed1f3; }
 .common-menu [data-account-menu] .account-switch-add { margin-top:0; min-height:44px; background:#1d3143; color:#b9ddfa; border-color:#426987; }
 .common-menu [data-account-menu] .account-switch-logout { margin-top:0; min-height:44px; background:#292d33; color:#cbd0d8; border-color:#454b55; }
+.account-logout-dialog > button { box-sizing: border-box; width: 100%; min-height: 44px; padding: 10px; white-space: normal; font: inherit; color: inherit; background: var(--ui-surface, #edf1f3); border: 1px solid var(--muted, #68777e); border-radius: 8px; }
+.account-logout-dialog > p { font-size: 14px; line-height: 1.6; margin: 8px 0 20px; overflow-wrap: anywhere; }
+.account-recovery { max-width: 640px; margin: 16px auto; padding: 12px; color: var(--text, #20282c); background: var(--panel, #fff); border: 1px solid var(--muted, #68777e); border-radius: 8px; }

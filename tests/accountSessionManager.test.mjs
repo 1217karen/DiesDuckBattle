@@ -28,7 +28,7 @@ test('A survives addition of B; unique SDK keys; metadata has no credentials; B 
  assert.equal(f.sessions.size,2);assert.equal(m.getActiveLease().account.eno,'2');
  const registry=JSON.parse(f.disk.get(SESSION_REGISTRY_KEY));assert.deepEqual(Object.keys(registry.entries[0]).sort(),['eno','name','slot']);assert.doesNotMatch(JSON.stringify(registry),/correct|token|user-1/);
  assert.equal((await m.logoutCurrent()).ok,true);assert.ok(f.sessions.has(a.key));assert.ok(!f.sessions.has(b.key));assert.deepEqual(b.signouts,[{scope:'local'}]);assert.equal(m.list().active,null);assert.equal(m.getActiveLease(),null);
- assert.equal((await m.select('1')).ok,true);assert.equal(a.loginCount,1);
+ assert.equal((await m.select('1')).code,'login-required');assert.equal((await m.reauthenticate('1','correct')).ok,true);assert.equal(a.loginCount,2);
 });
 test('failed B login does not alter active A or SDK session; duplicate is rejected before sign-in',async()=>{
  const f=fixture(),m=f.manager();await m.add('1','correct');const lease=m.getActiveLease(),raw=f.disk.get(SESSION_REGISTRY_KEY);
@@ -61,7 +61,7 @@ test('add verifies requested ENo after sign-in and cleans only rejected candidat
 test('legacy adoption uses supplied existing client without copying tokens or signing it in/out',async()=>{
  const f=fixture(),old=f.client(LEGACY_SESSION_KEY);f.sessions.set(LEGACY_SESSION_KEY,{id:'user-7',email:internalEmailForEno('7')});
  const m=f.manager({getLegacyClient:()=>old});assert.equal((await m.adoptLegacy()).ok,true);assert.equal(m.getActiveLease().client,old);assert.equal(old.loginCount,0);assert.deepEqual(old.signouts,[]);
- await m.add('2','correct');await m.logoutCurrent();assert.ok(f.sessions.has(LEGACY_SESSION_KEY));assert.equal((await m.select('7')).ok,true);
+ await m.add('2','correct');await m.logoutCurrent();assert.ok(f.sessions.has(LEGACY_SESSION_KEY));assert.equal((await m.select('7')).code,'login-required');assert.equal((await m.reauthenticate('7','correct')).ok,true);
  m.dispose();assert.equal(old.stopped,undefined);
 });
 test('legacy is opt-in and ambiguous legacy access is never inferred',async()=>{
@@ -78,7 +78,7 @@ test('invalid/unavailable registry or absent cross-tab lock fails closed before 
 test('new selection intent invalidates slow add, and failed cleanup is never success',async()=>{
  const f=fixture(),m=f.manager();await m.add('1','correct');const gate=defer();
  const n=f.manager({createClient:(url,key,opts)=>{const c=f.client(opts.auth.storageKey);c.loginWait=gate.promise;return c;}});
- const adding=n.add('2','correct');await tick();const selecting=n.select('1');gate.resolve();assert.equal((await adding).code,'stale-operation');assert.equal((await selecting).ok,true);assert.equal(n.getActiveLease().account.eno,'1');assert.equal(f.sessions.size,1);
+ const adding=n.add('2','correct');await tick();const selecting=n.select('1');gate.resolve();assert.equal((await adding).code,'stale-operation');assert.equal((await selecting).code,'login-required');assert.equal((await n.reauthenticate('1','correct')).ok,true);assert.equal(n.getActiveLease().account.eno,'1');assert.equal(f.sessions.size,1);
  const bad=f.manager({createClient:(url,key,opts)=>{const c=f.client(opts.auth.storageKey);c.logoutError=true;return c;}});assert.equal((await bad.add('3','bad')).code,'cleanup-required');
 });
 test('cross-tab lock prevents duplicate additions and storage/pageshow invalidate leases',async()=>{

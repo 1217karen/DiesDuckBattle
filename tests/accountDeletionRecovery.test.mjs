@@ -14,12 +14,12 @@ test('durable confirmed survives reload: clear only B, no delete RPC resend and 
  assert.equal(record.state,'deletion-confirmed');assert.deepEqual(Object.keys(record).sort(),['authUserId','eno','gameAccountId','slot','state']);
  assert.doesNotMatch(a.f.disk.get(KEY),/password|access_token|refresh_token|"valid"/);a.auth.stop();
  const b=await page(a.f);assert.equal(b.auth.getClient(),null);assert.equal(b.auth.snapshot().deletionRecoveries[0].state,'deletion-confirmed');
- assert.equal((await b.auth.cleanupDeleted(record)).ok,true);assert.deepEqual(b.auth.snapshot().savedAccounts.map(e=>e.eno),['1']);assert.equal(b.auth.getClient(),null);
+ assert.equal((await b.auth.cleanupDeleted(record)).ok,true);assert.deepEqual(b.runtime.snapshot().entries.map(e=>e.eno),['1']);assert.equal(b.auth.getClient(),null);
  assert.equal(a.f.sessions.size,1);assert.equal(a.calls(),1);assert.deepEqual(journal(a.f),[]);
  assert.equal((await b.auth.cleanupDeleted(record)).ok,false);assert.equal(a.f.sessions.size,1);assert.equal(a.calls(),1);
 });
 test('cleanup preserves a different active account and its refresh; releases cleaned slot subscriptions',async()=>{
- const a=await setup();await a.runtime.deleteCurrent(a.target);await a.auth.select('1');const active=a.runtime.getCurrent().client;
+ const a=await setup();await a.runtime.deleteCurrent(a.target);await a.auth.login('1','valid');const active=a.runtime.getCurrent().client;
  assert.equal((await a.auth.cleanupDeleted(journal(a.f)[0])).ok,true);assert.equal(a.auth.snapshot().enos[0],'1');assert.equal(active.stopped,undefined);assert.equal(active.signouts.length,0);assert.equal(a.raw.stopped,true);assert.equal(a.calls(),1);
 });
 for(const phase of ['before-request','confirm','registry','journal-removal'])test('storage failure remains recoverable without second RPC: '+phase,async()=>{
@@ -36,7 +36,7 @@ for(const result of ['throw','error','mismatch','missing'])test('unknown deletio
  const a=await setup();let calls=0;a.raw.rpc=async()=>{calls++;a.f.sessions.delete(a.raw.key);if(result==='throw')throw Error('offline');return result==='error'?{error:{}}:result==='mismatch'?{data:{deleted:true,...a.target,eno:'9'}}:{};};
  assert.equal((await a.runtime.deleteCurrent(a.target)).ok,false);assert.equal(journal(a.f)[0].state,'deletion-pending');a.auth.stop();const b=await page(a.f);
  for(const work of [()=>b.auth.select('2'),()=>b.auth.login('2','valid'),()=>b.runtime.deleteCurrent(a.target),()=>b.auth.cleanupDeleted(journal(a.f)[0]),()=>b.auth.logout()])assert.equal((await work()).ok,false);
- assert.equal(b.auth.getClient(),null);assert.equal((await b.auth.select('1')).ok,true);assert.equal(calls,1);assert.equal(journal(a.f)[0].state,'deletion-pending');
+ assert.equal(b.auth.getClient(),null);assert.equal((await b.auth.login('1','valid')).ok,true);assert.equal(calls,1);assert.equal(journal(a.f)[0].state,'deletion-pending');
 });
 test('journal immediately invalidates pre-existing scoped client, even without storage event delivery',async()=>{
  const a=await setup(),scope=a.auth.getClient();await a.runtime.deleteCurrent(a.target);
@@ -72,7 +72,7 @@ test('registry or journal mutation during SDK await cannot sign out any slot',as
  }
 });
 test('recovery uses coordinator and refuses while A is writing or has unsaved changes',async()=>{
- const a=await setup();await a.runtime.deleteCurrent(a.target);await a.auth.select('1');const record=journal(a.f)[0];let resume;const pending=a.auth.coordinator.write(()=>new Promise(r=>resume=r));
+ const a=await setup();await a.runtime.deleteCurrent(a.target);await a.auth.login('1','valid');const record=journal(a.f)[0];let resume;const pending=a.auth.coordinator.write(()=>new Promise(r=>resume=r));
  assert.equal((await a.auth.cleanupDeleted(record)).code,'operation-in-progress');resume(true);await pending;const stop=a.auth.beforeLogout(()=>false);
  assert.equal((await a.auth.cleanupDeleted(record)).code,'cancelled');stop();assert.equal((await a.auth.cleanupDeleted(record)).ok,true);
 });
@@ -87,10 +87,10 @@ test('legacy recovery reuses the shared client and never stops its auto refresh'
 test('one recovery never removes another journal record; storage events invalidate stale leases',async()=>{
  const a=await setup(),b=await page(a.f),stale=b.auth.getClient();await a.runtime.deleteCurrent(a.target);
  b.p.events.fire('storage',{key:KEY});assert.equal(b.auth.getClient(),null);assert.equal(stale.accountContext.isCurrent(),false);assert.equal(b.auth.snapshot().deletionRecoveries[0].state,'deletion-confirmed');
- await a.auth.select('1');const first=a.runtime.getCurrent().account;a.runtime.getCurrent().client.rpc=async()=>({data:{deleted:true,...first}});
+ await a.auth.login('1','valid');const first=a.runtime.getCurrent().account;a.runtime.getCurrent().client.rpc=async()=>({data:{deleted:true,...first}});
  await a.runtime.deleteCurrent(first);const other=journal(a.f).find(e=>e.eno==='1');assert.equal(journal(a.f).length,2);
  assert.equal((await a.runtime.cleanupDeleted(a.target)).ok,true); // B cleanup succeeds even while A still awaits recovery.
- assert.deepEqual(journal(a.f),[other]);assert.deepEqual(a.auth.snapshot().savedAccounts.map(e=>e.eno),['1']);
+ assert.deepEqual(journal(a.f),[other]);assert.deepEqual(a.runtime.snapshot().entries.map(e=>e.eno),['1']);
  assert.equal((await a.runtime.cleanupDeleted(other)).ok,true);assert.deepEqual(journal(a.f),[]);assert.equal(a.calls(),1);
 });
 test('concurrent tabs cannot resend deletion once its durable intent exists',async()=>{

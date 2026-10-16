@@ -38,11 +38,11 @@ test('browser: account menu/add/select/logout/deletion, keyboard and responsive 
  {skip:!chromium&&'Set PLAYWRIGHT_MODULE and BROWSER_EXECUTABLE'},async()=>{
  const setting=await readFile(new URL('setting.html',root),'utf8');
  const header=setting.match(/<header id="common-menu"[\s\S]*?<\/header>/)[0];
- const html=`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/css/common-menu.css"><body>${header}<main id="home">模擬ホーム</main><script type="module" src="/fixture.js"></script></body></html>`;
+ const html=`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/css/common-theme.css"><link rel="stylesheet" href="/css/common-menu.css"><body style="padding-top:60px">${header}<main id="home">模擬ホーム</main><form id="login"><label>通常ログインENo<input name="eno"></label><label>通常ログインパスワード<input name="password" type="password"></label><button>通常ログイン</button></form><button id="home-logout">ホームからログアウト</button><script type="module" src="/fixture.js"></script></body></html>`;
  const server=createServer(async(req,res)=>{try{
   const pathname=new URL(req.url,'http://localhost').pathname;let body,type='text/javascript';
   if(['/index.html','/fixture.html'].includes(pathname)){body=html;type='text/html';}
-  else if(pathname==='/fixture.js')body=`import '/js/commonMenu.js';import {getAuthRuntime} from '/js/authRuntime.js';const auth=await getAuthRuntime();auth.subscribe(s=>document.getElementById('home').textContent=s.enos[0]?'ホーム ENo.'+s.enos[0]:'未選択');window.ready=true;`;
+  else if(pathname==='/fixture.js')body=`import '/js/commonMenu.js';import {getAuthRuntime} from '/js/authRuntime.js';const auth=await getAuthRuntime();auth.subscribe(s=>document.getElementById('home').textContent=s.enos[0]?'ホーム ENo.'+s.enos[0]:'未選択');document.getElementById('login').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;await auth.login(form.eno.value,form.password.value);};document.getElementById('home-logout').onclick=()=>auth.logout();window.ready=true;`;
   else if(pathname==='/js/authRuntime.js')body=runtimeSource;
   else if(pathname==='/js/accountSwitchingConfig.js')body='export const ACCOUNT_SWITCHING_ENABLED=true;';
   else if(/^\/(js|css|supabase\/functions\/_shared)\/[\w./-]+$/.test(pathname)&&!pathname.includes('..')){body=await readFile(new URL(pathname.slice(1),root));if(pathname.endsWith('.css'))type='text/css';}
@@ -56,9 +56,12 @@ test('browser: account menu/add/select/logout/deletion, keyboard and responsive 
    const context=await browser.newContext({viewport:{width,height:900}});await context.route('**/*',r=>r.request().url().startsWith(origin+'/')?r.continue():r.abort());
    const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
    await page.goto(origin+'/fixture.html');await page.waitForFunction(()=>window.ready);
-   const navigateAction=async action=>{await Promise.all([page.waitForEvent('framenavigated'),action()]);await page.waitForFunction(()=>window.ready);};
+   const navigateAction=async action=>{try{await Promise.all([page.waitForEvent('framenavigated'),action()]);await page.waitForFunction(()=>window.ready);}catch(error){error.message+=' width='+width+' errors='+JSON.stringify(errors)+' state='+JSON.stringify(await page.evaluate(()=>window.auth?.snapshot()));throw error;}};
    const menu=async()=>{if(!await page.locator('.common-menu__account').evaluate(n=>n.open))await page.locator('.common-menu__account > summary').click();};
    const add=async(eno,password)=>{await menu();await page.getByRole('button',{name:'＋ 別のアカウントを追加',exact:true}).click();await page.getByLabel('ENo',{exact:true}).fill(eno);await page.getByLabel('パスワード',{exact:true}).fill(password);if(password==='valid'){await Promise.all([page.waitForEvent('framenavigated'),page.getByRole('button',{name:'ログインする',exact:true}).click()]);await page.waitForFunction(()=>window.ready);}else await page.getByRole('button',{name:'ログインする',exact:true}).click();};
+   const login=async eno=>{await page.getByLabel('通常ログインENo',{exact:true}).fill(eno);await page.getByLabel('通常ログインパスワード',{exact:true}).fill('valid');await navigateAction(()=>page.getByRole('button',{name:'通常ログイン',exact:true}).click());};
+   assert.equal(await page.locator('.common-menu__account > summary').getAttribute('aria-disabled'),'true');assert.equal(await page.locator('.account-switch-choice').count(),0);
+   await login('1');
    await menu();await page.getByRole('button',{name:'＋ 別のアカウントを追加',exact:true}).click();
    for(const theme of ['light','dark']){
     await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
@@ -66,7 +69,7 @@ test('browser: account menu/add/select/logout/deletion, keyboard and responsive 
    }
    await page.getByLabel('パスワード',{exact:true}).fill('secret');await page.keyboard.press('Escape');await page.locator('dialog').waitFor({state:'detached'});assert.equal(await page.locator('dialog').count(),0);
    assert.match(await page.evaluate(()=>document.activeElement.textContent),/別のアカウント/);
-   await add('1','valid');await page.waitForFunction(()=>document.getElementById('home')?.textContent==='ホーム ENo.1');
+   await page.waitForFunction(()=>document.getElementById('home')?.textContent==='ホーム ENo.1');
    await add('2','bad');await page.getByText('ENoまたはパスワードを確認してください。',{exact:true}).last().waitFor();assert.equal(await page.getByLabel('パスワード',{exact:true}).inputValue(),'');
    await page.getByRole('button',{name:'キャンセル',exact:true}).click();assert.equal(await page.locator('#home').textContent(),'ホーム ENo.1');
    await add('2','valid');await page.waitForFunction(()=>document.getElementById('home')?.textContent==='ホーム ENo.2');
@@ -87,28 +90,46 @@ test('browser: account menu/add/select/logout/deletion, keyboard and responsive 
    assert.equal(await page.locator('#home').textContent(),'ホーム ENo.1');
    await menu();assert.equal(await page.locator('.account-switch-choice[data-current="true"]').textContent(),'ENo.1｜バトラー1（現在使用中）');assert.equal(await page.getByRole('button',{name:'ENo.2｜バトラー2',exact:true}).count(),1);
    await menu();await navigateAction(()=>page.getByRole('button',{name:'ENo.2｜バトラー2',exact:true}).click());await page.waitForFunction(()=>document.getElementById('home')?.textContent==='ホーム ENo.2');
-   await menu();await navigateAction(()=>page.getByRole('button',{name:'ログアウト',exact:true}).click());await page.waitForFunction(()=>document.getElementById('home')?.textContent==='未選択');
-   await menu();await navigateAction(()=>page.getByRole('button',{name:'ENo.1｜バトラー1',exact:true}).click());await page.waitForFunction(()=>document.getElementById('home')?.textContent==='ホーム ENo.1');
+   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('diesduck-account-sessions-v1')).entries);
+   for(const theme of ['light','dark']){
+    await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
+    await menu();await page.getByRole('button',{name:'ログアウト',exact:true}).click();
+    assert.equal(await page.getByRole('heading',{name:'ログアウト方法を選択'}).count(),1);
+    const rect=await page.locator('dialog').boundingBox();assert.ok(rect.x>=0&&rect.x+rect.width<=width+1);
+    if(process.env.ACCOUNT_SWITCH_ARTIFACT_DIR)await page.screenshot({path:process.env.ACCOUNT_SWITCH_ARTIFACT_DIR+'/logout-'+width+'-'+theme+'.png'});
+    await page.keyboard.press('Escape');await page.locator('dialog').waitFor({state:'detached'});assert.equal(await page.locator('#home').textContent(),'ホーム ENo.2');
+   }
+   await page.keyboard.press('Escape');
+   await page.getByRole('button',{name:'ホームからログアウト',exact:true}).click();await page.getByRole('button',{name:'キャンセル',exact:true}).click();await page.locator('dialog').waitFor({state:'detached'});
+   const other=await context.newPage();await other.goto(origin+'/fixture.html');await other.waitForFunction(()=>window.ready);await page.bringToFront();
+   await page.getByRole('button',{name:'ホームからログアウト',exact:true}).click();await navigateAction(()=>page.getByRole('button',{name:'ゲームからログアウトする',exact:true}).click());
+   await other.waitForFunction(()=>auth.snapshot().signedIn===false);assert.equal(await other.locator('.account-switch-choice').count(),0);await other.close();
+   assert.equal(await page.locator('.account-switch-choice').count(),0);assert.equal(await page.evaluate(async()=> (await auth.select('1')).code),'login-required');
+   assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('diesduck-account-sessions-v1')).entries),saved);
+   await page.reload();await page.waitForFunction(()=>window.ready);assert.equal(await page.locator('#home').textContent(),'未選択');
+   await page.getByLabel('通常ログインENo',{exact:true}).fill('1');await page.getByLabel('通常ログインパスワード',{exact:true}).fill('wrong');await page.getByRole('button',{name:'通常ログイン',exact:true}).click();await page.waitForFunction(()=>auth.snapshot().message.includes('パスワードを確認'));assert.equal(await page.locator('#home').textContent(),'未選択');
+   await login('2');await menu();await page.getByRole('button',{name:'ログアウト',exact:true}).click();await navigateAction(()=>page.getByRole('button',{name:'現在使用中のアカウントの連携を解除する',exact:true}).click());
+   assert.equal(await page.locator('.account-switch-choice').count(),0);await login('1');
    await add('2','valid');await page.waitForFunction(()=>document.getElementById('home')?.textContent==='ホーム ENo.2');
    await menu();await page.getByRole('button',{name:'アカウントを削除',exact:true}).click();await page.locator('dialog').waitFor({state:'visible'});
    assert.equal(await page.getByRole('button',{name:'削除する',exact:true}).isEnabled(),false);
    await page.getByRole('checkbox').check();await page.getByRole('button',{name:'削除する',exact:true}).click();
    assert.equal(await page.evaluate(()=>rpcCalls.filter(c=>c.name==='delete_own_account').length),0);
    await navigateAction(()=>page.getByRole('button',{name:'削除を実行',exact:true}).click());await page.waitForFunction(()=>document.getElementById('home')?.textContent==='未選択');
-   await menu();assert.equal(await page.getByRole('button',{name:'ENo.1｜バトラー1',exact:true}).count(),1);
+   assert.equal(await page.getByRole('button',{name:'ENo.1｜バトラー1',exact:true}).count(),0);
    assert.equal(await page.getByRole('button',{name:/ENo.2｜/}).count(),0);assert.deepEqual(errors,[]);
    // An acknowledged RPC followed by reload must expose local recovery, with no new delete.
-   await add('2','valid');await page.waitForFunction(()=>document.getElementById('home')?.textContent==='ホーム ENo.2');
+   await login('2');await page.waitForFunction(()=>document.getElementById('home')?.textContent==='ホーム ENo.2');
    assert.equal(await page.evaluate(async()=>{const target=auth.runtime.getCurrent().account;return (await auth.runtime.deleteCurrent(target)).ok;}),true);
    const deleteCount=await page.evaluate(()=>localStorage.getItem('mock-delete-count'));
-   await page.reload();await page.waitForFunction(()=>window.ready);await menu();
+   await page.reload();await page.waitForFunction(()=>window.ready);
    await page.getByRole('button',{name:'端末側の処理を完了する',exact:true}).click();
    await page.waitForFunction(()=>auth.snapshot().deletionRecoveries.length===0);
    assert.equal(await page.evaluate(()=>localStorage.getItem('mock-delete-count')),deleteCount);
-   assert.equal(await page.getByRole('button',{name:'ENo.1｜バトラー1',exact:true}).count(),1);
+   assert.equal(await page.getByRole('button',{name:'ENo.1｜バトラー1',exact:true}).count(),0);
    assert.equal(await page.locator('#home').textContent(),'未選択');
    if(width===1280){
-    await add('2','valid');await page.waitForFunction(()=>document.getElementById('home')?.textContent==='ホーム ENo.2');
+    await login('2');await page.waitForFunction(()=>document.getElementById('home')?.textContent==='ホーム ENo.2');
     // Fail only the confirmed journal write, after the mock server has deleted B.
     assert.equal(await page.evaluate(async()=>{
       const original=Storage.prototype.setItem;
@@ -116,12 +137,12 @@ test('browser: account menu/add/select/logout/deletion, keyboard and responsive 
       try{return (await auth.runtime.deleteCurrent(auth.runtime.getCurrent().account)).ok;}finally{Storage.prototype.setItem=original;}
     }),false);
     const count=await page.evaluate(()=>localStorage.getItem('mock-delete-count'));
-    await page.reload();await page.waitForFunction(()=>window.ready);await menu();
+    await page.reload();await page.waitForFunction(()=>window.ready);
     await page.getByText('ENo.2の削除結果は不明です。削除要求は再送しません。通信状況とサーバー側の状態の確認が必要です。',{exact:true}).waitFor();
     assert.equal(await page.getByRole('button',{name:'端末側の処理を完了する',exact:true}).count(),0);
     assert.equal(await page.evaluate(async()=>{const record=auth.snapshot().deletionRecoveries[0];return (await auth.runtime.deleteCurrent(record)).ok;}),false);
     assert.equal(await page.evaluate(()=>localStorage.getItem('mock-delete-count')),count);
-    await menu();await navigateAction(()=>page.getByRole('button',{name:'ENo.1｜バトラー1',exact:true}).click());
+    await login('1');
     await page.waitForFunction(()=>document.getElementById('home')?.textContent==='ホーム ENo.1');
    }
    assert.deepEqual(errors,[]);await context.close();

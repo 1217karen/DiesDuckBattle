@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createAccountSwitchView} from '../js/accountSwitchView.js';
 const tick=()=>new Promise(r=>setImmediate(r));
 function fixture(){
- let view,state={ready:true,busy:'',accounts:[],savedAccounts:[{eno:'1',name:'一郎'}],pendingAccounts:[]},answer={ok:false},gate;
+ let view,state={ready:true,signedIn:true,busy:'',accounts:[{eno:'9',name:'九郎'}],savedAccounts:[{eno:'1',name:'一郎'}],pendingAccounts:[]},answer={ok:false},gate;
  const calls=[];
  const document={activeElement:null,createElement:tag=>new Node(tag)};
  class Node{
@@ -23,9 +23,10 @@ function fixture(){
  const walk=n=>[n,...n.children.flatMap(walk)],all=()=>walk(document.body),button=label=>all().find(n=>n.tagName==='button'&&n.textContent===label);
  return {view,document,menu,summary,calls,all,button,set(next){state={...state,...next};view.update(state);},answer(result){answer=result;},wait(p){gate=p;},open(){button('＋ 別のアカウントを追加').focus();button('＋ 別のアカウントを追加').handlers.click();},dialog:()=>all().find(n=>n.tagName==='dialog')};
 }
-test('unselected user can open saved account choices; selected account is disabled and identified',async()=>{
+test('signed-in user can switch; guest cannot see choices or open add dialog',async()=>{
  const f=fixture();assert.ok(f.button('ENo.1｜一郎'));await f.button('ENo.1｜一郎').handlers.click();await tick();assert.deepEqual(f.calls,[['select','1']]);
  f.set({accounts:[{eno:'1',name:'一郎'}]});assert.equal(f.button('ENo.1｜一郎（現在使用中）').disabled,true);assert.equal(f.button('ENo.1｜一郎（現在使用中）').attributes['aria-current'],'true');
+ f.set({signedIn:false,accounts:[]});assert.deepEqual(f.menu.children,[]);f.view.openLogin();assert.equal(f.dialog(),undefined);
 });
 test('cancel and Escape erase password and restore focus without signing in',()=>{
  for(const escape of [false,true]){const f=fixture();f.open();const password=f.all().find(n=>n.type==='password');password.value='secret';
@@ -47,7 +48,7 @@ test('expired selection opens login prefilled with the exact ENo; successful sub
 });
 test('busy state disables account actions and cleanup explicitly names its pending slot',()=>{
  const f=fixture();f.set({pendingAccounts:[{eno:'2',slot:'slot-2'}]});f.button('ENo.2の未完了ログインを清掃').handlers.click();assert.deepEqual(f.calls,[['cleanup','slot-2']]);
- f.set({busy:'select'});assert.ok(f.all().filter(n=>n.tagName==='button').every(n=>n.disabled));f.open();assert.equal(f.dialog(),undefined);
+ f.set({busy:'select'});assert.ok(f.all().filter(n=>n.tagName==='button'&&n.textContent).every(n=>n.disabled));f.open();assert.equal(f.dialog(),undefined);
 });
 
 test('confirmed recovery is separate from deletion and targets only its recorded slot',()=>{
@@ -71,7 +72,7 @@ test('profile precedes switch section and management actions have distinct class
  const headings=f.menu.children.filter(n=>n.tagName==='h3');assert.deepEqual(headings.map(n=>n.textContent),['アカウント切り替え','アカウント管理']);
  assert.equal(f.button('ENo.1｜一郎（現在使用中）').className,'account-switch-choice');
  assert.equal(f.button('＋ 別のアカウントを追加').className,'account-switch-add');assert.equal(f.button('ログアウト').className,'account-switch-logout');
- f.set({accounts:[]});assert.ok(!f.menu.children.some(n=>n.textContent==='自分のプロフィールを確認する'));assert.ok(f.button('ENo.1｜一郎'));
+ f.set({accounts:[]});assert.ok(!f.menu.children.some(n=>n.textContent==='自分のプロフィールを確認する'));assert.equal(f.button('ENo.1｜一郎'),undefined);
 });
 test('add popup only offers existing-account login and no registration link',()=>{
  const f=fixture();f.open();

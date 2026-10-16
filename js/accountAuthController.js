@@ -1,9 +1,11 @@
+import { chooseLogoutMethod } from "./accountLogoutView.js";
 import { createAccountOperationCoordinator } from "./accountOperationCoordinator.js";
 import { createAccountScopedClient } from "./accountScopedClient.js";
 import { createAccountDeletionService, deletionMessages } from "./accountDeletionService.js";
 import { canonicalEno } from "../supabase/functions/_shared/internal-email.mjs";
 
 const messages = {
+  "login-required": "ENoとパスワードでログインしてください。",
   "already-added": "追加済みのENoです。一覧から選択してください。",
   "reauthentication-required": "セッションの期限が切れています。このENoで再ログインしてください。",
   "operation-in-progress": "保存などの処理中です。完了してから操作してください。",
@@ -13,7 +15,7 @@ const messages = {
   "cancelled": "操作をキャンセルしました。",
 };
 export function createAccountAuthController({ runtime, registrationService, notify = () => {},
-  navigate = () => {}, clearCache = () => {} }) {
+  navigate = () => {}, clearCache = () => {}, chooseLogout = chooseLogoutMethod }) {
   const coordinator = createAccountOperationCoordinator(runtime);
   const listeners = new Set();
   let ready = false, busy = "", message = "", source = "", registeredEno = "";
@@ -25,7 +27,7 @@ export function createAccountAuthController({ runtime, registrationService, noti
     const state = runtime.snapshot();
     return { ready: ready && (!state.busy || accountDeletionPending), sessionKnown: ready && (!state.busy || accountDeletionPending), busy: busy || (accountDeletionPending ? "" : state.busy) || "",
       signedIn: !!selected, accountsResolved: !!selected, accounts: selected ? [{ ...selected }] : [],
-      enos: selected ? [selected.eno] : [], savedAccounts: state.entries, pendingAccounts: state.pending, deletionRecoveries: state.deletions,
+      enos: selected ? [selected.eno] : [], savedAccounts: selected ? state.entries : [], pendingAccounts: state.pending, deletionRecoveries: state.deletions,
       sessionMessage: selected ? "ログイン中" : "ログインしていません。", message, messageSource: source,
       registeredEno, logoutSucceeded, accountDeletionPending, accountDeletionSucceeded,
       accountSwitching: true };
@@ -67,7 +69,16 @@ export function createAccountAuthController({ runtime, registrationService, noti
     beforeLogout: guard => coordinator.beforeAccountChange(guard),
     login, add: login,
     select: eno => action("select", () => coordinator.select(eno)),
-    logout: () => action("logout", () => coordinator.logoutCurrent()),
+    logout: () => action("logout", async () => {
+      const context = runtime.getCurrent();
+      if (!context) return { ok: false, code: "login-required" };
+      const choice = await chooseLogout();
+      if (!choice) return { ok: false, code: "cancelled" };
+      // A modal opened for A must never log out a subsequently selected B.
+      if (!context.isCurrent()) return { ok: false, code: "stale-operation" };
+      return choice === "game" ? coordinator.logoutGame()
+        : choice === "unlink" ? coordinator.logoutCurrent() : { ok: false, code: "cancelled" };
+    }),
     cleanupDeleted: target => action("cleanup-deleted", () => coordinator.cleanupDeleted(target), false),
     cleanupPending: slot => action("cleanup", () => coordinator.cleanupPending(slot), false),
     register: (input, { notify: shouldNotify = true } = {}) => action("register", async () => {

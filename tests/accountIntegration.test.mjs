@@ -10,14 +10,14 @@ import {internalEmailForEno} from '../supabase/functions/_shared/internal-email.
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {resolve,promise};};
 async function app(f=environment()) {
  const page=f.page(),runtime=await page.get(),paths=[];
- const auth=createAccountAuthController({runtime,registrationService:{register:async()=>({ok:true,eno:'3'})},navigate:path=>paths.push(path)});
+ const auth=createAccountAuthController({runtime,chooseLogout:async()=>'unlink',registrationService:{register:async()=>({ok:true,eno:'3'})},navigate:path=>paths.push(path)});
  await auth.start(); return {f,page,runtime,auth,paths};
 }
 test('first visit adopts a verified legacy session once; subsequent unselected pages do not adopt it',async()=>{
  const f=environment();f.sessions.set(LEGACY_SESSION_KEY,{id:'auth-7',email:internalEmailForEno('7')});
  const a=await app(f);assert.equal(a.auth.snapshot().enos[0],'7');assert.equal(f.clients.length,1);
  await a.auth.login('2','valid');await a.auth.logout();
- const b=await app(f);assert.equal(b.auth.getClient(),null);assert.equal(b.auth.snapshot().savedAccounts[0].eno,'7');assert.ok(f.sessions.has(LEGACY_SESSION_KEY));
+ const b=await app(f);assert.equal(b.auth.getClient(),null);assert.equal(b.runtime.snapshot().entries[0].eno,'7');assert.ok(f.sessions.has(LEGACY_SESSION_KEY));
 });
 test('A adds B, home navigation, reload restores B, password-free selection restores A',async()=>{
  const a=await app();assert.equal((await a.auth.login('1','valid')).ok,true);const clientA=a.auth.getClient();
@@ -31,10 +31,10 @@ test('failed B login and duplicate A do not destroy the original scoped client/s
  assert.equal((await a.auth.login('2','bad')).ok,false);assert.equal(a.auth.snapshot().enos[0],'1');
  assert.equal((await client.auth.getSession()).error,undefined);assert.equal((await a.auth.login('1','valid')).code,'already-added');assert.equal(a.f.sessions.size,1);
 });
-test('logout B retains A without automatic selection; unselected menu entries can select A',async()=>{
+test('logout B retains A without automatic selection; guest must authenticate A again',async()=>{
  const a=await app();await a.auth.login('1','valid');await a.auth.login('2','valid');assert.equal((await a.auth.logout()).ok,true);
- assert.equal(a.auth.getClient(),null);assert.deepEqual(a.auth.snapshot().savedAccounts.map(e=>e.eno),['1']);assert.equal(a.f.sessions.size,1);
- await a.auth.select('1');assert.equal(a.auth.snapshot().enos[0],'1');await a.auth.logout();assert.equal(a.f.sessions.size,0);assert.equal(a.auth.snapshot().savedAccounts.length,0);
+ assert.equal(a.auth.getClient(),null);assert.deepEqual(a.runtime.snapshot().entries.map(e=>e.eno),['1']);assert.equal(a.f.sessions.size,1);
+ assert.equal((await a.auth.select('1')).code,'login-required');await a.auth.login('1','valid');assert.equal(a.auth.snapshot().enos[0],'1');await a.auth.logout();assert.equal(a.f.sessions.size,0);assert.equal(a.auth.snapshot().savedAccounts.length,0);
 });
 test('expired slot can reauthenticate only that ENo; network failures cannot overwrite a healthy session',async()=>{
  const a=await app();await a.auth.login('1','valid');await a.auth.login('2','valid');const b=a.runtime.getCurrent().client;a.f.sessions.delete(b.key);
@@ -96,7 +96,7 @@ test('confirmed deletion clears only B, preserving A; receipt does not require p
  raw.rpc=async(name,args)=>{assert.equal(name,'delete_own_account');assert.equal(args.p_game_account_id,target.gameAccountId);a.f.sessions.delete(raw.key);return {data:{deleted:true,...target}};};
  const service=a.auth.createDeletionService();a.auth.beginAccountDeletion();assert.equal((await service.remove(target)).ok,true);
  assert.equal((await service.cleanup(target)).ok,true);a.auth.accountDeleted();
- assert.equal(a.auth.getClient(),null);assert.deepEqual(a.auth.snapshot().savedAccounts.map(e=>e.eno),['1']);assert.equal(a.f.sessions.size,1);
+ assert.equal(a.auth.getClient(),null);assert.deepEqual(a.runtime.snapshot().entries.map(e=>e.eno),['1']);assert.equal(a.f.sessions.size,1);
 });
 test('unknown deletion is not retried or reported as success',async()=>{
  const a=await app();await a.auth.login('1','valid');const target=a.runtime.getCurrent().account;let calls=0;a.runtime.getCurrent().client.rpc=async()=>{calls++;throw Error('offline');};
@@ -106,7 +106,7 @@ test('registration uses the existing endpoint contract and independent account l
  const a=await app();const result=await a.auth.register({characterName:'name',password:'valid',confirmation:'valid'});
  assert.equal(result.signedIn,true);assert.equal(a.auth.snapshot().enos[0],'3');assert.equal(a.paths.at(-1),'index.html');
 });
-test('public/unselected mode returns no account client and exposes saved choices without credentials',async()=>{
+test('public/unselected mode returns no account client and hides saved choices and preserves registry without credentials',async()=>{
  const a=await app();assert.equal(a.auth.getClient(),null);assert.equal(a.auth.snapshot().signedIn,false);
  await a.auth.login('1','valid');await a.auth.login('2','valid');await a.auth.logout();
  assert.equal(a.auth.getClient(),null);assert.doesNotMatch(JSON.stringify(a.auth.snapshot()),/valid|access_token|password/);

@@ -76,7 +76,7 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
       if (disposed || token !== revision) return { ok: false, code: "stale-operation", completed };
     }
     busy = null;
-    if (result.ok && ["add", "select", "reauthenticate", "logout"].includes(action)) selectionVersion++;
+    if (result.ok && ["add", "select", "reauthenticate", "logout", "logout-game"].includes(action)) selectionVersion++;
     const list = manager.list();
     entries = result.entries?.map(entry => ({ ...entry })) ?? (list.ok ? list.entries : []);
     deletions = list.ok ? list.deletions ?? [] : [];
@@ -106,6 +106,7 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
     reauthenticate: (eno, password) => run("reauthenticate", () => manager.reauthenticate(eno, password)),
     // Explicit handoff only. Never automatically adopt on restore or after logout.
     adoptLegacy: () => run("adopt-legacy", () => manager.adoptLegacy()),
+    logoutGame: () => run("logout-game", () => manager.logoutGame()),
     logoutCurrent: () => run("logout", () => manager.logoutCurrent()),
     cleanupPending: slot => run("cleanup", () => manager.cleanupPending(slot)),
     deleteCurrent: target => run("delete", () => manager.deleteCurrent(target)),
