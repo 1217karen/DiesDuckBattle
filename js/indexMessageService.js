@@ -46,5 +46,7 @@ export function createIndexMessageService(client, eno) {
       return {ok:true,message:response.data.message,iconSlot:response.data.iconSlot};
     } catch { return failure(saving); }
   }
-  return {load:()=>request(false), save:(text,slot=null)=>request(true,typeof text === 'string' ? normalizeHomeMessage(text) : text,slot), invalidate(){ generation++; }};
+  return {load:()=>request(false), save:(text,slot=null)=>{ const normalized = typeof text === 'string' ? normalizeHomeMessage(text) : text;
+    return request(true,normalized,normalized === '' ? null : slot);
+  }, invalidate(){ generation++; }};
 }
