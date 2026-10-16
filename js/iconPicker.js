@@ -1,7 +1,7 @@
 import { FIXED_IMAGES, setImageWithFallback } from "./fixedImages.js";
 const validSlot = value => Number.isInteger(value) && value >= 1 && value <= 10 ? value : null;
 
-export function createIconPicker({ dialog, list, closeButton }) {
+export function createIconPicker({ dialog, list, closeButton, document: ownerDocument = globalThis.document }) {
   let onSelect = null;
 
   function close() {
@@ -10,15 +10,15 @@ export function createIconPicker({ dialog, list, closeButton }) {
   }
 
   function addChoice({ slot, url, label, disabled = false }) {
-    const button = document.createElement("button");
+    const button = ownerDocument.createElement("button");
     button.type = "button";
     button.className = "icon-choice";
     button.disabled = disabled;
     button.dataset.slot = slot === null ? "default" : String(slot);
-    const image = document.createElement("img");
+    const image = ownerDocument.createElement("img");
     image.alt = "";
     setImageWithFallback(image, url, FIXED_IMAGES.battlerIcon);
-    const caption = document.createElement("span");
+    const caption = ownerDocument.createElement("span");
     caption.textContent = disabled ? `${label}（未登録）` : label;
     button.append(image, caption);
     button.addEventListener("click", () => { onSelect?.(slot); close(); });
