@@ -30,7 +30,7 @@ export function bEventPresentation(d) {
     "attack-at-by-debuff": "自分アヒルの次の通常攻撃を付与されている状態異常の合計数だけAT増加する",
     "enemy-debuff": `相手アヒルに{status}を${t.stacks}付与する`,
     "self-buff": `自分アヒルに{status}を${t.stacks}付与する`,
-    "enemy-buff-remove": `相手アヒルの状態強化をランダムに${t.repeat}stack解除する`,
+    "enemy-buff-remove": `相手アヒルの状態強化をランダムに${t.repeat}ストック分解除する`,
     "enemy-next-at-down": `相手アヒルの次の通常攻撃をAT${t.amount}減少する`,
     "self-next-at-up": `自分アヒルの次の通常攻撃をAT${t.amount}増加する`,
     "self-heal": condition === "counter" ? `自分アヒルのHPを${t.amount}回復する`
@@ -38,11 +38,11 @@ export function bEventPresentation(d) {
     "heal-by-ap": `自分アヒルの現在APの数だけHP回復する（上限${t.healCap}）`,
     "ap-cost-heal": `自分アヒルのAPを${t.apCost}消費してHP${t.amount}回復する`,
     "target-buff": `回復対象に{status}を${t.stacks}付与する`,
-    "target-debuff-remove": `回復対象の状態異常をランダムに${t.repeat}stack解除する`,
+    "target-debuff-remove": `回復対象の状態異常をランダムに${t.repeat}ストック分解除する`,
     "target-next-at-up": `回復対象の次の通常攻撃をAT${t.amount}増加する`,
     "target-heal": `回復対象のHPをさらに${t.amount}回復する`,
     "target-ap-up": `回復対象のAPを${t.amount}増加する`,
-    emergency: `回復対象の状態異常をランダムに${t.repeat}stack解除し、{status}を${t.stacks}付与する`,
+    emergency: `回復対象の状態異常をランダムに${t.repeat}ストック分解除し、{status}を${t.stacks}付与する`,
   }[effect];
   return { triggerLabel, conditionLabel, effectLabel };
 }
