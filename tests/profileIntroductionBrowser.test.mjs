@@ -50,6 +50,12 @@ test('browser introductions: keyboard confirmation, edit/delete/cancel, icons, i
  assert.equal(await page.locator('.profile-introductions').evaluate(n=>n.open),false);
  await page.locator('.profile-introductions summary').click();await page.getByText('まだ紹介文はありません。').waitFor();
  await page.getByRole('button',{name:'紹介文を書く',exact:true}).click();await page.locator('#introduction-body').waitFor();
+ // Same structure as the profile text editor: label-wrapped textarea -> character count -> toolbar.
+ assert.equal(await page.locator('#introduction-body').evaluate(input => {
+   const label = input.parentElement, count = label?.nextElementSibling, toolbar = count?.nextElementSibling;
+   return label?.matches('label.introduction-body-label') && count?.id === 'introduction-count'
+     && toolbar?.classList.contains('quote-toolbar') && getComputedStyle(toolbar).marginTop === '5px';
+ }), true);
  assert.equal(await page.locator('.introduction-editor button').filter({hasText:'保存'}).isEnabled(),false);
  await page.locator('#introduction-body').fill('😀'.repeat(501));assert.match(await page.locator('#introduction-count').textContent(),/501.*500文字以内/);
  await page.locator('#introduction-body').fill('hello\n<b>bold</b><script>window.INJECTED=true</script>');
