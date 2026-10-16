@@ -241,7 +241,7 @@ test("A face 0..6/all and comparison controls; natural formal all and cost wordi
  p.choose("a-trigger","all");assert.equal(sentenceText(p.get("a-trigger").parent),"出目が全ての出目の時");assert.equal(p.get("a-trigger-comparison"),undefined);
  const saved=p.save();const {presentASkill}=await import("../js/aSkillPresentation.js");
  assert.match(presentASkill(saved.ducks[0],saved.ducks[0].aSelection).text,/^全ての出目で、/);
- assert.ok(!/コスト|ポイント/.test(p.get("a-metrics").textContent));assert.match(p.get("a-metrics").textContent,/使用可能.*消費.*獲得/);
+ assert.ok(!/コスト|ポイント/.test(p.get("a-metrics").textContent));assert.match(p.get("a-metrics").textContent,/使用可能.*＋.*獲得.*－.*消費.*＝.*残り/);
 });
 
 test("A UI keeps heal/status amounts on parent changes and never offers a direction select",async()=>{
@@ -297,7 +297,9 @@ test("A incomplete prices and dependent slots are dashes, never provisional zero
 test("A pt wording and dice explanation placement change presentation only",async()=>{
  const b=initial({triggerId:"exact:1",effects:[damage]}),before=structuredClone(b),p=await page(b);
  assert.equal(p.get("a-budget-line").textContent,"使用可能pt初期pt 2 ＋ ダイスpt余剰 0 ＝ 2pt");
- assert.equal(p.get("a-metrics").textContent,"使用可能 2pt｜消費 2pt｜獲得 0pt｜残り 0pt");
+ assert.equal(p.get("a-metrics").textContent,"使用可能 2pt＋獲得 0pt－消費 2pt＝残り 0pt");
+ assert.deepEqual(p.get("a-metrics").children.filter(e=>e.tagName==="span"&&e.children.length).map(e=>e.children.at(-1).id),
+   ["a-point-available","a-point-drawback","a-point-gross","a-point-remaining"]);
  assert.equal(p.get("dice-metrics").textContent,"ダイスpt　獲得 0pt / 消費 0pt");
  const siblings=p.get("dice-metrics").parent.children;
  assert.equal(siblings[siblings.indexOf(p.get("dice-metrics"))+1],p.get("dice-pt-description"));
