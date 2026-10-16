@@ -2,7 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
-import {notices} from '../js/noticeData.js';
+// Use independently authored fixtures so production announcements may be empty.
+const notices = [
+  {id:'fixture-one',date:'2026-01-01',category:'更新情報',title:'First',body:['Line 1']},
+  {id:'fixture-two',date:'2026-01-02',category:'更新情報',title:'Second',body:['Line 2']},
+  {id:'fixture-three',date:'2026-01-03',category:'更新情報',title:'Third',body:['Line 3']},
+];
 import {Element} from './feedbackDomFixture.mjs';
 
 test('static notices and index, deep links and keyboard tabs remain independent of board/network',async()=>{
@@ -44,4 +49,21 @@ test('static notices and index, deep links and keyboard tabs remain independent 
  location.search='';vm.runInNewContext(code,{document,notices,noticeReadState,location,URLSearchParams,window:{matchMedia:()=>media,addEventListener(){}},finishPageLoad(){}});assert.equal(reads,beforeReports+1);
  const html=await readFile(new URL('../notice.html',import.meta.url),'utf8');assert.ok(html.includes('id="notice-articles"'));assert.ok(!html.includes('PL名検索'));
  const index=await readFile(new URL('../index.html',import.meta.url),'utf8');assert.ok(index.includes('href="notice.html"'));
+});
+
+test('empty announcements render an empty-state message without synthetic posts',async()=>{
+ const document=new Element('document');document.createElement=tag=>new Element(tag);
+ const ids=['notice-articles','notice-index','panel-notices','panel-reports','notice-index-disclosure','notice-filter-disclosure'];
+ const map=new Map(ids.map(id=>{const node=new Element('div');node.id=id;document.append(node);return[id,node];}));
+ const tabs=['panel-notices','panel-reports'].map(id=>{const tab=new Element('button');tab.setAttribute('aria-controls',id);return tab;});
+ document.getElementById=id=>map.get(id)??null;
+ document.querySelectorAll=()=>tabs;
+ const window={matchMedia:()=>({matches:false,addEventListener(){}}),addEventListener(){}};
+ const location={search:'',hash:''};
+ let code=await readFile(new URL('../js/noticePage.js',import.meta.url),'utf8');
+ code=code.replace(/^import .*;\\r?\\n/gm,'').replace(/void import\\("\\.\\/feedbackPage\\.js"\\)[\\s\\S]*$/,'');
+ vm.runInNewContext(code,{document,notices:[],noticeReadState:{markRead(){}},location,URLSearchParams,window,finishPageLoad(){}});
+ assert.equal(map.get('notice-articles').children.length,1);
+ assert.equal(map.get('notice-articles').children[0].textContent,'お知らせはまだありません。');
+ assert.equal(map.get('notice-index').children.length,0);
 });
