@@ -28,8 +28,8 @@
     </div>
     <div id="panel-guide" role="tabpanel" aria-labelledby="tab-guide" tabindex="0">
       <nav class="toc" aria-label="ゲームガイドの目次">
-        <a class="chip" href="#guide-start">はじめかた</a>
         <a class="chip" href="#guide-characters">アヒルバトラーとは</a>
+        <a class="chip" href="#guide-start">はじめかた</a>
         <a class="chip" href="#guide-account">アカウント管理</a>
         <a class="chip" href="#guide-setting">戦闘設定</a>
         <a class="chip" href="#guide-mechanics">戦闘の詳細仕様</a>
@@ -38,25 +38,6 @@
         <a class="chip" href="#guide-profile">プロフィール・キャラリスト</a>
         <a class="chip" href="#guide-notice">お知らせ・報告／要望掲示板</a>
 </nav>
-      <section id="guide-start">
-<h2>はじめかた</h2>
-        <p>まずは<a href="index.html">ホーム</a>から新規登録を開き、アカウント登録を行ってください。<br></p>
-        <p>登録が完了すると「ENo」が発行されます。<br>次回以降のログインには、ENoと登録したパスワードが必要になります。<br>
-          パスワードの再発行などはできません。紛失等しないようご注意ください。</p>
-        <br>
-        <b>・おおまかな流れ</b>
-        <ol>
-          <li>「戦闘設定」でキャラクターのスキルやステータスなどを設定します。</li>
-          <li>「キャラ設定」で名前や画像、プロフィールなどを設定します。画像を用意していなくても遊べます。</li>
-          <li>「アヒルバトル」で自分のアヒルと対戦相手を選び、VSを押して対戦しましょう。</li>
-        </ol></p>
-<hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
-<p><b>ホームの「ひとこと」について</b><br>
-  ホーム画面では、60文字以内のひとことを自由に設定できます。<br>
-  ひとことは更新するたびに上書きされ、他のバトラーのホーム画面にもランダムで表示されます。<br>
-  ※プロフィールに表示されるプロフィールメッセージとは別のものです。</p>
-      </section>
-
 <section id="guide-characters">
   <h2>アヒルバトラーとは</h2>
 
@@ -83,6 +64,24 @@
     </p>
   </div>
 </section>
+      <section id="guide-start">
+<h2>はじめかた</h2>
+        <p>まずは<a href="index.html">ホーム</a>から新規登録を開き、アカウント登録を行ってください。<br></p>
+        <p>登録が完了すると「ENo」が発行されます。<br>次回以降のログインには、ENoと登録したパスワードが必要になります。<br>
+          パスワードの再発行などはできません。紛失等しないようご注意ください。</p>
+        <br>
+        <b>・おおまかな流れ</b>
+        <ol>
+          <li>「戦闘設定」でキャラクターのスキルやステータスなどを設定します。</li>
+          <li>「キャラ設定」で名前や画像、プロフィールなどを設定します。画像を用意していなくても遊べます。</li>
+          <li>「アヒルバトル」で自分のアヒルと対戦相手を選び、VSを押して対戦しましょう。</li>
+        </ol></p>
+<hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
+<p><b>ホームの「ひとこと」について</b><br>
+  ホーム画面では、60文字以内のひとことを自由に設定できます。<br>
+  ひとことは更新するたびに上書きされ、他のバトラーのホーム画面にもランダムで表示されます。<br>
+  ※プロフィールに表示されるプロフィールメッセージとは別のものです。</p>
+      </section>
 
 <section id="guide-account">
   <h2>アカウント管理</h2>
@@ -198,9 +197,10 @@
 <tr><th scope="row">通常発動</th><td>自分のダイスロール前</td><td>ランダム分岐・HP条件分岐を選択可能</td></tr>
 <tr><th scope="row">特殊発動</th><td>ターン終了前、自分のHPが０以下になった時</td><td>復活効果を選択可能</td></tr>
 </tbody></table></div>
-<p class="box"><b>最終必要AP＝基礎５AP＋効果による追加AP＋追加枠AP−デメリット減算−確率割引</b><br>
-  メリット効果の２個目以降は１枠ごとに追加１APがかかります。効果枠は分岐先を合わせて<b>最大５枠</b>です。</p>
-<p>デメリット効果は必要な追加APを減算しますが、<b>減算はスキル全体で最大５APまで</b>です。（分岐の場合は各分岐内で５APまで）<br>
+<p class="box"><b>最終必要AP＝基礎５AP＋効果による追加AP＋追加枠AP−デメリット減算−確率割引</b></p>
+<p>効果はメリット・デメリット合わせて<b>最大５枠</b>まで設定可能です。分岐も含めた全体の数です。<br>
+  効果の強さに応じて必要な追加APが変わり、メリット効果の２個目以降は１枠ごとに追加１APが必要です。<br>
+  デメリット効果は必要な追加APを減算し、追加枠コストもかかりませんが、<b>減算はスキル全体で最大５APまで</b>です。（効果分岐の場合は各分岐内で５APまで）<br>
   また、最終必要APが５APを下回ることはありません。</p>
 <br>
 <div class="guide-table-wrap" role="region" aria-label="Ｃスキルの主な効果と追加APの例" tabindex="0"><table id="guide-c-effects"><caption>Ｃスキルの主な効果と追加APの例</caption><thead><tr><th scope="col">効果</th><th scope="col">効果量</th><th scope="col">追加AP</th></tr></thead><tbody>
@@ -282,11 +282,11 @@
 <section id="guide-mechanics"><h2>戦闘の詳細仕様</h2>
 <h3>【通常攻撃】</h3>
 <p>基本ダメージは<b>出目＋max(0, AT−DF)</b>。<br>
-そのターンの各アヒルの最初の攻撃フェイズでは出目数値が２倍になります。<br>
+そのターンの各プレイヤーの最初の攻撃フェイズでは出目数値が２倍になります。<br>
 出目２による２回攻撃は両方に適用されます。AT部分は倍になりません。<br>
-また、１ターン内の２行動目以降は通常攻撃の命中率が50%になります。</p>
+荒波で最初の攻撃フェイズが中止されても、次の行動へ出目２倍は持ち越せません。</p>
   
-<p>荒波で最初の攻撃フェイズが中止されても、次の行動へ出目２倍は持ち越せません。</p>
+<p>また、１ターン内の２行動目以降は通常攻撃の命中率が50%になります。</p>
 <hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3>【状態変化】</h3>
 <p>各状態は最大３スタック。<br>
@@ -299,18 +299,18 @@
 <tr><th scope="row">追風</th><td>30%</td><td>60%</td><td>90%</td><td>相手の通常攻撃が外れていないとき。回避する。</td></tr>
 </tbody></table></div>
 <div class="guide-table-wrap" role="region" aria-label="その他の状態の効果と消費" tabindex="0"><table id="guide-status-other"><caption>その他の状態の効果と消費</caption><thead><tr><th scope="col">状態</th><th scope="col">効果</th><th scope="col">消費</th></tr></thead><tbody>
-<tr><th scope="row">亀裂</th><td>自分のフェイズ開始時、１スタックにつき固定２ダメージ</td><td>自分のフェイズ終了時に１スタック減少</td></tr>
-<tr><th scope="row">集中</th><td>通常攻撃ダメージが１／２／３スタックで1.25／1.5／２倍</td><td>通常攻撃の処理時に全消費。連続行動の空振り・追風の回避でも消費し、湯気による中止では残る</td></tr>
-<tr><th scope="row">反撃</th><td>受けた通常ダメージの半分（切り捨て）を固定ダメージで返す</td><td>通常ダメージを受けたとき１スタック消費</td></tr>
-<tr><th scope="row">清潔</th><td>１スタックで１回の状態異常付与を最大２スタック分防ぐ</td><td>防ぐ量に応じて必要数を消費</td></tr>
+<tr><th scope="row">亀裂</th><td>自分のフェイズ開始時、１スタックにつき固定２ダメージ</td><td>自分のフェイズ終了時に１スタック減少。</td></tr>
+<tr><th scope="row">集中</th><td>通常攻撃ダメージが１／２／３スタックで1.25／1.5／２倍</td><td>通常攻撃の処理時に全消費。連続行動の空振り・追風の回避でも消費し、湯気による中止では残る。</td></tr>
+<tr><th scope="row">反撃</th><td>受けた通常ダメージの半分（切り捨て）を固定ダメージで返す</td><td>通常ダメージを受けたとき１スタック消費。</td></tr>
+<tr><th scope="row">清潔</th><td>１スタックで１回の状態異常付与を最大２スタック分防ぐ</td><td>防ぐ量に応じて必要数を消費。</td></tr>
 </tbody></table></div>
   
 <hr style="border: 0; border-top: 2px dotted var(--line); margin: 24px 0;">
 <h3>【ランダム状態付与・解除】</h3>
 <p>ランダム付与は<b>３スタック未満の状態変化から等確率で１種類のみ</b>を選んで付与します。<br>
 ３を超える分は切り捨てになり、他の状態変化に余剰が回されることはありません。</p>
-<p>ランダム解除は<b>解除の数だけ付与中の状態変化から等確率で１回ずつ</b>選ばれます。<br>
-  スタックの多い種類が選ばれやすくなるわけではありません。</p>
+<p>ランダム解除は<b>解除の数だけ現在付与中の状態変化から等確率で１回ずつ</b>抽選します。<br>
+  スタックの多い状態変化が選ばれやすくなるわけではありません。</p>
   <div class="guide-table-wrap" role="region" aria-label="状態変化グループの分類" tabindex="0"><table id="guide-status-groups"><caption>状態変化グループの分類</caption><thead><tr><th scope="col">グループ名</th><th scope="col">内容</th></tr></thead><tbody>
 <tr><th scope="row">状態異常</th><td>亀裂・荒波・逆風・湯気</td></tr>
 <tr><th scope="row">状態強化</th><td>追風・集中・反撃・清潔</td></tr>
