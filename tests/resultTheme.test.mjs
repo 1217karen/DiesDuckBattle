@@ -48,7 +48,10 @@ test("result buttons override shared primary styling while retaining their own s
   assert.match(css, /\.btn, \.btn\.primary \{ min-width: 96px; padding: 13px 12px/);
 });
 test("stat adjustments use body-sized bold colors while roll, healing and damage remain large", () => {
-  assert.ok(rule(':root[data-theme="dark"]').includes("--debuff: #9dbbd4"));
+  const darkColors = rule(':root[data-theme="dark"]');
+  for (const [kind, value] of [["damage", "#bf9af5"], ["heal", "#72cf99"],
+    ["buff", "#f6b36b"], ["debuff", "#9dbbd4"]])
+    assert.ok(darkColors.includes(`--${kind}: ${value}`), kind);
   assert.ok(rule(".num").includes("font-size: 1.5em; font-weight: 900"));
   assert.ok(rule(".num.buff, .num.debuff").includes("font-size: 1em"));
   assert.ok(rule(".rollMain .num").includes("font-size: 1.5em"));
