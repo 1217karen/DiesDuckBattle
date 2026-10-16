@@ -128,6 +128,8 @@ test('Featured Battle uses summary only, links to result, has fixed image fallba
   assert.equal(link.href,`result.html?battleId=${p.featuredBattle.battleId}`);assert.match(link.textContent,/DRAW/);assert.match(link.textContent,/P1 \/ ENo/);
   assert.equal(byClass(link,'profile-battle-meta').length,0);
   assert.doesNotMatch(link.textContent,/Battle No\./);
+  const profileCss=await readFile(new URL('../css/profile.css',import.meta.url),'utf8');
+  assert.match(profileCss,/\.featured-summary \.profile-battle-icon \{ width: 60px; height: 60px; \}/);
   assert.deepEqual(byClass(link,'profile-battle-icon').map(i=>i.src),[FIXED_IMAGES.battlerIcon,FIXED_IMAGES.duckIcon,FIXED_IMAGES.battlerIcon,FIXED_IMAGES.duckIcon]);
   assert.equal(calls.filter(c=>c[0]==='rpc').length,1);
   p.featuredBattle=null;const empty=await page({profile:p});assert.match(byClass(empty.main,'featured-battle')[0].textContent,/お気に入りバトルは設定されていません/);
