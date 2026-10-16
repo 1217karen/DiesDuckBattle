@@ -31,6 +31,8 @@ test('browser: real auth runtime, select battle/result back-forward, restored pa
  }
  if(name==='get_online_battle_result')return {data:JSON.parse(localStorage.getItem('mock-battle')||'null')};
  if(name==='get_index_messages')return {data:{eno:'1',ownMessage:'hello',others:[]}};
+ if(name==='get_index_messages_v2')return {data:{eno:'1',ownMessage:'hello',ownIconSlot:null,ownDefaultIconUrl:'',ownIconSlots:Array(10).fill(''),others:[]}};
+ if(name==='set_index_message_v2')return {data:{eno:'1',message:args.p_message,iconSlot:args.p_icon_slot}};
  `)+`window.rpcCalls=[];export function createClient(_url,_key,options){return client(options.auth.storageKey);}`;
  const server=createServer(async(req,res)=>{try{
   const path=new URL(req.url,'http://localhost').pathname;let body,type='text/javascript';
