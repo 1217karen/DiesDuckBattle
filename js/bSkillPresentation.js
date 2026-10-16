@@ -57,8 +57,8 @@ export function bTraitPresentation(d) {
     effectLabel = rule.modifier ? [t.AT && `AT+${t.AT}`, t.DF && `DF+${t.DF}`].filter(Boolean).join(" / ") : "通常攻撃回数+1";
   } else if (d.id.startsWith("ap-")) {
     category = "AP基準補正"; conditionLabel = "";
-    effectLabel = d.id.startsWith("ap-inverse-") ? `${rule.modifier.offset} − 現在APだけ${rule.modifier.targetStat}増加する（最低${rule.modifier.min}）`
-      : `現在APの数だけ${rule.modifier.targetStat}増加する（最大${t.max}）`;
+    effectLabel = d.id.startsWith("ap-inverse-") ? `自分アヒルの現在APが少ないほど${rule.modifier.targetStat}が増加する（最大${rule.modifier.max}）`
+      : `自分アヒルの現在APの数だけ${rule.modifier.targetStat}が増加する（最大${t.max}）`;
   } else {
     category = "ランダム倍率変更"; conditionLabel = "";
     effectLabel = d.id.endsWith("random") ? `${d.id.startsWith("outgoing") ? "与える" : "受ける"}通常ダメージがランダムに${t.low}～${t.high}倍になる`
