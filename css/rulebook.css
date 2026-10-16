@@ -1,5 +1,6 @@
 body { margin:0;  }
 .rulebook-shell {
+  font-size: 14px;
   --rulebook-orange:#F08A24;
   --rulebook-status:#B482FF;
   --page-padding:28px 24px 48px;
