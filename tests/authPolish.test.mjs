@@ -48,7 +48,7 @@ const source = async name => (await readFile(new URL("../js/" + name + ".js", im
   .replace(/^import .*;\r?\n/gm, "").replace("export function mountAuthView", "function mountAuthView");
 async function screen({ standalone = false } = {}) {
   const elements = new Map(), copied = [], notifications = [], redirects = [];
-  let last, succeed = false, nextEno = "77";
+  let last, succeed = false, nextEno = "77", registrationCalls = 0;
   const document = { focused: null, getElementById: id => get(id), querySelectorAll: () => buttons,
     createElement: () => element() };
   function element(id = "") {
@@ -68,7 +68,7 @@ async function screen({ standalone = false } = {}) {
   const controller = createAuthController({
     watch: () => () => {}, session: async () => null,
     accounts: async () => [{ eno: "88", name: "DB名" }],
-    register: async () => ({ ok: true, eno: nextEno }),
+    register: async () => { registrationCalls++; return { ok: true, eno: nextEno }; },
     login: async () => succeed ? { ok: true, session: { user: { id: "other-auth" } } }
       : { ok: false, message: "ENoまたはパスワードを確認してください。" }, logout: async () => {},
   }, state => { last = state; }, message => notifications.push(message));
@@ -80,7 +80,7 @@ async function screen({ standalone = false } = {}) {
   get("character-name").value = "バトラー";
   const submit = async (id, consent = true) => { if (id === "register-form") get("terms-consent").checked = consent; return get(id).onsubmit({ preventDefault() {} }); };
   return { get, buttons, controller, copied, submit, focused: () => document.focused, state: () => last,
-    notifications, redirects, succeed: () => { succeed = true; }, failLogin: () => { succeed = false; }, next: eno => { nextEno = eno; } };
+    notifications, redirects, registrationCalls: () => registrationCalls, succeed: () => { succeed = true; }, failLogin: () => { succeed = false; }, next: eno => { nextEno = eno; } };
 }
 
 test("registration stays visible; failed login keeps panel and dialog; successful other ENo clears all derivatives", async () => {
@@ -107,9 +107,10 @@ test("registration stays visible; failed login keeps panel and dialog; successfu
   assert.equal(s.get("auth-dialog").open, true); assert.equal(s.get("registered").hidden, false);
   assert.match(s.get("registered-eno").textContent, /99/); assert.match(s.get("home-feedback").textContent, /99/);
   await s.get("copy-eno").onclick(); s.get("go-login").onclick(); s.next("100");
-  await s.submit("register-form");
-  assert.equal(s.get("login-eno").value, ""); assert.equal(s.get("copy-status").textContent, "");
-  assert.match(s.get("registered-eno").textContent, /100/);
+  const count=s.registrationCalls();await s.submit("register-form");
+  assert.equal(s.registrationCalls(),count);assert.equal(s.get("login-eno").value, "99");
+  assert.match(s.get("registered-eno").textContent, /99/);assert.match(s.get("form-message").textContent,/登録済み.*ENo.99/);
+  await s.get("copy-eno").onclick();assert.equal(s.copied.at(-1),"99");
 });
 
 test("success callback closes only INDEX modal and focuses visible status", async () => {
@@ -158,7 +159,10 @@ test('standalone registration redirects to INDEX notice only on auto-login succe
  assert.match(s.get('form-message').textContent,/登録は完了しました。ENo.77でログインしてください。/);
  s.get('go-login').onclick();assert.equal(s.get('login-eno').value,'77');
  s.succeed();s.next('00099');await s.submit('register-form');
- assert.deepEqual(s.redirects,['index.html?notice=registered&eno=99']);assert.deepEqual(s.notifications,[]);
+ assert.equal(s.registrationCalls(),1);assert.deepEqual(s.redirects,[]);assert.equal(s.state().registeredEno,'77');
+ assert.match(s.get('form-message').textContent,/登録済み.*ENo.77.*やり直す必要はありません/);
+ await s.get('copy-eno').onclick();assert.equal(s.copied.at(-1),'77');s.get('go-login').onclick();assert.equal(s.get('login-eno').value,'77');
+ await s.submit('login-form');assert.deepEqual(s.redirects,[]);assert.deepEqual(s.notifications,['ログインしました。']);
  assert.equal(s.get('registered').hidden,true);assert.equal(s.state().registeredEno,'');
 });
 

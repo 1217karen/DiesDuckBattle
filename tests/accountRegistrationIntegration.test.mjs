@@ -49,11 +49,18 @@ test('guest duplicate submit during pending registration is rejected without ret
  gate.resolve({ok:true,eno:'3'});assert.equal((await pending).signedIn,true);assert.equal(s.calls(),1);
 });
 test('successful registration with failed login retains issued ENo and previously saved sessions',async()=>{
- const s=await setup();await s.auth.logout();const before=new Map(s.f.sessions);s.paths.length=0;s.notifications.length=0;
+ let issued=2;const s=await setup(async()=>({ok:true,eno:String(++issued)}));await s.auth.logout();const before=new Map(s.f.sessions);s.paths.length=0;s.notifications.length=0;
  assert.deepEqual(await s.auth.register({...input,password:'bad'}),{ok:true,signedIn:false,eno:'3'});
  assert.equal(s.auth.snapshot().registeredEno,'3');assert.match(s.auth.snapshot().message,/登録は完了.*ENo.3/);
  assert.equal(s.auth.snapshot().signedIn,false);assert.deepEqual(s.f.sessions,before);assert.deepEqual(s.paths,[]);assert.deepEqual(s.notifications,[]);assert.equal(s.calls(),1);
- assert.equal((await s.auth.login('3','valid')).ok,true);assert.equal(s.f.sessions.size,3);
+ for(let i=0;i<2;i++){
+  assert.equal((await s.auth.register(input)).code,'already-registered');assert.equal(s.calls(),1);
+  assert.equal(s.auth.snapshot().registeredEno,'3');assert.match(s.auth.snapshot().message,/登録済み.*ENo.3.*やり直す必要はありません/);
+  assert.deepEqual(s.f.sessions,before);assert.deepEqual(s.paths,[]);assert.deepEqual(s.notifications,[]);
+ }
+ assert.equal((await s.auth.login('3','bad')).ok,false);assert.equal(s.auth.snapshot().registeredEno,'3');
+ assert.equal((await s.auth.register(input)).code,'already-registered');assert.equal(s.calls(),1);
+ assert.equal((await s.auth.login('3','valid')).ok,true);assert.equal(s.f.sessions.size,3);assert.equal(s.auth.snapshot().registeredEno,'');
 });
 for(const kind of ['failed','unknown','throw'])test('unselected registration '+kind+' preserves saved B without auto-retry',async()=>{
  const s=await setup(async()=>{if(kind==='throw')throw Error();return {ok:false,message:kind==='unknown'?'結果不明。自動再送しません':'登録できません'};});
@@ -63,4 +70,10 @@ for(const kind of ['failed','unknown','throw'])test('unselected registration '+k
 test('registration-specific coordinator entry is removed; existing account addition still works',async()=>{
  const s=await setup();assert.equal(s.auth.coordinator.register,undefined);
  assert.equal((await s.auth.login('4','valid')).ok,true);assert.equal(s.f.sessions.size,3);assert.equal((await s.auth.select('1')).ok,true);
+});
+
+test('explicit registration failure without issued ENo permits a later user retry',async()=>{
+ let succeed=false;const s=await setup(async()=>succeed?{ok:true,eno:'3'}:{ok:false,message:'登録できませんでした。'},false);
+ assert.equal((await s.auth.register(input)).ok,false);assert.equal(s.auth.snapshot().registeredEno,'');assert.equal(s.calls(),1);
+ succeed=true;assert.equal((await s.auth.register(input)).signedIn,true);assert.equal(s.calls(),2);
 });

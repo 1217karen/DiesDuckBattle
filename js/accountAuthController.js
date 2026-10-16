@@ -88,6 +88,8 @@ export function createAccountAuthController({ runtime, registrationService, noti
     register: (input, { notify: shouldNotify = true } = {}) => action("register", async () => {
       // Registration is available only while unselected. Never overwrite an active session.
       if (runtime.getCurrent()) return { ok: false, code: "already-added" };
+      if (registeredEno) return { ok: false, code: "already-registered",
+        message: `アカウントは登録済みです。ENo.${registeredEno}でログインしてください。新規登録をやり直す必要はありません。` };
       const result = await registrationService.register(input);
       if (!result.ok) { message = result.message; return result; }
       registeredEno = canonicalEno(result.eno);

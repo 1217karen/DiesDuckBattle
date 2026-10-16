@@ -92,6 +92,10 @@ export function createAuthController(service, render, notifySuccess = () => {}) 
       }
     },
     register: (input, { notify = true } = {}) => action("register", async () => {
+      if (state.registeredEno) {
+        state.message = `アカウントは登録済みです。ENo.${state.registeredEno}でログインしてください。新規登録をやり直す必要はありません。`;
+        return { ok: false, code: "already-registered" };
+      }
       const result = await service.register(input);
       if (!result.ok) { state.message = result.message; return { ok: false }; }
       const eno = canonicalEno(result.eno);
