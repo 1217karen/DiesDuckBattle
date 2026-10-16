@@ -331,3 +331,36 @@ for (const [idleTurns, bonusAP] of [[6,1],[8,2],[10,3]]) test("C idle AP bonus d
   const blocks = blocksFor([start, phase(), bonus]);
   assert.equal(blocks.at(-1).stateAfter.ap.P1, bonusAP);
 });
+
+test("production B damage multiplier log names the Duck, direction and actual factor on separate lines", () => {
+  for (const [skillId, actorSide, verb, value] of [
+    ["B:outgoing-random:0", "P1", "与える", 1.7],
+    ["B:incoming-random:0", "P2", "受ける", 0.4],
+    ["B:damage-both-up:0", "P1", "与える", 2],
+    ["B:damage-both-up:1", "P2", "受ける", 2],
+    ["B:damage-both-down:0", "P1", "与える", 0.5],
+    ["B:damage-both-down:1", "P2", "受ける", 0.5],
+  ]) {
+    const lines = linesFor([event("skillTriggered", {
+      actor: actorSide, skill: { category: "B", skillId }, groupId: 12,
+    }), event("attackChanged", {
+      actor: actorSide, target: actorSide === "P1" ? "P2" : "P1",
+      op: "mulDamage", value, originSkill: { category: "B", skillId }, groupId: 12,
+    })]);
+    const name = actorSide === "P1" ? "アヒル一" : "アヒル二";
+    assert.equal(lines.length, 3, skillId);
+    assert.equal(lines[1].text, `${name}の${verb}ダメージ倍率が変動！`, skillId);
+    assert.equal(lines[1].kind, "soft skill", skillId);
+    assert.equal(lines[2].text, `×${value}`, skillId);
+    assert.equal(lines[2].kind, "meta b-damage-multiplier skill", skillId);
+  }
+});
+
+test("non-B and unknown multiplier events keep the existing single-line message", () => {
+  for (const originSkill of [undefined, { category: "A", skillId: "A:legacy" },
+    { category: "C", skillId: "C:legacy" }, { category: "B", skillId: "legacy-BS20" }]) {
+    const lines = linesFor([event("attackChanged", { op: "mulDamage", value: 1.25, originSkill })]);
+    assert.equal(lines.length, 1);
+    assert.equal(lines[0].text, "ダメージ倍率 ×1.25！");
+  }
+});
