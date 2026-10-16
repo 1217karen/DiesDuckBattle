@@ -48,11 +48,11 @@ test("result buttons override shared primary styling while retaining their own s
   assert.match(css, /\.btn, \.btn\.primary \{ min-width: 96px; padding: 13px 12px/);
 });
 test("stat adjustments use body-sized bold colors while roll, healing and damage remain large", () => {
-  assert.match(rule(".num"), /font-size: 1\\.5em; font-weight: 900/);
-  assert.match(rule(".num.buff, .num.debuff"), /font-size: 1em/);
-  assert.match(rule(".rollMain .num"), /font-size: 1\\.5em/);
+  assert.ok(rule(".num").includes("font-size: 1.5em; font-weight: 900"));
+  assert.ok(rule(".num.buff, .num.debuff").includes("font-size: 1em"));
+  assert.ok(rule(".rollMain .num").includes("font-size: 1.5em"));
   for (const [kind, color] of [["buff","--buff"],["debuff","--debuff"],["heal","--heal"],["damage","--damage"]])
-    assert.match(rule(`.num.${kind}`), new RegExp(`color: var\\(${color}\\)`));
+    assert.ok(rule(`.num.${kind}`).includes(`color: var(${color})`));
 });
 
 test("combat backgrounds and HP semantic colors remain unchanged", () => {
