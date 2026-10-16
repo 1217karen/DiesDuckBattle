@@ -101,7 +101,10 @@ test("existing blocks and logs remain intact; old records generate the same non-
   assert.match(blocks[1].lines.at(-1).text, /P1-behind/);
   assert.match(blocks[1].lines.at(-1).text, /P2-lead/);
   assert.match(blocks[2].lines[0].text, /P1-first/);
-  assert.match(blocks[2].lines.find(line => line.kind.includes("rollLine")).text, /P1-duck.png/);
+  const rollLine = blocks[2].lines.find(line => line.kind.includes("rollLine"));
+  assert.match(rollLine.text, /^<img class="logDuckIcon"/);
+  assert.match(rollLine.text, /P1-duck.png/);
+  assert.doesNotMatch(rollLine.text, /🎲/);
   assert.match(blocks[3].lines[0].text, /P2-win/);
   assert.equal(legacy.flatMap(block => block.lines).filter(line => line.kind.includes("quoteLine")).length, 0);
 });
