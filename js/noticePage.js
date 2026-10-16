@@ -10,6 +10,31 @@ function element(tag, className, text) {
   return node;
 }
 
+// Only [label](http(s)://...) becomes a link. Invalid syntax stays plain text.
+function noticeParagraph(text) {
+  const paragraph = element("p");
+  const pattern = /\[([^\]\r\n]+)\]\(([^)\r\n]+)\)/g;
+  let cursor = 0, linked = false;
+  for (const match of text.matchAll(pattern)) {
+    const raw = match[2];
+    if (!/^https?:\/\/[^\s<>"']+$/i.test(raw)) continue;
+    let url;
+    try { url = new URL(raw); } catch { continue; }
+    if (!["http:", "https:"].includes(url.protocol) || !url.hostname) continue;
+    if (match.index > cursor) paragraph.append(element("span", "", text.slice(cursor, match.index)));
+    const link = element("a", "", match[1]);
+    link.href = url.href;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    paragraph.append(link);
+    cursor = match.index + match[0].length;
+    linked = true;
+  }
+  if (!linked) paragraph.textContent = text;
+  else if (cursor < text.length) paragraph.append(element("span", "", text.slice(cursor)));
+  return paragraph;
+}
+
 const articles = document.getElementById("notice-articles");
 const noticeIndex = document.getElementById("notice-index");
 const mobileSidebar = window.matchMedia("(max-width:760px)");
@@ -34,7 +59,7 @@ for (const notice of notices) {
   meta.append(element("span", "notice-badge", notice.category), date);
 
   const body = element("div", "notice-body");
-  for (const paragraph of notice.body) body.append(element("p", "", paragraph));
+  for (const paragraph of notice.body) body.append(noticeParagraph(paragraph));
   article.append(meta, title, body);
   articles.append(article);
 
