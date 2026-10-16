@@ -186,9 +186,9 @@ function productionTuning({ id, triggerId, conditionId: condition, effectId: eff
 }
 
 // 表示metadataのみ。合法な組み合わせ・semantics・数値は上の完成optionがSSOT。
-const B_TUNING_LABELS = { stacks: "付与stack数", repeat: "ランダム1stack解除の回数", amount: "効果量",
+const B_TUNING_LABELS = { stacks: "付与ストック数", repeat: "ランダム1ストック解除の回数", amount: "効果量",
   chance: "発動確率（0～1）", threshold: "条件の閾値", hpThreshold: "HP割合の閾値（0～1）",
-  hpCostPct: "最大HP消費率（0～1）", apCost: "消費AP", healCap: "回復上限", perStack: "1stackあたりの効果量",
+  hpCostPct: "最大HP消費率（0～1）", apCost: "消費AP", healCap: "回復上限", perStack: "1ストックあたりの効果量",
   AT: "AT補正", DF: "DF補正", scale: "APへの係数", min: "補正下限", max: "補正上限",
   low: "倍率下限", high: "倍率上限", outgoing: "与通常ダメージ倍率", incoming: "被通常ダメージ倍率" };
 export function getBTriggerOptions(catalog = createBSkillCatalog()) { return catalog.triggers; }
