@@ -21,33 +21,42 @@ export function createAccountScopedClient({ context, runtime, coordinator }) {
       && now.client === client && now.account.eno === account.eno
       && now.account.gameAccountId === account.gameAccountId && now.account.authUserId === account.authUserId;
   };
+  const recovering = () => {
+    const state = runtime.snapshot();
+    return runtime.getSelectionVersion() === selectionVersion && (state.phase === "suspended"
+      || ["restore", "initialize"].includes(state.busy)
+      || (state.phase === "unverified" && ["restore", "initialize"].includes(state.lastAction) && ["verification-unavailable", "stale-operation"].includes(state.code)));
+  };
   const auth = {
     async getSession() {
-      if (!valid()) return error("PGRST301");
+      if (!valid()) return error(recovering() ? "auth-verifying" : "PGRST301");
+      const lease = runtime.getCurrent();
       const result = await client.auth.getSession();
-      return valid() && result.data?.session?.user?.id === account.authUserId ? result : error("PGRST301");
+      return lease.isCurrent() && valid() && result.data?.session?.user?.id === account.authUserId ? result
+        : error(recovering() || (valid() && !lease.isCurrent()) ? "auth-verifying" : "PGRST301");
     },
     onAuthStateChange(callback) {
       let ended = false;
       const subscription = client.auth.onAuthStateChange((event, session) => {
-        if (!ended) callback(valid() ? event : "SIGNED_OUT", valid() ? session : null);
+        if (!ended && !recovering()) callback(valid() ? event : "SIGNED_OUT", valid() ? session : null);
       }).data.subscription;
       const stop = runtime.subscribe(state => {
-        if (!ended && !state.busy && !valid()) { ended = true; queueMicrotask(() => callback("SIGNED_OUT", null)); }
+        if (!ended && !state.busy && !recovering() && !valid()) { ended = true; queueMicrotask(() => callback("SIGNED_OUT", null)); }
       });
       return { data: { subscription: { unsubscribe() { ended = true; stop(); subscription.unsubscribe(); } } } };
     },
   };
   return Object.freeze({
-    accountContext: Object.freeze({ account, isCurrent: valid }), auth,
+    accountContext: Object.freeze({ account, isCurrent: valid, isRecovering: recovering }), auth,
     beforeAccountChange: guard => coordinator.beforeAccountChange(guard),
     // Only the access projection is exposed. Mutation/table APIs are deliberately absent.
     from(table) {
       if (table !== "game_account_access") throw Error("Unsupported account query");
       return { select: columns => ({ async eq(field, id) {
         if (!valid() || field !== "auth_user_id" || id !== account.authUserId) return error("42501");
+        const lease = runtime.getCurrent();
         const result = await client.from(table).select(columns).eq(field, id);
-        if (!valid()) return error("PGRST301");
+        if (!lease.isCurrent() || !valid()) return error("PGRST301");
         return result.error ? result : { ...result, data: result.data?.filter(row => row.game_account_id === account.gameAccountId) };
       } }) };
     },

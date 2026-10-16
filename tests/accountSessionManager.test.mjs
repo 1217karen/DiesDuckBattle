@@ -35,9 +35,9 @@ test('failed B login does not alter active A or SDK session; duplicate is reject
  assert.equal((await m.add('2','bad')).code,'login-failed');assert.equal(f.disk.get(SESSION_REGISTRY_KEY),raw);assert.equal(lease.isCurrent(),true);assert.equal(f.sessions.size,1);
  assert.equal((await m.add('01','correct')).code,'already-added');assert.equal(f.instances.length,2);
 });
-test('reload restores and validates all sessions without password; expiry requires reauthentication',async()=>{
+test('reload verifies only selected session without password; expiry requires reauthentication',async()=>{
  const f=fixture(),m=f.manager();await m.add('1','correct');await m.add('2','correct');m.dispose();
- const n=f.manager();assert.equal(n.getActiveLease(),null);assert.deepEqual((await n.restore()).entries.map(e=>e.status),['ready','ready']);assert.equal(n.getActiveLease().account.eno,'2');
+ const n=f.manager();assert.equal(n.getActiveLease(),null);assert.deepEqual((await n.restore()).entries.map(e=>e.status),['unchecked','ready']);assert.equal(n.getActiveLease().account.eno,'2');
  const b=n.getActiveLease().client;f.sessions.delete(b.key);assert.equal((await n.select('2')).code,'reauthentication-required');
  const restored=await n.restore();assert.equal(restored.active,null);assert.equal(restored.entries[1].status,'reauthentication-required');assert.ok(f.sessions.has(f.instances[0].key));
 });
@@ -118,8 +118,8 @@ test('production obtains legacy SDK through its single shared factory',async()=>
  assert.match(runtime,/getLegacySupabaseClient/);assert.doesNotMatch(runtime,/createClient\(/);
 });
 
-test('SDK sign-out or identity change invalidates active lease; token refresh of same user does not',async()=>{
- const f=fixture(),m=f.manager();await m.add('1','correct');const c=f.instances[0],lease=m.getActiveLease();c.authEvent('TOKEN_REFRESHED',{user:f.sessions.get(c.key)});assert.equal(lease.isCurrent(),true);
+test('SDK sign-out, identity change and token refresh withdraw the lease; fresh validation restores it',async()=>{
+ const f=fixture(),m=f.manager();await m.add('1','correct');const c=f.instances[0],lease=m.getActiveLease();c.authEvent('TOKEN_REFRESHED',{user:f.sessions.get(c.key)});assert.equal(lease.isCurrent(),false);await m.restore();assert.equal(m.getActiveLease().account.eno,'1');
  c.authEvent('SIGNED_OUT',null);assert.equal(m.getActiveLease(),null);await m.select('1');c.authEvent('SIGNED_IN',{user:{id:'other'}});assert.equal(m.getActiveLease(),null);
 });
 // Interrupted before signIn: only journal metadata was persisted.

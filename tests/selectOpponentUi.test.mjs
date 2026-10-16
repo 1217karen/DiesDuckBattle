@@ -33,6 +33,7 @@ test("real SELECT handlers switch public names and presentation with no P2 Duck 
   await vm.runInNewContext(`(async () => {${ui.replace(/^import .*;\r?\n/gm, "")}\n})()`, {
     finishPageLoad() {}, ...selectState, document, window:{addEventListener() {}},
     requireLoginPage: async () => {}, renderChoices, FIXED_IMAGES,
+    getAuthRuntime:async()=>({subscribe:()=>()=>{}}),
     getSupabaseClient:async()=>({auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}}),
     createBattleResultStorage:client=>{assert.ok(client.auth);return {};},
     createOnlineSelectController: args => (controller = createOnlineSelectController(args)),

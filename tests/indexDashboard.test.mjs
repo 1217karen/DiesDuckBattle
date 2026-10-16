@@ -61,3 +61,14 @@ test('initial HTML hides only images while preserving explicit dimensions',async
  assert.match(html, /id="home-standing"[^>]*visibility: hidden[^>]*width="500" height="800"/);
  assert.match(html, /id="home-icon"[^>]*visibility: hidden[^>]*width="60" height="60"/);
 });
+test('same-owner revalidation conceals private images while retaining nodes, resources and layout',async()=>{
+ const s=await screen();s.render({...signedIn('77'),accountVersion:1});await tick();s.pending.shift()(result('77','/own.png'));await tick();
+ await s.images[0].onload();await s.images[1].onload();const count=s.images.length;
+ s.render({ready:false,sessionKnown:false,signedIn:false,accounts:[],enos:[],accountVersion:1});
+ assert.equal(s.get('home-game').hidden,false);assert.equal(s.get('home-game').style.visibility,'hidden');assert.equal(s.get('home-game').inert,true);
+ assert.equal(s.get('home-standing').style.visibility,'hidden');
+ s.render({...signedIn('77'),accountVersion:1});await tick();
+ assert.equal(s.images.length,count);assert.equal(s.pending.length,0);assert.equal(s.get('home-standing').style.visibility,'visible');assert.equal(s.get('home-game').inert,false);
+ // A later login to the same ENo still invalidates the earlier page's display work.
+ s.render({...signedIn('77'),accountVersion:2});await tick();assert.equal(s.pending.length,1);assert.equal(s.get('home-standing').style.visibility,'hidden');
+});

@@ -8,6 +8,40 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
   let revision = 0, selectionVersion = 0, disposed = false, busy = null, code = null, phase = "unverified";
   let entries = [], pending = [], deletions = [], verified = null;
   const listeners = new Set();
+  let lastAction = null;
+  let resumeRequested = false, resumption = null, resumeTimer = null, away = false, identity = null;
+  const transient = reason => ["pagehide", "pageshow", "page-hidden", "session-storage", "token-refreshed"].includes(reason);
+  const identityKey = account => account && [account.eno, account.authUserId, account.gameAccountId].join(":");
+  // Never call SDK methods inside its auth callback/lock. Coalesce all lifecycle
+  // and token notifications; a later invalidation makes the in-flight result stale.
+  function scheduleResume() {
+    resumeRequested = true;
+    if (resumeTimer !== null || resumption || away || document?.visibilityState === "hidden") return;
+    resumeTimer = setTimeout(() => { resumeTimer = null; void resume(); }, 0);
+  }
+  function resume() {
+    if (resumption) return resumption;
+    if (disposed || away || document?.visibilityState === "hidden" || busy) return Promise.resolve({ ok: false, code: "operation-in-progress" });
+    resumeRequested = true;
+    resumption = (async () => {
+      let result;
+      do {
+        resumeRequested = false;
+        result = await run("restore", () => manager.restore());
+      } while (resumeRequested && !disposed && !away && document?.visibilityState !== "hidden");
+      return result;
+    })().finally(() => { resumption = null; });
+    return resumption;
+  }
+  function pageShow(event) { if (event.persisted || phase === "suspended") { away = false; scheduleResume(); } }
+  function visible() {
+    if (document?.visibilityState !== "hidden" && !away && (resumeRequested || phase === "suspended")) scheduleResume();
+  }
+  function online() { if (phase === "unverified" && code === "verification-unavailable") scheduleResume(); }
+  events?.addEventListener("pageshow", pageShow);
+  events?.addEventListener("focus", visible);
+  events?.addEventListener("online", online);
+  document?.addEventListener("visibilitychange", visible);
   function current() {
     if (disposed || busy || !verified?.isCurrent()) return null;
     return verified;
@@ -16,7 +50,7 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
     const selected = current();
     return {
       phase: phase === "ready" && !selected ? "unverified" : phase,
-      busy, code, current: selected ? { ...selected.account } : null,
+      busy, code, lastAction, current: selected ? { ...selected.account } : null,
       deletions: deletions.map(item => ({ ...item })),
       entries: entries.map(entry => ({ ...entry })), pending: pending.map(entry => ({ ...entry })),
     };
@@ -29,7 +63,7 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
   }
   // Manager owns SDK/storage/pageshow invalidation. Notification callbacks never call SDK APIs.
   const stopInvalidation = manager.subscribeInvalidation(reason => {
-    selectionVersion++;
+    if (!transient(reason)) selectionVersion++;
     const list = manager.list();
     entries = list.ok ? list.entries : [];
     pending = list.ok ? list.pending : [];
@@ -37,18 +71,17 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
     verified = null;
     if (reason !== "auth" || !busy) {
       revision++; busy = null;
-      // Page-bound clients must stay withdrawn until the resumed document reloads.
-      // A durable active:null is confirmed game logout, even without an SDK call.
-      phase = ["pagehide", "pageshow", "page-hidden"].includes(reason) ? "suspended"
+      phase = transient(reason) ? "suspended"
         : list.ok && list.active === null ? "unselected" : "unverified";
       code = reason;
     }
     queueMicrotask(emit);
+    if (["pageshow", "session-storage", "token-refreshed"].includes(reason)) scheduleResume();
   });
   function pageHidden() {
     if (suspendOnHidden && document.visibilityState === "hidden") manager.invalidate("page-hidden");
   }
-  function pageHide() { manager.invalidate("pagehide"); }
+  function pageHide() { away = true; manager.invalidate("pagehide"); }
   document?.addEventListener("visibilitychange", pageHidden);
   events?.addEventListener("pagehide", pageHide);
 
@@ -56,6 +89,9 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
     const lease = manager.getActiveLease();
     if (!lease?.isCurrent()) { verified = null; return; }
     const account = Object.freeze({ ...lease.account });
+    const nextIdentity = identityKey(account);
+    if (identity && identity !== nextIdentity) selectionVersion++;
+    identity = nextIdentity;
     const wrapper = Object.freeze({ account, client: lease.client,
       isCurrent: () => !disposed && !busy && token === revision && verified === wrapper && lease.isCurrent(),
     });
@@ -69,6 +105,7 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
   }
   async function run(action, work) {
     if (disposed) return { ok: false, code: "closed" };
+    lastAction = action;
     const previous = current(), previousSlot = previous ? manager.list().active : null;
     const token = ++revision;
     verified = null; busy = action; phase = "busy"; code = null;
@@ -104,12 +141,13 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
     const outcome = code ? { ok: false, code } : { ok: true, code: null };
     const state = snapshot();
     emit();
+    if (resumeRequested) scheduleResume();
     // Subscribers may synchronously request a different selection; old work must not win.
     if (token !== revision || (state.current && !current())) return { ok: false, code: "stale-operation" };
     return { ...outcome, deleted: result.deleted, completed, state };
   }
   return {
-    snapshot,
+    snapshot, revalidate: resume,
     getSelectionVersion: () => selectionVersion,
     subscribe(listener) { listeners.add(listener); listener(snapshot()); return () => listeners.delete(listener); },
     restore: () => run("restore", () => manager.restore()),
@@ -129,7 +167,12 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
     dispose() {
       if (disposed) return;
       disposed = true; revision++; verified = null;
+      if (resumeTimer !== null) clearTimeout(resumeTimer);
       stopInvalidation(); listeners.clear();
+      events?.removeEventListener("pageshow", pageShow);
+      events?.removeEventListener("focus", visible);
+      events?.removeEventListener("online", online);
+      document?.removeEventListener("visibilitychange", visible);
       document?.removeEventListener("visibilitychange", pageHidden);
       events?.removeEventListener("pagehide", pageHide);
       manager.dispose();

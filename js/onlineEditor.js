@@ -84,7 +84,7 @@ export async function mountOnlineEditor({ sections, allowDuckPresentationDeletio
       const state = controller.snapshot();
       if (state.dirty || state.busy === "save") { event.preventDefault(); event.returnValue = ""; }
     };
-    const checkScope = () => { if (document.visibilityState !== "hidden") void controller.checkScope(); };
+    const checkScope = () => { if (document.visibilityState !== "hidden" && !client.accountContext?.isRecovering?.()) void controller.checkScope(); };
     window.addEventListener("beforeunload", beforeUnload);
     window.addEventListener("focus", checkScope);
     document.addEventListener("visibilitychange", checkScope);
@@ -108,7 +108,7 @@ export async function mountOnlineEditor({ sections, allowDuckPresentationDeletio
       controller.invalidate("");
     });
     // BFCache restores use the same non-blocking identity check as focus/visibility.
-    window.addEventListener("pageshow", event => { if (event.persisted) void controller.checkScope(); });
+    window.addEventListener("pageshow", event => { if (event.persisted) checkScope(); });
     await controller.load();
     return controller;
   } catch {

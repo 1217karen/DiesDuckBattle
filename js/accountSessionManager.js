@@ -81,8 +81,16 @@ export function createAccountSessionManager({ createClient, config,
     }
   };
   const onStorage = event => {
-    if (event.key === null || event.key === SESSION_REGISTRY_KEY || event.key === DELETION_JOURNAL_KEY || event.key === LEGACY_SESSION_KEY
-      || event.key?.startsWith(PREFIX)) invalidate("storage");
+    if (event.key === null || [SESSION_REGISTRY_KEY, DELETION_JOURNAL_KEY].includes(event.key)) {
+      invalidate("storage");
+      return;
+    }
+    // SDK token writes are not a game logout. Withdraw access, then reverify the
+    // selected identity. Unselected sessions are verified only when selected.
+    let active;
+    try { active = read().value.active; } catch { invalidate("storage"); return; }
+    const key = active === "legacy" ? LEGACY_SESSION_KEY : PREFIX + active;
+    if (active !== null && event.key === key) invalidate("session-storage");
   };
   events?.addEventListener("storage", onStorage);
   // Normal initial pageshow fires after module initialization; it must not cancel
@@ -114,22 +122,25 @@ export function createAccountSessionManager({ createClient, config,
       const client = clients.get(slot);
       const { data } = client.auth.onAuthStateChange((event, session) => {
         // No asynchronous SDK calls inside the Auth lock.
-        if (activeLease?.client === client && (event === "SIGNED_OUT"
-          || session?.user?.id !== activeLease.account.authUserId)) invalidate("auth");
+        if (activeLease?.client === client) {
+          if (event === "SIGNED_OUT" || session?.user?.id !== activeLease.account.authUserId) invalidate("auth");
+          else if (event === "TOKEN_REFRESHED") invalidate("token-refreshed");
+        }
       });
       subscriptions.set(slot, data.subscription);
     }
     return clients.get(slot);
   }
+  const authFailure = error => [401, 403].includes(error.status)
+    || ["session_not_found", "refresh_token_not_found", "refresh_token_already_used"].includes(error.code)
+    || error.name === "AuthSessionMissingError" ? "reauthentication-required" : "verification-unavailable";
   async function verify(client, expectedEno) {
     const clearLease = () => { if (activeLease?.client === client) { leaseEpoch++; activeLease = null; } };
     const before = await client.auth.getUser();
     if (before.error) {
-      const reauthenticate = [401, 403].includes(before.error.status)
-        || ["session_not_found", "refresh_token_not_found", "refresh_token_already_used"].includes(before.error.code)
-        || before.error.name === "AuthSessionMissingError";
-      if (reauthenticate) clearLease();
-      abort(reauthenticate ? "reauthentication-required" : "verification-unavailable");
+      const code = authFailure(before.error);
+      if (code === "reauthentication-required") clearLease();
+      abort(code);
     }
     if (!before.data?.user?.id) { clearLease(); abort("reauthentication-required"); }
     const user = before.data.user;
@@ -144,7 +155,12 @@ export function createAccountSessionManager({ createClient, config,
     if (user.email !== internalEmailForEno(eno) || typeof row.game_account_id !== "string"
       || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(row.game_account_id)) abort("eno-mismatch");
     const after = await client.auth.getUser();
-    if (after.error || after.data?.user?.id !== user.id || after.data?.user?.email !== user.email) { clearLease(); abort("session-changed"); }
+    if (after.error) {
+      const code = authFailure(after.error);
+      if (code === "reauthentication-required") clearLease();
+      abort(code);
+    }
+    if (after.data?.user?.id !== user.id || after.data?.user?.email !== user.email) { clearLease(); abort("session-changed"); }
     const name = row.game_accounts.battlers?.presentation?.name;
     return { authUserId: user.id, eno, name: typeof name === "string" ? name.slice(0, 200) : "", gameAccountId: row.game_account_id };
   }
@@ -374,6 +390,7 @@ export function createAccountSessionManager({ createClient, config,
           return { ok: true, entries: registry.entries, pending: registry.pending, active: null };
         }
         for (const entry of registry.entries) {
+          if (entry.slot !== registry.active) { entries.push({ ...entry, status: "unchecked" }); continue; }
           try {
             requireAvailable(entry);
             const client = await clientFor(entry.slot), account = await verify(client, entry.eno); check();

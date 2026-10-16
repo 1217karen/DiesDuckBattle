@@ -12,7 +12,7 @@ consumeIndexNotice();
 
 const standing = document.getElementById("home-standing");
 const icon = document.getElementById("home-icon");
-let imageAccount, imageRevision = 0;
+let imageAccount, imageRevision = 0, imageVerified = false, loadedImages = new Set();
 function hideBattlerImages() {
   for (const image of [standing, icon]) image.style.visibility = "hidden";
 }
@@ -28,7 +28,7 @@ function showBattlerImages(battler = {}, revision = imageRevision) {
       image.src = pendingImage.src;
       try {
         await image.decode();
-        if (revision === imageRevision) image.style.visibility = "visible";
+        if (revision === imageRevision) { loadedImages.add(image); if (imageVerified) image.style.visibility = "visible"; }
       } catch {
         if (revision === imageRevision) pendingImage.onerror?.();
       }
@@ -38,11 +38,20 @@ function showBattlerImages(battler = {}, revision = imageRevision) {
 }
 hideBattlerImages();
 function updateBattlerImages(state) {
+  imageVerified = state.sessionKnown && state.ready;
+  if (!imageVerified) {
+    hideBattlerImages();
+    if (loadedImages.size < 2) { imageRevision++; imageAccount = undefined; loadedImages.clear(); }
+    return;
+  }
   const account = state.ready ? menuModel(state).currentAccount : null;
   const eno = account?.eno ?? null;
-  const key = !state.ready || !state.sessionKnown || (state.signedIn && !state.accountsResolved) ? undefined : eno;
-  if (key === imageAccount) return;
-  imageAccount = key;
+  const key = !state.ready || !state.sessionKnown || (state.signedIn && !state.accountsResolved) ? undefined : eno ? `${eno}:${state.accountVersion ?? ""}` : null;
+  if (key === imageAccount) {
+    for (const image of loadedImages) image.style.visibility = "visible";
+    return;
+  }
+  imageAccount = key; loadedImages.clear();
   const revision = ++imageRevision;
   hideBattlerImages();
   if (key === undefined) return;
@@ -88,12 +97,18 @@ try {
   controller.beforeLogout?.(context => messages.canLeave(context));
   const logout = document.getElementById("home-logout");
   logout.addEventListener("click", () => controller.logout());
+  let homeMode = null;
   controller.subscribe(state => {
     try {
       const known = state.ready && state.sessionKnown;
-      document.getElementById("home-guest").hidden = !known || state.signedIn;
-      document.getElementById("home-game").hidden = !known || !state.signedIn;
-      document.getElementById("home-status").textContent = !known ? (state.ready ? "認証機能を読み込めませんでした。通信状況を確認して再読み込みしてください。" : "")
+      if (known) homeMode = state.signedIn;
+      for (const [id, mode] of [["home-guest", false], ["home-game", true]]) {
+        const section = document.getElementById(id);
+        section.hidden = homeMode !== mode;
+        section.style.visibility = known ? "" : "hidden";
+        section.inert = !known;
+      }
+      document.getElementById("home-status").textContent = !known ? (state.ready ? "ログイン状態を確認できません。メニューの「ログイン状態を再確認」を押してください。" : "ログイン状態を確認中…")
         : state.signedIn ? menuModel(state).identity : "ログイン、または新規登録してはじめましょう。";
       const feedback = document.getElementById("home-feedback");
       feedback.textContent = state.registeredEno ? "登録済みのENo：" + state.registeredEno + "。ENoを控えてください。" : state.messageSource === "logout" ? state.message : "";

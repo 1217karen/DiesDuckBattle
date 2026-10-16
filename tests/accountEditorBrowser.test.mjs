@@ -52,6 +52,10 @@ test('browser: actual battle/character editors reject dirty and saving switches,
    const switchB=async()=>{await menu();await page.getByRole('button',{name:'ENo.2｜バトラー2',exact:true}).click();};
    if(file==='setting')await page.locator('#add-duck').click();
    const input=page.locator(file==='setting'?'#duck-name':'#battler-name');await input.fill('編集中の値');
+   // Revalidation of the same identity must not emit SIGNED_OUT and discard the draft.
+   await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));
+   await page.waitForFunction(()=>auth.snapshot().signedIn&&!document.body.classList.contains('auth-required-pending'));
+   assert.equal(await input.inputValue(),'編集中の値');assert.equal(navigations.length,1);
    await switchB();await page.getByText('未保存の変更があります。保存してからアカウントを切り替えてください。',{exact:true}).first().waitFor();
    assert.equal(await input.inputValue(),'編集中の値');assert.equal(await page.evaluate(()=>auth.snapshot().enos[0]),'1');assert.equal(await page.locator('dialog[open]').count(),0);assert.equal(navigations.length,1);assert.equal(await page.locator('body').evaluate(n=>n.classList.contains('auth-required-pending')),false);
    await page.keyboard.press('Escape');await page.evaluate(()=>window.delaySave=true);await page.locator('#save').click();if(file==='setting')await page.getByRole('button',{name:'このまま保存',exact:true}).click();await page.waitForFunction(()=>!!window.releaseSave);

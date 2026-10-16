@@ -1,6 +1,6 @@
 import { finishPageLoad } from "./pageLoad.js";
 import { duckChoices, battleStartStatus, battlerSummary, duckSummary, createSelectState } from "./selectState.js";
-import { getSupabaseClient } from "./authRuntime.js";
+import { getSupabaseClient, getAuthRuntime } from "./authRuntime.js";
 import { createOnlineSelectService } from "./onlineSelectService.js";
 import { createBattleResultStorage } from "./battleResultStorage.js";
 import { createOnlineSelectController } from "./onlineSelectController.js";
@@ -123,13 +123,24 @@ async function initialize() {
           || (current.authUserId && current.authUserId !== userId)) online.invalidate();
       knownUser = userId;
     });
-    const recheck = () => { if (document.visibilityState !== "hidden") void online.checkScope(); };
+    let resumed = false;
+    const auth = await getAuthRuntime();
+    const stopResume = auth.subscribe(next => {
+      if (next.authPhase === "suspended") { resumed = true; online.invalidate("ログイン状態を確認中…"); }
+      else if (resumed && next.sessionKnown && next.signedIn && client.accountContext?.isCurrent()) {
+        resumed = false;
+        void online.load();
+      }
+    });
+    const recheck = () => {
+      if (document.visibilityState !== "hidden" && !client.accountContext?.isRecovering?.()) void online.checkScope();
+    };
     window.addEventListener("focus", recheck);
     window.addEventListener("pageshow", recheck);
     document.addEventListener("visibilitychange", recheck);
     window.addEventListener("pagehide", event => {
       if (event.persisted) return;
-      subscription.unsubscribe(); online.invalidate();
+      subscription.unsubscribe(); stopResume(); online.invalidate();
       window.removeEventListener("focus", recheck); window.removeEventListener("pageshow", recheck); document.removeEventListener("visibilitychange", recheck);
     });
     await online.load();

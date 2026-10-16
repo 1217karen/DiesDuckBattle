@@ -104,3 +104,10 @@ a[data-notice-unread="true"]::after {
 .account-logout-choice-description { display:block; margin-top:8px; font-weight:400; }
 .account-logout-dialog .account-logout-note { margin:4px 0 20px; color:#d1d5dc; font-size:14px; }
 .account-recovery { max-width: 640px; margin: 16px auto; padding: 12px; color: var(--text, #20282c); background: var(--panel, #fff); border: 1px solid var(--muted, #68777e); border-radius: 8px; }
+
+/* Reserve the identity line during verification without displaying cached owners. */
+.common-menu__account { min-height: 32px; width: min(360px, calc(100% - 60px)); }
+.common-menu [data-identity] { min-height: 1.5em; }
+.common-menu__auth-status { position: absolute; top: var(--common-menu-height); right: 0; width: min(360px, 100%); padding: 12px; margin: 0; background: #171b20; color: #eee; font-size: 12px; }
+.common-menu__auth-status button { min-height: 32px; }
+.common-menu__links a[aria-disabled="true"] { pointer-events: none; opacity: .55; }

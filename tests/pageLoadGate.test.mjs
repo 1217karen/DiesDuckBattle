@@ -62,7 +62,7 @@ for(const name of ['indexPage','authPage']) for(const outcome of ['signed-in','s
   listener({ready:true,sessionKnown:outcome!=='restore-error',signedIn:outcome==='signed-in',accounts:[{eno:'12',name:'Alice'}],enos:['12'],message:''});
  }
  assert.equal(f.visible(),true);
- if(outcome.endsWith('error'))assert.match(f.get(name==='indexPage'?'home-status':'auth-root').textContent,/読み込めません/);
+ if(outcome.endsWith('error'))assert.match(f.get(name==='indexPage'?'home-status':'auth-root').textContent,name==='indexPage'&&outcome==='restore-error'?/確認できません.*再確認/:/読み込めません/);
  else if(name==='indexPage') {
   assert.equal(f.get('home-game').hidden,outcome!=='signed-in');
   if(outcome==='signed-in'){assert.match(f.get('home-status').textContent,/Alice/);assert.equal(f.get('home-identity').textContent,menuModel({ready:true,sessionKnown:true,signedIn:true,accounts:[{eno:'12',name:'Alice'}],enos:['12']}).identity);
@@ -86,6 +86,7 @@ for(const outcome of ['success','error','denied']) test('SELECT waits for load/r
  const state={self:{name:'Alice'},build:null};
  const ctx={...f,requireLoginPage:async()=>{if(outcome==='denied'){f.classes.add('auth-required-pending');throw Error('Login required');}},
  createSelectState:()=>state,createSelectPresentation:()=>()=>{},FIXED_IMAGES:{},duckChoices:()=>[],battlerSummary:()=>'',duckSummary:()=>'',battleStartStatus:()=>({reason:'choose'}),
+ getAuthRuntime:async()=>({subscribe:()=>()=>{}}),
  getSupabaseClient:async()=>{clients++;return {auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}};},createOnlineSelectService:()=>({}),
  createBattleResultStorage:client=>{assert.ok(client.auth);return {};},
  createOnlineSelectController:()=>({subscribe:fn=>listener=fn,load:async()=>{started.resolve();await pending.promise;if(outcome==='error')throw Error('offline');listener({state,eno:'12',message:'complete',canStart:false});},checkScope(){checks++;},invalidate(){}})};

@@ -9,7 +9,7 @@ export function mountIndexMessages(document, getClient, notify = showToast) {
   const text = el('home-message'), edit = el('home-message-edit'), form = el('home-message-form');
   const input = el('home-message-input'), count = el('home-message-count'), save = el('home-message-save');
   const cancel = el('home-message-cancel'), status = el('home-message-status'), list = el('home-messages');
-  let eno = null, revision = 0, service, current = '', saving = false;
+  let eno = null, revision = 0, service, current = '', saving = false, loading = false, accountVersion;
   function renderOwnMessage() {
     text.textContent = current || '右のペンマークからひとことを編集できます。';
     text.classList.toggle('is-placeholder', !current);
@@ -58,13 +58,21 @@ export function mountIndexMessages(document, getClient, notify = showToast) {
     if (blocked) { status.textContent = blocked.message; return blocked; }
     return !saving && (form.hidden || input.value === current || globalThis.confirm("未保存のひとことを破棄してアカウントを変更しますか？"));
   }, update(state) {
+    // The home section is concealed/inert while unverified. Keep drafts and DOM
+    // through same-owner verification; services still reject stale requests.
+    if (!state.sessionKnown) {
+      if (loading) { revision++; service?.invalidate(); service = null; eno = null; loading = false; }
+      return;
+    }
     const next = state.ready ? menuModel(state).currentAccount?.eno ?? null : null;
-    if (next === eno) return;
+    if (next === eno && state.accountVersion === accountVersion) return;
+    accountVersion = state.accountVersion;
     eno = next; const version = ++revision; service?.invalidate(); service = null;
     current = ''; saving = false; input.disabled = false; cancel.disabled = false; close(); edit.disabled = true;
     list.replaceChildren(); text.classList.remove('is-placeholder'); text.textContent = next ? '読み込み中…' : '';
     el('home-messages-status').textContent = text.textContent;
     if (!next) return;
+    loading = true;
     void (async () => {
       try {
         const client = await getClient(); if (version !== revision) return;
@@ -76,7 +84,7 @@ export function mountIndexMessages(document, getClient, notify = showToast) {
       } catch {
         if (version !== revision) return;
         text.textContent = 'ひとことを読み込めませんでした。'; el('home-messages-status').textContent = text.textContent;
-      }
+      } finally { if (version === revision) loading = false; }
     })();
   }};
 }

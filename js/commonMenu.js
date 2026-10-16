@@ -3,7 +3,7 @@ import "./noticeIndicators.js";
 import "./siteTheme.js";
 import { displayCache } from "./authDisplayCache.js";
 import { getAuthRuntime } from "./authRuntime.js";
-import { menuModel } from "./commonMenuModel.js";
+import { menuModel, gameMenuItems } from "./commonMenuModel.js";
 import { createAccountDeletionView } from "./accountDeletionView.js";
 import { createAccountSwitchView } from "./accountSwitchView.js";
 import { ACCOUNT_SWITCHING_ENABLED } from "./accountSwitchingConfig.js";
@@ -66,7 +66,11 @@ function renderMenu(items) {
   }));
 }
 // Public navigation is usable even while the authentication SDK is loading.
-renderMenu(publicItems);
+renderMenu(ACCOUNT_SWITCHING_ENABLED ? gameMenuItems : publicItems);
+const authStatus = document.createElement("p"), retryAuth = document.createElement("button");
+authStatus.className = "common-menu__auth-status"; authStatus.setAttribute("role", "status");
+retryAuth.type = "button"; retryAuth.textContent = "ログイン状態を再確認";
+authStatus.hidden = true; root.append(authStatus);
 try {
   const controller = await getAuthRuntime();
   let lastMenuKey = "", redirected = false, profileLink, logoutButton;
@@ -76,21 +80,38 @@ try {
   } });
   const switching = ACCOUNT_SWITCHING_ENABLED ? createAccountSwitchView({ document, controller, menu: accountMenu, summary: accountSummary, deletion }) : null;
   const recovery = ACCOUNT_SWITCHING_ENABLED ? createAccountRecoveryView({ document, controller }) : null;
+  retryAuth.addEventListener("click", () => void controller.retry?.());
   controller.subscribe(state => {
     recovery?.update(state);
     authBusy = !!state.busy;
     deletion.update(state);
     if (switching) {
       const model = menuModel(state);
-      label.textContent = state.ready ? model.identity : "確認中…"; label.title = label.textContent;
-      accountEnabled = state.ready && state.signedIn;
+      const checking = !state.sessionKnown && !state.ready;
+      const identity = checking ? "ログイン状態を確認中…" : model.identity;
+      if (label.textContent !== identity) { label.textContent = identity; label.title = identity; }
+      root.setAttribute("aria-busy", String(checking));
+      authStatus.hidden = !state.retryable;
+      if (state.retryable && !authStatus.contains(retryAuth)) {
+        authStatus.append(document.createTextNode("通信状況を確認して再試行してください。 "), retryAuth);
+      }
+      retryAuth.disabled = checking;
+      accountEnabled = state.sessionKnown && state.signedIn;
       accountSummary.setAttribute("aria-disabled", String(!accountEnabled));
       accountSummary.setAttribute("tabindex", accountEnabled ? "0" : "-1");
       root.querySelector("[data-account-arrow]").hidden = !accountEnabled;
       if (!accountEnabled) accountDetails.open = false;
-      const key = String(model.loggedIn);
-      if (lastMenuKey !== key) { lastMenuKey = key; renderMenu(model.items); }
-      switching.update(state);
+      // Keep the same link/control nodes through revalidation. Their old private
+      // labels remain hidden until a fresh lease confirms this account again.
+      accountMenu.hidden = !accountEnabled;
+      for (const [index, link] of [...links.children].entries()) {
+        const protectedLink = gameMenuItems[index].login;
+        link.hidden = !!protectedLink && !checking && !model.loggedIn;
+        link.setAttribute("aria-disabled", String(!!protectedLink && !model.loggedIn));
+        if (protectedLink && !model.loggedIn) link.setAttribute("tabindex", "-1");
+        else link.removeAttribute("tabindex");
+      }
+      if (!checking && !state.retryable) switching.update(state);
       return;
     }
     if (!redirected && state.sessionKnown && !state.signedIn && !state.busy && state.logoutSucceeded) {

@@ -4,7 +4,7 @@ import { getAuthRuntime } from "./authRuntime.js";
 // Keep watching the shared controller after admission; logout clicks alone do nothing.
 export async function requireLoginPage({ getRuntime = getAuthRuntime, document = globalThis.document,
   location = globalThis.location } = {}) {
-  let admitted = false, redirected = false, admittedEno;
+  let admitted = false, redirected = false, admittedEno, admittedVersion;
   let unsubscribe = () => {};
   const redirect = (target = "index.html") => {
     if (redirected) return;
@@ -28,7 +28,7 @@ export async function requireLoginPage({ getRuntime = getAuthRuntime, document =
         }
         if (admitted && (!state.sessionKnown || !state.signedIn)) document.body.classList.add("auth-required-pending");
         if (!state.sessionKnown) {
-          if (!state.ready) return;
+          if (!state.ready || (state.retryable && auth.retry)) return;
           redirect();
           reject(new Error("Auth state could not be confirmed"));
           return;
@@ -46,13 +46,13 @@ export async function requireLoginPage({ getRuntime = getAuthRuntime, document =
           reject(new Error("Login required"));
           return;
         }
-        if (admitted && state.accountSwitching && state.enos?.[0] !== admittedEno) {
+        if (admitted && state.accountSwitching && (state.enos?.[0] !== admittedEno || state.accountVersion !== admittedVersion)) {
           redirect(); // An external identity change cannot reveal the old page under a new ENo.
           return;
         }
         document.body.classList.remove("auth-required-pending");
         if (!admitted) {
-          admitted = true; admittedEno = state.enos?.[0];
+          admitted = true; admittedEno = state.enos?.[0]; admittedVersion = state.accountVersion;
           resolve();
         }
       });

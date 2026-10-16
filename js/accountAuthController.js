@@ -29,6 +29,9 @@ export function createAccountAuthController({ runtime, registrationService, noti
     const sessionKnown = ready && state.phase !== "suspended" && (accountDeletionPending || (!pending
       && ["ready", "unselected", "reauthentication-required"].includes(state.phase)));
     return { ready: ready && state.phase !== "suspended" && (!pending || accountDeletionPending), sessionKnown, busy: busy || (accountDeletionPending ? "" : state.busy) || "",
+      accountVersion: runtime.getSelectionVersion(),
+      authPhase: state.phase, authCode: state.code,
+      retryable: ["restore", "initialize"].includes(state.lastAction) && state.phase === "unverified" && ["verification-unavailable", "stale-operation"].includes(state.code),
       signedIn: !!selected, accountsResolved: !!selected, accounts: selected ? [{ ...selected }] : [],
       enos: selected ? [selected.eno] : [], savedAccounts: selected ? state.entries : [], pendingAccounts: state.pending, deletionRecoveries: state.deletions,
       sessionMessage: selected ? "ログイン中" : sessionKnown ? "ログインしていません。" : pending || !ready ? "ログイン状態を確認中…" : "ログイン状態を確認できません。再読み込みしてください。", message, messageSource: source,
@@ -69,7 +72,15 @@ export function createAccountAuthController({ runtime, registrationService, noti
   });
   return {
     coordinator, runtime, snapshot,
-    async start() { const result = await runtime.initialize(); ready = true; if (!result.ok) message = messages[result.code] ?? "ログイン状態を確認できません。再読み込みしてください。"; emit(); return result; },
+    retry: () => runtime.revalidate(),
+    async waitUntilReady() {
+      if (snapshot().ready) return;
+      await new Promise(resolve => {
+        const listener = state => { if (state.ready) { listeners.delete(listener); resolve(); } };
+        listeners.add(listener); listener(snapshot());
+      });
+    },
+    async start() { const result = await runtime.initialize(); ready = true; emit(); return result; },
     subscribe(listener) { listeners.add(listener); listener(snapshot()); return () => listeners.delete(listener); },
     beforeLogout: guard => coordinator.beforeAccountChange(guard),
     login, add: login,

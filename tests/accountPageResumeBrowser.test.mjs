@@ -11,6 +11,7 @@ test('browser: real auth runtime, select battle/result back-forward, restored pa
  {skip:!chromium&&'Set PLAYWRIGHT_MODULE',timeout:90000},async()=>{
  const self=await player(uuid(101),'1',da),opponent=await player(uuid(102),'2',db);
  let sdk=runtimeSource.slice(runtimeSource.indexOf('const uuid='),runtimeSource.indexOf('window.rpcCalls=[];'));
+ sdk=sdk.replace('const listeners=new Set();const current=()=>read(key);', `const listeners=new Set();const current=()=>read(key);window.sdkEvents??={};window.sdkEvents[key]=(event)=>{for(const fn of listeners)fn(event,{user:current()});};`);
  sdk=sdk.replace('async getUser(){return {data:{user:current()}};}',`async getUser(){
   window.verifyCalls=(window.verifyCalls||0)+1;
   if(sessionStorage.getItem('verify-gate'))await new Promise(r=>window.releaseVerification=r);
@@ -29,7 +30,7 @@ test('browser: real auth runtime, select battle/result back-forward, restored pa
   localStorage.setItem('mock-battle',JSON.stringify(result));return {data:result};
  }
  if(name==='get_online_battle_result')return {data:JSON.parse(localStorage.getItem('mock-battle')||'null')};
- if(name==='get_index_messages')return {data:[]};
+ if(name==='get_index_messages')return {data:{eno:'1',ownMessage:'hello',others:[]}};
  `)+`window.rpcCalls=[];export function createClient(_url,_key,options){return client(options.auth.storageKey);}`;
  const server=createServer(async(req,res)=>{try{
   const path=new URL(req.url,'http://localhost').pathname;let body,type='text/javascript';
@@ -52,38 +53,67 @@ test('browser: real auth runtime, select battle/result back-forward, restored pa
    }
    const log=(kind,extra={})=>{const list=JSON.parse(sessionStorage.getItem('lifecycle')||'[]');list.push({kind,path:location.pathname,...extra});sessionStorage.setItem('lifecycle',JSON.stringify(list));};
    addEventListener('pageshow',e=>log('pageshow',{persisted:e.persisted}));addEventListener('pagehide',e=>log('pagehide',{persisted:e.persisted}));
-   window.authStates=[];
+   window.authStates=[];window.documentId=Math.random();
   };
   await context.addInitScript(init);
   let page=await context.newPage();const errors=[];page.on('pageerror',e=>{if(!/Login required|Auth state could not be confirmed/.test(e.message))errors.push(e.message);});
   const auth=()=>page.evaluate(async()=>{const a=await (await import('/js/authRuntime.js')).getAuthRuntime();return a.snapshot();});
   const ready=async()=>{await page.waitForFunction(()=>document.querySelector('#random-opponent')?.disabled===false,{},{timeout:10000});assert.match(page.url(),/select.html$/);assert.equal((await auth()).enos[0],'1');assert.equal(await page.locator('body').evaluate(n=>n.classList.contains('auth-required-pending')),false);};
   await page.goto(origin+'/select.html');await ready();
+  const firstDocument=await page.evaluate(()=>window.documentId);
   await page.locator('#random-opponent').click();await page.waitForFunction(()=>!document.querySelector('#vsButton').disabled);
   await page.locator('#vsButton').click();await page.waitForURL(/result.html\?battleId=battle/);await page.waitForFunction(()=>!document.querySelector('#btnAll').disabled);
   await page.goBack({waitUntil:'commit'});await ready();
   let lifecycle=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('lifecycle')));
-  // Real BFCache restore must occur, followed by the single controlled reload.
-  assert.ok(lifecycle.some(e=>e.path==='/select.html'&&e.kind==='pageshow'&&e.persisted),JSON.stringify(lifecycle));
+  // Real BFCache restore must occur without replacing the document.
+  assert.ok(lifecycle.some(e=>e.path==='/select.html'&&e.kind==='pageshow'&&e.persisted),JSON.stringify(lifecycle));assert.equal(await page.evaluate(()=>window.documentId),firstDocument);
   await page.goForward({waitUntil:'commit'});await page.waitForURL(/result.html/,{waitUntil:'commit'});await page.waitForFunction(()=>!document.querySelector('#btnAll').disabled);await page.waitForFunction(async()=>(await (await import('/js/authRuntime.js')).getAuthRuntime()).snapshot().signedIn);await page.goBack({waitUntil:'commit'});await ready();
   // Explicit reload path validates again, never retains the old document's scoped client.
   await page.reload();await ready();assert.ok(await page.evaluate(()=>window.verifyCalls>=2));
+  // Same-owner renewal must not recreate menus, images or discard a home draft.
+  await page.goto(origin+'/index.html');await page.waitForFunction(()=>document.querySelector('#home-standing').style.visibility==='visible'&&!document.querySelector('#home-message-edit').disabled);
+  await page.locator('#home-message-edit').click();await page.locator('#home-message-input').fill('unsaved home draft');
+  const layout=await page.locator('#common-menu').boundingBox();
+  await page.evaluate(()=>{
+    window.menuLink=document.querySelector('.common-menu__links a');window.accountButton=document.querySelector('.account-switch-choice');
+    window.standingImage=document.querySelector('#home-standing');window.imageSource=standingImage.src;
+    window.rpcBefore=window.rpcCalls.filter(c=>c.name==='load_online_player').length;
+    sessionStorage.setItem('verify-gate','yes');const key=Object.keys(window.sdkEvents).find(k=>k.includes('account'));window.sdkEvents[key]('TOKEN_REFRESHED');
+  });
+  await page.waitForFunction(()=>!!window.releaseVerification);
+  assert.equal(await page.locator('#home-game').evaluate(n=>n.inert),true);assert.equal(await page.locator('#home-standing').evaluate(n=>n.style.visibility),'hidden');
+  assert.equal(await page.evaluate(()=>menuLink===document.querySelector('.common-menu__links a')&&accountButton===document.querySelector('.account-switch-choice')),true);
+  assert.deepEqual(await page.locator('#common-menu').boundingBox(),layout);
+  await page.evaluate(()=>{sessionStorage.removeItem('verify-gate');window.releaseVerification();});await page.waitForFunction(()=>!document.querySelector('#home-game').inert);
+  assert.equal(await page.locator('#home-message-input').inputValue(),'unsaved home draft');
+  assert.equal(await page.evaluate(()=>standingImage===document.querySelector('#home-standing')&&standingImage.src===imageSource&&window.rpcCalls.filter(c=>c.name==='load_online_player').length===rpcBefore),true);
+  for(const width of [320,390,1280]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}
+  await page.goto(origin+'/select.html');await ready();
   const other=await context.newPage();await other.goto(origin+'/result.html?battleId=battle');await other.bringToFront();
   // Headless tabs do not reliably change visibility; exercise the native listener with its observable state.
   await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,value:'hidden'});document.dispatchEvent(new Event('visibilitychange'));});
   assert.equal((await auth()).signedIn,true);
   await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});document.dispatchEvent(new Event('visibilitychange'));});await page.bringToFront();await ready();
-  // Suspended snapshot cannot trigger the guard before the authRuntime reload handler runs.
+  // Actual SDK callback and storage notification for a healthy token renewal.
+  const beforeRefresh=await page.evaluate(()=>({id:window.documentId,calls:window.verifyCalls}));
+  await page.evaluate(()=>{const key=Object.keys(window.sdkEvents).find(k=>k.includes('account'));window.sdkEvents[key]('TOKEN_REFRESHED');});await ready();
+  assert.equal(await page.evaluate(()=>window.documentId),beforeRefresh.id);assert.ok(await page.evaluate(n=>window.verifyCalls>n,beforeRefresh.calls));
+  await other.evaluate(()=>{const registry=JSON.parse(localStorage.getItem('diesduck-account-sessions-v1'));localStorage.setItem('diesduck-auth-account-v1-'+registry.active,JSON.stringify({renewal:Date.now()}));});
+  await page.waitForFunction(n=>window.verifyCalls>n,beforeRefresh.calls+2);await ready();
+  // Suspended snapshot conceals the page and blocks writes until automatic verification completes.
   await page.evaluate(async()=>{const a=await (await import('/js/authRuntime.js')).getAuthRuntime();window.oldClient=a.getClient();window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}));});
   assert.equal((await auth()).sessionKnown,false);assert.equal(await page.locator('body').evaluate(n=>n.classList.contains('auth-required-pending')),true);
   assert.equal(await page.evaluate(async()=>!!(await oldClient.rpc('save_online_player',{p_game_account_id:oldClient.accountContext.account.gameAccountId})).error),true);
-  await Promise.all([page.waitForEvent('load'),page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})))]);await ready();
+  await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));await ready();
   // Delayed startup and offline getUser must not emit a confirmed guest or logout-success notice.
   await page.evaluate(()=>sessionStorage.setItem('verify-gate','yes'));await page.reload();await page.waitForFunction(()=>!!window.releaseVerification);
   assert.equal((await auth()).sessionKnown,false);assert.equal((await auth()).ready,false);assert.match(page.url(),/select.html$/);
   await page.evaluate(()=>{sessionStorage.removeItem('verify-gate');window.releaseVerification();});await ready();
-  await page.evaluate(()=>sessionStorage.setItem('verify-offline','yes'));await page.reload();await page.waitForURL(origin+'/index.html',{waitUntil:'commit'});assert.equal((await auth()).sessionKnown,false);assert.equal((await auth()).logoutSucceeded,false);
-  await page.evaluate(()=>sessionStorage.removeItem('verify-offline'));await page.goto(origin+'/select.html');await ready();
+  await page.evaluate(()=>sessionStorage.setItem('verify-offline','yes'));await page.reload();
+  await page.getByRole('button',{name:'ログイン状態を再確認'}).waitFor();
+  assert.match(page.url(),/select.html$/);assert.equal((await auth()).sessionKnown,false);assert.equal((await auth()).logoutSucceeded,false);
+  const failedDocument=await page.evaluate(()=>window.documentId);
+  await page.evaluate(()=>sessionStorage.removeItem('verify-offline'));await page.getByRole('button',{name:'ログイン状態を再確認'}).click();await ready();assert.equal(await page.evaluate(()=>window.documentId),failedDocument);
   await page.evaluate(()=>sessionStorage.setItem('verify-expired','yes'));await page.reload();await page.waitForURL(/index.html/,{waitUntil:'commit'});
   await page.waitForFunction(async()=> (await (await import('/js/authRuntime.js')).getAuthRuntime()).snapshot().sessionKnown);
   assert.equal((await auth()).signedIn,false);assert.equal((await auth()).logoutSucceeded,false);

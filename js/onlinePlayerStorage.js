@@ -29,7 +29,7 @@ export function createOnlinePlayerStorage(client) {
     const context = client.accountContext;
     if (context) {
       const session = await client.auth.getSession();
-      if (session.error) return onlineFailure("session-changed");
+      if (session.error) return onlineFailure(session.error.code === "auth-verifying" ? "load-failed" : "session-changed");
       if (gameAccountId !== undefined && gameAccountId !== context.account.gameAccountId) return onlineFailure("forbidden");
       return { ok: true, account: { id: context.account.gameAccountId, eno: context.account.eno }, authUserId: context.account.authUserId };
     }
@@ -48,6 +48,7 @@ export function createOnlinePlayerStorage(client) {
   }
   async function unchanged(userId) {
     const { data, error } = await client.auth.getSession();
+    if (error?.code === "auth-verifying") throw new Error("Authentication verification pending");
     return !error && data?.session?.user?.id === userId;
   }
   return {

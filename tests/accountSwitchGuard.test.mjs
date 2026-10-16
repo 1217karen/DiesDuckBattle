@@ -36,8 +36,8 @@ test('saving and coordinator writes refuse switch with specific message; logout 
 });
 for(const failure of ['offline','expired'])test('failed '+failure+' switch restores verified A on same protected page',async()=>{
  const s=await setup(),old=s.auth.getClient(),client=s.f.clients.findLast(c=>s.f.sessions.get(c.key)?.email.includes('eno-2@'));
- if(failure==='offline')client.offline=true;else s.f.sessions.delete(client.key);
- // Restore created an independent B client on this page, use it for network delay/failure.
+ if(failure==='offline')s.f.offlineKeys.add(client.key);else s.f.sessions.delete(client.key);
+ // B is lazily created on selection; inject the failure for current and future clients.
  for(const c of s.f.clients.filter(c=>c.key===client.key))if(failure==='offline')c.offline=true;
  const pending=s.auth.select('2');assert.equal(s.classes.has('auth-required-pending'),true);assert.deepEqual(s.redirects,[]);
  assert.equal((await pending).ok,false);assert.equal(s.auth.snapshot().enos[0],'1');assert.ok(s.auth.snapshot().message);assert.deepEqual(s.paths,[]);assert.deepEqual(s.redirects,[]);assert.equal(s.classes.has('auth-required-pending'),false);assert.ok(old.accountContext.isCurrent());
@@ -46,7 +46,7 @@ test('unverifiable A after failed switch stays hidden and exits; external logout
  for(const external of [false,true]){
   const s=await setup();
   if(external){const p=s.f.page(),r=await p.get();await r.initialize();await r.logoutGame();s.page.events.fire('storage',{key:'diesduck-account-sessions-v1'});await tick();}
-  else {for(const c of s.f.clients)c.offline=true;assert.equal((await s.auth.select('2')).ok,false);}
+  else {for(const c of s.f.clients)s.f.offlineKeys.add(c.key);assert.equal((await s.auth.select('2')).ok,false);}
   assert.equal(s.auth.getClient(),null);assert.equal(s.classes.has('auth-required-pending'),true);assert.equal(s.redirects.length,1);
  }
 });
