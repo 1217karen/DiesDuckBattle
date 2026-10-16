@@ -72,3 +72,16 @@ test("候補はcatalogの絞り込みのみ、追加したtrusted定義も同じ
   const changed=changeBEvent(blank(),"triggerId","phase-end",modified);
   assert.equal(changed.conditionId,"first-action"); assert.equal(changed.effectId,"");
 });
+
+test("AP基準補正の4候補は現在APとの関係と最大値を日本語で表示する", () => {
+  for (const stat of ["AT", "DF"]) {
+    const regular = catalog.traits.find(d => d.id === `ap-${stat.toLowerCase()}`);
+    const inverse = catalog.traits.find(d => d.id === `ap-inverse-${stat.toLowerCase()}`);
+    assert.ok(regular);
+    assert.ok(inverse);
+    assert.equal(bSentence(regular), `自分アヒルの現在APの数だけ${stat}が増加する（最大5）`);
+    assert.equal(bSentence(inverse), `自分アヒルの現在APが少ないほど${stat}が増加する（最大5）`);
+    assert.equal(regular.presentation.category, "AP基準補正");
+    assert.equal(inverse.presentation.category, "AP基準補正");
+  }
+});
