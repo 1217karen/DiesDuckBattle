@@ -121,7 +121,7 @@ body {
 .featured-summary .profile-battle-match { gap: 8px; }
 .featured-summary .profile-battle-eno { margin-bottom: 3px; }
 .featured-summary .profile-battle-person { gap: 2px; }
-.featured-summary .profile-battle-icon { width: 56px; height: 56px; }
+.featured-summary .profile-battle-icon { width: 60px; height: 60px; }
 .featured-summary .profile-battle-mid { gap: 6px; }
 .featured-summary .profile-battle-badge { padding: 4px 8px; }
 .featured-summary .profile-battle-vs { padding: 8px 10px; }
@@ -206,10 +206,13 @@ body {
 .introduction-editor { margin-top: 16px; padding: 16px; color: #20282c; background: #f4f6f7; border: 1px solid #637178; border-radius: 8px; color-scheme: light; }
 .introduction-editor fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .introduction-editor label { display: block; margin-top: 16px; }
+.introduction-editor .introduction-body-label { display: flex; flex-direction: column; gap: 6px; }
 .introduction-editor textarea, .introduction-editor input { width: 100%; padding: 8px; font: inherit; color: #20282c; background: #fff; border: 1px solid #637178; border-radius: 4px; }
 .introduction-editor textarea { resize: vertical; }
+.introduction-editor .introduction-text-count { margin: 4px 0; text-align: right; font-size: .75rem; color: #637178; }
 .introduction-editor [aria-invalid="true"] { border: 2px solid #b3261e; }
 .introduction-actions, .introduction-editor .quote-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.introduction-editor .quote-toolbar { margin-top: 5px; }
 .introduction-actions { justify-content: flex-end; }
 .profile-introductions button, .introduction-confirm button, .introduction-icon-dialog button { color: #20282c; background: #fff; border: 1px solid #637178; border-radius: 5px; padding: 9px 12px; cursor: pointer; }
 .profile-introductions button:disabled { opacity: .5; cursor: default; }
