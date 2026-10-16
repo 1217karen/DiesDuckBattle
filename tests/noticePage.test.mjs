@@ -67,3 +67,37 @@ test('empty announcements render an empty-state message without synthetic posts'
  assert.equal(map.get('notice-articles').children[0].textContent,'お知らせはまだありません。');
  assert.equal(map.get('notice-index').children.length,0);
 });
+
+test('only HTTP(S) announcement Markdown links become safe anchors',async()=>{
+ const source=await readFile(new URL('../js/noticePage.js',import.meta.url),'utf8');
+ const start=source.indexOf('function element('),end=source.indexOf('const articles =');
+ assert.ok(start>=0&&end>start);
+ const render=vm.runInNewContext(source.slice(start,end)+'\nnoticeParagraph',
+   {document:{createElement:tag=>new Element(tag)},URL});
+ const rich=render('前文 [公式X](https://x.com/_n_s_n_s_n_) と [ヘルプ](http://example.org/help?x=1&y=2) です。');
+ assert.deepEqual(rich.children.map(n=>n.tagName),['span','a','span','a','span']);
+ assert.deepEqual(rich.children.map(n=>n.textContent),['前文 ','公式X',' と ','ヘルプ',' です。']);
+ assert.equal(rich.children[1].href,'https://x.com/_n_s_n_s_n_');
+ assert.equal(rich.children[3].href,'http://example.org/help?x=1&y=2');
+ for(const anchor of [rich.children[1],rich.children[3]]) {
+   assert.equal(anchor.target,'_blank');
+   assert.equal(anchor.rel,'noopener noreferrer');
+ }
+ for(const raw of [
+   '無効なリンク [実行](javascript:alert(1)) です',
+   '相対パス [リンク](/foo) は不可',
+   '構文不正 [リンク](https://) はテキスト',
+   '<img src=x onerror=alert(1)>',
+   'リンクのない普通のお知らせです'
+ ]) {
+   const p=render(raw);
+   assert.equal(p.textContent,raw);
+   assert.equal(p.children.length,0);
+ }
+ const mixed=render('前 [安全](https://example.com) [危険](data:text/html,x) 後');
+ assert.deepEqual(mixed.children.map(n=>n.tagName),['span','a','span']);
+ assert.equal(mixed.children[2].textContent,' [危険](data:text/html,x) 後');
+ const escaped=render('[<img onerror=alert(1)>](https://example.com)');
+ assert.equal(escaped.children[0].textContent,'<img onerror=alert(1)>');
+ assert.equal(escaped.children[0].children.length,0);
+});
