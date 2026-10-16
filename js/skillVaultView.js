@@ -46,6 +46,8 @@ export function createSkillVaultView({ context, apply, storage, notify = showToa
     if (activeDialog && !sameContext(dialogContext)) activeDialog.close();
     for (const [type, root] of roots) fill(type, root);
   }
+  // Distinguish the skill's effect sentence from explanatory dialog copy.
+  const skillParagraph = text => ({ text });
   function dialog(token, title, paragraphs, actions) {
     activeDialog?.close();
     const element = node("dialog", null, "confirm-dialog skill-vault-dialog");
@@ -60,7 +62,8 @@ export function createSkillVaultView({ context, apply, storage, notify = showToa
       }, action.className);
       control.disabled = !!action.disabled; row.append(control);
     }
-    element.append(heading, ...paragraphs.map(text => node("p", text)), row);
+    element.append(heading, ...paragraphs.map(part => typeof part === "string"
+      ? node("p", part) : node("p", part.text, "skill-vault-skill-text")), row);
     element.addEventListener("close", () => {
       element.remove(); if (activeDialog === element) { activeDialog = null; dialogContext = null; }
     }, { once: true });
@@ -72,7 +75,7 @@ export function createSkillVaultView({ context, apply, storage, notify = showToa
     if (!entry || controller.snapshot().busy) return;
     dialog(token, "スキルを保管しますか？", [
       `「${entry.name || "無名のスキル"}」を保管しますか？`,
-      ...(entry.ruby ? [`ルビ：${entry.ruby}`] : []), description(type, entry.selection, token.owner),
+      ...(entry.ruby ? [`ルビ：${entry.ruby}`] : []), skillParagraph(description(type, entry.selection, token.owner)),
       "保管したスキルは、あとから読み込むことができます。現在の戦闘設定は保存されません。",
     ], [{ text: "キャンセル" }, { text: "保管する", className: "primary", run: () => {
       // Capture the draft at confirmation, not the server DTO or a previous render.
@@ -85,9 +88,10 @@ export function createSkillVaultView({ context, apply, storage, notify = showToa
     const token = { ...context(type), type };
     const loadable = !!captureVaultSkill(type, { [`${type.toLowerCase()}Selection`]: entry.selection,
       skillLabels: { [type]: { name: entry.name, ruby: entry.ruby } } });
+    const skillText = description(type, entry.selection, token.owner);
     dialog(token, entry.displayName, [`対象スキル種別：${type}`, `スキル名：${entry.name || "（空欄）"}`,
       `ルビ：${entry.ruby || "（空欄）"}`,
-      description(type, entry.selection, token.owner) || "現在のルールでは表示・読み込みできない選択肢が含まれています。元の保管データは維持されます。",
+      skillText ? skillParagraph(skillText) : "現在のルールでは表示・読み込みできない選択肢が含まれています。元の保管データは維持されます。",
       `読み込むと現在の${type}スキルに上書きします。設定画面の『保存』ボタンを押すまで、変更は保存されません。`,
     ], [{ text: "読み込む", className: "primary", disabled: !loadable, run: () => apply(type, entry, token) },
       { text: "キャンセル" }, { text: "削除する", className: "skill-vault-delete", run: () => {
