@@ -30,7 +30,7 @@ test('character list privacy, record atomicity, backfill and ACL in local Postgr
  const best=async(id=a)=>{await db.exec('reset role');return value('select best_random_win_streak data from public.game_account_records where game_account_id=$1',[id]);};
  const list=async()=>{await asUser(user);return decodeOnlineCharacters(await value('select public.list_online_characters() data'));};
  await t.test('backfill separates manual/draw/loss, defaults zero and includes registration/self/no public Duck',async()=>{
- assert.equal(await best(),3);assert.equal(await best(b),0);const rows=await list();assert.equal(rows.length,3);assert.deepEqual(rows[2],{eno:'3',battlerName:'new',battlerIconUrl:'',accent:'#4F91B3',background:'#DCEEF3',panel:'#FFFFFF',text:'#20282C',duck:null,bestStreak:0});assert.equal(rows[0].bestStreak,3);
+ assert.equal(await best(),3);assert.equal(await best(b),0);const rows=await list();assert.equal(rows.length,3);assert.deepEqual(rows[2],{eno:'3',battlerName:'new',plName:'',battlerIconUrl:'',accent:'#4F91B3',background:'#DCEEF3',panel:'#FFFFFF',text:'#20282C',duck:null,bestStreak:0});assert.equal(rows[0].bestStreak,3);
  });
  await t.test('win/loss/draw/manual/P2 and monotonic best; current contract and save_revision retained',async()=>{
  await db.exec('reset role');const revision=await value('select save_revision::text data from public.game_accounts where id=$1',[a]);

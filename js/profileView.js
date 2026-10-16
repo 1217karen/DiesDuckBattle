@@ -95,7 +95,14 @@ export function renderProfile(document, profile) {
     const text = el("div", "duck-profile"); text.append(el("h3", "profile-section-heading", "DUCK PROFILE"), profileText(d.profile.text)); duck.append(stats, text);
   }
   const favorite = renderFeaturedBattle(document, profile);
-  grid.append(battler, text, duck, favorite); fragment.append(header, grid); return fragment;
+  const pl = el("footer", "profile-pl-name"), name = (profile.plName ?? "").trim();
+  pl.append(el("span", "", "PL："));
+  if (name) {
+    const link = el("a", "", name);
+    link.href = `character-list.html?plName=${encodeURIComponent(name)}`;
+    pl.append(link);
+  } else pl.append(el("span", "", "匿名"));
+  grid.append(battler, text, duck, favorite); fragment.append(header, grid, pl); return fragment;
 }
 
 /** Public projection only; shared by the initial page and the owner's post-save refresh. */

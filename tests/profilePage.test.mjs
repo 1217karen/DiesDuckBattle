@@ -235,3 +235,14 @@ test('battle cards keep wide rows and switch both sides and outcome to narrow co
  assert.match(css,/\.profile-battle-option:has\(input:checked\)/);
  for(const color of ['#ffe78a','#d4c2d8','#e2e2e2'])assert.ok(css.includes(color));
 });
+
+test('PL label is last, anonymous is unlinked, named PL safely links to list query',async()=>{
+ for(const name of [undefined,'','   ','雪 & <PL> #😀']){
+  const profile=profileFixture();if(name!==undefined)profile.plName=name;
+  const {main}=await page({profile});const footer=byClass(main,'profile-pl-name')[0];
+  assert.equal(main.children.at(-1),footer);assert.equal(footer.tagName,'footer');
+  const link=footer.children.find(c=>c.tagName==='a');
+  if(!name?.trim()){assert.equal(footer.textContent,'PL：匿名');assert.equal(link,undefined);}
+  else{assert.equal(footer.textContent,'PL：'+name);assert.equal(link.href,'character-list.html?plName='+encodeURIComponent(name));assert.equal(link.html,undefined);}
+ }
+});

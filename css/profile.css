@@ -175,3 +175,6 @@ body {
   .skill-list { gap: 12px; }
   .battler-card > .skill-list, .duck-card > .skill-list, .stat-section, .duck-profile { margin-top: 18px; padding-top: 18px; }
 }
+
+.profile-pl-name { margin-top: 24px; text-align: right; font-size: .85rem; color: var(--profile-accent); overflow-wrap: anywhere; }
+.profile-pl-name a { color: inherit; }

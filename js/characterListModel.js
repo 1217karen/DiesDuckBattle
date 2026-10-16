@@ -1,8 +1,9 @@
 // Canonical positive decimal strings compare numerically without Number rounding.
 export const compareEno = (a,b) => a.length-b.length || (a<b?-1:a>b?1:0);
-export function filterCharacters(characters,{name="",attribute="",type="",sort="eno-asc"}={}) {
-  const query=name.trim().toLowerCase(),attr=attribute.trim();
+export function filterCharacters(characters,{name="",plName="",attribute="",type="",sort="eno-asc"}={}) {
+  const query=name.trim().toLowerCase(),attr=attribute.trim(),plQuery=plName.trim().toLowerCase();
   return characters.filter(c=>(!query || c.battlerName.toLowerCase().includes(query) || c.duck?.name.toLowerCase().includes(query))
+    && (!plQuery || (c.plName ?? "").toLowerCase().includes(plQuery))
     && (!attr || c.duck?.attributes.includes(attr)) && (!type || c.duck?.type===type)).sort((a,b)=>{
       if(sort==="eno-desc")return compareEno(b.eno,a.eno);
       if(sort==="best"){

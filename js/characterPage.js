@@ -38,6 +38,8 @@ const duckQuoteRenderers = new Map();
 const battlerNameInput = document.querySelector("#battler-name");
 battlerNameInput.placeholder = `バトラー名を入力（最大${BATTLER_NAME_MAX}文字）`;
 battlerNameInput.addEventListener("input", () => { online?.edit({ battlerName: battlerNameInput.value }); updateValidation(); });
+const plNameInput = document.querySelector("#pl-name");
+plNameInput.addEventListener("input", () => { presentation.battler.plName = plNameInput.value; setDirty(); updateValidation(); });
 const saveButton = document.querySelector("#save");
 const validationMessage = document.querySelector("#image-validation-message");
 
@@ -484,7 +486,7 @@ function renderDuckSelect() {
 saveButton.addEventListener("click", async () => {
   if (battlerNameError(battlerNameInput.value) || !online?.snapshot().canSave || !imageValidationSummary(imageStates.values()).canSave || profileValidationMessage() || quoteValidationMessage()) { updateValidation(); return; }
   const result = await online.save();
-  if (result?.ok) { presentation = presentationForPersistence(presentation); renderQuotes(); for (const render of duckQuoteRenderers.values()) render(); updateValidation(); }
+  if (result?.ok) { presentation = presentationForPersistence(presentation); plNameInput.value = presentation.battler.plName; renderQuotes(); for (const render of duckQuoteRenderers.values()) render(); updateValidation(); }
 });
 
 online = await mountOnlineEditor({
@@ -496,12 +498,13 @@ online = await mountOnlineEditor({
     battlerNameInput.value = data?.battlerName ?? "";
     picker.close(); imageStates.clear(); duckEditors.clear(); duckQuoteRenderers.clear(); selectedDuckId = "";
     presentation = data ? structuredClone(data.presentation) : createEmptyPlayerPresentation();
+    plNameInput.value = presentation.battler.plName;
     battlerSkills = { B: data?.build.battler.bSelection ?? null, D: data?.build.battler.dSelection ?? null };
     ducks = data ? data.build.ducks.map(({ id, name, aSelection, cSelection }) => ({ id, name, aSelection, cSelection })) : [];
     if (data) { renderBattlerImages(); renderBattlerProfile(); renderQuotes(); renderDuckSelect(); }
     else for (const id of ["battler-images", "battler-profile", "quotes", "duck-icon-editor", "duck-profile-editor", "duck-quotes-editor", "duck-select"]) document.getElementById(id).replaceChildren();
   },
-  onState(state) { onlineState = state; battlerNameInput.disabled = !state.canEdit; if (!state.canEdit) picker.close(); updateValidation(); },
+  onState(state) { onlineState = state; battlerNameInput.disabled = !state.canEdit; plNameInput.disabled = !state.canEdit; if (!state.canEdit) picker.close(); updateValidation(); },
 });
 
 finishPageLoad();

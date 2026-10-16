@@ -1,3 +1,5 @@
+import { normalizePlName } from "./plName.js";
+
 export const PLAYER_PRESENTATION_SCHEMA_VERSION = 6;
 export const BATTLER_ICON_SLOT_COUNT = 10;
 
@@ -37,6 +39,7 @@ export const normalizeQuoteTiming = value => {
 /** Copy a draft for persistence without removing empty editor rows in place. */
 export function presentationForPersistence(value) {
   const result = structuredClone(value);
+  result.battler.plName = normalizePlName(result.battler.plName ?? "");
   for (const timing of quoteTimings(result)) {
     timing.lines = timing.lines.filter((line, index) => index === 0 || line.text !== "");
   }
@@ -102,6 +105,7 @@ export function createEmptyPlayerPresentation() {
   return {
     schemaVersion: PLAYER_PRESENTATION_SCHEMA_VERSION,
     battler: {
+      plName: "",
       standingImageUrl: "",
       defaultIconUrl: "",
       iconSlots: Array(BATTLER_ICON_SLOT_COUNT).fill(""),
@@ -116,6 +120,7 @@ export function createEmptyPlayerPresentation() {
 export function normalizePlayerPresentation(value, duckIds = []) {
   const result = createEmptyPlayerPresentation();
   const battler = isRecord(value?.battler) ? value.battler : {};
+  result.battler.plName = text(battler.plName);
   result.battler.profile = normalizeBattlerProfile(battler.profile);
   result.battler.standingImageUrl = text(battler.standingImageUrl);
   result.battler.defaultIconUrl = text(battler.defaultIconUrl);

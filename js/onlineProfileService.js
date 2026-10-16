@@ -1,3 +1,4 @@
+import { plNameError } from "./plName.js";
 import { isOnlineUuid } from "./onlinePlayerDto.js";
 import { clonePlayerBuild, createEmptyPlayerBuild, createEmptyDuck } from "./playerBuildModel.js";
 import { canonicalEno } from "../supabase/functions/_shared/internal-email.mjs";
@@ -51,7 +52,8 @@ function featured(v) {
 
 /** Independent public contract; no tolerant persistence normalization. */
 export function decodeOnlineProfile(value) {
-  keys(value, ["profileVersion", "accountId", "eno", "isOwner", "battler", "duck", "featuredBattle"]);
+  keys(value, ["profileVersion", "accountId", "eno", "isOwner", "battler", "duck", "featuredBattle", ...(Object.hasOwn(value, "plName") ? ["plName"] : [])]);
+  if (Object.hasOwn(value, "plName")) requireValue(!plNameError(value.plName));
   requireValue(value.profileVersion === PUBLIC_PROFILE_VERSION && isOnlineUuid(value.accountId) && typeof value.isOwner === "boolean");
   const b = value.battler;
   keys(b, ["name", "standingImageUrl", "defaultIconUrl", "profileIcons", "profile", "skills"]);

@@ -1,3 +1,4 @@
+import { plNameError } from "./plName.js";
 import { battlerNameError } from "./nameValidation.js";
 import { presentationTextIssues } from "./profileTextValidation.js";
 import { migratePlayerBuild } from "./playerBuildMigration.js";
@@ -37,6 +38,9 @@ export function migrateOnlinePlayerPresentation(value, duckIds = []) {
   const normalized = normalizePlayerPresentation(value);
   const expected = structuredClone(normalized);
   expected.schemaVersion = value.schemaVersion;
+  // Additive optional field: validate present values, default only missing legacy data.
+  if (!Object.hasOwn(value.battler ?? {}, "plName")) delete expected.battler.plName;
+  else requireValue(!plNameError(value.battler.plName));
   if (value.schemaVersion < 6) {
     expected.battler.quotes.skill.A = normalizeQuoteTiming(value.battler?.quotes?.skill?.A);
     expected.battler.quotes.skill.C = normalizeQuoteTiming(value.battler?.quotes?.skill?.C);
@@ -133,7 +137,7 @@ export function decodeOnlinePlayer(snapshot) {
     return { ...d, presentation: { ...d.presentation, schemaVersion: PLAYER_PRESENTATION_SCHEMA_VERSION, icon } };
   });
   keys(b.build, ["schemaVersion", "bSelection", "dSelection", ...(b.build.schemaVersion === 3 ? ["skillLabels"] : [])]);
-  keys(b.presentation, ["schemaVersion", "name", "standingImageUrl", "defaultIconUrl", "iconSlots", "quotes", "profile", "detachedDuckPresentation"]);
+  keys(b.presentation, ["schemaVersion", "name", "plName", "standingImageUrl", "defaultIconUrl", "iconSlots", "quotes", "profile", "detachedDuckPresentation"]);
   requireValue([2,3].includes(b.build.schemaVersion) && b.presentation.schemaVersion === PLAYER_PRESENTATION_SCHEMA_VERSION && object(b.presentation.detachedDuckPresentation));
   const { schemaVersion: _bv, ...battler } = b.build;
   const { schemaVersion: _pv, name, detachedDuckPresentation, ...display } = b.presentation;
@@ -160,6 +164,7 @@ export function decodeOnlinePlayer(snapshot) {
   for (const [id, duck] of Object.entries(encoded.battler.presentation.detachedDuckPresentation)) duck.quotes = structuredClone(duckDisplay[id].quotes);
   for (const duck of encoded.ducks) if (duck.presentation.icon) duck.presentation.icon.quotes = structuredClone(duckDisplay[duck.id].quotes);
   encoded.battler.presentation.quotes = structuredClone(display.quotes);
+  encoded.battler.presentation.plName = display.plName;
   if (b.build.schemaVersion === 2) {
     encoded.battler.build.schemaVersion = 2; delete encoded.battler.build.skillLabels;
     for (const d of encoded.ducks) { d.build.schemaVersion = 2; delete d.build.skillLabels; }

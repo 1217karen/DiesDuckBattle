@@ -52,3 +52,15 @@ test('guest list reaches profile links through real service; login during reques
  client.rpc=async()=>{user='new-user';return{data:[row()]};};
  assert.equal((await createOnlineCharacterListService(client).list()).ok,false);
 });
+
+test('PL substring filter combines conditions, includes duplicates and never invents anonymous labels',async()=>{
+ const rows=[{...row('1'),plName:'雪だるまPL'},{...row('2'),plName:'雪だるまPL'}, {...row('3'),plName:''},row('4'),{...row('5'),plName:'匿名'}];
+ rows[1].duck.type='heal';
+ assert.equal(filterCharacters(rows).length,5);
+ assert.deepEqual(filterCharacters(rows,{plName:' だるまpl '}).map(c=>c.eno),['1','2']);
+ assert.deepEqual(filterCharacters(rows,{plName:'だるま',name:'abc',attribute:'炎',type:'heal'}).map(c=>c.eno),['2']);
+ assert.deepEqual(filterCharacters(rows,{plName:'匿名'}).map(c=>c.eno),['5']);
+ const document=doc();await loadCharacterListPage({document,search:'?plName='+encodeURIComponent('雪だるまPL'),getClient:async()=>({}),createService:()=>({list:async()=>({ok:true,characters:rows})}),finish(){}});
+ const field=document.getElementById('pl-name-filter');assert.equal(field.value,'雪だるまPL');assert.equal(document.getElementById('character-list').children.length,2);
+ field.value='';field.handlers.input();assert.equal(document.getElementById('character-list').children.length,5);
+});

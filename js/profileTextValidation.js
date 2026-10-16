@@ -1,3 +1,4 @@
+import { plNameError } from "./plName.js";
 import { codePointLength } from "./nameValidation.js";
 export const PROFILE_MESSAGE_MAX = 100;
 export const BATTLER_PROFILE_MAX = 2000;
@@ -15,6 +16,8 @@ export const flavorLabelError = value => textDisplayWidth(value) > FLAVOR_LABEL_
 /** Save-only constraints: read/migration paths preserve old text for repair. */
 export function presentationTextIssues(presentation) {
   const issues = [];
+  const pl = plNameError(presentation.battler.plName ?? "");
+  if (pl) issues.push({ duckId: null, message: pl });
   const message = profileTextError(presentation.battler.profile.message, PROFILE_MESSAGE_MAX, "プロフィールメッセージ");
   if (message) issues.push({ duckId: null, message });
   const battler = profileTextError(presentation.battler.profile.text, BATTLER_PROFILE_MAX, "バトラープロフィール");

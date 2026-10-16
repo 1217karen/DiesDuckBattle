@@ -1,3 +1,4 @@
+import { plNameError } from "./plName.js";
 import { canonicalEno } from "../supabase/functions/_shared/internal-email.mjs";
 export const CHARACTER_TYPES = Object.freeze({attack:"アタック",defense:"ディフェンス",speed:"スピード",heal:"ヒール",technical:"テクニカル",normal:"ノーマル"});
 const check = value => { if (!value) throw new TypeError("Invalid character list"); };
@@ -7,7 +8,8 @@ export function decodeOnlineCharacters(value) {
   check(Array.isArray(value));
   const seen = new Set();
   for (const v of value) {
-    keys(v,["eno","battlerName","battlerIconUrl","accent","background","panel","text","duck","bestStreak"]);
+    keys(v,["eno","battlerName","battlerIconUrl","accent","background","panel","text","duck","bestStreak",...(Object.hasOwn(v,"plName")?["plName"]:[])]);
+    if (Object.hasOwn(v,"plName")) check(!plNameError(v.plName));
     check(typeof v.eno === "string" && canonicalEno(v.eno) === v.eno && !seen.has(v.eno)); seen.add(v.eno);
     check(typeof v.battlerName === "string" && typeof v.battlerIconUrl === "string");
     for (const key of ["accent", "background", "panel", "text"])
