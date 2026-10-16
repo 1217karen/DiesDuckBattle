@@ -42,5 +42,51 @@ test('INDEX message database ACL, bounds, random public projection and revision 
  assert.equal(seen.size,4);
  await db.exec('reset role');await db.query('delete from public.game_accounts where id=$1',[ids[1]]);assert.equal(await value('select count(*)::int data from public.game_account_messages where game_account_id=$1',[ids[1]]),0);
  });
+ await t.test('v2 icon slots preserve old RPCs, enforce ownership and use current icon URLs',async()=>{
+  await as();
+  const revision=await value('select save_revision::text data from public.game_accounts where eno=1');
+  const getV2=()=>value('select public.get_index_messages_v2(1) data');
+  const setV2=(text,slot,eno='1')=>value('select public.set_index_message_v2($1,$2,$3) data',[eno,text,slot]);
+  assert.equal((await getV2()).ownIconSlot,null);
+  await assert.rejects(setV2('new',1),{code:'22023'}); // no registered slot
+  await assert.rejects(setV2('new',11),{code:'22023'});
+  await assert.rejects(setV2('new',1,'3'),{code:'42501'});
+  await db.exec('reset role');
+  await db.query("update public.battlers set presentation=jsonb_set(presentation,'{iconSlots}',$1::jsonb) where game_account_id=$2",
+    [JSON.stringify(['/own-one.png','/own-two.png']),ids[0]]);
+  await as();
+  assert.deepEqual(await setV2('chosen',2),{eno:'1',message:'chosen',iconSlot:2});
+  const current=await getV2();
+  assert.equal(current.ownMessage,'chosen');
+  assert.equal(current.ownIconSlot,2);
+  assert.deepEqual(current.ownIconSlots,['/own-one.png','/own-two.png']);
+  assert.equal(current.ownDefaultIconUrl,'/icon.png');
+  const legacy=await get();
+  assert.deepEqual(Object.keys(legacy).sort(),['eno','others','ownMessage']);
+  assert.equal(legacy.ownMessage,'chosen');
+  await db.exec('reset role');
+  await db.query('delete from public.game_account_messages where game_account_id<>$1',[ids[0]]);
+  await db.query("update public.battlers set presentation=jsonb_set(presentation,'{iconSlots}',$1::jsonb) where game_account_id=$2",
+    [JSON.stringify(['/other-one.png']),ids[2]]);
+  await as('authenticated',ids[2]);
+  assert.deepEqual(await setV2('public message',1,'3'),{eno:'3',message:'public message',iconSlot:1});
+  await as();
+  let row=(await getV2()).others[0];
+  assert.deepEqual(Object.keys(row).sort(),['battlerName','defaultIconUrl','eno','iconUrl','message']);
+  assert.equal(row.eno,'3');
+  assert.equal(row.iconUrl,'/other-one.png');
+  await db.exec('reset role');
+  await db.query("update public.battlers set presentation=jsonb_set(presentation,'{iconSlots}',$1::jsonb) where game_account_id=$2",
+    [JSON.stringify(['']),ids[2]]);
+  await as();
+  row=(await getV2()).others[0];
+  assert.equal(row.iconUrl,''); // client falls back to default icon
+  assert.deepEqual(await setV2('',null),{eno:'1',message:'',iconSlot:null});
+  assert.equal((await getV2()).ownMessage,'');
+  assert.equal((await getV2()).ownIconSlot,null);
+  assert.equal((await set('after clear')).message,'after clear'); // v1 remains functional
+  await db.exec('reset role');
+  assert.equal(await value('select save_revision::text data from public.game_accounts where eno=1'),revision);
+ });
  }finally{await db.close();}
 });
