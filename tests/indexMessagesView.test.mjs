@@ -7,7 +7,7 @@ function classList() {
  return {toggle(name,on){if(on)classes.add(name);else classes.delete(name);},remove(name){classes.delete(name);},contains(name){return classes.has(name);}};
 }
 function screen() {
- const nodes=new Map();const create=(tag='div')=>({tagName:tag,value:'',hidden:false,disabled:false,children:[],handlers:{},attributes:{},dataset:{},classList:classList(),addEventListener(k,fn){this.handlers[k]=fn;},setAttribute(k,v){this.attributes[k]=v;},append(...v){this.children.push(...v);},replaceChildren(...v){this.children=v;},showModal(){this.open=true;},close(){this.open=false;},querySelector(q){const key=q.match(/\\[data-slot="([^"]+)"\\]/)?.[1];return this.children.find(e=>e.dataset?.slot===key)??null;},focus(){}});
+ const nodes=new Map();const create=(tag='div')=>({tagName:tag,value:'',hidden:false,disabled:false,children:[],handlers:{},attributes:{},dataset:{},classList:classList(),addEventListener(k,fn){this.handlers[k]=fn;},setAttribute(k,v){this.attributes[k]=v;},append(...v){this.children.push(...v);},replaceChildren(...v){this.children=v;},showModal(){this.open=true;},close(){this.open=false;},querySelector(q){const key=q.split('"')[1];return this.children.find(e=>e.dataset?.slot===key)??null;},focus(){}});
  const get=id=>{if(!nodes.has(id))nodes.set(id,create());return nodes.get(id);};
  let loadData={eno:'1',ownMessage:'元の本文',ownIconSlot:null,ownDefaultIconUrl:'/default.png',
    ownIconSlots:['/slot1.png','/slot2.png'],others:['2','3','4'].map(eno=>({eno,battlerName:'<b>名前</b>',defaultIconUrl:'',iconUrl:'/other-icon.png',message:'他人の本文'}))},fail=false,pending=null,calls=[],sent=[];
