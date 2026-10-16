@@ -57,6 +57,9 @@ button:disabled,select:disabled { cursor:default; opacity:.4; }
 .favorite { border:0; padding:4px; background:transparent; color:var(--favorite-color, #916a00); font-size:24px; line-height:1; }
 .cell { display:flex; align-items:center; justify-content:center; gap:6px; min-width:0; }
 .icon { width:var(--icon); height:var(--icon); display:block; object-fit:contain; border-radius:12px; background:var(--ui-surface); border:1px solid var(--line); box-sizing:border-box; }
+.profile-icon-link { display:block; flex:0 0 auto; border-radius:12px; }
+.profile-icon-link:hover .icon { border-color:var(--accent); }
+.profile-icon-link:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
 .mid { display:flex; align-items:center; justify-content:center; gap:var(--gap); min-width:0; }
 .badge { color:#20282C; min-width:48px; box-sizing:border-box; padding:6px 10px; border-radius:999px; border:1px solid var(--border); text-align:center; font-size:var(--fs-small); font-weight:900; }
 .badge.win { background:#ffe78a; }
