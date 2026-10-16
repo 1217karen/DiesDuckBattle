@@ -69,10 +69,17 @@ for(const type of ['A','B','C','D']) test(`${type}: closed vault, unsaved label 
   p.input(`skill-${type.toLowerCase()}-name`,'必殺');p.input(`skill-${type.toLowerCase()}-ruby`,'ひっさつ');
   const edited=p.online.snapshot().draft;
   p.click(p.get(`vault-${type}-store`));assert.ok(p.dialog().textContent.includes('スキルを保管しますか？'));
+  const storeParagraphs=p.dialog().children.filter(e=>e.tagName==='p');
+  assert.equal(storeParagraphs.filter(e=>e.className==='skill-vault-skill-text').length,1);
+  assert.ok(storeParagraphs.find(e=>e.className==='skill-vault-skill-text').textContent.length>0);
+  assert.equal(storeParagraphs.at(-1).className,undefined);
   p.click(p.button('キャンセル',p.dialog()));assert.equal(p.vaultStorage.writes,0);
   await p.store(type);assert.equal(p.vaultStorage.rows.length,1);assert.equal(p.writes.length,0);
   assert.deepEqual(p.online.snapshot().draft,edited);assert.ok(p.all().some(e=>e.textContent.includes('スキルを保管しました。')));
   p.inspect(type,'必殺');const actions=p.dialog().children.at(-1);
+  const readParagraphs=p.dialog().children.filter(e=>e.tagName==='p');
+  assert.equal(readParagraphs.filter(e=>e.className==='skill-vault-skill-text').length,1);
+  assert.equal(readParagraphs.at(-1).className,undefined);
   assert.deepEqual(actions.children.map(e=>e.textContent),['読み込む','キャンセル','削除する']);
   p.click(p.button('キャンセル',p.dialog()));assert.deepEqual(p.online.snapshot().draft,edited);
   if(['A','C'].includes(type))p.click(p.get('duck-tab-1'));
