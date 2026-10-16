@@ -10,7 +10,8 @@ function screen() {
  const nodes=new Map();const create=(tag='div')=>({tagName:tag,value:'',hidden:false,disabled:false,children:[],handlers:{},attributes:{},dataset:{},classList:classList(),addEventListener(k,fn){this.handlers[k]=fn;},setAttribute(k,v){this.attributes[k]=v;},append(...v){this.children.push(...v);},replaceChildren(...v){this.children=v;},showModal(){this.open=true;},close(){this.open=false;},querySelector(q){const key=q.split('"')[1];return this.children.find(e=>e.dataset?.slot===key)??null;},focus(){}});
  const get=id=>{if(!nodes.has(id))nodes.set(id,create());return nodes.get(id);};
  let loadData={eno:'1',ownMessage:'元の本文',ownIconSlot:null,ownDefaultIconUrl:'/default.png',
-   ownIconSlots:['/slot1.png','/slot2.png'],others:['2','3','4'].map(eno=>({eno,battlerName:'<b>名前</b>',defaultIconUrl:'',iconUrl:'/other-icon.png',message:'他人の本文'}))},fail=false,pending=null,calls=[],sent=[];
+   ownIconSlots:['/slot1.png','/slot2.png'],others:['2','3','4'].map((eno,i)=>({eno,battlerName:'<b>名前</b>',
+      defaultIconUrl:i===2?'':'/other-default.png',iconUrl:i===1?'/other-slot.png':'',message:'他人の本文'}))},fail=false,pending=null,calls=[],sent=[];
  const client={auth:{getSession:async()=>({data:{session:{user:{id:'user'}}}})},rpc:async(name,args)=>{calls.push(name);sent.push({name,args});if(pending)return new Promise(r=>pending.resolve=r);return {error:fail?{}:null,data:name==='get_index_messages_v2'?loadData:{eno:args.p_eno,message:args.p_message,iconSlot:args.p_icon_slot}};}};
  const notices=[],iconChanges=[];const view=mountIndexMessages({getElementById:get,createElement:create},async()=>client,n=>notices.push(n),slot=>iconChanges.push(slot));
  return {get,view,calls,sent,notices,iconChanges,fail(v){fail=v;},empty(){loadData={eno:'1',ownMessage:'',ownIconSlot:null,ownDefaultIconUrl:'/default.png',ownIconSlots:['/slot1.png','/slot2.png'],others:[]};},delay(){pending={};return pending;}};
@@ -21,7 +22,11 @@ test('real UI display, edit boundary, cancel, save failure retention and success
  const s=screen();s.view.update(state('1'));await tick();
  assert.equal(s.get('home-message').textContent,'元の本文');assert.equal(s.get('home-messages').children.length,3);
  const row=s.get('home-messages').children[0];assert.equal(row.children[0].href,'profile.html?eno=2');assert.equal(row.children[1].children[0].textContent,'ENo.2｜<b>名前</b>');
+  assert.equal(row.children[0].children[0].src,'/other-default.png','Unselected icon uses the battler default');
+  assert.equal(s.get('home-messages').children[1].children[0].children[0].src,'/other-slot.png','Chosen slot takes priority');
+  assert.equal(s.get('home-messages').children[2].children[0].children[0].src,'/img/B00_icon.png','Both empty uses fixed fallback');
  s.get('home-message-edit').handlers.click();assert.equal(s.get('home-message-input').value,'元の本文');
+  assert.equal(s.get('home-message-icon-preview').src,'/default.png','Own default icon appears in picker preview');
  const input=s.get('home-message-input');input.value='😀'.repeat(60);input.handlers.input();assert.equal(s.get('home-message-save').disabled,false);
  input.value+='😀';input.handlers.input();assert.equal(s.get('home-message-save').disabled,true);await submit(s);assert.equal(s.calls.length,1);
  s.get('home-message-cancel').handlers.click();assert.equal(s.get('home-message-form').hidden,true);assert.equal(s.get('home-message').textContent,'元の本文');
