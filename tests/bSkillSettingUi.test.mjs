@@ -62,3 +62,18 @@ test("実設定UI：パッシブ分類とHP条件→traitId保存→復元、AP�
   assert.equal(p.get("b-trait").value,"");p.choose("b-trait","ap-inverse-df");
   const result=compileBSkill(p.save().battler.bSelection);assert.equal(result.ok,true);assert.equal(result.bSkills[0].modifier.scale,-1);
 });
+
+test("Bスキルの解除効果プルダウンは英語のstackを表示しない", async () => {
+  const p=await page();
+  p.choose("b-type","event");
+  p.choose("b-trigger","after-hit");
+  p.choose("b-condition","always");
+  p.choose("b-effect","enemy-buff-remove");
+  assert.match(p.get("b-effect").textContent,/ストック分解除する/);
+  assert.doesNotMatch(p.get("b-effect").textContent,/stack/i);
+  p.choose("b-trigger","after-heal");
+  p.choose("b-condition","hp-medium");
+  p.choose("b-effect","emergency");
+  assert.match(p.get("b-effect").textContent,/ストック分解除し/);
+  assert.doesNotMatch(p.get("b-effect").textContent,/stack/i);
+});
