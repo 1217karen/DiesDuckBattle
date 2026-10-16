@@ -221,6 +221,11 @@ function eventToLines(event, context) {
   const target = duck(event.target);
   const actor = duck(event.actor);
   const amount = (kind, value) => `<span class="num ${kind}">${escapeHTML(value ?? 0)}</span>`;
+  // Use the existing AP color scheme for stat adjustments, without affecting HP or dice values.
+  const statAmount = (value, absolute = false) => {
+    const n = Number(value);
+    return amount(n < 0 ? "debuff" : "buff", absolute ? Math.abs(n) : signed(n));
+  };
   const hint = (before, after, label = "") => Number.isFinite(Number(before)) && Number.isFinite(Number(after))
     ? ` <span class="miniHint">（${escapeHTML(label)}${escapeHTML(before)}→${escapeHTML(after)}）</span>` : "";
   const heading = status => ({ kind: "note status", text: `${target}の${escapeHTML(statusName(status))}！` });
@@ -294,11 +299,11 @@ function eventToLines(event, context) {
       if (event.key === "ap") return [{ kind: "soft", text: `${target}のAPが ${amount(delta > 0 ? "buff" : "debuff", `${delta > 0 ? "+" : ""}${delta}`)}！` }];
       if (event.key === "hp") return [{ kind: "soft", text: `${target}のHPが ${amount(delta > 0 ? "heal" : "damage", Math.abs(delta))} ${delta > 0 ? "回復" : "減少"}！` }];
       const label = { tempDfPlus: "DFがターン中", nextAttackATPlus: "次の攻撃にAT", attackTimesAdd: "攻撃回数が" }[event.key];
-      if (label) return [{ kind: "soft", text: `${target}の${label} ${signed(delta)}！` }];
-      if (event.key === "recoilMinus") return [{ kind: "soft", text: `${target}の反動ダメージが ${amount(delta < 0 ? "damage" : "buff", signed(-delta))}！` }];
+      if (label) return [{ kind: "soft", text: `${target}の${label} ${statAmount(delta)}！` }];
+      if (event.key === "recoilMinus") return [{ kind: "soft", text: `${target}の反動ダメージが ${statAmount(-delta)}！` }];
       if (event.key === "additionalRecoil") return [{ kind: "soft", text: delta > 0
-        ? `${target}の攻撃に反動ダメージを${delta}追加！`
-        : `${target}の攻撃の反動ダメージを${Math.abs(delta)}減少！` }];
+        ? `${target}の攻撃に反動ダメージを${statAmount(delta, true)}追加！`
+        : `${target}の攻撃の反動ダメージを${statAmount(delta, true)}減少！` }];
       const diceEffectLabels = {
         skipDice1: "AP増加",
         skipDice3: "HP回復",
@@ -329,13 +334,13 @@ function eventToLines(event, context) {
     case "actionCanceled": return [{ kind: "soft", text: `<i>${target}は行動できない！</i>` }];
     case "fieldTriggered": return [{ kind: "note", text: `🛁${escapeHTML(event.field?.name ?? "フィールド")}のフィールド効果！` }];
     case "buffApplied": {
-      if (event.duration?.kind === "phase") return [{ kind: "soft", text: `${target}の${escapeHTML(event.stat)}がこの攻撃フェイズ中だけ${Math.abs(event.amount)}${event.amount < 0 ? "減少" : "増加"}！` }];
+      if (event.duration?.kind === "phase") return [{ kind: "soft", text: `${target}の${escapeHTML(event.stat)}がこの攻撃フェイズ中だけ${statAmount(event.amount, true)}${event.amount < 0 ? "減少" : "増加"}！` }];
       const duration = `${escapeHTML(event.duration?.remainingTurns ?? event.turns)}T`;
-      return [{ kind: "soft", text: `${target}にターン効果（${escapeHTML(event.stat)}${signed(event.amount)} / ${duration}）を追加！` }];
+      return [{ kind: "soft", text: `${target}にターン効果（${escapeHTML(event.stat)}${statAmount(event.amount)} / ${duration}）を追加！` }];
     }
     case "buffTick": return event.after > 0
-      ? [{ kind: "meta center", text: `${target}のターン効果（${escapeHTML(event.stat)}${signed(event.amount)}／残り${escapeHTML(event.after)}T）` }] : [];
-    case "buffExpired": return [{ kind: "meta", text: `${target}の${event.duration?.kind === "phase" ? "行動中" : "ターン"}効果が終了（${escapeHTML(event.stat ?? "")}${signed(event.amount ?? 0)}）` }];
+      ? [{ kind: "meta center", text: `${target}のターン効果（${escapeHTML(event.stat)}${statAmount(event.amount)}／残り${escapeHTML(event.after)}T）` }] : [];
+    case "buffExpired": return [{ kind: "meta", text: `${target}の${event.duration?.kind === "phase" ? "行動中" : "ターン"}効果が終了（${escapeHTML(event.stat ?? "")}${statAmount(event.amount ?? 0)}）` }];
     case "chanceRoll": return [{ kind: "meta", text: `確率判定 ${event.success ? "成功" : "失敗"}！（${Math.round(Number(event.probability ?? 0) * 100)}%）` }];
     case "diceAdded": return [{ kind: "soft", text: `${target}にダイス追加：${escapeHTML((event.values ?? []).join("、"))}` }];
     case "revived": return [{ kind: "soft", text: `${target}がHP ${amount("heal", event.hpAfter)}で復活した！` }];
@@ -350,12 +355,12 @@ function eventToLines(event, context) {
     }
     case "phaseBonus": return [{ kind: "meta", text: "初回行動ボーナス！出目威力×2！" }];
     case "passiveSkillStateChanged": {
-      const values = [event.bonus?.AT && `AT${event.bonus.AT > 0 ? "+" : ""}${event.bonus.AT}`, event.bonus?.DF && `DF${event.bonus.DF > 0 ? "+" : ""}${event.bonus.DF}`].filter(Boolean).join(" ");
+      const values = [event.bonus?.AT && `AT${statAmount(event.bonus.AT)}`, event.bonus?.DF && `DF${statAmount(event.bonus.DF)}`].filter(Boolean).join(" ");
       const owner = escapeHTML(context.names[event.actor]?.battler ?? event.actor ?? "-");
       const hpHint = Number.isFinite(event.hpPct) ? ` <span class="miniHint">（現HP${Math.round(event.hpPct * 100)}%）</span>` : "";
-      if (event.active === false) return [{ kind: "meta", text: `${actor}の${escapeHTML(values || "効果なし")}が解除された！${hpHint}` }];
+      if (event.active === false) return [{ kind: "meta", text: `${actor}の${values || "効果なし"}が解除された！${hpHint}` }];
       return [{ kind: `note ${event.actor?.toLowerCase() ?? ""}`, text: `${owner}のバトラースキル！${renderSkillDisplayName(event.skill?.skillName, event.skill?.skillRuby)}` },
-        { kind: "soft", text: `${actor}の${escapeHTML(values || "効果なし")}！${hpHint}` }];
+        { kind: "soft", text: `${actor}の${values || "効果なし"}！${hpHint}` }];
     }
     case "passiveModifierChanged": {
       const customName = renderSkillDisplayName(event.skill?.skillName, event.skill?.skillRuby);
