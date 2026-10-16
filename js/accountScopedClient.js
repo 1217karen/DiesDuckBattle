@@ -2,14 +2,14 @@
 // different account's client halfway through a request.
 const reads = new Set(["load_online_player", "get_online_random_win_streak", "list_online_opponents",
   "get_online_opponent", "prepare_online_battle", "list_skill_vault", "prepare_account_deletion",
-  "get_index_messages", "get_online_profile", "list_online_characters", "get_online_battle_result",
+  "get_index_messages", "get_index_messages_v2", "get_online_profile", "list_online_characters", "get_online_battle_result",
   "list_profile_introductions", "list_online_battle_results", "list_feedback_threads", "list_feedback_replies"]);
 const writes = new Set(["save_online_player", "save_online_battle_result", "set_online_battle_favorite",
-  "save_profile_introduction", "store_skill_vault", "delete_skill_vault", "set_index_message", "create_feedback_thread",
+  "save_profile_introduction", "store_skill_vault", "delete_skill_vault", "set_index_message", "set_index_message_v2", "create_feedback_thread",
   "create_feedback_reply", "toggle_feedback_reaction", "withdraw_feedback_thread"]);
 const ownedId = new Set(["load_online_player", "save_online_player", "get_online_random_win_streak",
   "prepare_online_battle", "list_skill_vault", "store_skill_vault", "delete_skill_vault", "set_online_battle_favorite"]);
-const ownedEno = new Set(["get_index_messages", "set_index_message", "prepare_account_deletion",
+const ownedEno = new Set(["get_index_messages", "get_index_messages_v2", "set_index_message", "set_index_message_v2", "prepare_account_deletion",
   "create_feedback_thread", "create_feedback_reply", "toggle_feedback_reaction", "withdraw_feedback_thread"]);
 const error = code => ({ data: null, error: { code, message: "アカウントの状態を確認できません。再読み込みしてください。" } });
 export function createAccountScopedClient({ context, runtime, coordinator }) {
