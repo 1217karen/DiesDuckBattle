@@ -47,6 +47,14 @@ test("result buttons override shared primary styling while retaining their own s
   assert.match(css, /\.btn, \.btn\.primary \{ min-width: 92px; padding: 8px 10px/);
   assert.match(css, /\.btn, \.btn\.primary \{ min-width: 96px; padding: 13px 12px/);
 });
+test("stat adjustments use body-sized bold colors while roll, healing and damage remain large", () => {
+  assert.match(rule(".num"), /font-size: 1\\.5em; font-weight: 900/);
+  assert.match(rule(".num.buff, .num.debuff"), /font-size: 1em/);
+  assert.match(rule(".rollMain .num"), /font-size: 1\\.5em/);
+  for (const [kind, color] of [["buff","--buff"],["debuff","--debuff"],["heal","--heal"],["damage","--damage"]])
+    assert.match(rule(`.num.${kind}`), new RegExp(`color: var\\(${color}\\)`));
+});
+
 test("combat backgrounds and HP semantic colors remain unchanged", () => {
   for (const [key,value] of Object.entries({p1:'#e35b5b',p2:'#4a86e8',damage:'#8b3fe6',heal:'#2e9b4f',buff:'#f08a24',debuff:'#7a7a7a'})) assert.ok(css.includes('--'+key+': '+value+';'));
   for (const [selector,color] of [[".phaseHeader.p1","rgba(227,91,91,.6)"],[".phaseHeader.p2","rgba(74,134,232,.6)"],[".line.note","rgba(255,236,140,.35)"],[".line.note.p1","rgba(227,91,91,.18)"],[".line.note.p2","rgba(74,134,232,.18)"],[".line.note.status","rgba(180,130,255,.18)"],[".hpFill.p1","rgba(227,91,91,.7)"],[".hpFill.p2","rgba(74,134,232,.7)"]]) assert.ok(rule(selector).includes(color),selector);
