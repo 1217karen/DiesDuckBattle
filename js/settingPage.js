@@ -598,11 +598,11 @@ function renderA(duck, box) {
 
 function renderAPoints(selection, resources) {
   const box = $("a-metrics"); if (!box || selection === null) return;
-  const values = [["available", "使用可能", resources.availablePoints], ["gross", "消費", resources.grossCost], ["drawback", "獲得", resources.drawbackPoints],
+  const values = [["available", "使用可能", resources.availablePoints], ["drawback", "獲得", resources.drawbackPoints], ["gross", "消費", resources.grossCost],
     ["remaining", resources.remaining < 0 ? "pt超過" : "残り", resources.remaining == null ? null : Math.abs(resources.remaining)]];
   box.replaceChildren();
   for (const [index, [id, label, amount]] of values.entries()) {
-    if (index) box.append(el("span", "｜", "muted"));
+    if (index) box.append(el("span", ["＋", "－", "＝"][index - 1], "muted"));
     const item = el("span");
     item.append(el("span", `${label} `));
     const value = el("span", amount == null ? "—" : `${amount}pt`); value.id = `a-point-${id}`; item.append(value);
