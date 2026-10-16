@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { runBattle } from "../js/battleEngine.js";
+import { buildBlocks } from "../js/resultBlocks.js";
 import { applyEffect } from "../js/effects.js";
 import { readConditionValue, evaluateCondition } from "../js/conditionEvaluator.js";
 import { readModifierSource } from "../js/bPassiveModifiers.js";
@@ -229,6 +230,39 @@ test("状態異常合計の参照元self→enemy×2/×4、未指定の従来targ
   const h = productionContext(); h.actor.status.crack = 99; h.enemy.status.crack = 3;
   applyEffect({ type: "fixedDamage", target: "enemy", byStatusCount: { statuses: ["crack"], n: 2 } }, h.ctx);
   assert.equal(h.enemy.hp, 4);
+});
+
+test("Bのストック数×Nは0ストックでも0ダメージを記録して結果画面に表示する", () => {
+  const events = battle(production("phase-end", "always", "damage-by-debuff"));
+  const damages = events.filter(e => e.type === "fixedDamage" && e.calc?.kind === "byStatusCount" && e.actor === "P1");
+  assert.ok(damages.length > 0, "フェイズ終了時のBスキルが発動する");
+  for (const damage of damages) {
+    assert.equal(damage.value, 0);
+    assert.equal(damage.calc.count, 0);
+    assert.equal(damage.target, "P2");
+    assert.equal(damage.hpAfter, damage.hpBefore);
+  }
+  const context = {
+    maxHP: { P1: 1000, P2: 1000 },
+    names: { P1: { battler: "バトラー一", duck: "アヒル一" }, P2: { battler: "バトラー二", duck: "アヒル二" } },
+  };
+  const lines = buildBlocks(events, "draw", context).flatMap(block => block.lines);
+  assert.ok(lines.some(line => line.text === 'アヒル二に固定 <span class="num damage">0</span> ダメージ！'));
+});
+
+test("固定値・割合ダメージが0の非表示動作は変更しない", () => {
+  const logs = [];
+  const target = { side: "P2", hp: 100, status: {} };
+  const ctx = {
+    actor: { side: "P1", status: {} },
+    enemy: target,
+    push: (type, actor, data) => logs.push({ type, actor, ...data }),
+    helpers: { dealDamage: () => { throw new Error("0 fixed damage should stay ignored"); } },
+  };
+  applyEffect({ type: "fixedDamage", target: "enemy", amount: 0 }, ctx);
+  applyEffect({ type: "fixedDamage", target: "enemy", amountPct: 0 }, ctx);
+  assert.deepEqual(logs, []);
+  assert.equal(target.hp, 100);
 });
 
 test("first phase-end全5variantは2回目の自分フェイズでは発動しない", () => {
