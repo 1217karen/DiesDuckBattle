@@ -110,3 +110,13 @@ test("editor save bars, rulebook tabs and character-list columns retain their ow
   expectStyle(list, ".character-list-filters", { display: "flex" }, 761);
   for (const width of [760, 390, 320]) expectStyle(list, ".character-list-filters", { display: "grid", "grid-template-columns": "repeat(2, minmax(0, 1fr))" }, width);
 });
+
+test("public entry pages contain no obsolete development-only copy", async () => {
+  const home = await read("index.html"), auth = await read("auth.html");
+  for (const html of [home, auth]) {
+    assert.doesNotMatch(html, /開発版|現在開発中です|認証機能の確認用です/);
+  }
+  assert.match(home, /id="home-status"/);
+  assert.match(auth, /href="index\.html">← ホーム<\/a>/);
+  assert.doesNotMatch(await read("css/index.css"), /\.home__notice/);
+});
