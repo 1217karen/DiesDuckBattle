@@ -176,10 +176,10 @@ body {
   justify-content: flex-end;
   align-items: baseline;
   gap: 8px;
-  margin-top: auto;
-  padding-top: 5px;
+  margin-left: auto;
+  white-space: nowrap;
   font-family: "Roboto Slab", serif;
-  color: var(--card-text);
+  color: var(--card-accent);
 }
 
 .character-streak-label {
@@ -197,7 +197,7 @@ body {
 .character-card-header {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   min-height: 27px;
   padding: 3px 12px;
   background: var(--card-bg);
