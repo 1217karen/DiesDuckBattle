@@ -267,3 +267,16 @@ body.home-page::before {
 
 .home__legal { display:flex; flex-wrap:wrap; justify-content:center; gap:12px 20px; margin-top:28px; font-size:.875rem; }
 .home__legal a { color:inherit; }
+
+.home__message-form .home__message-icon-row { justify-content: flex-start; align-items: center; margin: 10px 0; flex-wrap: wrap; }
+.home__message-icon-row button { display:inline-flex; align-items:center; gap:8px; cursor:pointer; }
+.home__message-icon-row img { width:42px; height:42px; object-fit:contain; }
+.home-icon-picker { color:#eee; background:#222; border:1px solid #777; border-radius:12px; padding:18px; width:min(680px,92vw); max-height:82vh; }
+.home-icon-picker::backdrop { background:#000a; }
+.home-icon-picker .picker-header { display:flex; justify-content:space-between; gap:12px; }
+.home-icon-picker .picker-header p { color:#bbb; font-size:.8rem; }
+.home-icon-picker .picker-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(90px,1fr)); gap:12px; margin-top:12px; }
+.home-icon-picker .icon-choice { display:flex; flex-direction:column; align-items:center; gap:7px; min-height:105px; padding:10px; background:#333; color:#eee; border:1px solid #888; border-radius:7px; cursor:pointer; }
+.home-icon-picker .icon-choice:disabled { opacity:.4; cursor:not-allowed; }
+.home-icon-picker .icon-choice[aria-current="true"] { border-color:#ffcf60; }
+.home-icon-picker .icon-choice img { width:64px; height:64px; object-fit:contain; }
