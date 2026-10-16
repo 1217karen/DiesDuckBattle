@@ -61,7 +61,7 @@ test('empty announcements render an empty-state message without synthetic posts'
  const window={matchMedia:()=>({matches:false,addEventListener(){}}),addEventListener(){}};
  const location={search:'',hash:''};
  let code=await readFile(new URL('../js/noticePage.js',import.meta.url),'utf8');
- code=code.replace(/^import .*;\\r?\\n/gm,'').replace(/void import\\("\\.\\/feedbackPage\\.js"\\)[\\s\\S]*$/,'');
+ code=code.replace(/^import .*;\r?\n/gm,'').replace(/void import\("\.\/feedbackPage\.js"\)[\s\S]*$/,'');
  vm.runInNewContext(code,{document,notices:[],noticeReadState:{markRead(){}},location,URLSearchParams,window,finishPageLoad(){}});
  assert.equal(map.get('notice-articles').children.length,1);
  assert.equal(map.get('notice-articles').children[0].textContent,'お知らせはまだありません。');
