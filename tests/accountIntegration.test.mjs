@@ -67,10 +67,10 @@ test('saved battle and favorites use fixed A client and reject B account IDs',as
 test('feedback and home message writes require the verified ENo, without falling back to old client',async()=>{
  const a=await app();await a.auth.login('1','valid');const c=a.auth.getClient();let calls=0;
  a.runtime.getCurrent().client.rpc=async()=>{calls++;return {data:true};};
- for(const name of ['set_index_message','create_feedback_thread','create_feedback_reply','toggle_feedback_reaction','withdraw_feedback_thread']){
+ for(const name of ['set_index_message','set_index_message_v2','create_feedback_thread','create_feedback_reply','toggle_feedback_reaction','withdraw_feedback_thread']){
   assert.equal((await c.rpc(name,{p_eno:'2'})).error.code,'42501');assert.equal((await c.rpc(name,{p_eno:'1'})).data,true);
  }
- assert.equal(calls,5);await a.auth.logout();assert.equal((await c.rpc('set_index_message',{p_eno:'1'})).error.code,'PGRST301');
+ assert.equal(calls,6);await a.auth.logout();assert.equal((await c.rpc('set_index_message',{p_eno:'1'})).error.code,'PGRST301');
 });
 test('player storage resolves from the verified context and rejects another gameAccountId',async()=>{
  const a=await app();await a.auth.login('1','valid');const c=a.auth.getClient(),service=createOnlinePlayerStorage(c);
@@ -85,7 +85,7 @@ test('vault rejects mixed Auth user/account contexts before sending',async()=>{
  assert.equal((await vault.list({...scope,gameAccountId:'00000000-0000-4000-8000-000000000002'})).ok,false);assert.equal(calls,1);
 });
 test('late external selection invalidates reads and marks sent write result unknown',async()=>{
- for(const name of ['get_index_messages','set_index_message']){
+ for(const name of ['get_index_messages','get_index_messages_v2','set_index_message','set_index_message_v2']){
   const a=await app();await a.auth.login('1','valid');const c=a.auth.getClient(),wait=deferred();a.runtime.getCurrent().client.rpc=()=>wait.promise;
   const pending=c.rpc(name,{p_eno:'1'});const r=JSON.parse(a.f.disk.get(SESSION_REGISTRY_KEY));r.active=null;a.f.disk.set(SESSION_REGISTRY_KEY,JSON.stringify(r));a.page.events.fire('storage',{key:SESSION_REGISTRY_KEY});
   wait.resolve({data:true});assert.ok((await pending).error);assert.equal(a.auth.getClient(),null);
