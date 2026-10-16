@@ -27,7 +27,9 @@ test("neutral backgrounds, icon borders and placeholders follow the common theme
   }
   assert.match(rule(".placeholderIcon"), /color: var\(--muted\)/);
   for (const selector of [".line.soft",".quoteBubble",".miniPanel"]) assert.match(rule(selector), /color-mix\(in srgb, var\(--text\) 3\.5%, transparent\)/);
-  for (const selector of [".logDuckIcon",".miniTag"]) assert.match(rule(selector), /background: var\(--ui-surface\)/);
+  assert.match(rule(".miniTag"), /background: var\(--ui-surface\)/);
+  assert.match(rule(".logDuckIcon"), /display: block; object-fit: contain/);
+  assert.doesNotMatch(rule(".logDuckIcon"), /border-radius|background:/);
   assert.match(rule(".phaseHeader.system"), /color: #20282c/);
   assert.match(rule(".hpBar"), /background: var\(--ui-hover\)/);
   assert.match(rule(".errorMessage"), /var\(--panel\)/);
