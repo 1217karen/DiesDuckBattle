@@ -98,7 +98,7 @@ body {
   object-fit: cover;
   border: 1px solid var(--line);
   border-radius: 4px;
-  background: var(--ui-surface);
+  background: color-mix(in srgb, var(--card-panel) 90%, var(--card-text) 10%);
 }
 
 .character-card-details {
