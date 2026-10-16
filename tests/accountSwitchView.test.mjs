@@ -73,8 +73,8 @@ test('profile precedes switch section and management actions have distinct class
  assert.equal(f.button('＋ 別のアカウントを追加').className,'account-switch-add');assert.equal(f.button('ログアウト').className,'account-switch-logout');
  f.set({accounts:[]});assert.ok(!f.menu.children.some(n=>n.textContent==='自分のプロフィールを確認する'));assert.ok(f.button('ENo.1｜一郎'));
 });
-test('registration link reuses auth page and clears the popup password',()=>{
- const f=fixture();f.open();const password=f.all().find(n=>n.type==='password');password.value='secret';
- const link=f.all().find(n=>n.tagName==='a'&&n.textContent==='新規登録へ');assert.equal(link.href,'auth.html?mode=register');
- link.handlers.click({preventDefault(){assert.fail('idle link should navigate');}});assert.equal(password.value,'');
+test('add popup only offers existing-account login and no registration link',()=>{
+ const f=fixture();f.open();
+ assert.ok(f.all().some(n=>n.inputMode==='numeric'));assert.ok(f.all().some(n=>n.type==='password'));
+ assert.ok(f.button('ログインする'));assert.equal(f.all().find(n=>n.tagName==='a'&&n.textContent==='新規登録へ'),undefined);
 });

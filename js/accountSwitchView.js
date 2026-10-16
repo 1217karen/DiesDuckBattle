@@ -33,14 +33,7 @@ export function createAccountSwitchView({ document, controller, menu, summary, d
     });
     dialog.addEventListener("cancel", event => { event.preventDefault(); close(); });
     dialog.addEventListener("close", () => { password.value = ""; dialog.remove(); dialog = null; (previous?.isConnected ? previous : summary).focus(); }, { once: true });
-    const registration = el("p", "新しくアカウントを作る場合は　"); registration.className = "account-switch-register";
-    const registerLink = el("a", "新規登録へ"); registerLink.href = "auth.html?mode=register";
-    registerLink.addEventListener("click", event => {
-      password.value = "";
-      if (submitting || latest?.busy) event.preventDefault();
-    });
-    registration.append(registerLink);
-    dialog.append(title, form, registration); document.body.append(dialog); dialog.showModal(); enoInput.focus();
+    dialog.append(title, form); document.body.append(dialog); dialog.showModal(); enoInput.focus();
   }
   async function select(entry) {
     if (latest?.busy || deletion.busy) return;

@@ -70,28 +70,17 @@ export function createAccountAuthController({ runtime, registrationService, noti
     logout: () => action("logout", () => coordinator.logoutCurrent()),
     cleanupDeleted: target => action("cleanup-deleted", () => coordinator.cleanupDeleted(target), false),
     cleanupPending: slot => action("cleanup", () => coordinator.cleanupPending(slot), false),
-    register: (input, { notify: shouldNotify = true, redirect = true } = {}) => action("register", async () => {
-      // A completed registration awaiting login must never create a second ENo on resubmit.
-      if (registeredEno) {
-        message = `登録は完了しています。ENo.${registeredEno}でログインしてください。`;
-        return { ok: true, signedIn: false, eno: registeredEno };
-      }
-      return coordinator.register(async add => {
-        const result = await registrationService.register(input);
-        if (!result.ok) return result;
-        registeredEno = canonicalEno(result.eno);
-        let signed;
-        try { signed = await add(registeredEno, input.password); }
-        catch { signed = { ok: false }; }
-        if (!signed.ok) {
-          message = `登録は完了しました。ENo.${registeredEno}の追加ログインは未完了です。このENoとパスワードでログインしてください。`;
-          return { ok: true, signedIn: false, eno: registeredEno };
-        }
-        const eno = registeredEno; registeredEno = "";
-        if (shouldNotify) notify(`新規登録しました。あなたはENo.${eno}です。`);
-        if (redirect) navigate("index.html");
-        return { ok: true, signedIn: true, eno };
-      });
+    register: (input, { notify: shouldNotify = true } = {}) => action("register", async () => {
+      // Registration is available only while unselected. Never overwrite an active session.
+      if (runtime.getCurrent()) return { ok: false, code: "already-added" };
+      const result = await registrationService.register(input);
+      if (!result.ok) { message = result.message; return result; }
+      registeredEno = canonicalEno(result.eno);
+      const signed = await coordinator.add(registeredEno, input.password);
+      if (!signed.ok) { message = `登録は完了しました。ENo.${registeredEno}でログインしてください。`; return { ok: true, signedIn: false, eno: registeredEno }; }
+      const eno = registeredEno; registeredEno = "";
+      if (shouldNotify) notify(`新規登録しました。あなたはENo.${eno}です。`);
+      navigate("index.html"); return { ok: true, signedIn: true, eno };
     }, false),
     getClient() {
       const context = runtime.getCurrent();

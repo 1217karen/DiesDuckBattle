@@ -34,7 +34,7 @@ export function createAccountOperationCoordinator(runtime) {
       return failure(writing ? "write-unknown" : "request-failed");
     } finally { if (writing) writes--; }
   }
-  async function change(method, args, work) {
+  async function change(method, args) {
     if (closed) return failure("closed");
     if (changing || writes) return failure("operation-in-progress");
     changing = true; // Also blocks writes while an asynchronous unsaved-change dialog is open.
@@ -45,13 +45,6 @@ export function createAccountOperationCoordinator(runtime) {
         if (closed || !same(previous, scope())) return failure("stale-operation");
       }
       if (closed || writes || !same(previous, scope())) return failure("stale-operation");
-      if (work) return await work(async (eno, password) => {
-        // An intervening tab/session change must not select a new account over it.
-        if (closed || !same(previous, scope())) return failure("stale-operation");
-        const result = await runtime.add(eno, password);
-        if (!result.ok) await runtime.restore();
-        return result;
-      });
       return await runtime[method](...args);
     } catch { return failure("account-change-failed"); }
     finally { changing = false; }
@@ -61,7 +54,6 @@ export function createAccountOperationCoordinator(runtime) {
     beforeAccountChange(guard) { guards.add(guard); return () => guards.delete(guard); },
     read: work => execute(false, work),
     write: work => execute(true, work),
-    register: work => change("register", [], work),
     add: (eno, password) => change("add", [eno, password]),
     select: eno => change("select", [eno]),
     reauthenticate: (eno, password) => change("reauthenticate", [eno, password]),

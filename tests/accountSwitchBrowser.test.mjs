@@ -42,7 +42,6 @@ test('browser: account menu/add/select/logout/deletion, keyboard and responsive 
  const server=createServer(async(req,res)=>{try{
   const pathname=new URL(req.url,'http://localhost').pathname;let body,type='text/javascript';
   if(['/index.html','/fixture.html'].includes(pathname)){body=html;type='text/html';}
-  else if(pathname==='/auth.html'){body=await readFile(new URL('auth.html',root));type='text/html';}
   else if(pathname==='/fixture.js')body=`import '/js/commonMenu.js';import {getAuthRuntime} from '/js/authRuntime.js';const auth=await getAuthRuntime();auth.subscribe(s=>document.getElementById('home').textContent=s.enos[0]?'ホーム ENo.'+s.enos[0]:'未選択');window.ready=true;`;
   else if(pathname==='/js/authRuntime.js')body=runtimeSource;
   else if(pathname==='/js/accountSwitchingConfig.js')body='export const ACCOUNT_SWITCHING_ENABLED=true;';
@@ -81,18 +80,12 @@ test('browser: account menu/add/select/logout/deletion, keyboard and responsive 
    const menuRect=await page.locator('.common-menu__account-dropdown').boundingBox();assert.ok(menuRect.x>=0&&menuRect.x+menuRect.width<=width+1);
    await page.getByRole('button',{name:'＋ 別のアカウントを追加',exact:true}).click();
    await page.getByLabel('パスワード',{exact:true}).fill('not-persisted');
-   await Promise.all([page.waitForURL('**/auth.html?mode=register'),page.getByRole('link',{name:'新規登録へ',exact:true}).click()]);
-   await page.locator('#register-form').waitFor({state:'visible'});
-   await page.locator('#character-name').fill('新しいバトラー');
-   await page.locator('#register-password').fill('valid123');await page.locator('#confirm-password').fill('valid123');
-   await page.locator('#terms-consent').check();
-   const registrationNavigations=[];const recordNavigation=frame=>{if(frame===page.mainFrame()&&frame.url().includes('/index.html'))registrationNavigations.push(frame.url());};page.on('framenavigated',recordNavigation);
-   await Promise.all([page.waitForURL('**/index.html?notice=registered&eno=3'),page.locator('#register-form button[type="submit"]').click()]);
-   await page.waitForFunction(()=>window.ready&&document.getElementById('home')?.textContent==='ホーム ENo.3');
-   assert.equal(await page.evaluate(()=>localStorage.getItem('mock-registration-count')),'1');
-   page.off('framenavigated',recordNavigation);assert.equal(registrationNavigations.length,1);
-   await menu();assert.equal(await page.getByRole('button',{name:'ENo.1｜バトラー1',exact:true}).count(),1);assert.equal(await page.getByRole('button',{name:'ENo.2｜バトラー2',exact:true}).count(),1);
-   await navigateAction(()=>page.getByRole('button',{name:'ENo.1｜バトラー1',exact:true}).click());
+   assert.equal(await page.getByRole('link',{name:'新規登録へ',exact:true}).count(),0);
+   await page.keyboard.press('Escape');await page.locator('dialog').waitFor({state:'detached'});
+   assert.equal(await page.evaluate(async()=>{const result=await auth.register({characterName:'新しいバトラー',password:'valid123',confirmation:'valid123'});return result.code;}),'already-added');
+   assert.equal(await page.evaluate(()=>localStorage.getItem('mock-registration-count')),null);
+   assert.equal(await page.locator('#home').textContent(),'ホーム ENo.1');
+   await menu();assert.equal(await page.locator('.account-switch-choice[data-current="true"]').textContent(),'ENo.1｜バトラー1（現在使用中）');assert.equal(await page.getByRole('button',{name:'ENo.2｜バトラー2',exact:true}).count(),1);
    await menu();await navigateAction(()=>page.getByRole('button',{name:'ENo.2｜バトラー2',exact:true}).click());await page.waitForFunction(()=>document.getElementById('home')?.textContent==='ホーム ENo.2');
    await menu();await navigateAction(()=>page.getByRole('button',{name:'ログアウト',exact:true}).click());await page.waitForFunction(()=>document.getElementById('home')?.textContent==='未選択');
    await menu();await navigateAction(()=>page.getByRole('button',{name:'ENo.1｜バトラー1',exact:true}).click());await page.waitForFunction(()=>document.getElementById('home')?.textContent==='ホーム ENo.1');
