@@ -144,7 +144,7 @@ test("scaled B passive modifier logs AT/DF deltas in prose with signed color cla
   const modifier = (before, after, skill = {}) => event("passiveModifierChanged", { before, after, skill });
   const raised = linesFor([modifier({ AT: 1, DF: 0 }, { AT: 3, DF: 0 })]);
   assert.deepEqual(raised.map(l => l.text), ['アヒル一のATが<span class="num buff">2</span>増加！']);
-  assert.equal(raised[0].kind, "soft");
+  assert.equal(raised[0].kind, "soft skill");
   const lowered = linesFor([modifier({ AT: 3, DF: 0 }, { AT: 1, DF: 0 })]);
   assert.deepEqual(lowered.map(l => l.text), ['アヒル一のATが<span class="num debuff">2</span>減少！']);
   const withTitle = linesFor([modifier({ AT: 0, DF: 4 }, { AT: 1, DF: 2 }, { skillName: "補正名" })]);
