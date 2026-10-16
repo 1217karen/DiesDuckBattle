@@ -64,3 +64,17 @@ test('pending recovery explicitly says unknown and offers neither cleanup nor re
  assert.equal(f.button('端末側の処理を完了する'),undefined);assert.equal(f.button('アカウントを削除'),undefined);
  assert.equal(f.button('ENo.1｜一郎').disabled,true);assert.deepEqual(f.calls,[]);
 });
+
+test('profile precedes switch section and management actions have distinct classes',()=>{
+ const f=fixture();f.set({accounts:[{eno:'1',name:'一郎'}]});
+ assert.equal(f.menu.children[0].textContent,'自分のプロフィールを確認する');assert.equal(f.menu.children[0].href,'profile.html?eno=1');
+ const headings=f.menu.children.filter(n=>n.tagName==='h3');assert.deepEqual(headings.map(n=>n.textContent),['アカウント切り替え','アカウント管理']);
+ assert.equal(f.button('ENo.1｜一郎（現在使用中）').className,'account-switch-choice');
+ assert.equal(f.button('＋ 別のアカウントを追加').className,'account-switch-add');assert.equal(f.button('ログアウト').className,'account-switch-logout');
+ f.set({accounts:[]});assert.ok(!f.menu.children.some(n=>n.textContent==='自分のプロフィールを確認する'));assert.ok(f.button('ENo.1｜一郎'));
+});
+test('registration link reuses auth page and clears the popup password',()=>{
+ const f=fixture();f.open();const password=f.all().find(n=>n.type==='password');password.value='secret';
+ const link=f.all().find(n=>n.tagName==='a'&&n.textContent==='新規登録へ');assert.equal(link.href,'auth.html?mode=register');
+ link.handlers.click({preventDefault(){assert.fail('idle link should navigate');}});assert.equal(password.value,'');
+});

@@ -90,3 +90,13 @@ a[data-notice-unread="true"]::after {
 .account-switch-actions { display: flex; gap: 12px; justify-content: flex-end; }
 .account-switch-actions button { min-height: 40px; }
 .account-switch-status { font-size: 13px; overflow-wrap: anywhere; }
+
+/* Keep navigation, account identity and system actions visually distinct. */
+.common-menu .account-switch-heading { margin:2px 0 6px; color:#aebac7; font-size:12px; font-weight:600; letter-spacing:.04em; }
+.common-menu [data-account-menu] .account-switch-choice { min-width:0; min-height:44px; }
+.common-menu [data-account-menu] .account-switch-choice[data-current="true"] { opacity:1; background:#263f53; border-color:#82b5d8; color:#eef7ff; font-weight:600; cursor:default; }
+.account-switch-choice[data-current="true"]::before { content:"✓"; margin-right:8px; color:#9ed1f3; }
+.common-menu [data-account-menu] .account-switch-add { margin-top:0; min-height:44px; background:#1d3143; color:#b9ddfa; border-color:#426987; }
+.common-menu [data-account-menu] .account-switch-logout { margin-top:0; min-height:44px; background:#292d33; color:#cbd0d8; border-color:#454b55; }
+.account-switch-register { margin:18px 0 0; padding-top:14px; border-top:1px solid #80808055; font-size:14px; overflow-wrap:anywhere; }
+.account-switch-register a { color:var(--accent, #286a9a); text-underline-offset:3px; }

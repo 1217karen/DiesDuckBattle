@@ -52,7 +52,7 @@ test('gate: redirect never reveals; unexpected error shows error alone then fini
 for(const name of ['indexPage','authPage']) for(const outcome of ['signed-in','signed-out','restore-error','sdk-error']) test(name+' readiness '+outcome,async()=>{
  const f=fixture();let listener,mounted=false;
  const auth={subscribe(fn){listener=fn;fn({ready:false,sessionKnown:false,accounts:[],enos:[]});}};
- const ctx={...f,consumeIndexNotice(){},menuModel,FIXED_IMAGES,setImageFromCandidates,
+ const ctx={...f,URLSearchParams,location:{search:''},consumeIndexNotice(){},menuModel,FIXED_IMAGES,setImageFromCandidates,
  mountIndexMessages:()=>({update(){}}),getSupabaseClient:async()=>({}),
  createOnlinePlayerStorage:()=>({load:async()=>({ok:false})}),mountAuthView(){mounted=true;return {};},
  getAuthRuntime:async()=>{if(outcome==='sdk-error')throw Error('sdk');return auth;}};

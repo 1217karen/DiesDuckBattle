@@ -22,7 +22,7 @@ for (const [opened, other] of [[details, accountDetails], [accountDetails, detai
   });
 }
 document.addEventListener("keydown", event => {
-  if (event.key !== "Escape") return;
+  if (event.key !== "Escape" || document.querySelector?.("dialog[open]")) return;
   const opened = accountDetails.open ? accountDetails : details.open ? details : null;
   if (opened) {
     event.preventDefault(); opened.open = false;

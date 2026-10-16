@@ -29,7 +29,7 @@ async function screen(cached = null, sdkFailure = false, {stored="dark", themed=
   let render, logoutCalls=0;
   const controller={subscribe(fn){render=fn;}, async logout(){logoutCalls++;}};
   const writes=[];
-  document.documentElement={dataset:{}};document.querySelector=()=>themed ? {} : null;
+  document.documentElement={dataset:{}};document.querySelector=selector=>selector==='script[src="js/siteTheme.js"]' && themed ? {} : null;
   const context=vm.createContext({document,location:{replace(){}},menuModel,displayCache:{read:()=>cached},
     localStorage:{getItem(){if(storageThrows)throw Error("blocked");return stored;},setItem(key,value){if(storageThrows)throw Error("blocked");writes.push([key,value]);stored=value;}},
     getAuthRuntime:async()=>{if(sdkFailure)throw Error("SDK unavailable");if(pending)await new Promise(()=>{});return controller;}});

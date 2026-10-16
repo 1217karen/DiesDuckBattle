@@ -36,10 +36,11 @@ test('real browser desktop/mobile: menu, both confirmations, cancellation, error
       else if(pathname==='/index.html'){content='<h1>モックのトップページ</h1>';type='text/html';}
       else if(pathname==='/fixture.js')content=`import '/js/commonMenu.js';import {requireLoginPage} from '/js/authPageGuard.js';await requireLoginPage();window.ready=true;`;
       else if(pathname==='/js/authRuntime.js')content=mockRuntime;
+      else if(pathname==='/js/accountSwitchingConfig.js')content='export const ACCOUNT_SWITCHING_ENABLED=false;';
       else if(/^\/(js|css|supabase\/functions\/_shared)\/[\w./-]+$/.test(pathname)&&!pathname.includes('..')){
         content=await readFile(new URL(pathname.slice(1),root));if(pathname.endsWith('.css'))type='text/css';
       } else {res.writeHead(404);res.end();return;}
-      res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-store','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'"});res.end(content);
+      res.writeHead(200,{'Content-Type':type+'; charset=utf-8','Cache-Control':'no-store','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'"});res.end(content);
     }catch {res.writeHead(404);res.end();}
   });
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
@@ -54,27 +55,27 @@ test('real browser desktop/mobile: menu, both confirmations, cancellation, error
       await page.goto(origin+'/fixture.html');await page.waitForFunction(()=>window.ready);
       const open=async()=>{
         if(!await page.locator('.common-menu__account').evaluate(n=>n.open))await page.locator('.common-menu__account > summary').click();
-        await page.getByRole('button',{name:'アカウントを削除',exact:true}).click();await page.locator('dialog').waitFor({state:'visible'});
+        await page.getByRole('button',{name:'アカウントを削除',exact:true}).click();await page.locator('dialog[open]').waitFor({state:'visible'});
       };
       const final=async()=>{await open();await page.getByRole('checkbox').check();await page.getByRole('button',{name:'削除する',exact:true}).click();};
       const checkBounds=async()=>{
-        const rect=await page.locator('dialog').boundingBox();assert.ok(rect.x>=0&&rect.x+rect.width<=viewport.width+1);
+        const rect=await page.locator('dialog[open]').boundingBox();assert.ok(rect.x>=0&&rect.x+rect.width<=viewport.width+1);
         assert.ok(rect.y>=0&&rect.y+rect.height<=viewport.height+1);
-        assert.equal(await page.locator('dialog').evaluate(n=>n.scrollWidth<=n.clientWidth),true);
+        assert.equal(await page.locator('dialog[open]').evaluate(n=>n.scrollWidth<=n.clientWidth),true);
       };
       await open();assert.equal(await page.getByRole('button',{name:'削除する',exact:true}).isEnabled(),false);await checkBounds();
       if(process.env.ACCOUNT_DELETION_ARTIFACT_DIR){await mkdir(process.env.ACCOUNT_DELETION_ARTIFACT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.ACCOUNT_DELETION_ARTIFACT_DIR,`deletion-${label}-consent.png`)});}
-      await page.keyboard.press('Escape');assert.equal(await page.locator('dialog').count(),0);
+      await page.keyboard.press('Escape');await page.locator('dialog').waitFor({state:'detached'});assert.equal(await page.locator('dialog').count(),0);
       await final();await checkBounds();assert.equal(await page.evaluate(()=>window.mock.calls.filter(n=>n==='delete_own_account').length),0);
       if(process.env.ACCOUNT_DELETION_ARTIFACT_DIR)await page.screenshot({path:path.join(process.env.ACCOUNT_DELETION_ARTIFACT_DIR,`deletion-${label}-final.png`)});
-      await page.getByRole('button',{name:'キャンセル',exact:true}).click();assert.equal(await page.locator('dialog').count(),0);
+      await page.getByRole('button',{name:'キャンセル',exact:true}).click();await page.locator('dialog').waitFor({state:'detached'});assert.equal(await page.locator('dialog').count(),0);
       await final();await page.evaluate(()=>window.mock.mode='offline');
       await page.getByRole('button',{name:'削除を実行'}).evaluate(n=>{n.click();n.click();});
       await page.getByRole('heading',{name:'削除結果の確認'}).waitFor();assert.equal(await page.evaluate(()=>window.mock.calls.filter(n=>n==='delete_own_account').length),1);
-      assert.match(await page.locator('dialog').innerText(),/削除結果を確認できません/);assert.ok(page.url().endsWith('fixture.html'));
-      await page.getByRole('button',{name:'閉じる',exact:true}).click();await page.evaluate(()=>window.mock.mode='normal');
+      assert.match(await page.locator('dialog[open]').innerText(),/削除結果を確認できません/);assert.ok(page.url().endsWith('fixture.html'));
+      await page.getByRole('button',{name:'閉じる',exact:true}).click();await page.locator('dialog').waitFor({state:'detached'});await page.evaluate(()=>window.mock.mode='normal');
       await final();await page.getByRole('button',{name:'削除を実行'}).click();
-      await page.waitForURL('**/index.html?notice=account-deleted');assert.equal(await page.evaluate(()=>sessionStorage.getItem('deletion-mock-result')),'signed-out');
+      await page.getByRole('heading',{name:'モックのトップページ',exact:true}).waitFor();assert.ok(page.url().endsWith('/index.html?notice=account-deleted')); assert.equal(await page.evaluate(()=>sessionStorage.getItem('deletion-mock-result')),'signed-out');
       assert.deepEqual(errors,[]);await context.close();
     }
   }finally {await browser?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}

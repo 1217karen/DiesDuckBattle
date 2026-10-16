@@ -1,0 +1,69 @@
+アカウントメニュー整理・ログイン中の追加登録（2026-10-16）
+
+基点: origin/main 18a6159（アカウント切り替え有効）。
+ACCOUNT_SWITCHING_ENABLED=trueを維持。DB/RLS/migration/Edge Functionは変更なし。
+本番アカウントの登録・削除は実行していない。base/SpaceDuckBattleは変更していない。
+
+メニュー
+・選択中のみ最上部に現在ENoのプロフィールへの通常リンク。
+・区切り線／「アカウント切り替え」／保存済みENo一覧。
+・現在ENoはチェック、青背景・枠、明るい文字。disabledでもopacity:1を維持。
+・区切り線／「アカウント管理」／追加（青）／ログアウト（グレー）／削除（小さい赤）。
+・未選択時も保存済み一覧と追加操作を表示。ログアウト・削除は選択中のみ。
+・未完了ログインと削除復旧の専用操作を維持。
+・追加dialog下部にauth.html?mode=registerへの通常リンク。クリック時にパスワード消去。
+・送信中はリンク移動を拒否。Escはnative dialogへ渡し、メニューがpreventDefaultしない。
+
+登録処理
+・auth.htmlの既存authMarkup/authViewを再利用。名前・パスワード・確認・規約同意を維持。
+・accountOperationCoordinator.registerがAPI前に未保存ガードと実行中writeを確認。
+・ガード待機→register-account→発行ENoの独立セッション追加までchangingを維持。
+・同じページの追加、選択、ログアウト、清掃、保存、重複登録をその間拒否。
+・外部タブで既存セッションが変わった場合は追加前に検知し、選択を上書きしない。
+・登録成功応答のENoをcanonicalEnoで確認し、runtime.addへ渡す。
+・既存managerが新slot/独立SDK保存キーを使用し、Auth user/email/ENo/game accountの対応を検証。
+・A/Bのセッションと保存先は維持し、新Cが正常に確認された後だけCを選択する。
+・追加ログイン失敗時はruntime.restoreで既存選択の検証を復元。
+・成功済みENoはregisteredEnoに保持し、「登録完了／追加ログイン未完了」を区別して表示。
+・フォームの既存ENoコピー／そのENoでログインする操作を維持。成功通知・ホーム遷移なし。
+・成功済みで追加ログイン待ちの間に再submitしても登録APIは送信しない。
+・登録API失敗・結果不明・例外に自動再送なし。既存のサービス入力検証・応答判定を維持。
+・auth.htmlではregistrationRedirect:falseでcontrollerの遷移を止め、画面側だけが
+  index.html?notice=registered&eno=...へ遷移し既存の通知を使用する。
+・ホームの既存登録dialogなど、既定フローではcontrollerがホーム遷移を担当する。
+
+変更ファイル
+・js/accountSwitchView.js、css/common-menu.css: メニュー構成・配色・登録リンク。
+・js/accountAuthController.js、js/accountOperationCoordinator.js: 保護された追加登録。
+・js/authPage.js、js/authView.js: 登録モード・遷移担当の明示。
+・js/commonMenu.js: 開いたdialogのEscを奪わない。
+・tests/accountRegistrationIntegration.test.mjs: 新規11ケース。
+・tests/accountSwitchView.test.mjs: メニュー順序／役割／登録リンクの2ケース追加。
+・tests/accountSwitchBrowser.test.mjs: 既存フォームで追加登録、A/B保持、A復帰、遷移回数、
+  配色／幅に加え、前回実装した復旧ブラウザケースと非同期待機の改善を反映。
+・tests/accountDeletionBrowser.test.mjs: 非同期close／遷移・UTF-8・旧モードfixtureを明示。
+・tests/commonMenuInteraction.test.mjs、tests/authPolish.test.mjs、tests/pageLoadGate.test.mjs:
+  実DOMに合わせたquerySelectorとURLSearchParams/locationの模擬環境を補完。
+・この報告ファイル。
+
+自動検証
+Node v24.19.0 / PGlite 0.3.14 / Playwright 1.57.0 / Chromium 154.0.8037.57。
+全体2337件成功、失敗0、スキップ0。削除・復旧・保存・公開ページ・通知等の既存テストを含む。
+登録APIとAuthは模擬、DBはPGliteのみ。テスト削除や無条件スキップなし。
+実Chromiumで320/390/430/1280px、dialogのライト／ダークとキーボード操作を検証。
+A/B保持→追加popup→既存auth.htmlフォーム→新C登録→ホームC→パスワードなしA復帰。
+登録API1回、ホーム遷移1回を検証。個別ログアウト・削除・復旧も同じフローで確認。
+登録中の保存・操作競合、キャンセルでAPI0回、失敗・不明時の既存保持はNode模擬SDKで確認。
+320px等のメニュー実画像を作業ディレクトリへ保存し、横幅と強調表示を目視確認。
+
+再現コマンド
+PGLITE_MODULE=/workspace/work/test-deps/node_modules/@electric-sql/pglite/dist/index.js \
+PLAYWRIGHT_MODULE=/opt/codex/cua_node/lib/node_modules/playwright/index.mjs \
+BROWSER_EXECUTABLE=/usr/bin/chromium \
+node --test --test-concurrency=2 --test-reporter=tap tests/*.test.mjs
+
+手動確認が必要な範囲
+・非本番環境で実register-account／実Supabase SDKとの接続確認。
+・実スマホのタッチ操作、非常に長いバトラー名、各ブラウザでの見た目・読み上げ。
+・実ページ上の未保存編集からの移動、複数タブ、ネットワーク切断時の案内。
+既存ログアウト仕様・削除復旧の実装は変更しない。ローカル作業のみ、push/deployなし。

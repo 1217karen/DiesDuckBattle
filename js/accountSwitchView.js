@@ -33,7 +33,14 @@ export function createAccountSwitchView({ document, controller, menu, summary, d
     });
     dialog.addEventListener("cancel", event => { event.preventDefault(); close(); });
     dialog.addEventListener("close", () => { password.value = ""; dialog.remove(); dialog = null; (previous?.isConnected ? previous : summary).focus(); }, { once: true });
-    dialog.append(title, form); document.body.append(dialog); dialog.showModal(); enoInput.focus();
+    const registration = el("p", "新しくアカウントを作る場合は　"); registration.className = "account-switch-register";
+    const registerLink = el("a", "新規登録へ"); registerLink.href = "auth.html?mode=register";
+    registerLink.addEventListener("click", event => {
+      password.value = "";
+      if (submitting || latest?.busy) event.preventDefault();
+    });
+    registration.append(registerLink);
+    dialog.append(title, form, registration); document.body.append(dialog); dialog.showModal(); enoInput.focus();
   }
   async function select(entry) {
     if (latest?.busy || deletion.busy) return;
@@ -46,14 +53,32 @@ export function createAccountSwitchView({ document, controller, menu, summary, d
     const key = JSON.stringify([state.savedAccounts, state.pendingAccounts, state.deletionRecoveries, current?.eno]);
     if (key !== renderingKey) {
       renderingKey = key; controls = [];
-      const nodes = (state.savedAccounts ?? []).map(entry => {
+      const nodes = [];
+      if (current) {
+        const profile = el("a", "自分のプロフィールを確認する");
+        profile.href = `profile.html?eno=${encodeURIComponent(current.eno)}`;
+        nodes.push(profile);
+      }
+      const section = title => {
+        const separator = el("hr"); separator.className = "common-menu__account-separator";
+        const heading = el("h3", title); heading.className = "account-switch-heading";
+        nodes.push(separator, heading);
+      };
+      section("アカウント切り替え");
+      nodes.push(...(state.savedAccounts ?? []).map(entry => {
         const selected = current?.eno === entry.eno;
         const node = button(`ENo.${entry.eno}｜${entry.name || "名前未取得"}${selected ? "（現在使用中）" : ""}`, () => void select(entry));
+        node.className = "account-switch-choice";
         node.dataset.recovery = String((state.deletionRecoveries ?? []).some(item => item.eno === entry.eno));
         node.dataset.current = String(selected); if (selected) node.setAttribute("aria-current", "true");
         controls.push(node); return node;
-      });
-      const add = button("＋ 別のアカウントを追加", () => openLogin()); controls.push(add); nodes.push(add);
+      }));
+      section("アカウント管理");
+      const add = button("＋ 別のアカウントを追加", () => openLogin()); add.className = "account-switch-add"; controls.push(add); nodes.push(add);
+      if (current) {
+        const logout = button("ログアウト", () => void controller.logout()); logout.className = "account-switch-logout"; controls.push(logout);
+        nodes.push(logout, deletion.launch, deletion.feedback);
+      }
       for (const entry of state.pendingAccounts ?? []) {
         const cleanup = button(`ENo.${entry.eno}の未完了ログインを清掃`, () => void controller.cleanupPending(entry.slot));
         controls.push(cleanup); nodes.push(cleanup);
@@ -67,11 +92,6 @@ export function createAccountSwitchView({ document, controller, menu, summary, d
           const cleanup = button("端末側の処理を完了する", () => void controller.cleanupDeleted({ ...item }));
           controls.push(cleanup); nodes.push(cleanup);
         }
-      }
-      if (current) {
-        const profile = el("a", "自分のプロフィールを確認する"); profile.href = `profile.html?eno=${encodeURIComponent(current.eno)}`;
-        const logout = button("ログアウト", () => void controller.logout()); controls.push(logout);
-        nodes.push(profile, logout, deletion.separator, deletion.launch, deletion.feedback);
       }
       menu.replaceChildren(...nodes, status);
     }
