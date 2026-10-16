@@ -173,7 +173,8 @@ test("skill and field groups end in one spacer, roll has one preceding spacer", 
   for (const i of [0, 1, 3, 4, 6, 7]) assert.match(lines[i].kind, /skill/);
   assert.doesNotMatch(lines[9].kind, /skill/);
   assert.match(lines[0].text, /独自名&lt;一&gt;/);
-  assert.match(lines[9].text, /🎲/);
+  assert.equal(lines[9].kind, "soft rollLine");
+  assert.equal(lines[9].text, '<img class="logDuckIcon" data-snapshot-icon data-fallback="/img/D00.png" src="/img/D00.png" alt=""><span><span class="rollMain">ダイス結果 → <span class="num buff">1</span>！</span><br><span class="rollSub">自分のAP+1</span></span>');
 });
 
 test("initial passive B is deferred to first phase before phase quote; off only shows release", () => {
@@ -183,9 +184,9 @@ test("initial passive B is deferred to first phase before phase quote; off only 
     { ...passive, groupId: 2, active: false, hpPct: .3 }], "draw", ctx);
   assert.doesNotMatch(blocks[0].lines.map(l => l.text).join(""), /バトラースキル/);
   assert.equal(blocks[2].lines[0].text, "バトラー一のバトラースキル！");
-  assert.match(blocks[2].lines[1].text, /アヒル一のAT\+2！.*現HP100%/);
+  assert.equal(blocks[2].lines[1].text, 'アヒル一のAT<span class="num buff">+2</span>！ <span class="miniHint">（現HP100%）</span>');
   assert.match(blocks[2].lines[3].text, /フェイズ台詞/);
-  assert.match(blocks[2].lines[4].text, /AT\+2が解除された！.*現HP30%/);
+  assert.equal(blocks[2].lines[4].text, 'アヒル一のAT<span class="num buff">+2</span>が解除された！ <span class="miniHint">（現HP30%）</span>');
 });
 
 test("phase buff expiry is buffered without swallowing the following phase; C and both groups end in tail", () => {

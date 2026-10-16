@@ -119,7 +119,11 @@ test('browser: real auth runtime, select battle/result back-forward, restored pa
   assert.equal((await auth()).signedIn,false);assert.equal((await auth()).logoutSucceeded,false);
   await page.evaluate(()=>sessionStorage.removeItem('verify-expired'));await page.goto(origin+'/select.html');await ready();
   // Selection changes in a different tab must eject A, not re-admit its old page as B.
-  await other.reload();await other.waitForFunction(async()=>{const a=await (await import('/js/authRuntime.js')).getAuthRuntime(),s=a.snapshot();return s.ready&&s.sessionKnown&&s.signedIn&&!s.busy;});
+  await other.reload();
+  // getAuthRuntime exposes the controller before startup finishes. Await the
+  // same initialized-client boundary used by page services before acting on it.
+  await other.evaluate(async()=>{await (await import('/js/authRuntime.js')).getSupabaseClient();});
+  await other.waitForFunction(async()=>{const a=await (await import('/js/authRuntime.js')).getAuthRuntime(),s=a.snapshot();return s.ready&&s.sessionKnown&&s.signedIn&&!s.busy;});
   const selectTwo=await other.evaluate(async()=>{const a=await (await import('/js/authRuntime.js')).getAuthRuntime();return a.runtime.select('2');});
   assert.equal(selectTwo.ok,true,JSON.stringify(selectTwo));
   await page.waitForURL(origin+'/index.html',{waitUntil:'commit'});await page.waitForFunction(async()=> (await (await import('/js/authRuntime.js')).getAuthRuntime()).snapshot().enos[0]==='2');
@@ -128,7 +132,9 @@ test('browser: real auth runtime, select battle/result back-forward, restored pa
   await page.goto(origin+'/select.html');await ready();
   // Another tab's real runtime logout invalidates captured writes and ejects this protected page.
   await page.evaluate(async()=>window.captured=(await (await import('/js/authRuntime.js')).getAuthRuntime()).getClient());
-  await other.reload();await other.waitForFunction(async()=>{const a=await (await import('/js/authRuntime.js')).getAuthRuntime(),s=a.snapshot();return s.ready&&s.sessionKnown&&s.signedIn&&!s.busy;});
+  await other.reload();
+  await other.evaluate(async()=>{await (await import('/js/authRuntime.js')).getSupabaseClient();});
+  await other.waitForFunction(async()=>{const a=await (await import('/js/authRuntime.js')).getAuthRuntime(),s=a.snapshot();return s.ready&&s.sessionKnown&&s.signedIn&&!s.busy;});
   const logoutNavigation=page.waitForURL(/index.html/,{waitUntil:'commit',timeout:10000}).catch(e=>{throw new Error(e.message+' actual URL: '+page.url());});
   const logout=await other.evaluate(async()=>{const a=await (await import('/js/authRuntime.js')).getAuthRuntime();return a.runtime.logoutGame();});assert.equal(logout.ok,true);
   await logoutNavigation;assert.equal((await auth()).signedIn,false);

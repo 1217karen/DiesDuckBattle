@@ -133,7 +133,10 @@ test("A compact cost summary uses computed totals, preserves saved values, and e
    assert.equal(point(p,"available"),r.availablePoints==null?"—":`${r.availablePoints}pt`);assert.equal(point(p,"gross"),r.grossCost==null?"—":`${r.grossCost}pt`);
    assert.equal(point(p,"drawback"),r.drawbackPoints==null?"—":`${r.drawbackPoints}pt`);
    assert.equal(point(p,"remaining"),r.remaining==null?"—":`${Math.abs(r.remaining)}pt`);
-   if(r.remaining<0) {assert.match(p.get("a-point-shortage").textContent,/pt超過/);assert.match(p.get("a-issues").textContent,/pt超過/);}
+   if(r.remaining<0) {
+    assert.equal(p.get("a-point-shortage").textContent,`pt超過 ${-r.remaining}pt`);
+    assert.equal(p.get("a-issues").textContent,`Ａスキルコストオーバー：${-r.remaining}`);
+   }
   }
   assert.deepEqual(b,before);
  }

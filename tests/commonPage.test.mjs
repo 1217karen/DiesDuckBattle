@@ -107,8 +107,9 @@ test("editor save bars, rulebook tabs and character-list columns retain their ow
   const list = await read("css/character-list.css");
   for (const width of [881, 1440]) expectStyle(list, ".character-list-grid", { display: "grid", "grid-template-columns": "repeat(2, minmax(0, 1fr))", width: "100%", "max-width": "1068px", "margin-inline": "auto", gap: "18px 28px" }, width);
   for (const width of [880, 761, 760, 390, 320]) expectStyle(list, ".character-list-grid", { "grid-template-columns": "minmax(0, 1fr)", width: "100%", "max-width": "520px", "margin-inline": "auto", gap: "18px 28px" }, width);
-  expectStyle(list, ".character-list-filters", { display: "flex" }, 761);
-  for (const width of [760, 390, 320]) expectStyle(list, ".character-list-filters", { display: "grid", "grid-template-columns": "repeat(2, minmax(0, 1fr))" }, width);
+  // Filters wrap as flex items at every width; only the card grid changes columns.
+  for (const width of [1440, 881, 761, 760, 390, 320])
+    expectStyle(list, ".character-list-filters", { display: "flex", "flex-wrap": "wrap" }, width);
 });
 
 test("public entry pages contain no obsolete development-only copy", async () => {

@@ -36,7 +36,11 @@ test('card exact image dimensions, fallbacks, labels, profile colors and link',(
  assert.equal(eno.textContent,'ENo.1');assert.equal(streak.textContent,'MAX STREAK0');
  const [b,info]=c.children[1].children,d=info.children[1].children[0];assert.equal(info.children.length,2);
  assert.equal(b.width,120);assert.equal(d.width,60);assert.equal(b.src,'/img/B00_icon.png');assert.equal(d.src,'/img/D00.png');
- assert.match(c.textContent,/アタックタイプ.*属性：炎・🔥.*MAX STREAK0/);
+ assert.deepEqual(c.children.map(n=>n.className),['character-card-header','character-card-body']);
+ assert.equal(info.children[0].textContent,'Abc 炎');
+ const duckInfo=info.children[1].children[1];
+ assert.equal(duckInfo.children[0].textContent,'Duck');
+ assert.deepEqual(duckInfo.children[1].children.map(n=>n.textContent),['アタックタイプ','属性：炎・🔥']);
  v.duck=null;v.bestStreak=null;v.battlerIconUrl='broken';const empty=createCharacterCard(document,v),img=empty.children[1].children[0];img.handlers.error();assert.equal(img.src,'/img/B00_icon.png');assert.equal(empty.children[0].children[1].textContent,'MAX STREAK―');assert.match(empty.textContent,/MAX STREAK―.*属性：―/);
 });
 test('page fetches once, filters without another RPC, shows no-results and generic error',async()=>{

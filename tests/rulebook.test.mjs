@@ -72,7 +72,7 @@ test("all section IDs are unique and table-of-contents links resolve inside thei
     assert.match(html, new RegExp('id="tab-' + name + '"[^>]*aria-controls="panel-' + name + '"'));
     assert.match(html, new RegExp('id="panel-' + name + '"[^>]*aria-labelledby="tab-' + name + '"'));
   }
-  for (const [name, sectionIds] of [["guide", ["start","characters","account","setting","mechanics","battle","display","profile","notice"].map(id=>"guide-"+id)], ["battle",ids]]) {
+  for (const [name, sectionIds] of [["guide", ["characters","start","account","setting","mechanics","battle","display","profile","notice"].map(id=>"guide-"+id)], ["battle",ids]]) {
     const start=html.indexOf('<div id="panel-'+name+'"');
     const next=html.indexOf('<div id="panel-',start+1);
     const panel=html.slice(start,next);

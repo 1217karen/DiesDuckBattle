@@ -47,7 +47,7 @@ for (const after of [2, 1, 0, -1]) test("aura tick shows only positive remaining
 });
 for (const after of [2, 1, 0, -1]) test("ordinary buff tick shows only positive remaining turns: " + after, () => {
   const text = textFor([event("buffTick", { stat: "AT", amount: 2, after })]);
-  if (after > 0) assert.ok(text.includes(`アヒルAのターン効果（AT+2／残り${after}T）`));
+  if (after > 0) assert.ok(text.includes(`アヒルAのターン効果（AT<span class="num buff">+2</span>／残り${after}T）`));
   else assert.doesNotMatch(text, /ターン効果/);
 });
 test("zero ticks stay in the record and only expiry logs are rendered in the turn tail", () => {
@@ -59,7 +59,7 @@ test("zero ticks stay in the record and only expiry logs are rendered in the tur
   const original = structuredClone(events), blocks = blocksFor(events), tail = blocks.find(block => block.headerText === "");
   assert.deepEqual(events, original);
   assert.equal(tail.side, "system");
-  assert.deepEqual(tail.lines.map(line => line.text), ["アヒルAのオーラ効果が終了（⚡亀裂）", "アヒルAのターン効果が終了（AT+2）"]);
+  assert.deepEqual(tail.lines.map(line => line.text), ["アヒルAのオーラ効果が終了（⚡亀裂）", 'アヒルAのターン効果が終了（AT<span class="num buff">+2</span>）']);
   assert.doesNotMatch(tail.lines.map(line => line.text).join(""), /残り0T/);
   assert.ok(blocks.indexOf(tail) > blocks.findIndex(block => block.side === "P1"));
   assert.ok(blocks.indexOf(tail) < blocks.findIndex(block => block.turn === 2));
