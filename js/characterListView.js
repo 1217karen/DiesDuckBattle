@@ -85,8 +85,8 @@ const body = el("div", undefined, "character-card-body");
   );
 
 
-header.append(eno);
-details.append(name, duckRow, streak);
+header.append(eno, streak);
+details.append(name, duckRow);
 body.append(battler, details);
 card.append(header, body);
 
