@@ -19,10 +19,10 @@ const text = {
   UNKNOWN_EFFECT: "存在しないproduction効果が指定されています。",
   UNKNOWN_OPTION: "現在の効果では使えない選択肢が指定されています。",
   UNKNOWN_CHANCE_OPTION: "使用できない成功率が指定されています。",
-  INVALID_MODE: "Cの種類が不正です。", INVALID_STRUCTURE: "Cの構造が不正です。",
+  INVALID_MODE: "Ｃスキルの種類が不正です。", INVALID_STRUCTURE: "Ｃスキルの構造が不正です。",
   UNKNOWN_STRUCTURE: "存在しない分岐方式です。", INVALID_BRANCH: "分岐の構造が壊れています。",
   INVALID_BRANCHES: "HP条件の分岐構造が壊れています。", BRANCH_COUNT: "ランダム分岐の構造・分岐数が不正です。",
-  SPECIAL_FLAT_ONLY: "特殊Cでは分岐を使用できません。", MODE_UNAVAILABLE: "現在のC種類では使用できない効果です。",
+  SPECIAL_FLAT_ONLY: "特殊Ｃスキルでは分岐を使用できません。", MODE_UNAVAILABLE: "現在のＣスキル種類では使用できない効果です。",
   CHANCE_NOT_ALLOWED: "この効果には成功率を指定できません。", INVALID_OPTIONS: "効果の選択肢の形式が不正です。",
 };
 
@@ -79,7 +79,7 @@ function inspectLegacyBuildForSave(build) {
       && !bCatalog.optionSets[set].some(o => o.id === b.options[key]));
     for (const key of ["triggerId", "conditionId", "effectId", "traitId"]) {
       const known = key === "traitId" ? bCatalog.traits.some(e => e.id === b[key]) : bCatalog.events.some(e => e[key] === b[key]);
-      if (!blank(b[key]) && !known) add(bOwner, "invalid", "UNKNOWN_ID", key, "存在しないBのproduction IDが指定されています。");
+      if (!blank(b[key]) && !known) add(bOwner, "invalid", "UNKNOWN_ID", key, "存在しないＢスキルのproduction IDが指定されています。");
     }
     // Partial choices must still match at least one catalog row. This also finds
     // unknown IDs when another required field is blank.
@@ -88,9 +88,9 @@ function inspectLegacyBuildForSave(build) {
         : blank(b.type) ? [...bCatalog.events, ...bCatalog.traits] : [];
     for (const [axis, value] of Object.entries(b.options ?? {})) {
       const sets = candidates.flatMap(e => Object.hasOwn(e.optionAxes, axis) ? [bCatalog.optionSets[e.optionAxes[axis]]] : []);
-      if (candidates.length && !sets.length) add(bOwner, "invalid", "UNKNOWN_FIELD", `options.${axis}`, "現在のB候補にはない追加項目です。");
+      if (candidates.length && !sets.length) add(bOwner, "invalid", "UNKNOWN_FIELD", `options.${axis}`, "現在のＢスキル候補にはない追加項目です。");
       else if (sets.length && !blank(value) && !sets.some(set => set.some(o => o.id === value)))
-        add(bOwner, "invalid", "UNKNOWN_OPTION", `options.${axis}`, "存在しないBの選択肢が指定されています。");
+        add(bOwner, "invalid", "UNKNOWN_OPTION", `options.${axis}`, "存在しないＢスキルの選択肢が指定されています。");
     }
     const validation = validateBSkillSelection(b, { catalog: bCatalog });
     for (const issue of validation.errors) {
@@ -104,12 +104,12 @@ function inspectLegacyBuildForSave(build) {
         case "UNKNOWN_OPTION": pending = missingOptions && !unknownOptions; break;
       }
       add(bOwner, pending ? "incomplete" : "invalid", issue.code, "", pending
-        ? "Bの種類・発動条件・効果・追加項目の選択が未完了です。"
-        : "BのID・組合せ・不要な項目を確認してください。");
+        ? "Ｂスキルの種類・発動条件・効果・追加項目の選択が未完了です。"
+        : "ＢスキルのID・組合せ・不要な項目を確認してください。");
     }
     // The compiler stops checking option values if option keys are incomplete.
-    if (unknownOptions) add(bOwner, "invalid", "UNKNOWN_OPTION", "options", "存在しないBの選択肢が指定されています。");
-    if (missingOptions) add(bOwner, "incomplete", "OPTION_UNSELECTED", "options", "Bの追加項目を選択してください。");
+    if (unknownOptions) add(bOwner, "invalid", "UNKNOWN_OPTION", "options", "存在しないＢスキルの選択肢が指定されています。");
+    if (missingOptions) add(bOwner, "incomplete", "OPTION_UNSELECTED", "options", "Ｂスキルの追加項目を選択してください。");
     if (validation.complete) compileBSkill(b, { catalog: bCatalog });
     for (const issue of validation.unresolved) add(bOwner, "invalid", issue.code, "", "Bのproduction定義を確定できません。");
   }
@@ -117,7 +117,7 @@ function inspectLegacyBuildForSave(build) {
   if (selectionShape(d, "D", dOwner)) {
     for (const issue of compileDSkill(d).errors) {
       const pending = ["OPTION_REQUIRED", "INVALID_OPTION_ID", "UNKNOWN_OPTION_ID"].includes(issue.code) && blank(d.optionId);
-      add(dOwner, pending ? "incomplete" : "invalid", issue.code, "optionId", pending ? "Dの追加ダイスを選択してください。" : "存在しないDの選択肢です。");
+      add(dOwner, pending ? "incomplete" : "invalid", issue.code, "optionId", pending ? "Ｄスキルの追加ダイスを選択してください。" : "存在しないＤスキルの選択肢です。");
     }
   }
   if (!build.ducks.length) add({ section: "ducks", duckId: null, ownerName: "設定全体" }, "incomplete", "NO_DUCK", "ducks", "アヒル設定が1件もありません。");
@@ -141,7 +141,7 @@ function inspectLegacyBuildForSave(build) {
     const diceOwner = owner("dice");
     if (!frame) add(diceOwner, "incomplete", "DICE_FRAME_UNSET", "dice", "ダイスタイプを選択するとダイスの合法性を確認できます。");
     else for (const issue of aResult.errors.filter(e => e.code === "INVALID_DICE_RESOURCES"))
-      add(diceOwner, "invalid", issue.code, "dice", "使用可能な出目・同じ出目の個数・ダイス資源を確認してください。");
+      add(diceOwner, "invalid", issue.code, "dice", "ダイスptが不足しているか、出目が不正です。");
     if (aShape) {
       const a = duck.aSelection;
       // Resources stops at an unselected effect. Still reject independently known
@@ -149,9 +149,9 @@ function inspectLegacyBuildForSave(build) {
       for (const [i, leaf] of (a.effects ?? []).entries()) {
         if (!blank(leaf?.effectId)) continue;
         if (!blank(leaf?.amountOptionId) && !aCatalog.effects.some(e => e.amountOptions.some(o => o.id === leaf.amountOptionId)))
-          add(owner("A"), "invalid", "UNKNOWN_AMOUNT_OPTION", `effects.${i}.amountOptionId`, "存在しないAの効果量です。");
+          add(owner("A"), "invalid", "UNKNOWN_AMOUNT_OPTION", `effects.${i}.amountOptionId`, "存在しないＡスキルの効果量です。");
         if (!blank(leaf?.chanceOptionId) && !aCatalog.chanceOptions.some(o => o.id === leaf.chanceOptionId))
-          add(owner("A"), "invalid", "UNKNOWN_CHANCE_OPTION", `effects.${i}.chanceOptionId`, "存在しないAの成功率です。");
+          add(owner("A"), "invalid", "UNKNOWN_CHANCE_OPTION", `effects.${i}.chanceOptionId`, "存在しないＡスキルの成功率です。");
       }
       for (const issue of [...aResult.errors, ...aResult.unresolved]) {
         if (issue.code === "INVALID_DICE_RESOURCES") continue; // Report once, in DICE.
@@ -166,8 +166,8 @@ function inspectLegacyBuildForSave(build) {
           case "AMOUNT_UNSELECTED": pending = true; break;
           case "UNKNOWN_AMOUNT_OPTION": case "UNKNOWN_CHANCE_OPTION": case "DRAWBACK_CHANCE": pending = blank(value); break;
         }
-        const message = issue.code === "INSUFFICIENT_A_POINTS" ? `Aコストオーバー：${-aResult.resources.remaining}`
-          : pending ? "Aの発動条件・効果・効果量などの選択が未完了です。" : issue.message ?? text[issue.code] ?? "Aの設定がproductionルールに適合しません。";
+        const message = issue.code === "INSUFFICIENT_A_POINTS" ? `Ａスキルコストオーバー：${-aResult.resources.remaining}`
+          : pending ? "Ａスキルの発動条件・効果・効果量などの選択が未完了です。" : issue.message ?? text[issue.code] ?? "Ａスキルの設定がproductionルールに適合しません。";
         add(owner("A"), pending ? "incomplete" : "invalid", issue.code, issue.path, message);
       }
     }
@@ -183,10 +183,10 @@ function inspectLegacyBuildForSave(build) {
         for (const [axis, value] of Object.entries(leaf?.options ?? {})) {
           const sets = cCatalog.effects.flatMap(e => Object.hasOwn(e.optionAxes, axis) ? [cCatalog.optionSets[e.optionAxes[axis]]] : []);
           if (!sets.length || (!blank(value) && !sets.some(set => set.some(o => o.id === value))))
-            add(owner("C"), "invalid", "UNKNOWN_OPTION", `branch.${bi}.effects.${i}.options.${axis}`, "存在しないCの追加項目です。");
+            add(owner("C"), "invalid", "UNKNOWN_OPTION", `branch.${bi}.effects.${i}.options.${axis}`, "存在しないＣスキルの追加項目です。");
         }
         if (!blank(leaf?.chanceOptionId) && !cCatalog.chanceOptions.some(o => o.id === leaf.chanceOptionId))
-          add(owner("C"), "invalid", "UNKNOWN_CHANCE_OPTION", `branch.${bi}.effects.${i}.chanceOptionId`, "存在しないCの成功率です。");
+          add(owner("C"), "invalid", "UNKNOWN_CHANCE_OPTION", `branch.${bi}.effects.${i}.chanceOptionId`, "存在しないＣスキルの成功率です。");
       }
       for (const issue of [...compilation.errors, ...compilation.unresolved]) {
         const value = at(c, issue.path);
@@ -203,8 +203,8 @@ function inspectLegacyBuildForSave(build) {
           case "INVALID_OPTIONS": pending = blank(value); break;
         }
         add(owner("C"), pending ? "incomplete" : "invalid", issue.code, issue.path, pending
-          ? "Cの効果・分岐・追加項目の選択が未完了です。"
-          : text[issue.code] ?? (issue.code === "EFFECT_COUNT" ? `Cの効果数が上限${cRules.maxEffects}件を超えています。` : "Cの設定がproductionルールに適合しません。"));
+          ? "Ｃスキルの効果・分岐・追加項目の選択が未完了です。"
+          : text[issue.code] ?? (issue.code === "EFFECT_COUNT" ? `Ｃスキルの効果数が上限${cRules.maxEffects}件を超えています。` : "Ｃスキルの設定がproductionルールに適合しません。"));
       }
     }
   });
