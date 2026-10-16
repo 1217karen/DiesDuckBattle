@@ -316,8 +316,9 @@ function eventToLines(event, context) {
     case "actionCanceled": return [{ kind: "soft", text: `<i>${target}は行動できない！</i>` }];
     case "fieldTriggered": return [{ kind: "note", text: `🛁${escapeHTML(event.field?.name ?? "フィールド")}のフィールド効果！` }];
     case "buffApplied": {
-      const duration = event.duration?.kind === "phase" ? "この行動中" : `${escapeHTML(event.duration?.remainingTurns ?? event.turns)}T`;
-      return [{ kind: "soft", text: `${target}に${event.duration?.kind === "phase" ? "行動中" : "ターン"}効果（${escapeHTML(event.stat)}${signed(event.amount)} / ${duration}）を追加！` }];
+      if (event.duration?.kind === "phase") return [{ kind: "soft", text: `${target}の${escapeHTML(event.stat)}がこの攻撃フェイズ中だけ${Math.abs(event.amount)}${event.amount < 0 ? "減少" : "増加"}！` }];
+      const duration = `${escapeHTML(event.duration?.remainingTurns ?? event.turns)}T`;
+      return [{ kind: "soft", text: `${target}にターン効果（${escapeHTML(event.stat)}${signed(event.amount)} / ${duration}）を追加！` }];
     }
     case "buffTick": return event.after > 0
       ? [{ kind: "meta center", text: `${target}のターン効果（${escapeHTML(event.stat)}${signed(event.amount)}／残り${escapeHTML(event.after)}T）` }] : [];

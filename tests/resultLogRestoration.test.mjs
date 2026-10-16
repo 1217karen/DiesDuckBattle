@@ -169,11 +169,29 @@ test("remaining base presentations: field descriptions, electric/ice turns, dura
     event("heal", { value: 0, source: "dice3" }), event("note", { code: "NEXT_ATTACK_ATPLUS_CONSUMED", value: -2 }),
     event("note", { code: "CHANGE_VALUE_KEY_UNSUPPORTED", text: "<script>unsafe</script>" })]);
   assert.match(text, /AT\+2 \/ 3T/);
-  assert.match(text, /DF-1 \/ この行動中/);
+  assert.match(text, /アヒル一のDFがこの攻撃フェイズ中だけ1減少！/);
   assert.match(text, /🎲 アヒル一のHPが 0 回復！/);
   assert.match(text, /アヒル一は AT-2 を消費した！/);
   assert.match(text, /CHANGE_VALUE_KEY_UNSUPPORTED/);
   assert.doesNotMatch(text, /unsafe/);
+});
+
+for (const [stat, amount, expected] of [
+  ["AT", 2, "ATがこの攻撃フェイズ中だけ2増加！"],
+  ["DF", 3, "DFがこの攻撃フェイズ中だけ3増加！"],
+  ["DF", -3, "DFがこの攻撃フェイズ中だけ3減少！"],
+  ["AT", -2, "ATがこの攻撃フェイズ中だけ2減少！"],
+]) test(`phase buffApplied ${stat} ${amount} uses absolute magnitude and direction`, () => {
+  assert.equal(textFor([event("buffApplied", { target: "P2", stat, amount, duration: { kind: "phase" } })]), `アヒル二の${expected}`);
+});
+
+test("turn buffApplied and tick/expiry wording remain unchanged", () => {
+  for (const amount of [3, -3]) {
+    const signed = amount > 0 ? `+${amount}` : String(amount);
+    assert.equal(textFor([event("buffApplied", { stat: "DF", amount, duration: { kind: "turns", remainingTurns: 2 } })]), `アヒル一にターン効果（DF${signed} / 2T）を追加！`);
+    assert.equal(textFor([event("buffTick", { stat: "DF", amount, after: 1 })]), `アヒル一のターン効果（DF${signed}／残り1T）`);
+    for (const kind of ["phase", "turns"]) assert.equal(textFor([event("buffExpired", { stat: "DF", amount, duration: { kind } })]), `アヒル一の${kind === "phase" ? "行動中" : "ターン"}効果が終了（DF${signed}）`);
+  }
 });
 
 function battle({ status, value = 3, dice = 1, rng = () => .9, enemyStatus, cSkill } = {}) {
