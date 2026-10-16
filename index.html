@@ -37,6 +37,7 @@
           <form id="home-message-form" class="home__message-form" hidden>
             <label for="home-message-input">ひとこと（60文字まで）</label>
             <textarea id="home-message-input" rows="3" aria-describedby="home-message-count home-message-status"></textarea>
+            <div class="home__message-icon-row"><span>表示アイコン</span><button id="home-message-icon-button" type="button" aria-label="ひとことのアイコンを選ぶ"><img id="home-message-icon-preview" alt="" width="42" height="42">アイコンを変更</button></div>
             <p id="home-message-count"></p>
             <div><button id="home-message-cancel" type="button">キャンセル</button><button id="home-message-save" type="submit">保存</button></div>
           </form>
@@ -67,6 +68,10 @@
     <p id="home-feedback" role="status"></p>
     <noscript>認証とメニューの表示にはJavaScriptを有効にしてください。</noscript>
   </main>
+  <dialog data-page-content id="home-icon-picker" class="home-icon-picker" aria-labelledby="home-icon-picker-title">
+    <div class="picker-header"><div><strong id="home-icon-picker-title">ひとことのアイコン</strong><p>追加アイコンはキャラ設定で登録できます。未登録の枠は選択できません。</p></div><button id="home-picker-close" type="button">閉じる</button></div>
+    <div id="home-picker-list" class="picker-list"></div>
+  </dialog>
   <dialog data-page-content id="auth-dialog" class="auth-dialog" aria-labelledby="auth-dialog-title">
     <div class="auth-dialog__head"><h2 id="auth-dialog-title">新規登録・ログイン</h2><button id="auth-close" type="button">閉じる</button></div>
     <div id="auth-root" class="auth auth--embedded"></div>
