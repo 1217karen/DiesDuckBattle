@@ -111,6 +111,35 @@ test("unrelated valueChanged keys keep their fallback text", () => {
     "アヒル一のconstructorが+2変化");
 });
 
+test("stat changes retain their wording and gain sign-based markup", () => {
+  for (const [key, delta, label] of [
+    ["ap", 2, "APが"], ["ap", -2, "APが"],
+    ["tempDfPlus", 2, "DFがターン中"], ["tempDfPlus", -2, "DFがターン中"],
+    ["nextAttackATPlus", 2, "次の攻撃にAT"], ["nextAttackATPlus", -2, "次の攻撃にAT"],
+    ["attackTimesAdd", 2, "攻撃回数が"], ["attackTimesAdd", -2, "攻撃回数が"],
+  ]) {
+    const line = linesFor([event("valueChanged", { key, delta })])[0].text;
+    const cls = delta > 0 ? "buff" : "debuff";
+    assert.equal(line, `アヒル一の${label} <span class="num ${cls}">${delta > 0 ? "+" : ""}${delta}</span>！`);
+  }
+  for (const [amount, cls, direction] of [[3, "buff", "増加"], [-3, "debuff", "減少"]]) {
+    const line = linesFor([event("buffApplied", { stat: "DF", amount, duration: { kind: "phase" } })])[0].text;
+    assert.equal(line, `アヒル一のDFがこの攻撃フェイズ中だけ<span class="num ${cls}">3</span>${direction}！`);
+  }
+  assert.match(linesFor([event("buffApplied", { stat: "AT", amount: -2, duration: { kind: "turns", remainingTurns: 3 } })])[0].text,
+    /AT<span class="num debuff">-2<\/span> \/ 3T/);
+  const passive = linesFor([event("passiveSkillStateChanged", { bonus: { AT: 2, DF: -1 }, active: true })]);
+  assert.ok(passive.some(l => l.text.includes('AT<span class="num buff">+2</span> DF<span class="num debuff">-1</span>')));
+  assert.equal(linesFor([event("valueChanged", { key: "recoilMinus", delta: 2 })])[0].text,
+    'アヒル一の反動ダメージが <span class="num debuff">-2</span>！');
+  assert.equal(linesFor([event("valueChanged", { key: "additionalRecoil", delta: 2 })])[0].text,
+    'アヒル一の攻撃に反動ダメージを<span class="num buff">2</span>追加！');
+  assert.equal(linesFor([event("heal", { value: 3 })])[0].text,
+    'アヒル一のHPが <span class="num heal">3</span> 回復！');
+  assert.equal(linesFor([event("normalDamage", { value: 3 })])[0].text,
+    '🎲 アヒル一に <span class="num damage">3</span> ダメージ！');
+});
+
 test("skill and field groups end in one spacer, roll has one preceding spacer", () => {
   const blocks = blocksFor([start, phase(),
     event("skillTriggered", { groupId: 1, skill: { category: "B", skillName: "独自名<一>" } }),
