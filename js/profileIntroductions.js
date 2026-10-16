@@ -41,10 +41,10 @@ export function mountProfileIntroductions({ document, main, profile, client,
   const form = el('div', 'introduction-editor'); form.hidden = true;
   const fieldset = el('fieldset');
   const legend = el('legend', '', '紹介文の編集');
-  const bodyLabel = el('label', '', '本文（最大500文字・装飾タグ込み）'); bodyLabel.htmlFor = 'introduction-body';
+  const bodyLabel = el('label', 'introduction-body-label', '本文（最大500文字・装飾タグ込み）'); bodyLabel.htmlFor = 'introduction-body';
   const body = el('textarea'); body.id = bodyLabel.htmlFor; body.rows = 7;
-  body.setAttribute('aria-describedby', 'introduction-count');
-  const count = el('p'); count.id = 'introduction-count'; count.setAttribute('aria-live', 'polite');
+  body.setAttribute('aria-describedby', 'introduction-count'); bodyLabel.append(body);
+  const count = el('p', 'introduction-text-count'); count.id = 'introduction-count'; count.setAttribute('aria-live', 'polite');
   const toolbar = createQuoteToolbar(body, value => controller.change('body', value), document, { ariaLabel: '紹介文の文字装飾' });
   const iconButton = button('アイコンを選択'), iconPreview = el('img', 'introduction-icon-preview'); iconPreview.alt = '選択中のアイコン';
   iconPreview.width = iconPreview.height = 60;
@@ -54,7 +54,8 @@ export function mountProfileIntroductions({ document, main, profile, client,
   const imageStatus = el('p'); imageStatus.id = 'introduction-image-status'; imageStatus.setAttribute('role', 'status');
   const imagePreview = el('div', 'introduction-image-preview');
   const actions = el('div', 'introduction-actions'), cancel = button('キャンセル'), save = button('保存'); actions.append(cancel, save);
-  fieldset.append(legend, bodyLabel, toolbar, body, count, iconPreview, iconButton, imageLabel, imageUrl, imageStatus, imagePreview);
+  // Match the profile text editor: textarea, right-aligned count, then decoration toolbar.
+  fieldset.append(legend, bodyLabel, count, toolbar, iconPreview, iconButton, imageLabel, imageUrl, imageStatus, imagePreview);
   form.append(fieldset, el('p', '', '本文を空欄にして保存すると、紹介文を削除できます。'), actions);
   section.append(summary, status, list, trigger, form); main.insertBefore(section, main.querySelector('.profile-pl-name'));
   const dialog = el('dialog', 'profile-battle-editor introduction-confirm'); dialog.setAttribute('aria-labelledby', 'introduction-confirm-title');
