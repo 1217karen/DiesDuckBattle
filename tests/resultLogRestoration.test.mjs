@@ -140,6 +140,22 @@ test("stat changes retain their wording and gain sign-based markup", () => {
     '🎲 アヒル一に <span class="num damage">3</span> ダメージ！');
 });
 
+test("scaled B passive modifier logs AT/DF deltas in prose with signed color classes", () => {
+  const modifier = (before, after, skill = {}) => event("passiveModifierChanged", { before, after, skill });
+  const raised = linesFor([modifier({ AT: 1, DF: 0 }, { AT: 3, DF: 0 })]);
+  assert.deepEqual(raised.map(l => l.text), ['アヒル一のATが<span class="num buff">2</span>増加！']);
+  assert.equal(raised[0].kind, "soft");
+  const lowered = linesFor([modifier({ AT: 3, DF: 0 }, { AT: 1, DF: 0 })]);
+  assert.deepEqual(lowered.map(l => l.text), ['アヒル一のATが<span class="num debuff">2</span>減少！']);
+  const withTitle = linesFor([modifier({ AT: 0, DF: 4 }, { AT: 1, DF: 2 }, { skillName: "補正名" })]);
+  assert.match(withTitle[0].text, /バトラー一のバトラースキル！.*補正名/);
+  assert.deepEqual(withTitle.slice(1).map(l => l.text), [
+    'アヒル一のATが<span class="num buff">1</span>増加！',
+    'アヒル一のDFが<span class="num debuff">2</span>減少！',
+  ]);
+  assert.equal(linesFor([modifier({ AT: 2, DF: 1 }, { AT: 2, DF: 1 })]).length, 0);
+});
+
 test("skill and field groups end in one spacer, roll has one preceding spacer", () => {
   const blocks = blocksFor([start, phase(),
     event("skillTriggered", { groupId: 1, skill: { category: "B", skillName: "独自名<一>" } }),
