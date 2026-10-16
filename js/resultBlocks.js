@@ -298,7 +298,8 @@ function eventToLines(event, context) {
       if (!Number.isFinite(delta) || delta === 0) return [];
       if (event.key === "ap") return [{ kind: "soft", text: `${target}のAPが ${amount(delta > 0 ? "buff" : "debuff", `${delta > 0 ? "+" : ""}${delta}`)}！` }];
       if (event.key === "hp") return [{ kind: "soft", text: `${target}のHPが ${amount(delta > 0 ? "heal" : "damage", Math.abs(delta))} ${delta > 0 ? "回復" : "減少"}！` }];
-      const label = { tempDfPlus: "DFがターン中", nextAttackATPlus: "次の攻撃にAT", attackTimesAdd: "攻撃回数が" }[event.key];
+      const valueLabels = { tempDfPlus: "DFがターン中", nextAttackATPlus: "次の攻撃にAT", attackTimesAdd: "攻撃回数が" };
+      const label = Object.hasOwn(valueLabels, event.key) ? valueLabels[event.key] : null;
       if (label) return [{ kind: "soft", text: `${target}の${label} ${statAmount(delta)}！` }];
       if (event.key === "recoilMinus") return [{ kind: "soft", text: `${target}の反動ダメージが ${statAmount(-delta)}！` }];
       if (event.key === "additionalRecoil") return [{ kind: "soft", text: delta > 0
