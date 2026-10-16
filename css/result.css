@@ -74,6 +74,8 @@ body {
 .phaseHeader { width: 100%; box-sizing: border-box; padding: 8px 10px; font-size: var(--fs-18); font-weight: 700; }
 .phaseHeader.p1 { background: linear-gradient(90deg, rgba(227,91,91,.6), rgba(227,91,91,.08)); }
 .phaseHeader.p2 { background: linear-gradient(90deg, rgba(74,134,232,.6), rgba(74,134,232,.08)); }
+/* Attack-phase heading only; keep system/turn/result headings upright. */
+.phaseHeader.p1, .phaseHeader.p2 { font-style: italic; }
 .phaseHeader.system { font: 400 var(--fs-20) var(--ff-display); background: linear-gradient(90deg, transparent 0%, #b7d7e3 10%, #b7d7e3 90%, transparent 100%); color: #20282c; }
 .lines { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
 .line { width: 100%; box-sizing: border-box; padding: 2px 6px; white-space: pre-wrap; }
