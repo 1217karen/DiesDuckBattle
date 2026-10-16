@@ -284,6 +284,19 @@ function eventToLines(event, context) {
     case "counterDamage": return [{ kind: "soft", text: `${target}に🛡️反撃で ${amount("damage", event.value)} ダメージを返した！${hint(event.counterBefore, event.counterAfter, "反撃 ")}` }];
     case "heal": return [{ kind: "soft", text: `${target}のHPが ${amount("heal", event.value)} 回復！` }];
     case "attackChanged": {
+      // Production B multiplier traits have one outgoing and/or one incoming rule.
+      // Use the originating rule ID, not actor/target, since incoming rules run as the defender.
+      if (event.op === "mulDamage" && event.originSkill?.category === "B") {
+        const id = event.originSkill.skillId;
+        const outgoing = id === "B:outgoing-random:0"
+          || id === "B:damage-both-up:0" || id === "B:damage-both-down:0";
+        const incoming = id === "B:incoming-random:0"
+          || id === "B:damage-both-up:1" || id === "B:damage-both-down:1";
+        if (outgoing || incoming) return [
+          { kind: "soft", text: `${actor}の${incoming ? "受ける" : "与える"}ダメージ倍率が変動！` },
+          { kind: "meta b-damage-multiplier", text: escapeHTML(formatMul(event.value)) },
+        ];
+      }
       const text = { miss: "攻撃は失敗した！", mulDamage: `ダメージ倍率 ${formatMul(event.value)}！`,
         addDamage: `ダメージが変化（${escapeHTML(event.value ?? "")}）`,
         setDamage: `ダメージが固定化（${escapeHTML(event.value ?? "")}）` }[event.op] ?? "攻撃内容が変化！";
