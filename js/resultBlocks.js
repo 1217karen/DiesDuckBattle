@@ -355,8 +355,9 @@ function eventToLines(event, context) {
   }
 }
 
+// The roll row starts with a Duck icon (base layout); only dice-effect lines need 🎲.
 function isDiceEvent(event) {
-  return event.type === "roll" || event.type === "normalDamage"
+  return event.type === "normalDamage"
     || (event.type === "valueChanged" && event.key === "ap" && ["dice1", "dice5"].includes(event.source))
     || (event.type === "heal" && event.source === "dice3")
     || (event.type === "statusChange" && event.source === "dice4")
