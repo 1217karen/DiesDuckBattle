@@ -282,3 +282,5 @@ select.select-invalid { background:#45252c; border-color:#ff8d96; }
 .skill-vault-actions .skill-vault-delete { margin-left: auto; color: #c94343; background: transparent; border-color: transparent; }
 .skill-vault-actions .skill-vault-delete-confirm { background: #a52b2b; color: white; border-color: #a52b2b; }
 .skill-vault-dialog p { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Skill effects are distinct from the dialog's explanatory text. */
+.skill-vault-dialog .skill-vault-skill-text { font-weight: 700; margin: 18px 0; }
