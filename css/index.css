@@ -32,13 +32,6 @@ body {
   max-width: 720px;
 }
 
-.home__notice {
-  margin: 16px 0 0;
-  color: #bbb;
-  font-size: .875rem;
-  line-height: 1.7;
-}
-
 .home__menu {
   display: grid;
   gap: 12px;
@@ -126,13 +119,6 @@ body.home-page::before {
 .home__guest .home__link:hover {
   background: #303030;
   border-color: #ffcf60;
-}
-
-.home__guest .home__notice {
-  margin: 0;
-  color: #20282c;
-  font-size: .75rem;
-  text-shadow: 0 1px 3px #fff9;
 }
 
 /* 共通マークアップは残し、INDEXのポップアップ内だけ簡素化する。 */
