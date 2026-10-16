@@ -189,7 +189,18 @@ function buildPlayer(side, player) {
   duck.alt = `ENo.${player.eno} Duck: ${player.duckName}`;
   duck.title = duck.alt;
   setImageWithFallback(duck, player.presentation?.duckIconUrl, FIXED_IMAGES.duckIcon);
-  cell.append(...(side === "P1" ? [battler, duck] : [duck, battler]));
+  const profileLink = (image, subject) => {
+    const link = document.createElement("a");
+    link.className = "profile-icon-link";
+    link.href = `profile.html?eno=${encodeURIComponent(player.eno)}`;
+    link.setAttribute("aria-label", `ENo.${player.eno} ${player.battlerName}のプロフィールを見る（${subject}）`);
+    link.title = `ENo.${player.eno}のプロフィールを見る`;
+    link.append(image);
+    return link;
+  };
+  const battlerLink = profileLink(battler, "バトラー");
+  const duckLink = profileLink(duck, "アヒル");
+  cell.append(...(side === "P1" ? [battlerLink, duckLink] : [duckLink, battlerLink]));
   return cell;
 }
 function buildBadge(result, side) {
