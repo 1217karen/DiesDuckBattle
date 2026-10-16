@@ -55,6 +55,8 @@ for (const notice of notices) {
   noticeIndex.append(link);
 }
 
+if (!notices.length) articles.append(element("p", "notice-empty", "お知らせはまだありません。"));
+
 // Notice anchors and tab switching are independent from the online board.
 const tabs = [...document.querySelectorAll('.notice-tabs [role="tab"]')];
 const panels = tabs.map(tab => document.getElementById(tab.getAttribute("aria-controls")));
