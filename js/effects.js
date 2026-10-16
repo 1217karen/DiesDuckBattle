@@ -567,7 +567,7 @@ function effChangeAttack(eff, ctx, emit) {
         対象の「現在HP」を基準にした割合ダメージ
         ・計算：floor(max(0, currentHp) * max(0, amountPct))
         ・HP が 0 以下の場合は 0 ダメージ
-   - 最低ダメージ保証は行わない（amount <= 0 なら何もしない）
+   - 最低ダメージ保証は行わない（状態数×nが0ならHPを変えず0ダメージを記録）
    - ログ type: fixedDamage（dealDamage 側に渡す）
    params:
      target       : "self" | "enemy"（省略時 enemy）
@@ -654,7 +654,9 @@ function effFixedDamage(eff, ctx, emit) {
     }
   }
 
-  if (amount <= 0) return;
+  // ストック数×nのスキルは0ストックでも発動結果をログに残す。
+  // 固定値・割合ダメージが0のときの従来の非表示動作は維持する。
+  if (amount <= 0 && calc?.kind !== "byStatusCount") return;
 
   // 固定ダメージ適用（DF/status無視）
   deal(tgt, amount, ctx.actor?.side ?? "system", "fixedDamage", {
