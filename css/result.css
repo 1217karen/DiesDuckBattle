@@ -90,9 +90,8 @@ body {
 .line.spacer { height: 10px; padding: 0; }
 .line.skill { margin-left: 28px; width: calc(100% - 28px); }
 .line.rollLine { display: flex; align-items: center; gap: 10px; }
-.logDuckIcon { width: 60px; height: 60px; flex: 0 0 60px; display: grid; place-items: center; border-radius: 50%; background: var(--ui-surface); font-size: 28px; }
+.logDuckIcon { width: 60px; height: 60px; flex: 0 0 60px; display: block; object-fit: contain; }
 .rollMain { font-size: var(--fs-16); font-weight: 900; }
-img.logDuckIcon { object-fit: contain; }
 /* Adapted from base result: one row per speaker, mirrored P2 cells and bubbles. */
 .quoteRow { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
 .quoteCell { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; }
