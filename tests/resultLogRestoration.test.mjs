@@ -88,6 +88,27 @@ for (const delta of [-2, 2]) test(`recoilMinus ${delta} inverts damage sign`, ()
   assert.equal(textFor([event("valueChanged", { key: "recoilMinus", delta })]), `アヒル一の反動ダメージが ${delta < 0 ? "+2" : "-2"}！`);
 });
 
+test("additionalRecoil log describes added attack recoil without exposing the internal key", () => {
+  assert.equal(textFor([event("valueChanged", { key: "additionalRecoil", before: 0, after: 2, delta: 2 })]),
+    "アヒル一の攻撃に反動ダメージを2追加！");
+  assert.equal(textFor([event("valueChanged", { key: "additionalRecoil", before: 3, after: 1, delta: -2 })]),
+    "アヒル一の攻撃の反動ダメージを2減少！");
+});
+
+for (const [key, effect] of [["skipDice1", "AP増加"], ["skipDice3", "HP回復"],
+  ["skipDice4", "反撃付与"], ["skipDice5", "AP減少"]]) {
+  test(`${key} log names the canceled dice effect without exposing the internal key`, () => {
+    assert.equal(textFor([event("valueChanged", { key, before: 0, after: 1, delta: 1 })]),
+      `アヒル一はダイス効果の${effect}をキャンセルした！`);
+    assert.equal(textFor([event("valueChanged", { key, before: 1, after: 0, delta: -1 })]),
+      `アヒル一はダイス効果の${effect}のキャンセルを解除した！`);
+  });
+}
+test("unrelated valueChanged keys keep their fallback text", () => {
+  assert.equal(textFor([event("valueChanged", { key: "otherValue", delta: 2 })]),
+    "アヒル一のotherValueが+2変化");
+});
+
 test("skill and field groups end in one spacer, roll has one preceding spacer", () => {
   const blocks = blocksFor([start, phase(),
     event("skillTriggered", { groupId: 1, skill: { category: "B", skillName: "独自名<一>" } }),
