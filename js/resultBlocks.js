@@ -363,10 +363,18 @@ function eventToLines(event, context) {
         { kind: "soft", text: `${actor}の${values || "効果なし"}！${hpHint}` }];
     }
     case "passiveModifierChanged": {
+      // Show the actual change in this B modifier, not its resulting total bonus.
+      const changes = ["AT", "DF"].flatMap(stat => {
+        const before = Number(event.before?.[stat] ?? 0);
+        const after = Number(event.after?.[stat] ?? 0);
+        const delta = after - before;
+        if (!Number.isFinite(delta) || delta === 0) return [];
+        return [{ kind: "soft", text: `${actor}の${stat}が${statAmount(delta, true)}${delta > 0 ? "増加" : "減少"}！` }];
+      });
+      if (!changes.length) return [];
       const customName = renderSkillDisplayName(event.skill?.skillName, event.skill?.skillRuby);
       const owner = escapeHTML(context.names[event.actor]?.battler ?? event.actor ?? "-");
-      return [...(customName ? [{ kind: `note ${event.actor?.toLowerCase() ?? ""}`, text: `${owner}のバトラースキル！${customName}` }] : []),
-        { kind: "meta", text: `${actor}の常時効果が変化` }];
+      return [...(customName ? [{ kind: `note ${event.actor?.toLowerCase() ?? ""}`, text: `${owner}のバトラースキル！${customName}` }] : []), ...changes];
     }
     case "note": return event.code ? [{ kind: "meta", text: event.code === "EFFECT_TYPE_UNSUPPORTED"
       ? `未対応effect.type: ${escapeHTML(event.effectType ?? "")}` : escapeHTML(event.code) }] : [];
