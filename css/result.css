@@ -89,6 +89,8 @@ body {
 .phaseBlock.system .line.note.p2 { background: linear-gradient(90deg, transparent 0%, rgba(74,134,232,.18) 10%, rgba(74,134,232,.18) 90%, transparent 100%); }
 .phaseBlock.system .line.note.status { background: linear-gradient(90deg, transparent 0%, rgba(180,130,255,.18) 10%, rgba(180,130,255,.18) 90%, transparent 100%); }
 .line.meta { padding: 0 6px; font-size: var(--fs-10); opacity: .58; background: transparent; }
+/* Show the rolled B-skill damage multiplier clearly below its effect description. */
+.line.meta.b-damage-multiplier { font-size: var(--fs-18); font-weight: 900; opacity: 1; }
 .line.spacer { height: 10px; padding: 0; }
 .line.skill { margin-left: 28px; width: calc(100% - 28px); }
 .line.rollLine { display: flex; align-items: center; gap: 10px; }
