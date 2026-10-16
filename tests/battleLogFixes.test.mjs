@@ -96,7 +96,7 @@ test("engine passive B heading matches triggered B owner and label, with HTML es
 });
 
 for (const dice of [1, 2, 3, 4, 5, 6]) {
-  test(`actual engine dice ${dice}: roll, normal attacks and additional effect carry one dice icon`, () => {
+  test(`actual engine dice ${dice}: roll starts with Duck icon; dice effect lines carry one 🎲`, () => {
     const events = battle(dice);
     const roll = events.find(e => e.type === "roll" && e.actor === "P1");
     const attacks = events.filter(e => e.type === "normalDamage" && e.actor === "P1");
@@ -107,7 +107,10 @@ for (const dice of [1, 2, 3, 4, 5, 6]) {
     for (const event of [roll, ...attacks, ...effects]) {
       const lines = linesFor([event]);
       assert.equal(lines.length, 1, JSON.stringify(event));
-      assert.equal((lines[0].text.match(/🎲/g) ?? []).length, 1);
+      if (event.type === "roll") {
+        assert.match(lines[0].text, /^<img class="logDuckIcon"/);
+        assert.doesNotMatch(lines[0].text, /🎲/);
+      } else assert.equal((lines[0].text.match(/🎲/g) ?? []).length, 1);
     }
   });
 }
