@@ -35,7 +35,14 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
     pending = list.ok ? list.pending : [];
     deletions = list.ok ? list.deletions ?? [] : [];
     verified = null;
-    if (reason !== "auth" || !busy) { revision++; busy = null; phase = "unverified"; code = reason; }
+    if (reason !== "auth" || !busy) {
+      revision++; busy = null;
+      // Page-bound clients must stay withdrawn until the resumed document reloads.
+      // A durable active:null is confirmed game logout, even without an SDK call.
+      phase = ["pagehide", "pageshow", "page-hidden"].includes(reason) ? "suspended"
+        : list.ok && list.active === null ? "unselected" : "unverified";
+      code = reason;
+    }
     queueMicrotask(emit);
   });
   function pageHidden() {

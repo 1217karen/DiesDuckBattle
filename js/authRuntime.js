@@ -20,7 +20,17 @@ async function getMultiRuntime() {
       notify: message => showToast({ kind: "success", message }),
       clearCache: () => displayCache.clear(), navigate: url => location.assign(url) });
     initialized = controller.start();
-    window.addEventListener("pageshow", event => { if (event.persisted) location.reload(); });
+    let resuming = false;
+    const reloadSuspendedPage = () => {
+      if (resuming || accounts.snapshot().phase !== "suspended") return;
+      resuming = true;
+      location.reload();
+    };
+    window.addEventListener("pageshow", event => { if (event.persisted) reloadSuspendedPage(); });
+    // Used if this runtime is configured to suspend leases in hidden tabs.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "hidden") reloadSuspendedPage();
+    });
     return controller;
   })();
 }

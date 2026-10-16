@@ -25,16 +25,17 @@ export function createAccountAuthController({ runtime, registrationService, noti
     const current = runtime.getCurrent()?.account;
     const selected = current ?? (accountDeletionPending ? deletionAccount : null);
     const state = runtime.snapshot();
-    return { ready: ready && (!state.busy || accountDeletionPending), sessionKnown: ready && (!state.busy || accountDeletionPending), busy: busy || (accountDeletionPending ? "" : state.busy) || "",
+    const pending = !!state.busy || state.phase === "suspended";
+    const sessionKnown = ready && state.phase !== "suspended" && (accountDeletionPending || (!pending
+      && ["ready", "unselected", "reauthentication-required"].includes(state.phase)));
+    return { ready: ready && state.phase !== "suspended" && (!pending || accountDeletionPending), sessionKnown, busy: busy || (accountDeletionPending ? "" : state.busy) || "",
       signedIn: !!selected, accountsResolved: !!selected, accounts: selected ? [{ ...selected }] : [],
       enos: selected ? [selected.eno] : [], savedAccounts: selected ? state.entries : [], pendingAccounts: state.pending, deletionRecoveries: state.deletions,
-      sessionMessage: selected ? "ログイン中" : "ログインしていません。", message, messageSource: source,
+      sessionMessage: selected ? "ログイン中" : sessionKnown ? "ログインしていません。" : pending || !ready ? "ログイン状態を確認中…" : "ログイン状態を確認できません。再読み込みしてください。", message, messageSource: source,
       registeredEno, logoutSucceeded, accountDeletionPending, accountDeletionSucceeded,
       accountSwitching: true, accountNavigationPending: navigationSelectionVersion !== null && navigationSelectionVersion === runtime.getSelectionVersion() };
   };
   function emit() {
-    // pagehide invalidates leases but must not redirect the departing document.
-    if (runtime.snapshot().code === "pagehide") return;
     if (!stopped) for (const listener of listeners) {
       try { listener(snapshot()); } catch { /* Presentation errors cannot reinterpret an Auth outcome. */ }
     }

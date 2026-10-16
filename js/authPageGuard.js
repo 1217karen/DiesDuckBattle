@@ -26,7 +26,7 @@ export async function requireLoginPage({ getRuntime = getAuthRuntime, document =
           document.body.classList.add("auth-required-pending");
           return;
         }
-        if (admitted && !state.signedIn) document.body.classList.add("auth-required-pending");
+        if (admitted && (!state.sessionKnown || !state.signedIn)) document.body.classList.add("auth-required-pending");
         if (!state.sessionKnown) {
           if (!state.ready) return;
           redirect();
