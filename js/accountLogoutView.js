@@ -18,14 +18,17 @@ export function chooseLogoutMethod({ document = globalThis.document } = {}) {
       ["game", "ゲームからログアウトする", "未ログイン状態に戻ります。追加済みのアカウントはこの端末に保持されます。"],
       ["unlink", "現在使用中のアカウントの連携を解除する", "この端末のアカウント一覧から現在のENoを外して、未ログイン状態に戻ります。ほかの追加済みアカウントは保持されます。"],
     ]) {
-      const button = document.createElement("button"), help = document.createElement("p");
-      button.type = "button"; button.textContent = text;
+      const button = document.createElement("button"), help = document.createElement("span"), label = document.createElement("span");
+      button.type = "button"; button.className = "account-logout-choice"; button.dataset.choice = choice;
+      label.id = `account-logout-${choice}-title`; label.className = "account-logout-choice-title"; label.textContent = text;
+      help.className = "account-logout-choice-description";
+      button.setAttribute("aria-labelledby", label.id);
       help.id = `account-logout-${choice}-help`; help.textContent = description;
       button.setAttribute("aria-describedby", help.id);
       button.addEventListener("click", () => finish(choice));
-      dialog.append(button, help);
+      button.append(label, help); dialog.append(button);
     }
-    const note = document.createElement("p");
+    const note = document.createElement("p"); note.className = "account-logout-note";
     note.textContent = "ゲームからのログアウトでは、この端末に認証情報が残ります。サーバー上の認証を失効させる操作や、共用端末での完全なログアウトではありません。連携解除はアカウント削除とは異なります。";
     const cancel = document.createElement("button");
     cancel.type = "button"; cancel.textContent = "キャンセル";
@@ -36,6 +39,7 @@ export function chooseLogoutMethod({ document = globalThis.document } = {}) {
       if (previous?.isConnected) previous.focus();
       resolve(result);
     }, { once: true });
-    dialog.append(note, cancel); document.body.append(dialog); dialog.showModal(); cancel.focus();
+    const actions = document.createElement("div"); actions.className = "account-switch-actions"; actions.append(cancel);
+    dialog.append(note, actions); document.body.append(dialog); dialog.showModal(); cancel.focus();
   });
 }

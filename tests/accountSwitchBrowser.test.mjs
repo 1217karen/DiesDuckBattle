@@ -15,6 +15,7 @@ test('browser: account menu/add/select/logout/deletion, keyboard and responsive 
  const server=createServer(async(req,res)=>{try{
   const pathname=new URL(req.url,'http://localhost').pathname;let body,type='text/javascript';
   if(['/index.html','/fixture.html'].includes(pathname)){body=html;type='text/html';}
+  else if(pathname==='/baseline.css'&&process.env.ACCOUNT_DIALOG_BASELINE_CSS){body=await readFile(process.env.ACCOUNT_DIALOG_BASELINE_CSS);type='text/css';}
   else if(pathname==='/fixture.js')body=`import '/js/commonMenu.js';import {getAuthRuntime} from '/js/authRuntime.js';const auth=await getAuthRuntime();auth.subscribe(s=>document.getElementById('home').textContent=s.enos[0]?'ホーム ENo.'+s.enos[0]:'未選択');document.getElementById('login').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;await auth.login(form.eno.value,form.password.value);};document.getElementById('home-logout').onclick=()=>auth.logout();window.ready=true;`;
   else if(pathname==='/js/authRuntime.js')body=runtimeSource;
   else if(pathname==='/js/accountSwitchingConfig.js')body='export const ACCOUNT_SWITCHING_ENABLED=true;';
@@ -28,17 +29,28 @@ test('browser: account menu/add/select/logout/deletion, keyboard and responsive 
   for(const width of [320,390,430,1280]){
    const context=await browser.newContext({viewport:{width,height:900}});await context.route('**/*',r=>r.request().url().startsWith(origin+'/')?r.continue():r.abort());
    const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+   const dialogStyle=()=>page.locator('dialog').evaluate(n=>{
+    const s=getComputedStyle(n),h=getComputedStyle(n.querySelector('h2'));
+    return {background:s.backgroundColor,color:s.color,border:s.border,borderRadius:s.borderRadius,padding:s.padding,font:s.font,heading:[h.fontSize,h.fontWeight,h.margin],backdrop:getComputedStyle(n,'::backdrop').backgroundColor};
+   });
+   const inViewport=async()=>{const r=await page.locator('dialog').boundingBox();const v=page.viewportSize();assert.ok(r.x>=0&&r.y>=0&&r.x+r.width<=v.width+1&&r.y+r.height<=v.height+1);};
+   const screenshot=async name=>{if(process.env.ACCOUNT_SWITCH_ARTIFACT_DIR){await mkdir(process.env.ACCOUNT_SWITCH_ARTIFACT_DIR,{recursive:true});await page.screenshot({path:process.env.ACCOUNT_SWITCH_ARTIFACT_DIR+'/'+name+'-'+width+'.png'});}};
+   let commonStyle;
    await page.goto(origin+'/fixture.html');await page.waitForFunction(()=>window.ready);
    const navigateAction=async action=>{try{await Promise.all([page.waitForEvent('framenavigated'),action()]);await page.waitForFunction(()=>window.ready);}catch(error){error.message+=' width='+width+' errors='+JSON.stringify(errors)+' state='+JSON.stringify(await page.evaluate(()=>window.auth?.snapshot()));throw error;}};
    const menu=async()=>{if(!await page.locator('.common-menu__account').evaluate(n=>n.open))await page.locator('.common-menu__account > summary').click();};
-   const add=async(eno,password)=>{await menu();await page.getByRole('button',{name:'＋ 別のアカウントを追加',exact:true}).click();await page.getByLabel('ENo',{exact:true}).fill(eno);await page.getByLabel('パスワード',{exact:true}).fill(password);if(password==='valid'){await Promise.all([page.waitForEvent('framenavigated'),page.getByRole('button',{name:'ログインする',exact:true}).click()]);await page.waitForFunction(()=>window.ready);}else await page.getByRole('button',{name:'ログインする',exact:true}).click();};
+   const add=async(eno,password)=>{await menu();await page.getByRole('button',{name:'＋ 別のアカウントを追加',exact:true}).click();await page.getByLabel('ENo',{exact:true}).fill(eno);await page.getByLabel('パスワード',{exact:true}).fill(password);if(password==='valid'){await Promise.all([page.waitForEvent('framenavigated'),page.getByRole('button',{name:'ログインして追加',exact:true}).click()]);await page.waitForFunction(()=>window.ready);}else await page.getByRole('button',{name:'ログインして追加',exact:true}).click();};
    const login=async eno=>{await page.getByLabel('通常ログインENo',{exact:true}).fill(eno);await page.getByLabel('通常ログインパスワード',{exact:true}).fill('valid');await navigateAction(()=>page.getByRole('button',{name:'通常ログイン',exact:true}).click());};
    assert.equal(await page.locator('.common-menu__account > summary').getAttribute('aria-disabled'),'true');assert.equal(await page.locator('.account-switch-choice').count(),0);
    await login('1');
    await menu();await page.getByRole('button',{name:'＋ 別のアカウントを追加',exact:true}).click();
    for(const theme of ['light','dark']){
     await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
-    const rect=await page.locator('dialog').boundingBox();assert.ok(rect.x>=0&&rect.x+rect.width<=width+1);
+    await inViewport();const style=await dialogStyle();
+    assert.equal(style.background,'rgb(32, 37, 45)');assert.equal(style.color,'rgb(244, 245, 247)');assert.equal(style.border,'1px solid rgb(115, 122, 133)');assert.equal(style.padding,width<=480?'18px':'24px');
+    if(commonStyle)assert.deepEqual(style,commonStyle);commonStyle=style;
+    assert.deepEqual(await page.getByLabel('パスワード',{exact:true}).evaluate(n=>{const s=getComputedStyle(n);return [s.backgroundColor,s.color];}),['rgb(23, 27, 32)','rgb(244, 245, 247)']);
+    await screenshot('add-'+theme);
    }
    await page.getByLabel('パスワード',{exact:true}).fill('secret');await page.keyboard.press('Escape');await page.locator('dialog').waitFor({state:'detached'});assert.equal(await page.locator('dialog').count(),0);
    assert.match(await page.evaluate(()=>document.activeElement.textContent),/別のアカウント/);
@@ -68,14 +80,18 @@ test('browser: account menu/add/select/logout/deletion, keyboard and responsive 
     await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
     await menu();await page.getByRole('button',{name:'ログアウト',exact:true}).click();
     assert.equal(await page.getByRole('heading',{name:'ログアウト方法を選択'}).count(),1);
-    const rect=await page.locator('dialog').boundingBox();assert.ok(rect.x>=0&&rect.x+rect.width<=width+1);
+    await inViewport();assert.deepEqual(await dialogStyle(),commonStyle);
+    assert.notEqual(await page.locator('[data-choice="game"]').evaluate(n=>getComputedStyle(n).backgroundColor),await page.locator('[data-choice="unlink"]').evaluate(n=>getComputedStyle(n).backgroundColor));
+    await page.keyboard.press('Shift+Tab');await page.keyboard.press('Shift+Tab');assert.equal(await page.evaluate(()=>document.activeElement.dataset.choice),'game');assert.equal(await page.evaluate(()=>getComputedStyle(document.activeElement).outlineColor),'rgb(255, 207, 96)');
+    await page.keyboard.press('Tab');await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.activeElement.textContent),'キャンセル');
+    await page.setViewportSize({width,height:480});await inViewport();await page.setViewportSize({width,height:900});
     if(process.env.ACCOUNT_SWITCH_ARTIFACT_DIR)await page.screenshot({path:process.env.ACCOUNT_SWITCH_ARTIFACT_DIR+'/logout-'+width+'-'+theme+'.png'});
     await page.keyboard.press('Escape');await page.locator('dialog').waitFor({state:'detached'});assert.equal(await page.locator('#home').textContent(),'ホーム ENo.2');
    }
    await page.keyboard.press('Escape');
    await page.getByRole('button',{name:'ホームからログアウト',exact:true}).click();await page.getByRole('button',{name:'キャンセル',exact:true}).click();await page.locator('dialog').waitFor({state:'detached'});
    const other=await context.newPage();await other.goto(origin+'/fixture.html');await other.waitForFunction(()=>window.ready);await page.bringToFront();
-   await page.getByRole('button',{name:'ホームからログアウト',exact:true}).click();await navigateAction(()=>page.getByRole('button',{name:'ゲームからログアウトする',exact:true}).click());
+   await page.getByRole('button',{name:'ホームからログアウト',exact:true}).click();await navigateAction(()=>page.locator('[data-choice="game"] .account-logout-choice-description').click());
    await other.waitForFunction(()=>auth.snapshot().signedIn===false);assert.equal(await other.locator('.account-switch-choice').count(),0);await other.close();
    assert.equal(await page.locator('.account-switch-choice').count(),0);assert.equal(await page.evaluate(async()=> (await auth.select('1')).code),'login-required');
    assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('diesduck-account-sessions-v1')).entries),saved);
@@ -85,6 +101,15 @@ test('browser: account menu/add/select/logout/deletion, keyboard and responsive 
    assert.equal(await page.locator('.account-switch-choice').count(),0);await login('1');
    await add('2','valid');await page.waitForFunction(()=>document.getElementById('home')?.textContent==='ホーム ENo.2');
    await menu();await page.getByRole('button',{name:'アカウントを削除',exact:true}).click();await page.locator('dialog').waitFor({state:'visible'});
+   for(const theme of ['light','dark']){
+    await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);await inViewport();assert.deepEqual(await dialogStyle(),commonStyle);await screenshot('deletion-'+theme);
+    if(process.env.ACCOUNT_DIALOG_BASELINE_CSS){
+     const before=await dialogStyle();
+     await page.evaluate(async()=>{const link=document.createElement('link');link.id='baseline';link.rel='stylesheet';link.href='/baseline.css';await new Promise(r=>{link.onload=r;document.head.append(link);});document.querySelector('link[href="/css/common-menu.css"]').disabled=true;});
+     assert.deepEqual(await dialogStyle(),before);await screenshot('deletion-baseline-'+theme);
+     await page.evaluate(()=>{document.querySelector('link[href="/css/common-menu.css"]').disabled=false;document.querySelector('#baseline').remove();});
+    }
+   }
    assert.equal(await page.getByRole('button',{name:'削除する',exact:true}).isEnabled(),false);
    await page.getByRole('checkbox').check();await page.getByRole('button',{name:'削除する',exact:true}).click();
    assert.equal(await page.evaluate(()=>rpcCalls.filter(c=>c.name==='delete_own_account').length),0);

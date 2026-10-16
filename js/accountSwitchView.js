@@ -9,6 +9,7 @@ export function createAccountSwitchView({ document, controller, menu, summary, d
     dialog = el("dialog"); dialog.className = "account-switch-dialog";
     dialog.setAttribute("aria-labelledby", "account-switch-title");
     const title = el("h2", eno ? `ENo.${eno}に再ログイン` : "別のアカウントを追加"); title.id = "account-switch-title";
+    const description = el("p", "既存のENoでログインして、この端末に追加します。");
     const form = el("form"), fields = el("fieldset");
     const enoLabel = el("label", "ENo"), enoInput = el("input");
     enoInput.type = "text"; enoInput.inputMode = "numeric"; enoInput.autocomplete = "username"; enoInput.required = true; enoInput.value = eno;
@@ -19,7 +20,7 @@ export function createAccountSwitchView({ document, controller, menu, summary, d
     const feedback = el("p"); feedback.setAttribute("role", "status");
     let submitting = false;
     const close = () => { if (!submitting) { password.value = ""; dialog.close(); } };
-    const cancel = button("キャンセル", close), submit = el("button", "ログインする"); submit.type = "submit";
+    const cancel = button("キャンセル", close), submit = el("button", eno ? "ログインする" : "ログインして追加"); submit.type = "submit"; submit.className = "account-switch-submit";
     const actions = el("div"); actions.className = "account-switch-actions"; actions.append(cancel, submit);
     fields.append(enoLabel, passwordLabel, actions); form.append(fields, feedback);
     form.addEventListener("submit", async event => {
@@ -33,7 +34,7 @@ export function createAccountSwitchView({ document, controller, menu, summary, d
     });
     dialog.addEventListener("cancel", event => { event.preventDefault(); close(); });
     dialog.addEventListener("close", () => { password.value = ""; dialog.remove(); dialog = null; (previous?.isConnected ? previous : summary).focus(); }, { once: true });
-    dialog.append(title, form); document.body.append(dialog); dialog.showModal(); enoInput.focus();
+    dialog.append(title, description, form); document.body.append(dialog); dialog.showModal(); enoInput.focus();
   }
   async function select(entry) {
     if (!latest?.signedIn || latest?.busy || deletion.busy) return;

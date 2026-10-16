@@ -77,5 +77,5 @@ test('profile precedes switch section and management actions have distinct class
 test('add popup only offers existing-account login and no registration link',()=>{
  const f=fixture();f.open();
  assert.ok(f.all().some(n=>n.inputMode==='numeric'));assert.ok(f.all().some(n=>n.type==='password'));
- assert.ok(f.button('ログインする'));assert.equal(f.all().find(n=>n.tagName==='a'&&n.textContent==='新規登録へ'),undefined);
+ assert.ok(f.button('ログインして追加'));assert.equal(f.all().find(n=>n.tagName==='a'&&n.textContent==='新規登録へ'),undefined);
 });
