@@ -18,8 +18,10 @@ export function mountIndexMessages(document, getClient, notify = showToast, onOw
   const availableSlot = slot => slot === null || (Number.isInteger(slot) && slot >= 1 && slot <= 10
     && typeof ownIconSlots[slot - 1] === 'string' && !!ownIconSlots[slot - 1].trim());
   const selectedUrl = slot => slot !== null && availableSlot(slot) ? ownIconSlots[slot - 1] : '';
+  // Empty slots are not candidates: otherwise the shared image helper picks its fixed fallback first.
+  const availableImageUrls = urls => urls.filter(url => typeof url === 'string' && !!url.trim());
   function previewIcon() {
-    setImageFromCandidates(iconPreview,[selectedUrl(draftSlot),ownDefaultIconUrl],FIXED_IMAGES.battlerIcon);
+    setImageFromCandidates(iconPreview,availableImageUrls([selectedUrl(draftSlot),ownDefaultIconUrl]),FIXED_IMAGES.battlerIcon);
   }
   function renderOwnMessage() {
     text.textContent = current || '右のペンマークからひとことを編集できます。';
@@ -68,7 +70,7 @@ export function mountIndexMessages(document, getClient, notify = showToast, onOw
       const iconLink = document.createElement('a'); iconLink.href = 'profile.html?eno=' + encodeURIComponent(row.eno);
       iconLink.setAttribute('aria-label', row.battlerName + 'のプロフィール');
       const img = document.createElement('img'); img.className = 'home__avatar'; img.alt = ''; img.width = 60; img.height = 60;
-      setImageFromCandidates(img,[row.iconUrl,row.defaultIconUrl],FIXED_IMAGES.battlerIcon); iconLink.append(img);
+      setImageFromCandidates(img,availableImageUrls([row.iconUrl,row.defaultIconUrl]),FIXED_IMAGES.battlerIcon); iconLink.append(img);
       const body = document.createElement('div'); body.className = 'home__voice-body';
       const identity = document.createElement('a'); identity.className = 'home__identity'; identity.href = iconLink.href;
       identity.textContent = 'ENo.' + row.eno + '｜' + row.battlerName;
