@@ -271,7 +271,7 @@ body.home-page::before {
 .home__message-form .home__message-icon-row { justify-content: flex-start; align-items: center; margin: 10px 0; flex-wrap: wrap; }
 .home__message-icon-row button { display:inline-flex; align-items:center; gap:8px; cursor:pointer; }
 .home__message-icon-row img { width:42px; height:42px; object-fit:contain; }
-.home-icon-picker { color:#eee; background:#222; border:1px solid #777; border-radius:12px; padding:18px; width:min(680px,92vw); max-height:82vh; }
+.home-icon-picker { color:#eee; background:#222; border:1px solid #777; border-radius:12px; padding:18px; width:min(680px,92vw); max-height:82vh; overflow-y:auto; box-sizing:border-box; }
 .home-icon-picker::backdrop { background:#000a; }
 .home-icon-picker .picker-header { display:flex; justify-content:space-between; gap:12px; }
 .home-icon-picker .picker-header p { color:#bbb; font-size:.8rem; }
