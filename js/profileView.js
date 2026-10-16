@@ -117,7 +117,7 @@ export function renderFeaturedBattle(document, profile) {
   if (!battle) favorite.append(el("p", "profile-empty", "お気に入りバトルは設定されていません"));
   else {
     const link = el("a", "featured-summary"); link.href = `result.html?battleId=${encodeURIComponent(battle.battleId)}`;
-    link.append(renderProfileBattleCard(document, battle)); favorite.append(link);
+    link.append(renderProfileBattleCard(document, battle, { compact: true })); favorite.append(link);
   }
   return favorite;
 }
