@@ -299,12 +299,13 @@ function eventToLines(event, context) {
       if (event.key === "additionalRecoil") return [{ kind: "soft", text: delta > 0
         ? `${target}の攻撃に反動ダメージを${delta}追加！`
         : `${target}の攻撃の反動ダメージを${Math.abs(delta)}減少！` }];
-      const canceledDiceEffect = {
+      const diceEffectLabels = {
         skipDice1: "AP増加",
         skipDice3: "HP回復",
         skipDice4: "反撃付与",
         skipDice5: "AP減少",
-      }[event.key];
+      };
+      const canceledDiceEffect = Object.hasOwn(diceEffectLabels, event.key) ? diceEffectLabels[event.key] : null;
       if (canceledDiceEffect) return [{ kind: "soft", text: delta > 0
         ? `${target}はダイス効果の${canceledDiceEffect}をキャンセルした！`
         : `${target}はダイス効果の${canceledDiceEffect}のキャンセルを解除した！` }];
