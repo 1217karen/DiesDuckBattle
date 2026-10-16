@@ -13,13 +13,29 @@ consumeIndexNotice();
 const standing = document.getElementById("home-standing");
 const icon = document.getElementById("home-icon");
 let imageAccount, imageRevision = 0, imageVerified = false, loadedImages = new Set();
+let imageBattler = null, messageIconSlot = null;
+function homeIconUrl(battler) {
+  const selected = messageIconSlot !== null && Array.isArray(battler.iconSlots)
+    ? battler.iconSlots[messageIconSlot - 1] : '';
+  return typeof selected === 'string' && selected.trim() ? selected : battler.defaultIconUrl;
+}
+function setHomeIconSlot(slot) {
+  const normalized = Number.isInteger(slot) && slot >= 1 && slot <= 10 ? slot : null;
+  if (messageIconSlot === normalized) return;
+  messageIconSlot = normalized;
+  if (!imageVerified || !imageBattler || imageAccount == null) return;
+  loadedImages.delete(icon);
+  icon.style.visibility = 'hidden';
+  showBattlerImages(imageBattler, imageRevision, true);
+}
 function hideBattlerImages() {
   for (const image of [standing, icon]) image.style.visibility = "hidden";
 }
-function showBattlerImages(battler = {}, revision = imageRevision) {
+function showBattlerImages(battler = {}, revision = imageRevision, iconOnly = false) {
+  if (!iconOnly) imageBattler = battler;
   for (const [image, url, fallback] of [
-    [standing, battler.standingImageUrl, FIXED_IMAGES.battlerStanding],
-    [icon, battler.defaultIconUrl, FIXED_IMAGES.battlerIcon],
+    ...(iconOnly ? [] : [[standing, battler.standingImageUrl, FIXED_IMAGES.battlerStanding]]),
+    [icon, homeIconUrl(battler), FIXED_IMAGES.battlerIcon],
   ]) {
     // Load fallback candidates off-screen so an old request cannot reveal another account.
     const pendingImage = document.createElement("img");
@@ -52,6 +68,7 @@ function updateBattlerImages(state) {
     return;
   }
   imageAccount = key; loadedImages.clear();
+  imageBattler = null; messageIconSlot = null;
   const revision = ++imageRevision;
   hideBattlerImages();
   if (key === undefined) return;
@@ -93,7 +110,7 @@ try {
       document.getElementById("home-status").focus();
     },
   });
-  const messages = mountIndexMessages(document, getSupabaseClient);
+  const messages = mountIndexMessages(document, getSupabaseClient, undefined, setHomeIconSlot);
   controller.beforeLogout?.(context => messages.canLeave(context));
   const logout = document.getElementById("home-logout");
   logout.addEventListener("click", () => controller.logout());
