@@ -107,8 +107,10 @@ for (const [key, effect] of [["skipDice1", "AP増加"], ["skipDice3", "HP回復"
 test("unrelated valueChanged keys keep their fallback text", () => {
   assert.equal(textFor([event("valueChanged", { key: "otherValue", delta: 2 })]),
     "アヒル一のotherValueが+2変化");
-  assert.equal(textFor([event("valueChanged", { key: "constructor", delta: 2 })]),
-    "アヒル一のconstructorが+2変化");
+  for (const key of ["constructor", "toString", "__proto__"]) {
+    assert.equal(textFor([event("valueChanged", { key, delta: 2 })]),
+      `アヒル一の${key}が+2変化`);
+  }
 });
 
 test("stat changes retain their wording and gain sign-based markup", () => {
