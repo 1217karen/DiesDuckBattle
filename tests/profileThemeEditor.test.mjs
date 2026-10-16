@@ -75,8 +75,9 @@ class Element {
 }
 async function ui(owner=true){
  const f=await setup(),body=new Element('body'),header=new Element('header'),document={body,createElement:t=>new Element(t)};
+ let guard;f.client.beforeAccountChange=fn=>{guard=fn;return()=>{};};
  const notices=[];const editor=mountProfileThemeEditor({document,header,profile:{isOwner:owner,accountId:a},client:f.client,storage:f.storage,notify:n=>notices.push(n)});
- return{...f,editor,body,header,document,notices};
+ return{...f,editor,body,header,document,notices,guard:context=>guard(context)};
 }
 test('non-owner creates neither trigger nor dialog',async()=>{const f=await ui(false);assert.equal(f.editor,null);assert.equal(f.body.children.length,0);assert.equal(f.header.children.length,0);});
 test('dialog labels, picker/HEX synchronization, strict validation and CSS preview',async()=>{
@@ -110,4 +111,16 @@ test('transient load failure on save keeps dialog/draft; retry succeeds; in-flig
 test('save-unknown/forbidden UI stays open with draft and preview, disabled save',async()=>{
  for(const mode of ['unknown','forbidden']){const f=await ui(),e=f.editor;e.dialog.showModal();await e.controller.open();e.dark.handlers.click();f.mode(mode);await e.controller.save();
  assert.equal(e.dialog.open,true);assert.equal(e.save.disabled,true);assert.equal(e.fields.background.hex.value,'#10161A');assert.equal(f.body.styles['--profile-bg'],'#10161A');assert.ok(e.status.textContent);}
+});
+
+test('account switching refuses dirty profile edits without discard confirmation; cancellation unlocks switch',async()=>{
+ const f=await ui(),e=f.editor;await e.controller.open();
+ e.controller.preset('dark');const before=e.fields.background.hex.value;
+ const old=globalThis.confirm;globalThis.confirm=()=>assert.fail('switch must not ask to discard');
+ try{for(const action of ['select','add','reauthenticate']){assert.equal(f.guard({action}).ok,false);assert.equal(e.status.textContent,'未保存の変更があります。保存してからアカウントを切り替えてください。');}}
+ finally{globalThis.confirm=old;}
+ assert.equal(e.fields.background.hex.value,before);
+ e.controller.cancel();assert.equal(f.guard({action:'select'}),true);
+ const load=f.storage.load;let release;f.storage.load=()=>new Promise(r=>release=r);const pending=e.controller.open();
+ assert.equal(f.guard({action:'select'}).message,'処理中です。完了してからアカウントを切り替えてください。');release(await load({gameAccountId:a}));await pending;
 });

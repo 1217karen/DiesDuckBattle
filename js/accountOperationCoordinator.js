@@ -1,3 +1,4 @@
+import { isAccountSwitch, accountSwitchBusyMessage } from "./accountChangeGuard.js";
 /** Integration boundary for account-bound page operations.
  * Not enabled by production entry points until every caller has migrated.
  * Session ownership/validation remains exclusively in accountRuntime/manager.
@@ -36,12 +37,15 @@ export function createAccountOperationCoordinator(runtime) {
   }
   async function change(method, args) {
     if (closed) return failure("closed");
-    if (changing || writes) return failure("operation-in-progress");
+    if (changing || writes) return { ...failure("operation-in-progress"),
+      ...(isAccountSwitch(method) ? { message: accountSwitchBusyMessage } : {}) };
     changing = true; // Also blocks writes while an asynchronous unsaved-change dialog is open.
     const previous = scope();
     try {
       for (const guard of guards) {
-        if (!await guard({ action: method })) return failure("cancelled");
+        const allowed = await guard({ action: method });
+        if (allowed?.ok === false) return allowed;
+        if (!allowed) return failure("cancelled");
         if (closed || !same(previous, scope())) return failure("stale-operation");
       }
       if (closed || writes || !same(previous, scope())) return failure("stale-operation");

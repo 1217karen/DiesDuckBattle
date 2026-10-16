@@ -101,3 +101,9 @@ test('new post scrolls on mobile only, respects reduced motion, and remains unav
   }
  } finally {if(original===undefined)delete globalThis.matchMedia;else globalThis.matchMedia=original;}
 });
+test('switch guard keeps an unsent post without offering discard',async()=>{
+ const f=fixture();f.view.updateAuth(logged);await tick();await f.get('feedback-new').fire('click');f.get('feedback-title').value='未送信の内容';
+ const prior=globalThis.confirm;globalThis.confirm=()=>assert.fail('discard prompt');
+ try{assert.equal(f.view.canLeave({action:'add'}).ok,false);}finally{globalThis.confirm=prior;}
+ assert.equal(f.get('feedback-title').value,'未送信の内容');assert.match(f.get('feedback-message').textContent,/保存してから/);
+});

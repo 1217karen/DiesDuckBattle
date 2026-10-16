@@ -4,7 +4,7 @@ import { getAuthRuntime } from "./authRuntime.js";
 // Keep watching the shared controller after admission; logout clicks alone do nothing.
 export async function requireLoginPage({ getRuntime = getAuthRuntime, document = globalThis.document,
   location = globalThis.location } = {}) {
-  let admitted = false, redirected = false;
+  let admitted = false, redirected = false, admittedEno;
   let unsubscribe = () => {};
   const redirect = (target = "index.html") => {
     if (redirected) return;
@@ -18,6 +18,15 @@ export async function requireLoginPage({ getRuntime = getAuthRuntime, document =
     await new Promise((resolve, reject) => {
       unsubscribe = auth.subscribe(state => {
         if (redirected) return;
+        // Only an already-admitted page may wait for a local account operation.
+        // Hide before checking sessionKnown: runtime intentionally withdraws its lease.
+        if (admitted && state.accountSwitching && (state.accountNavigationPending
+          || ["select", "login"].includes(state.busy)
+          || (state.busy === "logout" && !state.signedIn))) {
+          document.body.classList.add("auth-required-pending");
+          return;
+        }
+        if (admitted && !state.signedIn) document.body.classList.add("auth-required-pending");
         if (!state.sessionKnown) {
           if (!state.ready) return;
           redirect();
@@ -37,9 +46,13 @@ export async function requireLoginPage({ getRuntime = getAuthRuntime, document =
           reject(new Error("Login required"));
           return;
         }
+        if (admitted && state.accountSwitching && state.enos?.[0] !== admittedEno) {
+          redirect(); // An external identity change cannot reveal the old page under a new ENo.
+          return;
+        }
+        document.body.classList.remove("auth-required-pending");
         if (!admitted) {
-          admitted = true;
-          document.body.classList.remove("auth-required-pending");
+          admitted = true; admittedEno = state.enos?.[0];
           resolve();
         }
       });

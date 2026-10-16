@@ -20,7 +20,7 @@ export function createAccountAuthController({ runtime, registrationService, noti
   const listeners = new Set();
   let ready = false, busy = "", message = "", source = "", registeredEno = "";
   let logoutSucceeded = false, accountDeletionPending = false, accountDeletionSucceeded = false;
-  let deletionAccount = null, stopped = false;
+  let deletionAccount = null, stopped = false, navigationSelectionVersion = null;
   const snapshot = () => {
     const current = runtime.getCurrent()?.account;
     const selected = current ?? (accountDeletionPending ? deletionAccount : null);
@@ -30,7 +30,7 @@ export function createAccountAuthController({ runtime, registrationService, noti
       enos: selected ? [selected.eno] : [], savedAccounts: selected ? state.entries : [], pendingAccounts: state.pending, deletionRecoveries: state.deletions,
       sessionMessage: selected ? "ログイン中" : "ログインしていません。", message, messageSource: source,
       registeredEno, logoutSucceeded, accountDeletionPending, accountDeletionSucceeded,
-      accountSwitching: true };
+      accountSwitching: true, accountNavigationPending: navigationSelectionVersion !== null && navigationSelectionVersion === runtime.getSelectionVersion() };
   };
   function emit() {
     // pagehide invalidates leases but must not redirect the departing document.
@@ -42,6 +42,7 @@ export function createAccountAuthController({ runtime, registrationService, noti
   const stop = runtime.subscribe(emit);
   async function action(kind, work, redirect = true) {
     if (!ready || busy || runtime.snapshot().busy || accountDeletionPending) return { ok: false, code: "operation-in-progress" };
+    navigationSelectionVersion = null;
     busy = kind; source = kind; message = ""; emit();
     let result;
     try {
@@ -49,7 +50,10 @@ export function createAccountAuthController({ runtime, registrationService, noti
       if (!result?.ok) message = result?.message ?? messages[result?.code] ?? "処理を完了できません。通信状況を確認して再読み込みしてください。";
       else {
         clearCache(); if (kind === "logout") logoutSucceeded = true;
-        if (redirect) navigate("index.html");
+        if (redirect) {
+          navigationSelectionVersion = runtime.getSelectionVersion();
+          navigate("index.html");
+        }
       }
       return result;
     } catch { message = "処理結果を確認できません。自動再送せず再読み込みしてください。"; return { ok: false }; }

@@ -62,13 +62,19 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
   }
   async function run(action, work) {
     if (disposed) return { ok: false, code: "closed" };
+    const previous = current(), previousSlot = previous ? manager.list().active : null;
     const token = ++revision;
     verified = null; busy = action; phase = "busy"; code = null;
     emit();
     if (disposed || token !== revision) return { ok: false, code: "stale-operation" };
-    let result;
+    let result, recoveryFailed = false;
     try { result = await work(); } catch { result = { ok: false, code: "verification-unavailable" }; }
     if (disposed || token !== revision) return { ok: false, code: "stale-operation" };
+    if (!result.ok && previous && ["select", "add", "reauthenticate"].includes(action)
+      && manager.list().active === previousSlot) {
+      try { recoveryFailed = !(await manager.restore()).ok; } catch { recoveryFailed = true; }
+      if (disposed || token !== revision) return { ok: false, code: "stale-operation" };
+    }
     let completed = null;
     if (result.ok && ["cleanup", "adopt-legacy", "initialize", "cleanup-deleted"].includes(action)) {
       completed = action;
@@ -81,7 +87,7 @@ export function createAccountRuntime({ manager, events = globalThis.window, docu
     entries = result.entries?.map(entry => ({ ...entry })) ?? (list.ok ? list.entries : []);
     deletions = list.ok ? list.deletions ?? [] : [];
     pending = result.pending?.map(entry => ({ ...entry })) ?? (list.ok ? list.pending : []);
-    if (action !== "restore" || result.ok) installLease(token);
+    if (!recoveryFailed && (action !== "restore" || result.ok)) installLease(token);
     // Do not turn a restore with an invalid selected session into a successful login.
     code = result.deleted || (completed === "cleanup-deleted" && result.ok) ? null : !result.ok ? result.code : !list.ok ? list.code
       : !current() ? selectedFailure(list, result) : null;

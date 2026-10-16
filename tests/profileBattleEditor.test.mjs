@@ -78,7 +78,8 @@ async function ui(owner){
  const f=await setup(),body=new Element('body'),container=new Element('section');container.append(new Element('h2'));const document={body,createElement:t=>new Element(t)};
  const battles={list:async p=>({ok:true,records:f.records.slice((p.page-1)*30,p.page*30),page:p.page,total:f.records.length,totalPages:2})};
  const service={getProfile:async()=>({ok:true,profile:{isOwner:true,accountId:a,featuredBattle:null}})};
- const editor=mountProfileBattleEditor({document,container,profile:{isOwner:owner,accountId:a,eno:'88'},client:f.client,storage:f.storage,battles,service});return{...f,body,container,editor,battles,service};
+ let guard;f.client.beforeAccountChange=fn=>{guard=fn;return()=>{};};
+ const editor=mountProfileBattleEditor({document,container,profile:{isOwner:owner,accountId:a,eno:'88'},client:f.client,storage:f.storage,battles,service});return{...f,body,container,editor,battles,service,guard:context=>guard(context)};
 }
 for(const owner of [false,undefined,null])test(`non-owner ${owner} has no editor DOM`,async()=>{const f=await ui(owner);assert.equal(f.editor,null);assert.equal(f.body.children.length,0);assert.equal(f.container.children[0].children.length,0);});
 test('safe names, accessible dialog and radio selection, public refresh replaces favorite section only',async()=>{
@@ -142,4 +143,16 @@ test('history cards without registered icons use fixed images',()=>{
  const document={createElement:t=>new Element(t)},side={eno:'1',battlerName:'name',duckName:'duck'};
  const card=renderProfileBattleCard(document,{battleNo:'1',dateISO:'2026-10-14T00:00:00Z',result:'draw',p1:side,p2:side},{history:true});
  assert.deepEqual(descendants(card).filter(n=>n.tagName==='img').map(n=>n.src),[FIXED_IMAGES.battlerIcon,FIXED_IMAGES.duckIcon,FIXED_IMAGES.battlerIcon,FIXED_IMAGES.duckIcon]);
+});
+
+test('account switching refuses dirty profile edits without discard confirmation; cancellation unlocks switch',async()=>{
+ const f=await ui(),e=f.editor;await e.controller.open();
+ e.controller.select(f.records[1].battleId);const before=e.list.children.map(n=>n.children[0].checked);
+ const old=globalThis.confirm;globalThis.confirm=()=>assert.fail('switch must not ask to discard');
+ try{for(const action of ['select','add','reauthenticate']){assert.equal(f.guard({action}).ok,false);assert.equal(e.status.textContent,'未保存の変更があります。保存してからアカウントを切り替えてください。');}}
+ finally{globalThis.confirm=old;}
+ assert.deepEqual(e.list.children.map(n=>n.children[0].checked),before);
+ e.controller.cancel();assert.equal(f.guard({action:'select'}),true);
+ const load=f.storage.load;let release;f.storage.load=()=>new Promise(r=>release=r);const pending=e.controller.open();
+ assert.equal(f.guard({action:'select'}).message,'処理中です。完了してからアカウントを切り替えてください。');release(await load({gameAccountId:a}));await pending;
 });

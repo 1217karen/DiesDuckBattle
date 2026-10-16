@@ -98,7 +98,7 @@ export async function mountOnlineEditor({ sections, allowDuckPresentationDeletio
       // No asynchronous Supabase API call inside an Auth callback (SDK lock).
     }).data.subscription;
     const auth = await getAuthRuntime();
-    stopLogout = auth.beforeLogout(() => controller.canLeave());
+    stopLogout = auth.beforeLogout(context => controller.canLeave(context));
     window.addEventListener("pagehide", event => {
       if (event.persisted) return;
       authSubscription.unsubscribe(); stopLogout();

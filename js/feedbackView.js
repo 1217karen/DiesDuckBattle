@@ -1,3 +1,4 @@
+import { accountSwitchBlock } from "./accountChangeGuard.js";
 import { showToast } from "./toast.js";
 import { FEEDBACK_TITLE_MAX, FEEDBACK_BODY_MAX, FEEDBACK_CATEGORIES, FEEDBACK_STATUSES,
   codePointLength, selectFeedback, validateFeedbackInput } from './feedbackService.js';
@@ -161,10 +162,12 @@ export function mountFeedbackBoard(document, service, confirm = message => globa
     get('feedback-form-message').textContent='';message.textContent='';enabled();
   }
   return {
-    canLeave() {
-      return !busy && ((!Array.from(form.querySelectorAll('input, textarea')).some(node => node.value?.trim())
-        && !Array.from(drafts.values()).some(value => String(value).trim()))
-        || globalThis.confirm('未送信の投稿・返信を破棄してアカウントを変更しますか？'));
+    canLeave({ action } = {}) {
+      const dirty = Array.from(form.querySelectorAll('input, textarea')).some(node => node.value?.trim())
+        || Array.from(drafts.values()).some(value => String(value).trim());
+      const blocked = accountSwitchBlock(action, { busy, dirty });
+      if (blocked) { message.textContent = blocked.message; return blocked; }
+      return !busy && (!dirty || globalThis.confirm('未送信の投稿・返信を破棄してアカウントを変更しますか？'));
     },
     updateAuth(next) {
       if(disposed)return;

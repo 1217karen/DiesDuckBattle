@@ -1,3 +1,4 @@
+import { accountSwitchBlock } from "./accountChangeGuard.js";
 import { createEmptyDuckPresentation } from "./playerPresentationModel.js";
 import { onlineFailure } from "./onlinePlayerStorage.js";
 
@@ -176,7 +177,9 @@ export function createOnlineEditController({ storage, sections, allowDuckPresent
       if (keepEdits) for (const id of deletedDuckPresentationIds) delete draft.presentation.ducks[id];
       install(result, draft, keepEdits); emit(); return true;
     },
-    async canLeave() {
+    async canLeave({ action } = {}) {
+      const blocked = accountSwitchBlock(action, { busy: state.busy || scopeCheckInFlight, dirty: state.dirty });
+      if (blocked) { state.message = blocked.message; emit(); return blocked; }
       if (state.busy) { state.message = "オンライン処理中です。完了してからアカウントを変更してください。"; emit(); return false; }
       return !state.dirty || await ask("未保存変更を破棄してアカウントを変更しますか？");
     },

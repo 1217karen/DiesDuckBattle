@@ -64,3 +64,10 @@ test('placeholder class follows empty saves and is removed for actual text, incl
  assert.equal(text.classList.contains('is-placeholder'),true);
  s.view.update(state(null));assert.equal(text.classList.contains('is-placeholder'),false);
 });
+test('switch guard preserves unsaved home message and does not ask to discard',async()=>{
+ const s=screen();s.view.update(state('1'));await tick();s.get('home-message-edit').handlers.click();s.get('home-message-input').value='保存前のひとこと';
+ const prior=globalThis.confirm;globalThis.confirm=()=>assert.fail('discard prompt');
+ try{assert.equal(s.view.canLeave({action:'select'}).ok,false);}finally{globalThis.confirm=prior;}
+ assert.equal(s.get('home-message-input').value,'保存前のひとこと');assert.match(s.get('home-message-status').textContent,/保存してから/);
+ s.get('home-message-cancel').handlers.click();assert.equal(s.view.canLeave({action:'select'}),true);
+});

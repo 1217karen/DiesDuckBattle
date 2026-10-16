@@ -1,3 +1,4 @@
+import { accountSwitchBlock } from "./accountChangeGuard.js";
 import { createOnlinePlayerStorage } from './onlinePlayerStorage.js';
 import { createProfileThemeController, THEME_KEYS, isThemeColor, applyProfileTheme } from './profileThemeController.js';
 import { showToast } from './toast.js';
@@ -51,9 +52,12 @@ export function mountProfileThemeEditor({ document, header, profile, client, sto
   const subscription = client.auth.onAuthStateChange?.((event, session) => {
     if (event !== 'INITIAL_SESSION' && event !== 'TOKEN_REFRESHED') controller.sessionChanged(session?.user?.id ?? null);
   });
-  const stopGuard = client.beforeAccountChange?.(() => !editState?.busy && (!editState?.active
-    || JSON.stringify(editState.draft) === JSON.stringify(editState.original)
-    || globalThis.confirm('未保存のプロフィールカラーを破棄してアカウントを変更しますか？')));
+  const stopGuard = client.beforeAccountChange?.(({ action } = {}) => {
+    const dirty = editState?.active && (JSON.stringify(editState.draft) !== JSON.stringify(editState.original));
+    const blocked = accountSwitchBlock(action, { busy: editState?.busy, dirty });
+    if (blocked) { status.textContent = blocked.message; return blocked; }
+    return !editState?.busy && (!dirty || globalThis.confirm('未保存のプロフィールカラーを破棄してアカウントを変更しますか？'));
+  });
   const dispose = () => { stopGuard?.(); subscription?.data?.subscription?.unsubscribe(); };
   document.defaultView?.addEventListener('pagehide', dispose, { once: true });
   return { controller, trigger, dialog, fields, light, dark, cancel, save, status, dispose };

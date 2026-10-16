@@ -1,3 +1,4 @@
+import { accountSwitchBlock } from "./accountChangeGuard.js";
 import { showToast } from "./toast.js";
 import { createIndexMessageService, HOME_MESSAGE_MAX, codePointLength, normalizeHomeMessage } from './indexMessageService.js';
 import { FIXED_IMAGES, setImageFromCandidates } from './fixedImages.js';
@@ -52,7 +53,11 @@ export function mountIndexMessages(document, getClient, notify = showToast) {
     }));
     el('home-messages-status').textContent = rows.length ? '' : 'ひとことはまだありません。';
   }
-  return { canLeave() { return !saving && (form.hidden || input.value === current || globalThis.confirm("未保存のひとことを破棄してアカウントを変更しますか？")); }, update(state) {
+  return { canLeave({ action } = {}) {
+    const blocked = accountSwitchBlock(action, { busy: saving, dirty: !form.hidden && input.value !== current });
+    if (blocked) { status.textContent = blocked.message; return blocked; }
+    return !saving && (form.hidden || input.value === current || globalThis.confirm("未保存のひとことを破棄してアカウントを変更しますか？"));
+  }, update(state) {
     const next = state.ready ? menuModel(state).currentAccount?.eno ?? null : null;
     if (next === eno) return;
     eno = next; const version = ++revision; service?.invalidate(); service = null;

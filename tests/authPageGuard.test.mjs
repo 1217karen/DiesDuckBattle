@@ -73,7 +73,7 @@ test("actual auth state redirects only after successful logout; editor cancellat
       assert.deepEqual(env.redirects, [external ? "index.html" : "index.html?notice=logged-out"]);
     }
   }
-  assert.match(await source("onlineEditor"), /auth\.beforeLogout\(\(\) => controller\.canLeave\(\)\)/);
+  assert.match(await source("onlineEditor"), /auth\.beforeLogout\(context => controller\.canLeave\(context\)\)/);
 });
 
 test("index consumes known notice once, preserves other query/hash and history state; arbitrary notices are ignored", () => {

@@ -15,7 +15,7 @@ export async function startFeedbackPage() {
     queueMicrotask(() => { if (latestAuth) view?.updateAuth(latestAuth); });
   });
   view = mountFeedbackBoard(document, service);
-  const stopGuard = controller.beforeLogout(() => view.canLeave());
+  const stopGuard = controller.beforeLogout(context => view.canLeave(context));
   const unsubscribe = controller.subscribe(state => {
     latestAuth=operator ? {ready:true,signedIn:true,eno:null} : {ready:state.ready && state.sessionKnown, signedIn:state.signedIn,
       eno:state.ready ? menuModel(state).currentAccount?.eno ?? null : null};
