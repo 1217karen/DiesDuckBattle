@@ -112,7 +112,13 @@ body {
 .num.buff, .num.debuff { font-size: 1em; }
 .rollMain .num { font-size: 1.5em; }
 .line.victoryLine { padding: 14px 12px; text-align: center; font-weight: 900; border-radius: 12px; background: linear-gradient(90deg,rgba(255,214,102,.55),color-mix(in srgb, var(--panel) 75%, transparent),rgba(255,214,102,.55)); border: 2px solid rgba(160,120,0,.28); color: #20282c; }
-:root[data-theme="dark"] { --debuff: #9dbbd4; } /* brighter blue for dark backgrounds */
+/* Bright, soft stat colors for the dark battle-result theme. */
+:root[data-theme="dark"] {
+  --damage: #bf9af5;
+  --heal: #72cf99;
+  --buff: #f6b36b;
+  --debuff: #9dbbd4;
+}
 :root[data-theme="dark"] .line.victoryLine { background: linear-gradient(90deg,#59636d,#65717c,#59636d); border-color: #7d8994; color: #f2f5f7; }
 .victoryWrap { display: flex; flex-direction: column; gap: 6px; }
 .victoryTop { font: 400 var(--fs-12) var(--ff-display); letter-spacing: .18em; }
