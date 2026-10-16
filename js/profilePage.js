@@ -1,3 +1,4 @@
+import { mountProfileIntroductions } from "./profileIntroductions.js";
 import { mountProfileBattleEditor } from "./profileBattleEditor.js";
 import { getSupabaseClient } from "./authRuntime.js";
 import { finishPageLoad } from "./pageLoad.js";
@@ -7,7 +8,7 @@ import { mountProfileThemeEditor } from "./profileThemeEditor.js";
 
 export async function loadProfilePage({ document = globalThis.document, location = globalThis.location,
   getClient = getSupabaseClient, createService = createOnlineProfileService,
-  finish = finishPageLoad } = {}) {
+  finish = finishPageLoad, mountIntroductions = mountProfileIntroductions } = {}) {
   const main = document.getElementById("profile");
   const error = message => {
     const node = document.createElement("p"); node.className = "profile-error"; node.setAttribute("role", "alert");
@@ -26,6 +27,8 @@ export async function loadProfilePage({ document = globalThis.document, location
       mountProfileThemeEditor({ document, header: main.children[0], profile, client });
       mountProfileBattleEditor({ document, container: main.querySelector(".featured-battle"), profile, client });
     }
+    // Introduction failures must never take down the profile itself.
+    try { mountIntroductions({ document, main, profile, client }); } catch { /* Independent optional section. */ }
     document.title = `ENo.${profile.eno} ${profile.battler.name} | ダイスで対戦！アヒルバトラーONLINE`;
     return result;
   } catch {

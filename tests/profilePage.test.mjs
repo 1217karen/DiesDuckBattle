@@ -23,14 +23,14 @@ class Element {
 }
 const all = node => [node,...node.children.flatMap(all)];
 const byClass=(node,name)=>all(node).filter(n=>n.className?.split(' ').includes(name));
-async function page({profile=profileFixture(),search='?eno=1',status,throws=false,clientFailure=false,guest=false}={}) {
+async function page({profile=profileFixture(),search='?eno=1',status,throws=false,clientFailure=false,guest=false,mountIntroductions}={}) {
   const main=new Element('main'),body=new Element('body'),calls=[];
   const document={body,title:'initial',createElement:t=>new Element(t),createDocumentFragment:()=>new Element('#fragment'),getElementById:id=>{assert.equal(id,'profile');return main;}};
   const client={auth:{getSession:async()=>({data:{session:guest?null:{user:{id:'caller'}}}})},
     from:()=>{throw Error('No table reads');},rpc:async(name,args)=>{calls.push(['rpc',name,args]);return{data:profile};}};
   const result=await loadProfilePage({document,location:{search},getClient:async()=>{calls.push(['client']);if(clientFailure)throw Error('private failure');return client;},
     createService:c=>status||throws?{getProfile:async eno=>{calls.push(['eno',eno]);if(throws)throw Error('private failure');return profileFailure(status);}}:createOnlineProfileService(c),
-    finish:()=>calls.push(['finish'])});
+    finish:()=>calls.push(['finish']), ...(mountIntroductions ? {mountIntroductions} : {})});
   return {main,document,calls,result};
 }
 test('URL ENo passes service boundary without a login guard; canonical header/title and four theme colors',async()=>{
@@ -245,4 +245,15 @@ test('PL label is last, anonymous is unlinked, named PL safely links to list que
   if(!name?.trim()){assert.equal(footer.textContent,'PL：匿名');assert.equal(link,undefined);}
   else{assert.equal(footer.textContent,'PL：'+name);assert.equal(link.href,'character-list.html?plName='+encodeURIComponent(name));assert.equal(link.html,undefined);}
  }
+});
+
+
+test('introduction mount receives the rendered profile and cannot break the main profile on failure',async()=>{
+ let mounted;const profile=profileFixture();
+ const success=await page({profile,mountIntroductions:args=>{mounted=args;}});
+ assert.equal(mounted.main,success.main);assert.equal(mounted.profile.accountId,profile.accountId);
+ assert.equal(success.result.ok,true);
+ const failed=await page({mountIntroductions:()=>{throw Error('introduction failed');}});
+ assert.equal(failed.result.ok,true);assert.equal(byClass(failed.main,'profile-error').length,0);
+ assert.equal(byClass(failed.main,'battler-card').length,1);assert.equal(failed.calls.at(-1)[0],'finish');
 });

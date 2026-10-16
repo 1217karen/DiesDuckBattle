@@ -3,9 +3,9 @@
 const reads = new Set(["load_online_player", "get_online_random_win_streak", "list_online_opponents",
   "get_online_opponent", "prepare_online_battle", "list_skill_vault", "prepare_account_deletion",
   "get_index_messages", "get_online_profile", "list_online_characters", "get_online_battle_result",
-  "list_online_battle_results", "list_feedback_threads", "list_feedback_replies"]);
+  "list_profile_introductions", "list_online_battle_results", "list_feedback_threads", "list_feedback_replies"]);
 const writes = new Set(["save_online_player", "save_online_battle_result", "set_online_battle_favorite",
-  "store_skill_vault", "delete_skill_vault", "set_index_message", "create_feedback_thread",
+  "save_profile_introduction", "store_skill_vault", "delete_skill_vault", "set_index_message", "create_feedback_thread",
   "create_feedback_reply", "toggle_feedback_reaction", "withdraw_feedback_thread"]);
 const ownedId = new Set(["load_online_player", "save_online_player", "get_online_random_win_streak",
   "prepare_online_battle", "list_skill_vault", "store_skill_vault", "delete_skill_vault", "set_online_battle_favorite"]);
@@ -65,6 +65,7 @@ export function createAccountScopedClient({ context, runtime, coordinator }) {
       if (!reads.has(name) && !writes.has(name)) return error("42501");
       if ((ownedId.has(name) && params.p_game_account_id !== account.gameAccountId)
         || (ownedEno.has(name) && params.p_eno !== account.eno)
+        || (name === "save_profile_introduction" && params.p_author_account_id !== account.gameAccountId)
         || (name === "save_online_battle_result" && params.p_p1_account_id !== account.gameAccountId)
         || (name === "list_online_battle_results" && params.p_game_account_id != null && params.p_game_account_id !== account.gameAccountId)
         || (name === "list_feedback_threads" && params.p_eno != null && params.p_eno !== account.eno)) return error("42501");

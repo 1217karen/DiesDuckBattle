@@ -178,3 +178,33 @@ body {
 
 .profile-pl-name { margin-top: 24px; text-align: right; font-size: .85rem; color: var(--profile-accent); overflow-wrap: anywhere; }
 .profile-pl-name a { color: inherit; }
+
+/* Each introduction owns all four author colors, without changing body variables. */
+.profile-introductions { margin-top: 24px; }
+.profile-introductions > summary { cursor: pointer; color: var(--profile-accent); font-weight: 700; font-family: var(--font-heading-ja); }
+.introduction-list { display: grid; gap: 16px; margin: 16px 0; }
+.profile-introduction { min-width: 0; padding: 16px; border-radius: 10px; background: var(--intro-background); color: var(--intro-text); border: 1px solid var(--intro-accent); }
+.introduction-author { display: flex; align-items: center; gap: 12px; }
+.introduction-author img, .introduction-icon-preview { flex-shrink: 0; width: 60px; height: 60px; object-fit: contain; border-radius: 8px; }
+.introduction-author a { color: var(--intro-accent); overflow-wrap: anywhere; }
+.introduction-body { margin-top: 12px; padding: 12px; background: var(--intro-panel); border-radius: 6px; }
+.introduction-image { display: block; width: auto; height: auto; max-width: min(480px, 100%); max-height: 480px; object-fit: contain; margin-top: 12px; }
+.introduction-editor { margin-top: 16px; padding: 16px; color: #20282c; background: #f4f6f7; border: 1px solid #637178; border-radius: 8px; color-scheme: light; }
+.introduction-editor fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.introduction-editor label { display: block; margin-top: 16px; }
+.introduction-editor textarea, .introduction-editor input { width: 100%; padding: 8px; font: inherit; color: #20282c; background: #fff; border: 1px solid #637178; border-radius: 4px; }
+.introduction-editor textarea { resize: vertical; }
+.introduction-editor [aria-invalid="true"] { border: 2px solid #b3261e; }
+.introduction-actions, .introduction-editor .quote-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.introduction-actions { justify-content: flex-end; }
+.profile-introductions button, .introduction-confirm button, .introduction-icon-dialog button { color: #20282c; background: #fff; border: 1px solid #637178; border-radius: 5px; padding: 9px 12px; cursor: pointer; }
+.profile-introductions button:disabled { opacity: .5; cursor: default; }
+.profile-introductions :focus-visible, .introduction-confirm :focus-visible, .introduction-icon-dialog :focus-visible { outline: 3px solid #26779e; outline-offset: 2px; }
+.introduction-icon-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.introduction-icon-list .icon-choice { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.introduction-icon-list img { width: 60px; height: 60px; object-fit: contain; }
+.introduction-icon-list [aria-current="true"] { outline: 3px solid #26779e; }
+.introduction-icon-list button:disabled { opacity: .45; }
+@media (max-width: 600px) {
+  .profile-introduction, .introduction-editor { padding: 10px; }
+}
