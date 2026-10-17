@@ -294,7 +294,7 @@ function eventToLines(event, context) {
           || id === "B:damage-both-up:1" || id === "B:damage-both-down:1";
         if (outgoing || incoming) return [
           { kind: "soft", text: `${actor}の${incoming ? "受ける" : "与える"}ダメージ倍率が変動！` },
-          { kind: "meta b-damage-multiplier", text: escapeHTML(formatMul(event.value)) },
+          { kind: "meta", text: `ダメージ倍率 ${formatMul(event.value)}！` },
         ];
       }
       const text = { miss: "攻撃は失敗した！", mulDamage: `ダメージ倍率 ${formatMul(event.value)}！`,
