@@ -351,8 +351,8 @@ test("production B damage multiplier log names the Duck, direction and actual fa
     assert.equal(lines.length, 3, skillId);
     assert.equal(lines[1].text, `${name}の${verb}ダメージ倍率が変動！`, skillId);
     assert.equal(lines[1].kind, "soft skill", skillId);
-    assert.equal(lines[2].text, `×${value}`, skillId);
-    assert.equal(lines[2].kind, "meta b-damage-multiplier skill", skillId);
+    assert.equal(lines[2].text, `ダメージ倍率 ×${value}！`, skillId);
+    assert.equal(lines[2].kind, "meta skill", skillId);
   }
 });
 
