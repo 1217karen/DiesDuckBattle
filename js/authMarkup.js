@@ -27,12 +27,12 @@ export const authMarkup = `  <section class="panel" aria-labelledby="session-tit
         <label for="character-name">バトラー名</label>
         <input id="character-name" type="text" placeholder="バトラー名を入力（最大${BATTLER_NAME_MAX}文字）" aria-describedby="character-name-error" autocomplete="nickname" required>
         <p id="character-name-error" role="status"></p>
+        <p class="hint">バトラー名は後から変更できます。</p>
         <label for="register-password">パスワード</label>
         <p id="register-password-hint" class="hint">パスワードは6文字以上、半角英字と数字をそれぞれ1文字以上含めてください。</p>
         <input aria-describedby="register-password-hint" id="register-password" type="password" autocomplete="new-password" required>
         <label for="confirm-password">パスワード確認</label>
         <input id="confirm-password" type="password" autocomplete="new-password" required>
-        <p class="hint">バトラー名は後から変更できます。メールアドレスは不要です。</p>
         <nav class="auth-document-links" aria-label="登録前の確認事項">
           <a href="rulebook.html#guidelines" target="_blank" rel="noopener">サイトガイドライン</a>
           <a href="legal.html#terms" target="_blank" rel="noopener">利用規約</a>
