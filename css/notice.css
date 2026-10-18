@@ -24,7 +24,8 @@ body { margin:0; }
 .notice-article h2, .report-card h2 { font-family:var(--font-heading-ja); font-size:19px; line-height:1.6; margin:12px 0; }
 .notice-article h2 { padding-bottom:14px; border-bottom:1px solid var(--line); }
 .notice-body, .report-card > p { line-height:1.85; font-size:14px; }
-.notice-body p { margin:14px 0 0; }
+.notice-body { line-height:1.7; }
+.notice-body p { margin:0; }
 .notice-side-title { font-size:14px; letter-spacing:.12em; margin:0; }
 .notice-side-help { color:var(--muted); font-size:12px; line-height:1.7; margin:10px 0 14px; }
 .notice-index { display:grid; }
