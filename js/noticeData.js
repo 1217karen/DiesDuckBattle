@@ -3,6 +3,15 @@
 // 本文のリンクは [表示テキスト](https://example.com) の形式で指定できます。
 export const notices = [
   {
+    id: "notice-update-20261020",
+    date: "2026-10-20",
+    category: "更新情報",
+    title: "アイコン表示サイズの修正について",
+    body: [
+      "一部の画面で、アイコンが指定サイズよりわずかに小さく表示されていた問題を修正しました。"
+    ]
+  },
+  {
     id: "notice-update-20261017",
     date: "2026-10-17",
     category: "更新情報",
