@@ -15,7 +15,7 @@ test("result loads the shared theme after early site preference scripts and befo
   assert.doesNotMatch(html, /common-page\.css/);
   for (const id of ["battle-header","p1BattlerIcon","p2BattlerIcon","p1DuckIcon","p2DuckIcon","p1Name","p2Name","centerTurn","centerHP_P1","centerHP_P2","centerAP_P1","centerAP_P2","centerPhase","logArea","btnBack","btnNext","btnAll"]) assert.match(html, new RegExp('id="'+id+'"'));
 });
-test("neutral backgrounds, icon borders and placeholders follow the common theme", () => {
+test("neutral backgrounds, outer icon frames and placeholders follow the common theme", () => {
   assert.match(rule("body"), /color: var\(--text\)/);
   assert.match(rule("body"), /background-color: var\(--bg\)/);
   assert.match(rule("body"), /background-image: var\(--theme-background-image\)/);
@@ -23,7 +23,8 @@ test("neutral backgrounds, icon borders and placeholders follow the common theme
   for (const selector of [".header",".footer"]) assert.match(rule(selector), /background: var\(--panel\)/);
   for (const selector of [".battlerIcon, .duckIcon",".quoteIcon"]) {
     assert.match(rule(selector), /background: var\(--ui-surface\)/);
-    assert.match(rule(selector), /border: 2px solid var\(--line\)/);
+    assert.match(rule(selector), /box-shadow: 0 0 0 2px var\(--line\)/);
+    assert.doesNotMatch(rule(selector), /border: 2px/);
   }
   assert.match(rule(".placeholderIcon"), /color: var\(--muted\)/);
   for (const selector of [".line.soft",".quoteBubble",".miniPanel"]) assert.match(rule(selector), /color-mix\(in srgb, var\(--text\) 3\.5%, transparent\)/);

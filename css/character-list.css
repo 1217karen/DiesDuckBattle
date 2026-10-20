@@ -96,7 +96,7 @@ body {
   width: 120px;
   height: 120px;
   object-fit: cover;
-  border: 1px solid var(--line);
+  box-shadow: 0 0 0 1px var(--line);
   border-radius: 4px;
   background: color-mix(in srgb, var(--card-panel) 90%, var(--card-text) 10%);
 }

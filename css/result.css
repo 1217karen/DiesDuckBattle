@@ -44,7 +44,7 @@ body {
 }
 .side { min-width: 0; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 12px; align-items: center; }
 .side.right { grid-template-columns: 1fr auto; }
-.battlerIcon, .duckIcon { box-sizing: border-box; border-radius: 10px; background: var(--ui-surface); border: 2px solid var(--line); }
+.battlerIcon, .duckIcon { box-sizing: border-box; border-radius: 10px; background: var(--ui-surface); box-shadow: 0 0 0 2px var(--line); }
 .battlerIcon { width: var(--battler-size); height: var(--battler-size); grid-column: 1; grid-row: 1 / span 2; }
 .duckIcon { width: var(--duck-size); height: var(--duck-size); }
 .placeholderIcon { display: grid; place-items: center; font-weight: 900; color: var(--muted); }
@@ -100,7 +100,7 @@ body {
 .quoteCell { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; }
 .quoteCell.p1 { justify-self: start; text-align: left; }
 .quoteCell.p2 { justify-self: end; flex-direction: row-reverse; text-align: right; }
-.quoteIcon { width: 120px; height: 120px; flex: 0 0 120px; display: block; object-fit: contain; border-radius: 10px; background: var(--ui-surface); border: 2px solid var(--line); box-sizing: border-box; }
+.quoteIcon { width: 120px; height: 120px; flex: 0 0 120px; display: block; object-fit: contain; border-radius: 10px; background: var(--ui-surface); box-shadow: 0 0 0 2px var(--line); box-sizing: border-box; }
 .quoteBubble { padding: 8px 5px; background: color-mix(in srgb, var(--text) 3.5%, transparent); border-radius: 10px; box-sizing: border-box; overflow-wrap: anywhere; word-break: normal; line-break: strict; flex: 1; min-width: 0; }
 .rollSub { font-size: var(--fs-12); opacity: .55; }
 .miniHint { font-size: .85em; opacity: .65; }
