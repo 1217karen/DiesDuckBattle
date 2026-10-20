@@ -47,7 +47,7 @@ body {
   width: var(--profile-icon-size);
   height: var(--profile-icon-size);
   object-fit: contain;
-  border: 1px solid var(--profile-line);
+  box-shadow: 0 0 0 1px var(--profile-line);
   border-radius: 8px;
 }
 .profile-icon-rail img[data-icon-position="2"], .profile-icon-rail img[data-icon-position="4"] { justify-self: end; }
