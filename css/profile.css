@@ -89,7 +89,6 @@ body {
 .profile-header h1, .profile-card h2 { font-family:var(--font-heading-ja); }
 
 .profile-message {
-  --profile-message-bg: color-mix(in srgb, var(--profile-bg) 90%, var(--profile-panel));
   position: relative;
   width: 100%;
   max-width: 100%;
@@ -97,7 +96,7 @@ body {
   padding: 12px 24px;
   border: 1px solid var(--profile-accent);
   border-radius: 999px;
-  background: var(--profile-message-bg);
+  background: var(--profile-bg);
   color: var(--profile-accent);
   text-align: center;
   white-space: pre-wrap;
@@ -110,7 +109,7 @@ body {
   left: calc(35% - 6px);
   width: 12px;
   height: 12px;
-  background: var(--profile-message-bg);
+  background: var(--profile-bg);
   border-right: 1px solid var(--profile-accent);
   border-bottom: 1px solid var(--profile-accent);
   transform: rotate(45deg);
