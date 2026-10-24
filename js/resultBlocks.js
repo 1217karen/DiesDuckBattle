@@ -305,6 +305,7 @@ function eventToLines(event, context) {
     case "valueChanged": {
       if (event.key === "attackTimesOverride") {
         if (event.before === event.after) return [];
+        if (event.after === 0) return [{ kind: "soft", text: `${target}は通常攻撃をキャンセルした！` }];
         return [{ kind: "soft", text: `${target}の攻撃回数が ${escapeHTML(event.before === null ? "通常" : event.before)} → ${escapeHTML(event.after === null ? "通常" : event.after)} に変更！` }];
       }
       const delta = Number(event.delta ?? Number(event.after) - Number(event.before));

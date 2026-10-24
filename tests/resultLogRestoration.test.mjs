@@ -78,10 +78,11 @@ for (const [key, label] of [["tempDfPlus", "DFがターン中"], ["nextAttackATP
     assert.equal(textFor([event("valueChanged", { key, delta })]), `アヒル一の${label} ${delta > 0 ? "+" : ""}${delta}！`);
   });
 }
-for (const [before, after] of [[null, 2], [2, null], [null, 0], [0, null]]) {
+for (const [before, after] of [[null, 2], [2, null], [null, 0], [2, 0], [0, null]]) {
   test(`attackTimesOverride ${before} to ${after} with engine null delta`, () => {
     assert.equal(textFor([event("valueChanged", { key: "attackTimesOverride", before, after, delta: null })]),
-      `アヒル一の攻撃回数が ${before === null ? "通常" : before} → ${after === null ? "通常" : after} に変更！`);
+      after === 0 ? "アヒル一は通常攻撃をキャンセルした！"
+        : `アヒル一の攻撃回数が ${before === null ? "通常" : before} → ${after === null ? "通常" : after} に変更！`);
   });
 }
 for (const delta of [-2, 2]) test(`recoilMinus ${delta} inverts damage sign`, () => {
